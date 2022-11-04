@@ -1,6 +1,6 @@
 [package]
 name = "ethers-etherscan"
-version = "0.17.0"
+version = "1.0.0"
 rust-version = "1.62"
 authors = [
     "Matthias Seitz <matthias.seitz@outlook.de>",
@@ -18,14 +18,14 @@ Rust API bindings for the etherscan.io web API
 keywords = ["ethereum", "web3", "etherscan", "ethers"]
 
 [dependencies]
-ethers-core = { version = "^0.17.0", path = "../ethers-core", default-features = false }
-ethers-solc = { version = "^0.17.0", path = "../ethers-solc", default-features = false, optional = true }
+ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
+ethers-solc = { version = "^1.0.0", path = "../ethers-solc", default-features = false, optional = true }
 reqwest = { version = "0.11.12", default-features = false, features = ["json"] }
 serde = { version = "1.0.124", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.64", default-features = false }
 serde-aux = { version = "4.0.0", default-features = false }
 thiserror = "1.0"
-tracing = "0.1.36"
+tracing = "0.1.37"
 semver = "1.0.14"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -37,7 +37,7 @@ tempfile = "3.3.0"
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread", "time"] }
 serial_test = "0.9.0"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
-ethers-solc = { version = "^0.17.0", path = "../ethers-solc", default-features = false }
+ethers-solc = { version = "^1.0.0", path = "../ethers-solc", default-features = false }
 
 [package.metadata.docs.rs]
 all-features = true

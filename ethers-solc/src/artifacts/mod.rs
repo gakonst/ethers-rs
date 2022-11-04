@@ -106,6 +106,8 @@ impl CompilerInput {
             once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.10").unwrap());
         static PRE_V0_7_5: once_cell::sync::Lazy<VersionReq> =
             once_cell::sync::Lazy::new(|| VersionReq::parse("<0.7.5").unwrap());
+        static PRE_V0_8_18: once_cell::sync::Lazy<VersionReq> =
+            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.18").unwrap());
 
         if PRE_V0_6_0.matches(version) {
             if let Some(ref mut meta) = self.settings.metadata {
@@ -131,6 +133,13 @@ impl CompilerInput {
         if PRE_V0_7_5.matches(version) {
             // introduced in 0.7.5 <https://github.com/ethereum/solidity/releases/tag/v0.7.5>
             self.settings.via_ir.take();
+        }
+
+        if PRE_V0_8_18.matches(version) {
+            // introduced in 0.8.18 <https://github.com/ethereum/solidity/releases/tag/v0.8.18>
+            if let Some(ref mut meta) = self.settings.metadata {
+                meta.cbor_metadata = None;
+            }
         }
 
         self
@@ -838,11 +847,19 @@ pub struct SettingsMetadata {
         with = "serde_helpers::display_from_str_opt"
     )]
     pub bytecode_hash: Option<BytecodeHash>,
+    #[serde(default, rename = "appendCBOR", skip_serializing_if = "Option::is_none")]
+    pub cbor_metadata: Option<bool>,
+}
+
+impl SettingsMetadata {
+    pub fn new(hash: BytecodeHash, cbor: bool) -> Self {
+        Self { use_literal_content: None, bytecode_hash: Some(hash), cbor_metadata: Some(cbor) }
+    }
 }
 
 impl From<BytecodeHash> for SettingsMetadata {
     fn from(hash: BytecodeHash) -> Self {
-        Self { use_literal_content: None, bytecode_hash: Some(hash) }
+        Self { use_literal_content: None, bytecode_hash: Some(hash), cbor_metadata: None }
     }
 }
 
@@ -2067,6 +2084,29 @@ mod tests {
         let version: Version = "0.5.17".parse().unwrap();
         let i = input.sanitized(&version);
         assert!(i.settings.metadata.unwrap().bytecode_hash.is_none());
+    }
+
+    #[test]
+    fn can_sanitize_cbor_metadata() {
+        let version: Version = "0.8.18".parse().unwrap();
+
+        let settings = Settings {
+            metadata: Some(SettingsMetadata::new(BytecodeHash::Ipfs, true)),
+            ..Default::default()
+        };
+
+        let input = CompilerInput {
+            language: "Solidity".to_string(),
+            sources: Default::default(),
+            settings,
+        };
+
+        let i = input.clone().sanitized(&version);
+        assert_eq!(i.settings.metadata.unwrap().cbor_metadata, Some(true));
+
+        let version: Version = "0.8.0".parse().unwrap();
+        let i = input.sanitized(&version);
+        assert!(i.settings.metadata.unwrap().cbor_metadata.is_none());
     }
 
     #[test]

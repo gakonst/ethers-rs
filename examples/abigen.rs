@@ -4,8 +4,8 @@ fn main() -> eyre::Result<()> {
     let mut args = std::env::args();
     args.next().unwrap(); // skip program name
 
-    let contract_name = args.next().unwrap_or("SimpleStorage".to_owned());
-    let contract: String = args.next().unwrap_or("examples/contract.sol".to_owned());
+    let contract_name = args.next().unwrap_or_else(|| "SimpleStorage".to_owned());
+    let contract: String = args.next().unwrap_or_else(|| "examples/contract.sol".to_owned());
 
     println!("Generating bindings for {}\n", contract);
 

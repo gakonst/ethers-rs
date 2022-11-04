@@ -9,11 +9,11 @@ mod eth_tests {
         types::{Address, BlockId, TransactionRequest, H256},
         utils::Anvil,
     };
-    use ethers_providers::RINKEBY;
+    use ethers_providers::GOERLI;
 
     #[tokio::test]
     async fn non_existing_data_works() {
-        let provider = RINKEBY.provider();
+        let provider = GOERLI.provider();
 
         assert!(provider.get_transaction(H256::zero()).await.unwrap().is_none());
         assert!(provider.get_transaction_receipt(H256::zero()).await.unwrap().is_none());
@@ -23,7 +23,7 @@ mod eth_tests {
 
     #[tokio::test]
     async fn client_version() {
-        let provider = RINKEBY.provider();
+        let provider = GOERLI.provider();
 
         // e.g., Geth/v1.10.6-omnibus-1af33248/linux-amd64/go1.16.6
         assert!(provider
@@ -36,7 +36,7 @@ mod eth_tests {
     // Without TLS this would error with "TLS Support not compiled in"
     #[tokio::test]
     async fn ssl_websocket() {
-        let provider = RINKEBY.ws().await;
+        let provider = GOERLI.ws().await;
         let _number = provider.get_block_number().await.unwrap();
     }
 

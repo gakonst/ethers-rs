@@ -1,6 +1,6 @@
 [package]
 name = "ethers-contract-abigen"
-version = "0.17.0"
+version = "1.0.0"
 authors = [
     "Nicholas Rodrigues Lordello <nlordell@gmail.com>",
     "Georgios Konstantopoulos <me@gakonst.com>",
@@ -13,7 +13,7 @@ repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
-ethers-core = { version = "^0.17.0", path = "../../ethers-core", features = ["macros"] }
+ethers-core = { version = "^1.0.0", path = "../../ethers-core", features = ["macros"] }
 
 Inflector = "0.11"
 proc-macro2 = "1.0"
@@ -45,7 +45,7 @@ rustls = ["reqwest/rustls-tls"]
 
 [dev-dependencies]
 tempfile = "3.2.0"
-ethers-solc = { version = "^0.17.0", path = "../../ethers-solc", default-features = false, features = [
+ethers-solc = { version = "^1.0.0", path = "../../ethers-solc", default-features = false, features = [
     "project-util",
     "svm-solc",
 ] }

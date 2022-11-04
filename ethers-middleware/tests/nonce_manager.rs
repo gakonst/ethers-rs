@@ -8,10 +8,10 @@ async fn nonce_manager() {
     use ethers_signers::{LocalWallet, Signer};
     use std::time::Duration;
 
-    let provider = ethers_providers::RINKEBY.provider().interval(Duration::from_millis(2000u64));
+    let provider = ethers_providers::GOERLI.provider().interval(Duration::from_millis(2000u64));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
 
-    let wallet = std::env::var("RINKEBY_PRIVATE_KEY")
+    let wallet = std::env::var("GOERLI_PRIVATE_KEY")
         .unwrap()
         .parse::<LocalWallet>()
         .unwrap()

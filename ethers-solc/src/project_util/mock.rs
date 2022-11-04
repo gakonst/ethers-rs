@@ -362,15 +362,16 @@ impl MockProjectGenerator {
     }
 }
 
-impl From<MockProjectSkeleton> for MockProjectGenerator {
-    fn from(inner: MockProjectSkeleton) -> Self {
-        Self { inner, ..Default::default() }
+#[allow(clippy::derivable_impls)]
+impl Default for MockProjectGenerator {
+    fn default() -> Self {
+        Self { name_strategy: Box::<SimpleNamingStrategy>::default(), inner: Default::default() }
     }
 }
 
-impl Default for MockProjectGenerator {
-    fn default() -> Self {
-        Self { name_strategy: Box::new(SimpleNamingStrategy::default()), inner: Default::default() }
+impl From<MockProjectSkeleton> for MockProjectGenerator {
+    fn from(inner: MockProjectSkeleton) -> Self {
+        Self { inner, ..Default::default() }
     }
 }
 

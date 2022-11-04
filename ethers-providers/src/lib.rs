@@ -675,7 +675,7 @@ pub trait CeloMiddleware: Middleware {
     }
 }
 
-pub use test_provider::{GOERLI, MAINNET, RINKEBY, ROPSTEN};
+pub use test_provider::{GOERLI, MAINNET, ROPSTEN};
 
 /// Pre-instantiated Infura HTTP clients which rotate through multiple API keys
 /// to prevent rate limits
@@ -695,11 +695,9 @@ pub mod test_provider {
         "5c812e02193c4ba793f8c214317582bd",
     ];
 
-    pub static RINKEBY: Lazy<TestProvider> =
-        Lazy::new(|| TestProvider::new(INFURA_KEYS, "rinkeby"));
+    pub static GOERLI: Lazy<TestProvider> = Lazy::new(|| TestProvider::new(INFURA_KEYS, "goerli"));
     pub static MAINNET: Lazy<TestProvider> =
         Lazy::new(|| TestProvider::new(INFURA_KEYS, "mainnet"));
-    pub static GOERLI: Lazy<TestProvider> = Lazy::new(|| TestProvider::new(INFURA_KEYS, "goerli"));
     pub static ROPSTEN: Lazy<TestProvider> =
         Lazy::new(|| TestProvider::new(INFURA_KEYS, "ropsten"));
 

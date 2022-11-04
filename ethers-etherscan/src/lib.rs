@@ -103,6 +103,7 @@ impl Client {
                 std::env::var("FTMSCAN_API_KEY").or_else(|_| std::env::var("FANTOMSCAN_API_KEY"))?
             }
             Chain::XDai |
+            Chain::Chiado |
             Chain::Sepolia |
             Chain::Rsk |
             Chain::Sokol |
@@ -270,7 +271,7 @@ impl ClientBuilder {
         let (etherscan_api_url, etherscan_url) = chain
             .etherscan_urls()
             .map(|(api, base)| urls(api, base))
-            .ok_or(EtherscanError::ChainNotSupported(chain))?;
+            .ok_or_else(|| EtherscanError::ChainNotSupported(chain))?;
         self.with_api_url(etherscan_api_url?)?.with_url(etherscan_url?)
     }
 

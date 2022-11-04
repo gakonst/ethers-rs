@@ -29,7 +29,7 @@ pub const MULTICALL_ADDRESS: Address = H160([
 
 /// The chain IDs that [`MULTICALL_ADDRESS`] has been deployed to.
 /// Taken from: https://github.com/mds1/multicall#multicall3-contract-addresses
-pub static MULTICALL_SUPPORTED_CHAIN_IDS: Lazy<[U256; 47]> = Lazy::new(|| {
+pub static MULTICALL_SUPPORTED_CHAIN_IDS: Lazy<[U256; 48]> = Lazy::new(|| {
     use Chain::*;
     [
         U256::from(Mainnet),                  // Mainnet
@@ -47,6 +47,7 @@ pub static MULTICALL_SUPPORTED_CHAIN_IDS: Lazy<[U256; 47]> = Lazy::new(|| {
         U256::from(Polygon),                  // Polygon
         U256::from(PolygonMumbai),            // PolygonMumbai
         U256::from(XDai),                     // XDai
+        U256::from(Chiado),                   // ChiadoTestnet
         U256::from(Avalanche),                // Avalanche
         U256::from(AvalancheFuji),            // AvalancheFuji
         U256::from(FantomTestnet),            // FantomTestnet
@@ -584,7 +585,7 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Examples
     ///
-    /// The return type must be annonated while calling this method:
+    /// The return type must be annotated while calling this method:
     ///
     /// ```no_run
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {

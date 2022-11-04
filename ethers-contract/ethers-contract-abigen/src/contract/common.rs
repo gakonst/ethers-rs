@@ -99,11 +99,16 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
 
     let abi_parse = if !cx.human_readable {
         quote! {
-            pub static #abi_name: #ethers_contract::Lazy<#ethers_core::abi::Abi> = #ethers_contract::Lazy::new(|| #ethers_core::utils::__serde_json::from_str(#abi)
+            #[rustfmt::skip]
+            const __ABI: &str = #abi;
+
+            /// The parsed JSON-ABI of the contract.
+            pub static #abi_name: #ethers_contract::Lazy<#ethers_core::abi::Abi> = #ethers_contract::Lazy::new(|| #ethers_core::utils::__serde_json::from_str(__ABI)
                                               .expect("invalid abi"));
         }
     } else {
         quote! {
+            /// The parsed human readable ABI of the contract.
             pub static #abi_name: #ethers_contract::Lazy<#ethers_core::abi::Abi> = #ethers_contract::Lazy::new(|| #ethers_core::abi::parse_abi_str(#abi)
                                                 .expect("invalid abi"));
         }
