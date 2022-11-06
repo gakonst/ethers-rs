@@ -10,7 +10,7 @@ use std::{
 const GETH_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
 
 /// The exposed APIs
-const API: &str = "eth,net,web3,txpool";
+const API: &str = "eth,net,web3,txpool,admin";
 
 /// The geth command
 const GETH: &str = "geth";
