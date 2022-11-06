@@ -31,6 +31,8 @@ pub struct ProjectCompileOutput<T: ArtifactOutput = ConfigurableArtifacts> {
     pub(crate) cached_artifacts: Artifacts<T::Artifact>,
     /// errors that should be omitted
     pub(crate) ignored_error_codes: Vec<u64>,
+    /// treat warnings as errors
+    pub(crate) warnings_as_errors: bool,
 }
 
 impl<T: ArtifactOutput> ProjectCompileOutput<T> {
@@ -197,7 +199,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
 
     /// Whether there were errors
     pub fn has_compiler_errors(&self) -> bool {
-        self.compiler_output.has_error()
+        self.compiler_output.has_error(self.warnings_as_errors)
     }
 
     /// Whether there were warnings
@@ -398,7 +400,7 @@ impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
         if self.compiler_output.is_unchanged() {
             f.write_str("Nothing to compile")
         } else {
-            self.compiler_output.diagnostics(&self.ignored_error_codes).fmt(f)
+            self.compiler_output.diagnostics(&self.ignored_error_codes, self.warnings_as_errors).fmt(f)
         }
     }
 }
@@ -426,8 +428,14 @@ impl AggregatedCompilerOutput {
     }
 
     /// Whether the output contains a compiler error
-    pub fn has_error(&self) -> bool {
-        self.errors.iter().any(|err| err.severity.is_error())
+    pub fn has_error(&self, warnings_as_errors: bool) -> bool {
+        self.errors.iter().any(|err| {
+            if warnings_as_errors {
+                true
+            } else {
+                err.severity.is_error()
+            }
+        })
     }
 
     /// Whether the output contains a compiler warning
@@ -441,8 +449,8 @@ impl AggregatedCompilerOutput {
         })
     }
 
-    pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
-        OutputDiagnostics { compiler_output: self, ignored_error_codes }
+    pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64], warnings_as_errors: bool) -> OutputDiagnostics {
+        OutputDiagnostics { compiler_output: self, ignored_error_codes, warnings_as_errors }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -702,12 +710,14 @@ pub struct OutputDiagnostics<'a> {
     compiler_output: &'a AggregatedCompilerOutput,
     /// the error codes to ignore
     ignored_error_codes: &'a [u64],
+    /// treat warnings as errors
+    warnings_as_errors: bool,
 }
 
 impl<'a> OutputDiagnostics<'a> {
     /// Returns true if there is at least one error of high severity
     pub fn has_error(&self) -> bool {
-        self.compiler_output.has_error()
+        self.compiler_output.has_error(self.warnings_as_errors)
     }
 
     /// Returns true if there is at least one warning

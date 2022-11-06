@@ -73,6 +73,8 @@ pub struct Project<T: ArtifactOutput = ConfigurableArtifacts> {
     pub artifacts: T,
     /// Errors/Warnings which match these error codes are not going to be logged
     pub ignored_error_codes: Vec<u64>,
+    /// Whether warnings will be filtered out when checking for errors.
+    pub warnings_as_errors: bool,
     /// The paths which will be allowed for library inclusion
     pub allowed_paths: AllowedLibPaths,
     /// The paths which will be used with solc's `--include-path` attribute
@@ -569,6 +571,8 @@ pub struct ProjectBuilder<T: ArtifactOutput = ConfigurableArtifacts> {
     artifacts: T,
     /// Which error codes to ignore
     pub ignored_error_codes: Vec<u64>,
+    /// Whether to include warnings when checking for errors
+    warnings_as_errors: bool,
     /// All allowed paths for solc's `--allowed-paths`
     allowed_paths: AllowedLibPaths,
     /// Paths to use for solc's `--include-path`
@@ -591,6 +595,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             slash_paths: true,
             artifacts,
             ignored_error_codes: Vec::new(),
+            warnings_as_errors: false,
             allowed_paths: Default::default(),
             include_paths: Default::default(),
             solc_jobs: None,
@@ -626,6 +631,12 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
         for code in codes {
             self = self.ignore_error_code(code);
         }
+        self
+    }
+
+    #[must_use]
+    pub fn set_warnings_as_errors(mut self, warnings_as_errors: bool) -> Self {
+        self.warnings_as_errors = warnings_as_errors;
         self
     }
 
@@ -727,6 +738,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             no_artifacts,
             auto_detect,
             ignored_error_codes,
+            warnings_as_errors,
             allowed_paths,
             include_paths,
             solc_jobs,
@@ -746,6 +758,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             slash_paths,
             artifacts,
             ignored_error_codes,
+            warnings_as_errors,
             allowed_paths,
             include_paths,
             solc_jobs,
@@ -803,6 +816,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             auto_detect,
             artifacts,
             ignored_error_codes,
+            warnings_as_errors,
             mut allowed_paths,
             include_paths,
             solc_jobs,
@@ -834,6 +848,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             auto_detect,
             artifacts,
             ignored_error_codes,
+            warnings_as_errors,
             allowed_paths,
             include_paths,
             solc_jobs: solc_jobs.unwrap_or_else(num_cpus::get),
