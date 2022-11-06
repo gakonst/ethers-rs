@@ -56,8 +56,8 @@ pub enum ConversionError {
     InvalidFloat(#[from] std::num::ParseFloatError),
     #[error(transparent)]
     FromDecStrError(#[from] FromDecStrErr),
-    #[error(transparent)]
-    DecimalError(#[from] rust_decimal::Error),
+    #[error("Overflow parsing string")]
+    ParseOverflow,
 }
 
 /// 1 Ether = 1e18 Wei == 0x0de0b6b3a7640000 Wei
@@ -173,7 +173,7 @@ where
         let mut a_uint = U256::from_dec_str(&amount_str)?;
         a_uint *= U256::from(10)
             .checked_pow(U256::from(exponent - dec_len))
-            .ok_or(rust_decimal::Error::ExceedsMaximumPossibleValue)?;
+            .ok_or(ConversionError::ParseOverflow)?;
         Ok(a_uint)
     }
 }
