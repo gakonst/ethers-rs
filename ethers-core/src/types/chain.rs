@@ -271,7 +271,7 @@ impl fmt::Display for Chain {
             Chain::AuroraTestnet => "aurora-testnet",
         };
 
-        write!(formatter, "{}", chain)
+        write!(formatter, "{chain}")
     }
 }
 

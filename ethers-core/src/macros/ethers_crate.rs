@@ -59,11 +59,11 @@ pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
     };
 
     // check if the lock file exists, if it's missing we need to clean up afterward
-    let lock_file = format!("{}/Cargo.lock", manifest_dir);
+    let lock_file = format!("{manifest_dir}/Cargo.lock");
     let needs_lock_file_cleanup = !std::path::Path::new(&lock_file).exists();
 
     let res = MetadataCommand::new()
-        .manifest_path(&format!("{}/Cargo.toml", manifest_dir))
+        .manifest_path(&format!("{manifest_dir}/Cargo.toml"))
         .exec()
         .ok()
         .and_then(|metadata| {

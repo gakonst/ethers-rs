@@ -939,7 +939,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         };
         let data = self.call(&tx.into(), None).await?;
         let mut metadata_url = Url::parse(&decode_bytes::<String>(ParamType::String, data))
-            .map_err(|e| ProviderError::CustomError(format!("Invalid metadata url: {}", e)))?;
+            .map_err(|e| ProviderError::CustomError(format!("Invalid metadata url: {e}")))?;
 
         if token.type_ == erc::ERCNFTType::ERC1155 {
             metadata_url.set_path(&metadata_url.path().replace("%7Bid%7D", &hex::encode(token.id)));
@@ -1832,7 +1832,7 @@ mod tests {
             ("cdixon.eth", "https://ipfs.io/ipfs/QmYA6ZpEARgHvRHZQdFPynMMX8NtdL2JCadvyuyG2oA88u"),
             ("0age.eth", "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOmJsYWNrIiB2aWV3Qm94PSIwIDAgNTAwIDUwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB4PSIxNTUiIHk9IjYwIiB3aWR0aD0iMTkwIiBoZWlnaHQ9IjM5MCIgZmlsbD0iIzY5ZmYzNyIvPjwvc3ZnPg==")
         ] {
-        println!("Resolving: {}", ens_name);
+        println!("Resolving: {ens_name}");
         assert_eq!(provider.resolve_avatar(ens_name).await.unwrap(), Url::parse(res).unwrap());
     }
     }

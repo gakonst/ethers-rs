@@ -31,7 +31,7 @@ pub struct ValueChanged {
 /// compiles the given contract and returns the ABI and Bytecode
 #[track_caller]
 pub fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
-    let path = format!("./tests/solidity-contracts/{}", filename);
+    let path = format!("./tests/solidity-contracts/{filename}");
     let compiled = Solc::default().compile_source(&path).unwrap();
     let contract = compiled.get(&path, name).expect("could not find contract");
     let (abi, bin, _) = contract.into_parts_or_default();

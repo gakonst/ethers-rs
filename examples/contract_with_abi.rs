@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
     // 11. get the new value
     let value = contract.get_value().call().await?;
 
-    println!("Value: {}. Logs: {}", value, serde_json::to_string(&logs)?);
+    println!("Value: {value}. Logs: {}", serde_json::to_string(&logs)?);
 
     Ok(())
 }

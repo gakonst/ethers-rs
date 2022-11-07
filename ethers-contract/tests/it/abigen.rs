@@ -85,7 +85,7 @@ fn can_gen_structs_readable() {
     assert_codec::<Value>();
     assert_codec::<Addresses>();
     let encoded = addr.clone().encode();
-    let other = Addresses::decode(&encoded).unwrap();
+    let other = Addresses::decode(encoded).unwrap();
     assert_eq!(addr, other);
 }
 
@@ -178,7 +178,7 @@ fn can_gen_return_struct() {
         binding: T,
     ) {
         let encoded = binding.clone().encode();
-        let decoded = T::decode(&encoded).unwrap();
+        let decoded = T::decode(encoded).unwrap();
         assert_eq!(binding, decoded);
     }
 

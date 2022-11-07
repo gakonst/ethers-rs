@@ -1133,7 +1133,7 @@ mod tests {
 
         let alternative = ConfigurableArtifacts::conflict_free_output_file(
             &already_taken,
-            conflict.clone(),
+            conflict,
             file,
             "/Users/carter/dev/goldfinch/mono/packages/protocol/artifacts",
         );

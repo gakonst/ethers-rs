@@ -598,8 +598,8 @@ ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = fal
             mod_names.insert(shared.name.to_snake_case());
         }
 
-        for module in mod_names.into_iter().map(|name| format!("pub mod {};", name)) {
-            writeln!(buf, "{}", module)?;
+        for module in mod_names.into_iter().map(|name| format!("pub mod {name};")) {
+            writeln!(buf, "{module}")?;
         }
 
         Ok(())

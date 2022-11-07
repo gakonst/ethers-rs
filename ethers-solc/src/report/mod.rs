@@ -370,23 +370,23 @@ impl Reporter for BasicStdoutReporter {
     ) {
         self.solc_io_report.log_compiler_output(output, version);
         println!(
-            "Solc {}.{}.{} finished in {:.2?}",
-            version.major, version.minor, version.patch, duration
+            "Solc {}.{}.{} finished in {duration:.2?}",
+            version.major, version.minor, version.patch
         );
     }
 
     /// Invoked before a new [`Solc`] bin is installed
     fn on_solc_installation_start(&self, version: &Version) {
-        println!("installing solc version \"{}\"", version);
+        println!("installing solc version \"{version}\"");
     }
 
     /// Invoked before a new [`Solc`] bin was successfully installed
     fn on_solc_installation_success(&self, version: &Version) {
-        println!("Successfully installed solc {}", version);
+        println!("Successfully installed solc {version}");
     }
 
     fn on_solc_installation_error(&self, version: &Version, error: &str) {
-        eprintln!("Failed to install solc {}: {}", version, error);
+        eprintln!("Failed to install solc {version}: {error}");
     }
 
     fn on_unresolved_imports(&self, imports: &[(&Path, &Path)], remappings: &[Remapping]) {

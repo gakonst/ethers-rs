@@ -24,9 +24,9 @@ async fn main() -> Result<()> {
 
     // getReserves -> get_reserves
     let (reserve0, reserve1, _timestamp) = pair.get_reserves().call().await?;
-    println!("Reserves (ETH, USDT): ({}, {})", reserve0, reserve1);
+    println!("Reserves (ETH, USDT): ({reserve0}, {reserve1})");
 
     let mid_price = f64::powi(10.0, 18 - 6) * reserve1 as f64 / reserve0 as f64;
-    println!("ETH/USDT price: {:.2}", mid_price);
+    println!("ETH/USDT price: {mid_price:.2}");
     Ok(())
 }

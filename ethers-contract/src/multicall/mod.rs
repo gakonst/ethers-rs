@@ -140,7 +140,7 @@ impl TryFrom<u8> for MulticallVersion {
             1 => Ok(MulticallVersion::Multicall),
             2 => Ok(MulticallVersion::Multicall2),
             3 => Ok(MulticallVersion::Multicall3),
-            _ => Err(format!("Invalid Multicall version: {}. Accepted values: 1, 2, 3.", v)),
+            _ => Err(format!("Invalid Multicall version: {v}. Accepted values: 1, 2, 3.")),
         }
     }
 }
