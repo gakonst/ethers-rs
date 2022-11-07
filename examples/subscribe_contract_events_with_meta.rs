@@ -13,7 +13,7 @@ abigen!(
 
 // In order to run this example you need to include Ws and TLS features
 // Run this example with
-// `cargo run -p ethers --example subscribe_contract_events_with_meta --features="ws","rust-ls"`
+// `cargo run -p ethers --example subscribe_contract_events_with_meta --features="ws","rustls"`
 #[tokio::main]
 async fn main() -> Result<()> {
     let client =
