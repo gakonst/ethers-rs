@@ -4,6 +4,8 @@
 
 ### Unreleased
 
+-   Remove rust_decimals dependency for ethers-core
+-   Add support for numbers greater than 2^96 for `ethers_core::utils::parse_units` [#1822](https://github.com/gakonst/ethers-rs/issues/1822)
 -   Add comment about safety of u8 -> u64 cast in `ethers_core::types::Signature`
 -   Stop defaulting to the `"latest"` block in `eth_estimateGas` params [#1657](https://github.com/gakonst/ethers-rs/pull/1657)
 -   Fix geth trace types for debug_traceTransaction rpc
