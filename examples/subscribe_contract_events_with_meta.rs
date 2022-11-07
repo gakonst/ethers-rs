@@ -12,7 +12,8 @@ abigen!(
 );
 
 // In order to run this example you need to include Ws and TLS features
-// Run this example with `cargo run -p ethers --example subscribe_contract_events_with_meta --features="ws","rust-ls"`
+// Run this example with
+// `cargo run -p ethers --example subscribe_contract_events_with_meta --features="ws","rust-ls"`
 #[tokio::main]
 async fn main() -> Result<()> {
     let client =
@@ -29,12 +30,7 @@ async fn main() -> Result<()> {
     let events = weth.events();
     let mut stream = events.stream().await?.with_meta();
     while let Some(Ok((event, meta))) = stream.next().await {
-        println!(
-            "src: {:?}, dst: {:?}, wad: {:?}",
-            event.src,
-            event.dst,
-            event.wad
-        );
+        println!("src: {:?}, dst: {:?}, wad: {:?}", event.src, event.dst, event.wad);
 
         println!(
             r#"address: {:?}, 

@@ -12,11 +12,13 @@ abigen!(
 );
 
 // In order to run this example you need to include Ws and TLS features
-// Run this example with `cargo run -p ethers --example subscribe_contract_events --features="ws","rust-ls"`
+// Run this example with
+// `cargo run -p ethers --example subscribe_contract_events --features="ws","rust-ls"`
 #[tokio::main]
 async fn main() -> Result<()> {
-    let client = Provider::<Ws>::connect( "wss://mainnet.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-        .await?;
+    let client =
+        Provider::<Ws>::connect("wss://mainnet.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
+            .await?;
 
     let client = Arc::new(client);
 
@@ -29,12 +31,7 @@ async fn main() -> Result<()> {
     let mut stream = events.stream().await?;
 
     while let Some(Ok(event)) = stream.next().await {
-        println!(
-            "src: {:?}, dst: {:?}, wad: {:?}",
-            event.src,
-            event.dst,
-            event.wad
-        );
+        println!("src: {:?}, dst: {:?}, wad: {:?}", event.src, event.dst, event.wad);
     }
 
     Ok(())
