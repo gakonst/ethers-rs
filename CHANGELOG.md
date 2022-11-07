@@ -93,6 +93,7 @@
 -   [#1632](https://github.com/gakonst/ethers-rs/pull/1632) Re-export `H32` from `ethabi`.
 -   [#1634](https://github.com/gakonst/ethers-rs/pull/1634) Derive missing `Clone`, `Copy` and `Debug` impls in ethers-etherscan.
 -   Bytes debug format now displays hex literals [#1658](https://github.com/gakonst/ethers-rs/pull/1658)
+-   Fix `get_logs_paginated` trying to fetch beyond the latest block
 
 ## ethers-contract-abigen
 
