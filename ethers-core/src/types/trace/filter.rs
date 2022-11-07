@@ -1,6 +1,10 @@
 //! Types for the Parity Transaction-Trace Filtering API
 use crate::types::{Address, BlockNumber, Bytes, H160, H256, U256};
+use bytes::{Buf, BufMut};
+use open_fastrlp::DecodeError;
+use rlp::{Decodable, DecoderError, Encodable, Rlp, RlpStream};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 /// Trace filter
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize)]
@@ -102,7 +106,7 @@ pub struct Trace {
     /// Action Type
     #[serde(rename = "type")]
     pub action_type: ActionType,
-    /// Error
+    /// Error, See also [`TraceError`]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
 }
@@ -271,6 +275,124 @@ pub enum RewardType {
     /// External (attributed as part of an external protocol)
     #[serde(rename = "external")]
     External,
+}
+
+/// Trace evm errors.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum TraceError {
+    /// `OutOfGas` is returned when transaction execution runs out of gas.
+    OutOfGas = 0,
+    /// `BadJumpDestination` is returned when execution tried to move
+    /// to position that wasn't marked with JUMPDEST instruction
+    BadJumpDestination = 1,
+    /// `BadInstructions` is returned when given instruction is not supported
+    BadInstruction = 2,
+    /// `StackUnderflow` when there is not enough stack elements to execute instruction
+    StackUnderflow = 3,
+    /// When execution would exceed defined Stack Limit
+    OutOfStack = 4,
+    /// Returned on evm internal error. Should never be ignored during development.
+    /// Likely to cause consensus issues.
+    Internal = 5,
+    /// When builtin contract failed on input data
+    BuiltIn = 6,
+    /// When execution tries to modify the state in static context
+    MutableCallInStaticContext = 7,
+    /// Wasm error
+    Wasm = 8,
+    /// Contract tried to access past the return data buffer.
+    OutOfBounds = 9,
+    /// Execution has been reverted with REVERT instruction.
+    Reverted = 10,
+    /// When there is not enough subroutine stack elements to return from
+    SubStackUnderflow = 11,
+    /// When execution would exceed defined subroutine Stack Limit
+    OutOfSubStack = 12,
+    /// When the code walks into a subroutine, that is not allowed
+    InvalidSubEntry = 13,
+    /// When invalid code was attempted to deploy
+    InvalidCode = 14,
+}
+
+impl TraceError {
+    /// Converts the given byte into the corresponding error variant.
+    pub fn from_u8(val: u8) -> Result<Self, u8> {
+        let val = match val {
+            0 => TraceError::OutOfGas,
+            1 => TraceError::BadJumpDestination,
+            2 => TraceError::BadInstruction,
+            3 => TraceError::StackUnderflow,
+            4 => TraceError::OutOfStack,
+            5 => TraceError::Internal,
+            6 => TraceError::BuiltIn,
+            7 => TraceError::MutableCallInStaticContext,
+            8 => TraceError::Wasm,
+            9 => TraceError::OutOfBounds,
+            10 => TraceError::Reverted,
+            11 => TraceError::SubStackUnderflow,
+            12 => TraceError::OutOfSubStack,
+            13 => TraceError::InvalidSubEntry,
+            14 => TraceError::InvalidCode,
+            _ => return Err(val),
+        };
+        Ok(val)
+    }
+}
+
+impl fmt::Display for TraceError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let message = match *self {
+            TraceError::OutOfGas => "Out of gas",
+            TraceError::BadJumpDestination => "Bad jump destination",
+            TraceError::BadInstruction => "Bad instruction",
+            TraceError::StackUnderflow => "Stack underflow",
+            TraceError::OutOfStack => "Out of stack",
+            TraceError::SubStackUnderflow => "Subroutine stack underflow",
+            TraceError::OutOfSubStack => "Subroutine stack overflow",
+            TraceError::BuiltIn => "Built-in failed",
+            TraceError::InvalidSubEntry => "Invalid subroutine entry",
+            TraceError::InvalidCode => "Invalid code",
+            TraceError::Wasm => "Wasm runtime error",
+            TraceError::Internal => "Internal error",
+            TraceError::MutableCallInStaticContext => "Mutable Call In Static Context",
+            TraceError::OutOfBounds => "Out of bounds",
+            TraceError::Reverted => "Reverted",
+        };
+        message.fmt(f)
+    }
+}
+
+impl open_fastrlp::Encodable for TraceError {
+    fn encode(&self, out: &mut dyn BufMut) {
+        out.put_u8((*self) as u8)
+    }
+}
+
+impl Encodable for TraceError {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        let val = (*self) as u8;
+        s.append_internal(&val);
+    }
+}
+
+impl Decodable for TraceError {
+    fn decode(rlp: &Rlp) -> Result<Self, DecoderError> {
+        let value: u8 = rlp.as_val()?;
+        Self::from_u8(value).map_err(|_| DecoderError::Custom("Invalid error code"))
+    }
+}
+
+impl open_fastrlp::Decodable for TraceError {
+    fn decode(buf: &mut &[u8]) -> Result<Self, DecodeError> {
+        if buf.is_empty() {
+            return Err(DecodeError::InputTooShort)
+        }
+        let val = buf[0];
+        let val = Self::from_u8(val).map_err(|_| DecodeError::Custom("Invalid error code"))?;
+        buf.advance(1);
+        Ok(val)
+    }
 }
 
 #[cfg(test)]
