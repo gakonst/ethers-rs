@@ -93,7 +93,7 @@ where
                         // this is okay because we will only enter this state when the filter is
                         // paginatable i.e. from block is set
                         let from_block = self.filter.get_from_block().unwrap();
-                        let to_block = from_block + self.page_size;
+                        let to_block = std::cmp::min(from_block + self.page_size, last_block);
                         self.from_block = Some(to_block + 1);
 
                         let filter = self.filter.clone().from_block(from_block).to_block(to_block);
@@ -122,7 +122,7 @@ where
                         // load new logs if there are still more pages to go through
                         // can safely assume this will always be set in this state
                         let from_block = self.from_block.unwrap();
-                        let to_block = from_block + self.page_size;
+                        let to_block = std::cmp::min(from_block + self.page_size, self.last_block.unwrap());
 
                         // no more pages to load, and everything is consumed
                         // can safely assume this will always be set in this state

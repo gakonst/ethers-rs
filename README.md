@@ -175,7 +175,7 @@ issues itself: `cargo +nightly clippy --fix -Z unstable-options`
 
 ## Related Projects
 
-This library would not have been possibly without the great work done in:
+This library would not have been possible without the great work done in:
 
 -   [`ethers.js`](https://github.com/ethers-io/ethers.js/)
 -   [`rust-web3`](https://github.com/tomusdrw/rust-web3/)

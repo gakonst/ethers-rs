@@ -13,7 +13,7 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 [dependencies]
 # Pin FastRLP to 0.1.2 when it was still Apache.
 open-fastrlp = { version = "=0.1.2", features = ["std", "derive", "ethereum-types"] }
-rlp = { version = "0.5.0", default-features = false, features = ["std"] }
+rlp = { version = "0.5.2", default-features = false, features = ["std"] }
 ethabi = { version = "17.2.0", default-features = false, features = ["full-serde", "rlp"] }
 arrayvec = { version = "0.7.2", default-features = false }
 rlp-derive = { version = "0.1.0", default-features = false }
@@ -43,7 +43,6 @@ cargo_metadata = { version = "0.15.0", optional = true }
 convert_case = { version = "0.6.0", optional = true }
 syn = { version = "1.0.103", optional = true }
 proc-macro2 = { version = "1.0.47", optional = true }
-rust_decimal = { version = "1.26.1", features = ["maths"] }
 
 [dev-dependencies]
 serde_json = { version = "1.0.64", default-features = false }
