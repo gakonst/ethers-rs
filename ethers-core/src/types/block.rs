@@ -14,7 +14,7 @@ use thiserror::Error;
 
 /// The block type returned from RPC calls.
 /// This is generic over a `TX` type which will be either the hash or the full transaction,
-/// i.e. `Block<TxHash>` or Block<Transaction>`.
+/// i.e. `Block<TxHash>` or `Block<Transaction>`.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Block<TX> {
     /// Hash of the block
