@@ -1621,17 +1621,29 @@ fn can_compile_model_checker_sample() {
 #[test]
 fn test_warnings_as_errors() {
     fn gen_test_data_warning_path() -> ProjectPathsConfig {
-        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-contract-warnings");
+        let root =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-contract-warnings");
         let paths = ProjectPathsConfig::builder().sources(root).build().unwrap();
-        paths    
+        paths
     }
 
-    let project = Project::builder().no_artifacts().paths(gen_test_data_warning_path()).ephemeral().build().unwrap();
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_warning_path())
+        .ephemeral()
+        .build()
+        .unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.has_compiler_warnings());
     assert!(!compiled.has_compiler_errors());
 
-    let project = Project::builder().no_artifacts().paths(gen_test_data_warning_path()).ephemeral().set_warnings_as_errors(ethers_solc::artifacts::Severity::Warning).build().unwrap();
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_warning_path())
+        .ephemeral()
+        .set_warnings_as_errors(ethers_solc::artifacts::Severity::Warning)
+        .build()
+        .unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.has_compiler_warnings());
     assert!(compiled.has_compiler_errors());
