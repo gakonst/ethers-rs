@@ -311,7 +311,7 @@ impl<'a, T: ArtifactOutput> CompiledState<'a, T> {
                 ctx,
                 &project.paths,
             )
-        } else if output.has_error(project.warnings_as_errors) {
+        } else if output.has_error(&project.warnings_as_errors) {
             trace!("skip writing cache file due to solc errors: {:?}", output.errors);
             project.artifacts_handler().output_to_artifacts(
                 &output.contracts,
@@ -360,14 +360,15 @@ impl<'a, T: ArtifactOutput> ArtifactsState<'a, T> {
         let ArtifactsState { output, cache, compiled_artifacts } = self;
         let project = cache.project();
         let ignored_error_codes = project.ignored_error_codes.clone();
-        let skip_write_to_disk = project.no_artifacts || output.has_error(project.warnings_as_errors);
+        let warnings_as_errors = project.warnings_as_errors.clone();
+        let skip_write_to_disk = project.no_artifacts || output.has_error(&warnings_as_errors);
         let cached_artifacts = cache.consume(&compiled_artifacts, !skip_write_to_disk)?;
         Ok(ProjectCompileOutput {
             compiler_output: output,
             compiled_artifacts,
             cached_artifacts,
             ignored_error_codes,
-            warnings_as_errors: project.warnings_as_errors
+            warnings_as_errors
         })
     }
 }

@@ -1631,7 +1631,7 @@ fn test_warnings_as_errors() {
     assert!(compiled.has_compiler_warnings());
     assert!(!compiled.has_compiler_errors());
 
-    let project = Project::builder().no_artifacts().paths(gen_test_data_warning_path()).ephemeral().set_warnings_as_errors(true).build().unwrap();
+    let project = Project::builder().no_artifacts().paths(gen_test_data_warning_path()).ephemeral().set_warnings_as_errors(ethers_solc::artifacts::Severity::Warning).build().unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.has_compiler_warnings());
     assert!(compiled.has_compiler_errors());

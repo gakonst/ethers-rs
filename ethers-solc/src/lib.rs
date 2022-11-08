@@ -42,7 +42,7 @@ use crate::{
     error::{SolcError, SolcIoError},
     sources::{VersionedSourceFile, VersionedSourceFiles},
 };
-use artifacts::contract::Contract;
+use artifacts::{contract::Contract, Severity};
 use compile::output::contracts::VersionedContracts;
 use error::Result;
 use semver::Version;
@@ -74,7 +74,7 @@ pub struct Project<T: ArtifactOutput = ConfigurableArtifacts> {
     /// Errors/Warnings which match these error codes are not going to be logged
     pub ignored_error_codes: Vec<u64>,
     /// Whether warnings will be filtered out when checking for errors.
-    pub warnings_as_errors: bool,
+    pub warnings_as_errors: Severity,
     /// The paths which will be allowed for library inclusion
     pub allowed_paths: AllowedLibPaths,
     /// The paths which will be used with solc's `--include-path` attribute
@@ -572,7 +572,7 @@ pub struct ProjectBuilder<T: ArtifactOutput = ConfigurableArtifacts> {
     /// Which error codes to ignore
     pub ignored_error_codes: Vec<u64>,
     /// Whether to include warnings when checking for errors
-    warnings_as_errors: bool,
+    warnings_as_errors: Severity,
     /// All allowed paths for solc's `--allowed-paths`
     allowed_paths: AllowedLibPaths,
     /// Paths to use for solc's `--include-path`
@@ -595,7 +595,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
             slash_paths: true,
             artifacts,
             ignored_error_codes: Vec::new(),
-            warnings_as_errors: false,
+            warnings_as_errors: Severity::Error,
             allowed_paths: Default::default(),
             include_paths: Default::default(),
             solc_jobs: None,
@@ -635,7 +635,7 @@ impl<T: ArtifactOutput> ProjectBuilder<T> {
     }
 
     #[must_use]
-    pub fn set_warnings_as_errors(mut self, warnings_as_errors: bool) -> Self {
+    pub fn set_warnings_as_errors(mut self, warnings_as_errors: Severity) -> Self {
         self.warnings_as_errors = warnings_as_errors;
         self
     }
