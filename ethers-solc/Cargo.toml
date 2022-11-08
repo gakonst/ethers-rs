@@ -69,6 +69,7 @@ harness = false
 
 [[bench]]
 name = "read_all"
+required-features = ["project-util"]
 harness = false
 
 [[test]]
