@@ -156,7 +156,7 @@ where
     K: TryInto<Units, Error = ConversionError> + Copy,
 {
     let exponent: u32 = units.try_into()?.as_num();
-    let mut amount_str = amount.to_string().replace("_", "");
+    let mut amount_str = amount.to_string().replace('_', "");
     let dec_len = if let Some(di) = amount_str.find('.') {
         amount_str.remove(di);
         amount_str[di..].len() as u32
