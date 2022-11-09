@@ -147,18 +147,22 @@ async fn typed_txs() {
         assert_eq!(tx.transaction_type, Some(expected.into()));
     }
 
-    let mut nonce = provider.get_transaction_count(address, None).await.unwrap();
-    let tx = TransactionRequest::new().from(address).to(address).nonce(nonce);
-    nonce += 1.into();
-    let tx1 =
-        provider.send_transaction(tx.clone(), Some(BlockNumber::Pending.into())).await.unwrap();
+    let nonce = provider.get_transaction_count(address, None).await.unwrap();
+    let bn = Some(BlockNumber::Pending.into());
+    let gas_price = provider.get_gas_price().await.unwrap() * 125 / 100;
 
-    let tx = tx.clone().nonce(nonce).from(address).to(address).with_access_list(vec![]);
-    nonce += 1.into();
-    let tx2 = provider.send_transaction(tx, Some(BlockNumber::Pending.into())).await.unwrap();
+    let tx = TransactionRequest::new().from(address).to(address).nonce(nonce).gas_price(gas_price);
+    let tx1 = provider.send_transaction(tx.clone(), bn).await.unwrap();
 
-    let tx = Eip1559TransactionRequest::new().from(address).to(address).nonce(nonce);
-    let tx3 = provider.send_transaction(tx, Some(BlockNumber::Pending.into())).await.unwrap();
+    let tx = tx.clone().from(address).to(address).nonce(nonce + 1).with_access_list(vec![]);
+    let tx2 = provider.send_transaction(tx, bn).await.unwrap();
+
+    let tx = Eip1559TransactionRequest::new()
+        .from(address)
+        .to(address)
+        .nonce(nonce + 2)
+        .max_fee_per_gas(gas_price);
+    let tx3 = provider.send_transaction(tx, bn).await.unwrap();
 
     futures_util::join!(check_tx(tx1, 0), check_tx(tx2, 1), check_tx(tx3, 2),);
 }
