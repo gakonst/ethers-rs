@@ -1619,7 +1619,7 @@ fn can_compile_model_checker_sample() {
 }
 
 #[test]
-fn test_warnings_as_errors() {
+fn test_compiler_severity_filter() {
     fn gen_test_data_warning_path() -> ProjectPathsConfig {
         let root =
             PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-contract-warnings");
@@ -1641,7 +1641,7 @@ fn test_warnings_as_errors() {
         .no_artifacts()
         .paths(gen_test_data_warning_path())
         .ephemeral()
-        .set_warnings_as_errors(ethers_solc::artifacts::Severity::Warning)
+        .set_compiler_severity_filter(ethers_solc::artifacts::Severity::Warning)
         .build()
         .unwrap();
     let compiled = project.compile().unwrap();
