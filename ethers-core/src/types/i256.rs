@@ -943,7 +943,7 @@ impl I256 {
                 // It's always going to be zero (i.e. 00000000...00000000)
                 Sign::Positive => Self::zero(),
                 // It's always going to be -1 (i.e. 11111111...11111111)
-                Sign::Negative => Self::from(-1i8),
+                Sign::Negative => Self::minus_one(),
             }
         } else {
             // Perform the shift.
@@ -957,6 +957,24 @@ impl I256 {
                         Self::from_raw(!U256::from(2u8).pow(U256::from(255u32 - shift)).sub(1u8));
                     (self >> shift) | bitwise_or
                 }
+            }
+        }
+    }
+
+    /// Arithmetic Shift Left operation. Shifts `shift` number of times to the left, checking for
+    /// overflow on the final result.
+    ///
+    /// Returns `None` if the operation overflowed (most significant bit changes).
+    pub fn asl(self, shift: u32) -> Option<Self> {
+        if shift == 0 {
+            Some(self)
+        } else {
+            let result = self << shift;
+            if result.sign() != self.sign() {
+                // Overflow occured
+                None
+            } else {
+                Some(result)
             }
         }
     }
@@ -1553,16 +1571,16 @@ mod tests {
         let expected_result = I256::from_raw(U256::MAX.sub(1u8));
         assert_eq!(value.asr(253u32), expected_result, "1011...1111 >> 253 was not 1111...1110");
 
-        let value = I256::from(-1i8);
-        let expected_result = I256::from(-1i8);
+        let value = I256::minus_one();
+        let expected_result = I256::minus_one();
         assert_eq!(value.asr(250u32), expected_result, "-1 >> any_amount was not -1");
 
         let value = I256::from_raw(U256::from(2u8).pow(U256::from(254u8))).neg();
-        let expected_result = I256::from(-1i8);
+        let expected_result = I256::minus_one();
         assert_eq!(value.asr(255u32), expected_result, "1011...1111 >> 255 was not -1");
 
         let value = I256::from_raw(U256::from(2u8).pow(U256::from(254u8))).neg();
-        let expected_result = I256::from(-1i8);
+        let expected_result = I256::minus_one();
         assert_eq!(value.asr(1024u32), expected_result, "1011...1111 >> 1024 was not -1");
 
         let value = I256::from(1024i32);
@@ -1572,6 +1590,49 @@ mod tests {
         let value = I256::MAX;
         let expected_result = I256::zero();
         assert_eq!(value.asr(255u32), expected_result, "I256::MAX >> 255 was not 0");
+
+        let value = I256::from_raw(U256::from(2u8).pow(U256::from(254u8))).neg();
+        let expected_result = value;
+        assert_eq!(value.asr(0u32), expected_result, "1011...1111 >> 0 was not 1011...111");
+    }
+
+    #[test]
+    fn arithmetic_shift_left() {
+        let value = I256::minus_one();
+        let expected_result = Some(value);
+        assert_eq!(value.asl(0u32), expected_result, "-1 << 0 was not -1");
+
+        let value = I256::minus_one();
+        let expected_result = None;
+        assert_eq!(
+            value.asl(256u32),
+            expected_result,
+            "-1 << 256 did not overflow (result should be 0000...0000)"
+        );
+
+        let value = I256::minus_one();
+        let expected_result = Some(I256::from_raw(U256::from(2u8).pow(U256::from(255u8))));
+        assert_eq!(value.asl(255u32), expected_result, "-1 << 255 was not 1000...0000");
+
+        let value = I256::from(-1024i32);
+        let expected_result = Some(I256::from(-32768i32));
+        assert_eq!(value.asl(5u32), expected_result, "-1024 << 5 was not -32768");
+
+        let value = I256::from(1024i32);
+        let expected_result = Some(I256::from(32768i32));
+        assert_eq!(value.asl(5u32), expected_result, "1024 << 5 was not 32768");
+
+        let value = I256::from(1024i32);
+        let expected_result = None;
+        assert_eq!(
+            value.asl(245u32),
+            expected_result,
+            "1024 << 245 did not overflow (result should be 1000...0000)"
+        );
+
+        let value = I256::zero();
+        let expected_result = Some(value);
+        assert_eq!(value.asl(1024u32), expected_result, "0 << anything was not 0");
     }
 
     #[test]
