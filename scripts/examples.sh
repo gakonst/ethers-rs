@@ -10,7 +10,7 @@ ignored=(
   "subscribe_logs"
   "trezor"
   "yubi"
-  "remove_liquidty"
+  "remove_liquidity"
 )
 
 # run all examples
