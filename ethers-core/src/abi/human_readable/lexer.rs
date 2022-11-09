@@ -94,12 +94,12 @@ impl<'input> Token<'input> {
 impl<'input> fmt::Display for Token<'input> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Token::Identifier(id) => write!(f, "{}", id),
-            Token::Number(num) => write!(f, "{}", num),
-            Token::HexNumber(num) => write!(f, "0x{}", num),
-            Token::Uint(w) => write!(f, "uint{}", w),
-            Token::Int(w) => write!(f, "int{}", w),
-            Token::Bytes(w) => write!(f, "bytes{}", w),
+            Token::Identifier(id) => write!(f, "{id}"),
+            Token::Number(num) => write!(f, "{num}"),
+            Token::HexNumber(num) => write!(f, "0x{num}"),
+            Token::Uint(w) => write!(f, "uint{w}"),
+            Token::Int(w) => write!(f, "int{w}"),
+            Token::Bytes(w) => write!(f, "bytes{w}"),
             Token::Byte => write!(f, "byte"),
             Token::DynamicBytes => write!(f, "bytes"),
             Token::Semicolon => write!(f, ";"),

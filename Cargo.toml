@@ -174,3 +174,13 @@ required-features = ["yubi"]
 name = "paginated_logs"
 path = "examples/paginated_logs.rs"
 required-features = ["rustls"]
+
+[[example]]
+name = "subscribe_contract_events"
+path = "examples/subscribe_contract_events.rs"
+required-features = ["rustls", "ws"]
+
+[[example]]
+name = "subscribe_contract_events_with_meta"
+path = "examples/subscribe_contract_events_with_meta.rs"
+required-features = ["rustls", "ws"]

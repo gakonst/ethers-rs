@@ -72,7 +72,7 @@ pub fn resolve<T: Into<NameOrAddress>>(
 
 /// Returns the reverse-registrar name of an address.
 pub fn reverse_address(addr: Address) -> String {
-    format!("{:?}.{}", addr, ENS_REVERSE_REGISTRAR_DOMAIN)[2..].to_string()
+    format!("{addr:?}.{ENS_REVERSE_REGISTRAR_DOMAIN}")[2..].to_string()
 }
 
 /// Returns the ENS namehash as specified in [EIP-137](https://eips.ethereum.org/EIPS/eip-137)
@@ -83,7 +83,7 @@ pub fn namehash(name: &str) -> H256 {
 
     // iterate in reverse
     name.rsplit('.')
-        .fold([0u8; 32], |node, label| keccak256(&[node, keccak256(label.as_bytes())].concat()))
+        .fold([0u8; 32], |node, label| keccak256([node, keccak256(label.as_bytes())].concat()))
         .into()
 }
 

@@ -257,10 +257,10 @@ mod tests {
         assert!(matches!(abi, JsonAbi::Array(_)));
 
         let code = "0x608060405234801561001057600080fd5b50610242806100206000396000f3fe608060405234801561001057600080fd5b506004361061002b5760003560e01c80635581701b14610030575b600080fd5b61004a60048036038101906100459190610199565b610060565b60405161005791906101f1565b60405180910390f35b610068610070565b819050919050565b60405180602001604052806000151581525090565b6000604051905090565b600080fd5b600080fd5b6000601f19601f8301169050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b6100e282610099565b810181811067ffffffffffffffff82111715610101576101006100aa565b5b80604052505050565b6000610114610085565b905061012082826100d9565b919050565b60008115159050919050565b61013a81610125565b811461014557600080fd5b50565b60008135905061015781610131565b92915050565b60006020828403121561017357610172610094565b5b61017d602061010a565b9050600061018d84828501610148565b60008301525092915050565b6000602082840312156101af576101ae61008f565b5b60006101bd8482850161015d565b91505092915050565b6101cf81610125565b82525050565b6020820160008201516101eb60008501826101c6565b50505050565b600060208201905061020660008301846101d5565b9291505056fea2646970667358221220890202b0964477379a457ab3725a21d7c14581e4596552e32a54e23f1c6564e064736f6c634300080c0033";
-        let s = format!(r#"{{"abi": {}, "bin" : "{}" }}"#, abi_str, code);
+        let s = format!(r#"{{"abi": {abi_str}, "bin" : "{code}" }}"#);
         assert_has_bytecode(&s);
 
-        let s = format!(r#"{{"abi": {}, "bytecode" : {{ "object": "{}" }} }}"#, abi_str, code);
+        let s = format!(r#"{{"abi": {abi_str}, "bytecode" : {{ "object": "{code}" }} }}"#);
         assert_has_bytecode(&s);
 
         let hh_artifact = include_str!(
@@ -286,7 +286,7 @@ mod tests {
     #[test]
     fn ignores_empty_bytecode() {
         let abi_str = r#"[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"uint64","name":"number","type":"uint64"}],"name":"MyEvent","type":"event"},{"inputs":[],"name":"greet","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#;
-        let s = format!(r#"{{"abi": {}, "bin" : "0x" }}"#, abi_str);
+        let s = format!(r#"{{"abi": {abi_str}, "bin" : "0x" }}"#);
 
         match serde_json::from_str::<JsonAbi>(&s).unwrap() {
             JsonAbi::Object(abi) => {
@@ -297,7 +297,7 @@ mod tests {
             }
         }
 
-        let s = format!(r#"{{"abi": {}, "bytecode" : {{ "object": "0x" }} }}"#, abi_str);
+        let s = format!(r#"{{"abi": {abi_str}, "bytecode" : {{ "object": "0x" }} }}"#);
 
         match serde_json::from_str::<JsonAbi>(&s).unwrap() {
             JsonAbi::Object(abi) => {

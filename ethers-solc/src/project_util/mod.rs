@@ -388,7 +388,7 @@ fn contract_file_name(name: impl AsRef<str>) -> String {
     if name.ends_with(".sol") {
         name.to_string()
     } else {
-        format!("{}.sol", name)
+        format!("{name}.sol")
     }
 }
 
@@ -419,7 +419,7 @@ impl TempProject<ConfigurableArtifacts> {
     pub fn dapptools_init() -> Result<Self> {
         let mut project = Self::dapptools()?;
         let orig_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
-        copy_dir(&orig_root, project.root())?;
+        copy_dir(orig_root, project.root())?;
         project.project_mut().paths.remappings = Remapping::find_many(project.root());
 
         Ok(project)

@@ -756,10 +756,10 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
                 });
 
                 if !is_ignored {
-                    writeln!(f, "\n{}", err)?;
+                    writeln!(f, "\n{err}")?;
                 }
             } else {
-                writeln!(f, "\n{}", err)?;
+                writeln!(f, "\n{err}")?;
             }
         }
         Ok(())

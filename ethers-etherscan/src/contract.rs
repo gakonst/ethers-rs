@@ -132,8 +132,8 @@ pub struct Metadata {
     /// The constructor arguments the contract was deployed with.
     pub constructor_arguments: Bytes,
 
-    /// The version of the EVM the contract was deployed in. Can be either a variant of
-    /// [EvmVersion] or "Default" which indicates the compiler's default.
+    /// The version of the EVM the contract was deployed in. Can be either a variant of EvmVersion
+    /// or "Default" which indicates the compiler's default.
     #[serde(rename = "EVMVersion")]
     pub evm_version: String,
 

@@ -23,7 +23,7 @@ pub struct AbiParser {
     ///
     /// Note: we need to map the index of the event here because events can contain nameless inputs
     pub event_params: HashMap<(String, usize), String>,
-    /// (function name) -> Vec<structs> all structs the function returns
+    /// (function name) -> `Vec<structs>` all structs the function returns
     pub outputs: HashMap<String, Vec<String>>,
 }
 

@@ -305,8 +305,8 @@ impl BytecodeObject {
             let fully_qualified_placeholder = utils::library_fully_qualified_placeholder(name);
 
             *unlinked = unlinked
-                .replace(&format!("__{}__", fully_qualified_placeholder), &hex_addr)
-                .replace(&format!("__{}__", place_holder), &hex_addr)
+                .replace(&format!("__{fully_qualified_placeholder}__"), &hex_addr)
+                .replace(&format!("__{place_holder}__"), &hex_addr)
         }
         self
     }

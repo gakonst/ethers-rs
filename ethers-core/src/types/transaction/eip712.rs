@@ -490,7 +490,7 @@ pub struct TypedData {
 
 /// According to the MetaMask implementation,
 /// the message parameter may be JSON stringified in versions later than V1
-/// See https://github.com/MetaMask/metamask-extension/blob/0dfdd44ae7728ed02cbf32c564c75b74f37acf77/app/scripts/metamask-controller.js#L1736
+/// See <https://github.com/MetaMask/metamask-extension/blob/0dfdd44ae7728ed02cbf32c564c75b74f37acf77/app/scripts/metamask-controller.js#L1736>
 /// In fact, ethers.js JSON stringifies the message at the time of writing.
 impl<'de> Deserialize<'de> for TypedData {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -741,7 +741,7 @@ pub fn encode_field(
                             // uints are commonly stringified due to how ethers-js encodes
                             let val: StringifiedNumeric = serde_json::from_value(value.clone())?;
                             let val = val.try_into().map_err(|err| {
-                                Eip712Error::Message(format!("Failed to parse uint {}", err))
+                                Eip712Error::Message(format!("Failed to parse uint {err}"))
                             })?;
 
                             Token::Uint(val)
@@ -808,7 +808,7 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, TokenStream> {
                     s => parse_int_param_type(s).ok_or_else(|| {
                         Error::new(
                             ty.span(),
-                            format!("Failed to derive proper ABI from field: {})", s),
+                            format!("Failed to derive proper ABI from field: {s})"),
                         )
                         .to_compile_error()
                     }),
@@ -906,9 +906,9 @@ pub fn parse_fields(ast: &DeriveInput) -> Result<Vec<(String, ParamType)>, Token
 /// Convert hash map of field names and types into a type hash corresponding to enc types;
 pub fn make_type_hash(primary_type: String, fields: &[(String, ParamType)]) -> [u8; 32] {
     let parameters =
-        fields.iter().map(|(k, v)| format!("{} {}", v, k)).collect::<Vec<String>>().join(",");
+        fields.iter().map(|(k, v)| format!("{v} {k}")).collect::<Vec<String>>().join(",");
 
-    let sig = format!("{}({})", primary_type, parameters);
+    let sig = format!("{primary_type}({parameters})");
 
     keccak256(sig)
 }

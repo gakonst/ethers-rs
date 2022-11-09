@@ -10,7 +10,7 @@ ignored=(
   "subscribe_logs"
   "trezor"
   "yubi"
-  "remove_liquidty"
+  "remove_liquidity"
 )
 
 # run all examples
@@ -21,5 +21,5 @@ for file in examples/*.rs; do
     continue
   fi
   echo "running: $file"
-  cargo r -p ethers --example "$(basename "$name")" --features "ethers-solc"
+  cargo r -p ethers --example "$(basename "$name")" --features "ethers-solc rustls ws"
 done

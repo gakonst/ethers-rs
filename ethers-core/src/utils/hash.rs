@@ -15,7 +15,7 @@ where
 {
     let message = message.as_ref();
 
-    let mut eth_message = format!("{}{}", PREFIX, message.len()).into_bytes();
+    let mut eth_message = format!("{PREFIX}{}", message.len()).into_bytes();
     eth_message.extend_from_slice(message);
 
     keccak256(&eth_message).into()
