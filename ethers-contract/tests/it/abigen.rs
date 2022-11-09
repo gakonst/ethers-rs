@@ -557,7 +557,7 @@ async fn can_abiencoderv2_output() {
     assert_eq!(res, person);
 }
 
-/*#[test]
+#[test]
 fn can_gen_multi_etherscan() {
     abigen!(
         MyContract, "etherscan:0xdAC17F958D2ee523a2206206994597C13D831ec7";
@@ -567,7 +567,7 @@ fn can_gen_multi_etherscan() {
     let provider = Arc::new(Provider::new(MockProvider::new()));
     let _contract = MyContract::new(Address::default(), Arc::clone(&provider));
     let _contract = MyContract2::new(Address::default(), provider);
-}*/
+}
 
 #[test]
 fn can_gen_reserved_word_field_names() {
