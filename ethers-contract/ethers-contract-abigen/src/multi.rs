@@ -598,7 +598,7 @@ impl MultiBindingsInner {
                 } else {
                     let regex = Regex::new("\"[^\"]*\"")?;
                     let Some(version) = regex.captures(&parsed) else { eyre::bail!("couldn't parse version regex")};
-                    let res = &version.get(0).unwrap().as_str();
+                    let res = version.get(0).unwrap().as_str();
                     return Ok(format!("ethers = {{ version={}, default-features = false, features = [\"abigen\"] }}", res));
                 }
             }
