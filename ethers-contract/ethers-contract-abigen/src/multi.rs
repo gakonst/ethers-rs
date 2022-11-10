@@ -570,6 +570,7 @@ impl MultiBindingsInner {
         Ok(toml)
     }
 
+    /// parses the active Cargo.toml to get what version of ethers we are using
     fn find_crate_version(&self) -> Result<String> {
         let cargo_dir = env!("CARGO_MANIFEST_DIR");
         let file = File::open(cargo_dir)?;
@@ -577,7 +578,6 @@ impl MultiBindingsInner {
         for line in reader.flatten() {
             let parsed = line.trim();
             if parsed.starts_with("ethers") {
-                // going to be a bit tricker due to cases
                 if parsed.contains("{{") {
                     if parsed.contains("git") && parsed.contains("rev") {
                         let regex = Regex::new("rev=\"[^\"]*\"")?;
@@ -1271,4 +1271,7 @@ contract Enum {
         let content = fs::read_to_string(&mod_).unwrap();
         assert!(content.contains("pub mod mod_ {"));
     }
+
+    #[test]
+    fn parse_ethers_crate_version() {}
 }
