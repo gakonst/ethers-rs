@@ -429,10 +429,15 @@ impl AggregatedCompilerOutput {
 
     /// Whether the output contains a compiler error
     pub fn has_error(&self, ignored_error_codes: &[u64], compiler_severity_filter: &Severity) -> bool {
-        if compiler_severity_filter.is_warning() && self.has_warning(ignored_error_codes) {
-            return true
-        }
-        self.errors.iter().any(|err| err.severity.is_error())
+        self.errors.iter().any(|err| {
+            if compiler_severity_filter.ge(&err.severity) {
+                if compiler_severity_filter.is_warning()  {
+                    return self.has_warning(ignored_error_codes)
+                }
+                return true
+            }
+            return false
+        })
     }
 
     /// Whether the output contains a compiler warning
