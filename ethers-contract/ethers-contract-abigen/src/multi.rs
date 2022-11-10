@@ -581,12 +581,12 @@ impl MultiBindingsInner {
                 if parsed.contains("{{") {
                     if parsed.contains("git") && parsed.contains("rev") {
                         let regex = Regex::new("rev=\"[^\"]*\"")?;
-                        let version = regex.captures(parsed).unwrap();
+                        let Some(version) = regex.captures(parsed) else { eyre::bail!("couldn't capture revision regex")};
                         let res = version.get(0).unwrap().as_str();
                         return Ok(format!("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", rev = \"{}\", default-features = false, features = [\"abigen\"] }}", res));
                     } else if parsed.contains("version") {
                         let regex = Regex::new("version=\"[^\"]*\"")?;
-                        let version = regex.captures(parsed).unwrap();
+                        let Some(version) = regex.captures(parsed) else { eyre::bail!("couldn't parse extra args version regex")};
                         let res = version.get(0).unwrap().as_str();
                         return Ok(format!("ethers = {{ version = \"{}\", default-features = false, features = [\"abigen\"] }}", res));
                     } else {
@@ -594,7 +594,7 @@ impl MultiBindingsInner {
                     }
                 } else {
                     let regex = Regex::new("ethers=\"[^\"]*\"")?;
-                    let version = regex.captures(parsed).unwrap();
+                    let Some(version) = regex.captures(parsed) else { eyre::bail!("couldn't parse version regex")};
                     let res = version.get(0).unwrap().as_str();
                     return Ok(format!("ethers = {{ version = \"{}\", default-features = false, features = [\"abigen\"] }}", res));
                 }
@@ -808,7 +808,7 @@ mod tests {
 
     use crate::{ExcludeContracts, SelectContracts};
     use ethers_solc::project_util::TempProject;
-    use std::{panic, path::PathBuf};
+    use std::{env, panic, path::PathBuf};
 
     struct Context {
         multi_gen: MultiAbigen,
@@ -1273,5 +1273,177 @@ contract Enum {
     }
 
     #[test]
-    fn parse_ethers_crate_version() {}
+    fn parse_ethers_crate_vargs() {
+        run_test(|context| {
+            let Context { multi_gen, mod_root } = context;
+            env::set_var(
+                "CARGO_MANIFEST_DIR",
+                r#"
+         [package]
+        name = "ethers-contract"
+        version = "1.0.0"
+        edition = "2018"
+        rust-version = "1.62"
+        authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+        license = "MIT OR Apache-2.0"
+        description = "Smart contract bindings for the ethers-rs crate"
+        homepage = "https://docs.rs/ethers"
+        repository = "https://github.com/gakonst/ethers-rs"
+        keywords = ["ethereum", "web3", "celo", "ethers"]
+
+        [dependencies]
+        ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-features = false }
+    "#,
+            );
+            let single_file = false;
+            let name = "a-name";
+            let version = "290.3782.3";
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .write_to_crate(name, version, mod_root, single_file)
+                .unwrap();
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .ensure_consistent_crate(name, version, mod_root, single_file, true)
+                .expect("Inconsistent bindings");
+        });
+    }
+    #[test]
+    fn parse_ethers_crate_version() {
+        run_test(|context| {
+            let Context { multi_gen, mod_root } = context;
+
+            env::set_var(
+                "CARGO_MANIFEST_DIR",
+                r#"
+         [package]
+        name = "ethers-contract"
+        version = "1.0.0"
+        edition = "2018"
+        rust-version = "1.62"
+        authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+        license = "MIT OR Apache-2.0"
+        description = "Smart contract bindings for the ethers-rs crate"
+        homepage = "https://docs.rs/ethers"
+        repository = "https://github.com/gakonst/ethers-rs"
+        keywords = ["ethereum", "web3", "celo", "ethers"]
+
+        [dependencies]
+        ethers-contracts = "0.4.0"
+    "#,
+            );
+
+            let single_file = false;
+            let name = "a-name";
+            let version = "290.3782.3";
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .write_to_crate(name, version, mod_root, single_file)
+                .unwrap();
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .ensure_consistent_crate(name, version, mod_root, single_file, true)
+                .expect("Inconsistent bindings");
+        });
+    }
+    #[test]
+    fn parse_ethers_crate_git_w_rev() {
+        run_test(|context| {
+            let Context { multi_gen, mod_root } = context;
+
+            env::set_var(
+                "CARGO_MANIFEST_DIR",
+                r#"
+         [package]
+        name = "ethers-contract"
+        version = "1.0.0"
+        edition = "2018"
+        rust-version = "1.62"
+        authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+        license = "MIT OR Apache-2.0"
+        description = "Smart contract bindings for the ethers-rs crate"
+        homepage = "https://docs.rs/ethers"
+        repository = "https://github.com/gakonst/ethers-rs"
+        keywords = ["ethereum", "web3", "celo", "ethers"]
+
+        [dependencies]
+        ethers = {git="https://github.com/gakonst/ethers-rs", rev = "fd8ebf5",features = ["ws", "rustls", "ipc"] }
+    "#,
+            );
+
+            let single_file = false;
+            let name = "a-name";
+            let version = "290.3782.3";
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .write_to_crate(name, version, mod_root, single_file)
+                .unwrap();
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .ensure_consistent_crate(name, version, mod_root, single_file, true)
+                .expect("Inconsistent bindings");
+        });
+    }
+    #[test]
+    fn parse_ethers_crate_git() {
+        run_test(|context| {
+            let Context { multi_gen, mod_root } = context;
+
+            env::set_var(
+                "CARGO_MANIFEST_DIR",
+                r#"
+         [package]
+        name = "ethers-contract"
+        version = "1.0.0"
+        edition = "2018"
+        rust-version = "1.62"
+        authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+        license = "MIT OR Apache-2.0"
+        description = "Smart contract bindings for the ethers-rs crate"
+        homepage = "https://docs.rs/ethers"
+        repository = "https://github.com/gakonst/ethers-rs"
+        keywords = ["ethereum", "web3", "celo", "ethers"]
+
+        [dependencies]
+        ethers = {git="https://github.com/gakonst/ethers-rs" ,features = ["ws", "rustls", "ipc"] }
+    "#,
+            );
+
+            let single_file = false;
+            let name = "a-name";
+            let version = "290.3782.3";
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .write_to_crate(name, version, mod_root, single_file)
+                .unwrap();
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .ensure_consistent_crate(name, version, mod_root, single_file, true)
+                .expect("Inconsistent bindings");
+        });
+    }
 }
