@@ -591,7 +591,7 @@ impl MultiBindingsInner {
                         });
                     res.extend(path);
 
-                    Ok(format!("ethers = {{ version = {}, path = {} default-features = false, features = [\"abigen\"] }}", version, res.to_string_lossy()))
+                    Ok(format!("ethers = {{ version = {}, path = {}, default-features = false, features = [\"abigen\"] }}", version, res.to_string_lossy()))
                 } else {
                     Ok(format!("ethers = {{ version = {}, default-features = false, features = [\"abigen\"] }}", version ))
                 }
