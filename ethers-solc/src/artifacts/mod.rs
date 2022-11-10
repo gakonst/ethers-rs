@@ -1733,8 +1733,9 @@ impl fmt::Display for Error {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Default)]
 pub enum Severity {
+    #[default]
     Error,
     Warning,
     Info,
