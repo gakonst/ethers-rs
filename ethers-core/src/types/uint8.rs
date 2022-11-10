@@ -83,7 +83,7 @@ impl Tokenizable for Uint8 {
                 }
                 Ok(Uint8(data.low_u32() as u8))
             }
-            other => Err(InvalidOutputType(format!("Expected `uint8`, got {:?}", other))),
+            other => Err(InvalidOutputType(format!("Expected `uint8`, got {other:?}"))),
         }
     }
     fn into_token(self) -> Token {

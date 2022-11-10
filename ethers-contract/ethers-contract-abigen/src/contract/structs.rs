@@ -129,9 +129,9 @@ impl Context {
             "".to_string()
         };
 
-        let abi_signature = format!("{}({})", name, sig,);
+        let abi_signature = format!("{name}({sig})",);
 
-        let abi_signature_doc = util::expand_doc(&format!("`{}`", abi_signature));
+        let abi_signature_doc = util::expand_doc(&format!("`{abi_signature}`"));
 
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);
@@ -184,7 +184,7 @@ impl Context {
             param_types.iter().map(|kind| kind.to_string()).collect::<Vec<_>>().join(","),
         );
 
-        let abi_signature_doc = util::expand_doc(&format!("`{}`", abi_signature));
+        let abi_signature_doc = util::expand_doc(&format!("`{abi_signature}`"));
 
         let name = util::ident(name);
 
@@ -225,7 +225,7 @@ pub struct InternalStructs {
     /// from ethabi.
     pub(crate) function_params: HashMap<(String, String), String>,
 
-    /// (function name) -> Vec<structs> all structs the function returns
+    /// (function name) -> `Vec<structs>` all structs the function returns
     pub(crate) outputs: HashMap<String, Vec<String>>,
 
     /// (event name, idx) -> struct which are the identifying properties we get the name
@@ -392,12 +392,12 @@ fn insert_rust_type_name(
         let mut other_name = name.clone();
         // name collision `A.name` `B.name`, rename to `AName`, `BName`
         if !other_projections.is_empty() {
-            other_name = format!("{}{}", other_projections.remove(0).to_pascal_case(), other_name);
+            other_name = format!("{}{other_name}", other_projections.remove(0).to_pascal_case());
         }
         insert_rust_type_name(type_names, other_name, other_projections, other_id);
 
         if !projections.is_empty() {
-            name = format!("{}{}", projections.remove(0).to_pascal_case(), name);
+            name = format!("{}{name}", projections.remove(0).to_pascal_case());
         }
         insert_rust_type_name(type_names, name, projections, id);
     } else {

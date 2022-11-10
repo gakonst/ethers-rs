@@ -66,7 +66,7 @@ pub async fn deploy() {
     let value = contract.get_value().call().await.unwrap();
 
     console::log_2(
-        &format!("Value: `{}`. Logs: ", value).into(),
+        &format!("Value: `{value}`. Logs: ").into(),
         &serde_wasm_bindgen::to_value(&logs).unwrap(),
     );
 }

@@ -99,6 +99,7 @@ impl MultiAbigen {
     ///    let gen = MultiAbigen::from_json_files("./abi").unwrap().with_filter(
     ///        SelectContracts::default().add_name("MyContract").add_name("MyOtherContract"),
     ///    );
+    /// # }
     /// ```
     ///
     /// Exclude all contracts that end with test
@@ -109,6 +110,7 @@ impl MultiAbigen {
     ///    let gen = MultiAbigen::from_json_files("./abi").unwrap().with_filter(
     ///        ExcludeContracts::default().add_pattern(".*Test"),
     ///    );
+    /// # }
     /// ```
     #[must_use]
     pub fn with_filter(mut self, filter: impl Into<ContractFilter>) -> Self {
@@ -598,8 +600,8 @@ ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = fal
             mod_names.insert(shared.name.to_snake_case());
         }
 
-        for module in mod_names.into_iter().map(|name| format!("pub mod {};", name)) {
-            writeln!(buf, "{}", module)?;
+        for module in mod_names.into_iter().map(|name| format!("pub mod {name};")) {
+            writeln!(buf, "{module}")?;
         }
 
         Ok(())

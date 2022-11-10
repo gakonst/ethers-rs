@@ -150,7 +150,7 @@ mod dsproxyfactory_mod {
                     cache: Tokenizable::from_token(iter.next().unwrap())?,
                 })
             } else {
-                Err(InvalidOutputType(format!("Expected Tuple, got {:?}", token)))
+                Err(InvalidOutputType(format!("Expected Tuple, got {token:?}")))
             }
         }
         fn into_token(self) -> Token {

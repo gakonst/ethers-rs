@@ -395,15 +395,15 @@ pub struct SimpleNamingStrategy {
 
 impl NamingStrategy for SimpleNamingStrategy {
     fn new_source_file_name(&mut self, id: usize) -> String {
-        format!("SourceFile{}", id)
+        format!("SourceFile{id}")
     }
 
     fn new_lib_file_name(&mut self, id: usize) -> String {
-        format!("LibFile{}", id)
+        format!("LibFile{id}")
     }
 
     fn new_lib_name(&mut self, id: usize) -> String {
-        format!("Lib{}", id)
+        format!("Lib{id}")
     }
 }
 

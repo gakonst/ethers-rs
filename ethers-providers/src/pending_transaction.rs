@@ -137,7 +137,7 @@ impl<'a, P> PendingTransaction<'a, P> {
 
     /// Logs the pending transaction hash along with a custom message before it.
     pub fn log_msg<S: std::fmt::Display>(self, msg: S) -> Self {
-        self.inspect(|s| println!("{}: {:?}", msg, **s))
+        self.inspect(|s| println!("{msg}: {:?}", **s))
     }
 
     /// Logs the pending transaction's hash

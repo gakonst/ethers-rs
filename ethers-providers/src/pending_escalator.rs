@@ -130,7 +130,7 @@ macro_rules! completed {
 
 /// Tests Provider error for nonce too low issue through debug contents
 fn is_nonce_too_low(e: &ProviderError) -> bool {
-    let debug_str = format!("{:?}", e);
+    let debug_str = format!("{e:?}");
 
     debug_str.contains("nonce too low") // Geth, Arbitrum, Optimism
             || debug_str.contains("nonce is too low") // Parity

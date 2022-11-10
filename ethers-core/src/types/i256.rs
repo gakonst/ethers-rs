@@ -943,7 +943,7 @@ impl I256 {
                 // It's always going to be zero (i.e. 00000000...00000000)
                 Sign::Positive => Self::zero(),
                 // It's always going to be -1 (i.e. 11111111...11111111)
-                Sign::Negative => Self::from(-1i8),
+                Sign::Negative => Self::minus_one(),
             }
         } else {
             // Perform the shift.
@@ -957,6 +957,24 @@ impl I256 {
                         Self::from_raw(!U256::from(2u8).pow(U256::from(255u32 - shift)).sub(1u8));
                     (self >> shift) | bitwise_or
                 }
+            }
+        }
+    }
+
+    /// Arithmetic Shift Left operation. Shifts `shift` number of times to the left, checking for
+    /// overflow on the final result.
+    ///
+    /// Returns `None` if the operation overflowed (most significant bit changes).
+    pub fn asl(self, shift: u32) -> Option<Self> {
+        if shift == 0 {
+            Some(self)
+        } else {
+            let result = self << shift;
+            if result.sign() != self.sign() {
+                // Overflow occured
+                None
+            } else {
+                Some(result)
             }
         }
     }
@@ -1046,7 +1064,7 @@ impl fmt::Display for I256 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (sign, abs) = self.into_sign_and_abs();
         sign.fmt(f)?;
-        write!(f, "{}", abs)
+        write!(f, "{abs}")
     }
 }
 
@@ -1054,7 +1072,7 @@ impl fmt::LowerHex for I256 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (sign, abs) = self.into_sign_and_abs();
         fmt::Display::fmt(&sign, f)?;
-        write!(f, "{:x}", abs)
+        write!(f, "{abs:x}")
     }
 }
 
@@ -1064,9 +1082,9 @@ impl fmt::UpperHex for I256 {
         fmt::Display::fmt(&sign, f)?;
 
         // NOTE: Work around `U256: !UpperHex`.
-        let mut buffer = format!("{:x}", abs);
+        let mut buffer = format!("{abs:x}");
         buffer.make_ascii_uppercase();
-        write!(f, "{}", buffer)
+        write!(f, "{buffer}")
     }
 }
 
@@ -1385,13 +1403,13 @@ mod tests {
     fn parse_dec_str() {
         let unsigned = U256::from_dec_str("314159265358979323846264338327950288419716").unwrap();
 
-        let value = I256::from_dec_str(&format!("-{}", unsigned)).unwrap();
+        let value = I256::from_dec_str(&format!("-{unsigned}")).unwrap();
         assert_eq!(value.into_sign_and_abs(), (Sign::Negative, unsigned));
 
-        let value = I256::from_dec_str(&format!("{}", unsigned)).unwrap();
+        let value = I256::from_dec_str(&format!("{unsigned}")).unwrap();
         assert_eq!(value.into_sign_and_abs(), (Sign::Positive, unsigned));
 
-        let value = I256::from_dec_str(&format!("+{}", unsigned)).unwrap();
+        let value = I256::from_dec_str(&format!("+{unsigned}")).unwrap();
         assert_eq!(value.into_sign_and_abs(), (Sign::Positive, unsigned));
 
         let err = I256::from_dec_str("invalid string").unwrap_err();
@@ -1414,13 +1432,13 @@ mod tests {
     fn parse_hex_str() {
         let unsigned = U256::from_dec_str("314159265358979323846264338327950288419716").unwrap();
 
-        let value = I256::from_hex_str(&format!("-{:x}", unsigned)).unwrap();
+        let value = I256::from_hex_str(&format!("-{unsigned:x}")).unwrap();
         assert_eq!(value.into_sign_and_abs(), (Sign::Negative, unsigned));
 
-        let value = I256::from_hex_str(&format!("{:x}", unsigned)).unwrap();
+        let value = I256::from_hex_str(&format!("{unsigned:x}")).unwrap();
         assert_eq!(value.into_sign_and_abs(), (Sign::Positive, unsigned));
 
-        let value = I256::from_hex_str(&format!("+{:x}", unsigned)).unwrap();
+        let value = I256::from_hex_str(&format!("+{unsigned:x}")).unwrap();
         assert_eq!(value.into_sign_and_abs(), (Sign::Positive, unsigned));
 
         let err = I256::from_hex_str("invalid string").unwrap_err();
@@ -1445,20 +1463,20 @@ mod tests {
         let positive = I256::try_from(unsigned).unwrap();
         let negative = -positive;
 
-        assert_eq!(format!("{}", positive), format!("{}", unsigned));
-        assert_eq!(format!("{}", negative), format!("-{}", unsigned));
-        assert_eq!(format!("{:+}", positive), format!("+{}", unsigned));
-        assert_eq!(format!("{:+}", negative), format!("-{}", unsigned));
+        assert_eq!(format!("{positive}"), format!("{unsigned}"));
+        assert_eq!(format!("{negative}"), format!("-{unsigned}"));
+        assert_eq!(format!("{positive:+}"), format!("+{unsigned}"));
+        assert_eq!(format!("{negative:+}"), format!("-{unsigned}"));
 
-        assert_eq!(format!("{:x}", positive), format!("{:x}", unsigned));
-        assert_eq!(format!("{:x}", negative), format!("-{:x}", unsigned));
-        assert_eq!(format!("{:+x}", positive), format!("+{:x}", unsigned));
-        assert_eq!(format!("{:+x}", negative), format!("-{:x}", unsigned));
+        assert_eq!(format!("{positive:x}"), format!("{unsigned:x}"));
+        assert_eq!(format!("{negative:x}"), format!("-{unsigned:x}"));
+        assert_eq!(format!("{positive:+x}"), format!("+{unsigned:x}"));
+        assert_eq!(format!("{negative:+x}"), format!("-{unsigned:x}"));
 
-        assert_eq!(format!("{:X}", positive), format!("{:x}", unsigned).to_uppercase());
-        assert_eq!(format!("{:X}", negative), format!("-{:x}", unsigned).to_uppercase());
-        assert_eq!(format!("{:+X}", positive), format!("+{:x}", unsigned).to_uppercase());
-        assert_eq!(format!("{:+X}", negative), format!("-{:x}", unsigned).to_uppercase());
+        assert_eq!(format!("{positive:X}"), format!("{unsigned:x}").to_uppercase());
+        assert_eq!(format!("{negative:X}"), format!("-{unsigned:x}").to_uppercase());
+        assert_eq!(format!("{positive:+X}"), format!("+{unsigned:x}").to_uppercase());
+        assert_eq!(format!("{negative:+X}"), format!("-{unsigned:x}").to_uppercase());
     }
 
     #[test]
@@ -1553,16 +1571,16 @@ mod tests {
         let expected_result = I256::from_raw(U256::MAX.sub(1u8));
         assert_eq!(value.asr(253u32), expected_result, "1011...1111 >> 253 was not 1111...1110");
 
-        let value = I256::from(-1i8);
-        let expected_result = I256::from(-1i8);
+        let value = I256::minus_one();
+        let expected_result = I256::minus_one();
         assert_eq!(value.asr(250u32), expected_result, "-1 >> any_amount was not -1");
 
         let value = I256::from_raw(U256::from(2u8).pow(U256::from(254u8))).neg();
-        let expected_result = I256::from(-1i8);
+        let expected_result = I256::minus_one();
         assert_eq!(value.asr(255u32), expected_result, "1011...1111 >> 255 was not -1");
 
         let value = I256::from_raw(U256::from(2u8).pow(U256::from(254u8))).neg();
-        let expected_result = I256::from(-1i8);
+        let expected_result = I256::minus_one();
         assert_eq!(value.asr(1024u32), expected_result, "1011...1111 >> 1024 was not -1");
 
         let value = I256::from(1024i32);
@@ -1572,6 +1590,49 @@ mod tests {
         let value = I256::MAX;
         let expected_result = I256::zero();
         assert_eq!(value.asr(255u32), expected_result, "I256::MAX >> 255 was not 0");
+
+        let value = I256::from_raw(U256::from(2u8).pow(U256::from(254u8))).neg();
+        let expected_result = value;
+        assert_eq!(value.asr(0u32), expected_result, "1011...1111 >> 0 was not 1011...111");
+    }
+
+    #[test]
+    fn arithmetic_shift_left() {
+        let value = I256::minus_one();
+        let expected_result = Some(value);
+        assert_eq!(value.asl(0u32), expected_result, "-1 << 0 was not -1");
+
+        let value = I256::minus_one();
+        let expected_result = None;
+        assert_eq!(
+            value.asl(256u32),
+            expected_result,
+            "-1 << 256 did not overflow (result should be 0000...0000)"
+        );
+
+        let value = I256::minus_one();
+        let expected_result = Some(I256::from_raw(U256::from(2u8).pow(U256::from(255u8))));
+        assert_eq!(value.asl(255u32), expected_result, "-1 << 255 was not 1000...0000");
+
+        let value = I256::from(-1024i32);
+        let expected_result = Some(I256::from(-32768i32));
+        assert_eq!(value.asl(5u32), expected_result, "-1024 << 5 was not -32768");
+
+        let value = I256::from(1024i32);
+        let expected_result = Some(I256::from(32768i32));
+        assert_eq!(value.asl(5u32), expected_result, "1024 << 5 was not 32768");
+
+        let value = I256::from(1024i32);
+        let expected_result = None;
+        assert_eq!(
+            value.asl(245u32),
+            expected_result,
+            "1024 << 245 did not overflow (result should be 1000...0000)"
+        );
+
+        let value = I256::zero();
+        let expected_result = Some(value);
+        assert_eq!(value.asl(1024u32), expected_result, "0 << anything was not 0");
     }
 
     #[test]

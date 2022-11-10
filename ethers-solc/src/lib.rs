@@ -996,9 +996,9 @@ mod tests {
             .lib(root.join("lib1"))
             .lib(root.join("lib2"))
             .remappings(
-                Remapping::find_many(&root.join("lib1"))
+                Remapping::find_many(root.join("lib1"))
                     .into_iter()
-                    .chain(Remapping::find_many(&root.join("lib2"))),
+                    .chain(Remapping::find_many(root.join("lib2"))),
             )
             .build()
             .unwrap();
@@ -1024,7 +1024,7 @@ mod tests {
             .root(&root)
             .sources(root.join("src"))
             .lib(root.join("lib"))
-            .remappings(Remapping::find_many(&root.join("lib")))
+            .remappings(Remapping::find_many(root.join("lib")))
             .build()
             .unwrap();
         let project = Project::builder().no_artifacts().paths(paths).ephemeral().build().unwrap();

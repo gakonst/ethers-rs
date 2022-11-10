@@ -248,7 +248,7 @@ fn get_local_contract(path: impl AsRef<str>) -> Result<String> {
 #[cfg(not(target_arch = "wasm32"))]
 fn get_http_contract(url: &Url) -> Result<String> {
     let json = util::http_get(url.as_str())
-        .with_context(|| format!("failed to retrieve JSON from {}", url))?;
+        .with_context(|| format!("failed to retrieve JSON from {url}"))?;
     Ok(json)
 }
 
@@ -266,15 +266,14 @@ fn get_etherscan_contract(address: Address, domain: &str) -> Result<String> {
             "snowtrace.io" => env::var("SNOWTRACE_API_KEY").ok(),
             _ => None,
         };
-        key_res.map(|key| format!("&apikey={}", key)).unwrap_or_default()
+        key_res.map(|key| format!("&apikey={key}")).unwrap_or_default()
     };
 
     let abi_url = format!(
         "http://api.{}/api?module=contract&action=getabi&address={:?}&format=raw{}",
         domain, address, api_key,
     );
-    let abi =
-        util::http_get(&abi_url).context(format!("failed to retrieve ABI from {}", domain))?;
+    let abi = util::http_get(&abi_url).context(format!("failed to retrieve ABI from {domain}"))?;
 
     if abi.starts_with("Contract source code not verified") {
         eyre::bail!("Contract source code not verified: {:?}", address);
@@ -292,9 +291,9 @@ fn get_etherscan_contract(address: Address, domain: &str) -> Result<String> {
 /// Retrieves a Truffle artifact or ABI from an npm package through `unpkg.io`.
 #[cfg(not(target_arch = "wasm32"))]
 fn get_npm_contract(package: &str) -> Result<String> {
-    let unpkg_url = format!("https://unpkg.io/{}", package);
+    let unpkg_url = format!("https://unpkg.io/{package}");
     let json = util::http_get(&unpkg_url)
-        .with_context(|| format!("failed to retrieve JSON from for npm package {}", package))?;
+        .with_context(|| format!("failed to retrieve JSON from for npm package {package}"))?;
 
     Ok(json)
 }

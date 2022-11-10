@@ -57,7 +57,7 @@ impl VerifyContract {
 
     #[must_use]
     pub fn runs(mut self, runs: u32) -> Self {
-        self.runs = Some(format!("{}", runs));
+        self.runs = Some(format!("{runs}"));
         self
     }
 

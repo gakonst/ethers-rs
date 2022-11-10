@@ -147,7 +147,7 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// _Disclaimer: these above docs have been adapted from the corresponding [ethers.js page](https://docs.ethers.io/ethers.js/html/api-contract.html)_
 ///
 /// [`abigen`]: macro.abigen.html
-/// [`Abigen` builder]: crate::Abigen
+/// [`Abigen` builder]: struct.Abigen.html
 /// [`event`]: method@crate::Contract::event
 /// [`method`]: method@crate::Contract::method
 #[derive(Debug)]

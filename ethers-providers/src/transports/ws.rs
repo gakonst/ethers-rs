@@ -419,7 +419,7 @@ where
 
 // TrySendError is private :(
 fn to_client_error<T: Debug>(err: T) -> ClientError {
-    ClientError::ChannelError(format!("{:?}", err))
+    ClientError::ChannelError(format!("{err:?}"))
 }
 
 #[derive(Error, Debug)]

@@ -20,7 +20,7 @@ ethers-derive-eip712 = { version = "^1.0.0", path = "../ethers-core/ethers-deriv
 serde = { version = "1.0.124", default-features = false }
 serde_json = { version = "1.0.64", default-features = false }
 thiserror = { version = "1.0", default-features = false }
-once_cell = { version = "1.15.0" }
+once_cell = { version = "1.16.0" }
 pin-project = { version = "1.0.11", default-features = false }
 futures-util = { version = "^0.3" }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
