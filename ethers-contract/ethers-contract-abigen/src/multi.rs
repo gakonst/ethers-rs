@@ -572,7 +572,7 @@ impl MultiBindingsInner {
 
     /// parses the active Cargo.toml to get what version of ethers we are using
     fn find_crate_version(&self) -> Result<String> {
-        let cargo_dir = env!("CARGO_MANIFEST_DIR");
+        let cargo_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
         let file = File::open(cargo_dir)?;
         let reader = BufReader::new(file).lines();
         for line in reader.flatten() {
@@ -1280,10 +1280,12 @@ contract Enum {
         // gotta bunch these all together as we are overwriting env vars
         run_test(|context| {
             let Context { multi_gen, mod_root } = context;
-            env::set_var(
-                "CARGO_MANIFEST_DIR",
-                r#"
-         [package]
+            let tmp = TempProject::dapptools().unwrap();
+
+            tmp.add_source(
+            "Cargo.toml",
+            r#"
+ [package]
         name = "ethers-contract"
         version = "1.0.0"
         edition = "2018"
@@ -1297,8 +1299,12 @@ contract Enum {
 
         [dependencies]
         ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-features = false }
-    "#,
-            );
+"#,
+        )
+        .unwrap();
+
+            let _ = tmp.compile().unwrap();
+            env::set_var("CARGO_MANIFEST_DIR", tmp.root());
             let single_file = false;
             let name = "a-name";
             let version = "290.3782.3";
@@ -1320,11 +1326,12 @@ contract Enum {
 
         run_test(|context| {
             let Context { multi_gen, mod_root } = context;
+            let tmp = TempProject::dapptools().unwrap();
 
-            env::set_var(
-                "CARGO_MANIFEST_DIR",
+            tmp.add_source(
+                "Cargo.toml",
                 r#"
-         [package]
+ [package]
         name = "ethers-contract"
         version = "1.0.0"
         edition = "2018"
@@ -1338,8 +1345,12 @@ contract Enum {
 
         [dependencies]
         ethers-contracts = "0.4.0"
-    "#,
-            );
+"#,
+            )
+            .unwrap();
+
+            let _ = tmp.compile().unwrap();
+            env::set_var("CARGO_MANIFEST_DIR", tmp.root());
 
             let single_file = false;
             let name = "a-name";
@@ -1359,14 +1370,15 @@ contract Enum {
                 .ensure_consistent_crate(name, version, mod_root, single_file, true)
                 .expect("Inconsistent bindings");
         });
-
+        
         run_test(|context| {
             let Context { multi_gen, mod_root } = context;
+            let tmp = TempProject::dapptools().unwrap();
 
-            env::set_var(
-                "CARGO_MANIFEST_DIR",
-                r#"
-         [package]
+            tmp.add_source(
+            "Cargo.toml",
+            r#"
+    [package]
         name = "ethers-contract"
         version = "1.0.0"
         edition = "2018"
@@ -1380,8 +1392,12 @@ contract Enum {
 
         [dependencies]
         ethers = {git="https://github.com/gakonst/ethers-rs", rev = "fd8ebf5",features = ["ws", "rustls", "ipc"] }
-    "#,
-            );
+"#,
+        )
+        .unwrap();
+
+            let _ = tmp.compile().unwrap();
+            env::set_var("CARGO_MANIFEST_DIR", tmp.root());
 
             let single_file = false;
             let name = "a-name";
@@ -1404,53 +1420,12 @@ contract Enum {
 
         run_test(|context| {
             let Context { multi_gen, mod_root } = context;
+            let tmp = TempProject::dapptools().unwrap();
 
-            env::set_var(
-                "CARGO_MANIFEST_DIR",
+            tmp.add_source(
+                "Cargo.toml",
                 r#"
-         [package]
-        name = "ethers-contract"
-        version = "1.0.0"
-        edition = "2018"
-        rust-version = "1.62"
-        authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
-        license = "MIT OR Apache-2.0"
-        description = "Smart contract bindings for the ethers-rs crate"
-        homepage = "https://docs.rs/ethers"
-        repository = "https://github.com/gakonst/ethers-rs"
-        keywords = ["ethereum", "web3", "celo", "ethers"]
-
-        [dependencies]
-        ethers = {git="https://github.com/gakonst/ethers-rs", rev = "fd8ebf5",features = ["ws", "rustls", "ipc"] }
-    "#,
-            );
-
-            let single_file = false;
-            let name = "a-name";
-            let version = "290.3782.3";
-
-            multi_gen
-                .clone()
-                .build()
-                .unwrap()
-                .write_to_crate(name, version, mod_root, single_file)
-                .unwrap();
-
-            multi_gen
-                .clone()
-                .build()
-                .unwrap()
-                .ensure_consistent_crate(name, version, mod_root, single_file, true)
-                .expect("Inconsistent bindings");
-        });
-
-        run_test(|context| {
-            let Context { multi_gen, mod_root } = context;
-
-            env::set_var(
-                "CARGO_MANIFEST_DIR",
-                r#"
-         [package]
+    [package]
         name = "ethers-contract"
         version = "1.0.0"
         edition = "2018"
@@ -1464,8 +1439,12 @@ contract Enum {
 
         [dependencies]
         ethers = {git="https://github.com/gakonst/ethers-rs" ,features = ["ws", "rustls", "ipc"] }
-    "#,
-            );
+"#,
+            )
+            .unwrap();
+
+            let _ = tmp.compile().unwrap();
+            env::set_var("CARGO_MANIFEST_DIR", tmp.root());
 
             let single_file = false;
             let name = "a-name";
