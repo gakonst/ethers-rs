@@ -1649,6 +1649,50 @@ fn test_compiler_severity_filter() {
     assert!(compiled.has_compiler_errors());
 }
 
+#[test]
+fn test_compiler_severity_filter_and_ignored_error_codes() {
+    fn gen_test_data_licensing_warning() -> ProjectPathsConfig {
+        let root =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-contract-warnings/LicenseWarning.sol");
+        let paths = ProjectPathsConfig::builder().sources(root).build().unwrap();
+        paths
+    }
+
+    let missing_license_error_code = 1878;
+
+    let project = Project::builder()
+    .no_artifacts()
+    .paths(gen_test_data_licensing_warning())
+    .ephemeral()
+    .build()
+    .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.has_compiler_warnings());
+
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_licensing_warning())
+        .ephemeral()
+        .ignore_error_code(missing_license_error_code)
+        .build()
+        .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_warnings());
+    assert!(!compiled.has_compiler_errors());
+
+    let project = Project::builder()
+    .no_artifacts()
+    .paths(gen_test_data_licensing_warning())
+    .ephemeral()
+    .ignore_error_code(missing_license_error_code)
+    .set_compiler_severity_filter(ethers_solc::artifacts::Severity::Warning)
+    .build()
+    .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_warnings());
+    assert!(!compiled.has_compiler_errors());
+}
+
 fn remove_solc_if_exists(version: &Version) {
     if Solc::find_svm_installed_version(version.to_string()).unwrap().is_some() {
         svm::remove_version(version).expect("failed to remove version")

@@ -199,7 +199,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
 
     /// Whether there were errors
     pub fn has_compiler_errors(&self) -> bool {
-        self.compiler_output.has_error(&self.compiler_severity_filter)
+        self.compiler_output.has_error(&self.ignored_error_codes, &self.compiler_severity_filter)
     }
 
     /// Whether there were warnings
@@ -428,8 +428,11 @@ impl AggregatedCompilerOutput {
     }
 
     /// Whether the output contains a compiler error
-    pub fn has_error(&self, compiler_severity_filter: &Severity) -> bool {
-        self.errors.iter().any(|err| compiler_severity_filter.ge(&err.severity))
+    pub fn has_error(&self, ignored_error_codes: &[u64], compiler_severity_filter: &Severity) -> bool {
+        if compiler_severity_filter.is_warning() && self.has_warning(ignored_error_codes) {
+            return true
+        }
+        self.errors.iter().any(|err| err.severity.is_error())
     }
 
     /// Whether the output contains a compiler warning
@@ -711,7 +714,7 @@ pub struct OutputDiagnostics<'a> {
 impl<'a> OutputDiagnostics<'a> {
     /// Returns true if there is at least one error of high severity
     pub fn has_error(&self) -> bool {
-        self.compiler_output.has_error(&self.compiler_severity_filter)
+        self.compiler_output.has_error(&self.ignored_error_codes, &self.compiler_severity_filter)
     }
 
     /// Returns true if there is at least one warning
