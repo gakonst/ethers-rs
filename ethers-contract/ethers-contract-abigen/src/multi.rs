@@ -596,9 +596,9 @@ impl MultiBindingsInner {
                         return Ok("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }}".to_string());
                     }
                 } else {
-                    let regex = Regex::new("ethers=\"[^\"]*\"")?;
+                    let regex = Regex::new("\"[^\"]*\"")?;
                     let Some(version) = regex.captures(&parsed) else { eyre::bail!("couldn't parse version regex")};
-                    let res = &version.get(0).unwrap().as_str()[7..];
+                    let res = &version.get(0).unwrap().as_str();
                     return Ok(format!("ethers = {{ version={}, default-features = false, features = [\"abigen\"] }}", res));
                 }
             }
