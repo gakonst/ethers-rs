@@ -3,10 +3,11 @@ use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::TokenStream;
 use quote::quote;
+use regex::Regex;
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    fs,
-    io::Write,
+    fs::{self, File},
+    io::{BufRead, BufReader, Write},
     path::Path,
 };
 
@@ -553,6 +554,7 @@ impl MultiBindingsInner {
         &self,
         name: impl AsRef<str>,
         version: impl AsRef<str>,
+        crate_version: String,
     ) -> Result<Vec<u8>> {
         let mut toml = vec![];
 
@@ -564,13 +566,42 @@ impl MultiBindingsInner {
         writeln!(toml, "# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html")?;
         writeln!(toml)?;
         writeln!(toml, "[dependencies]")?;
-        writeln!(
-            toml,
-            r#"
-ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = false, features = ["abigen"] }}
-"#
-        )?;
+        writeln!(toml, r#"{}"#, crate_version)?;
         Ok(toml)
+    }
+
+    fn find_crate_version(&self) -> Result<String> {
+        let cargo_dir = env!("CARGO_MANIFEST_DIR");
+        let file = File::open(cargo_dir)?;
+        let reader = BufReader::new(file).lines();
+        for line in reader.flatten() {
+            let parsed = line.trim();
+            if parsed.starts_with("ethers") {
+                // going to be a bit tricker due to cases
+                if parsed.contains("{{") {
+                    if parsed.contains("git") && parsed.contains("rev") {
+                        let regex = Regex::new("rev=\"[^\"]*\"")?;
+                        let version = regex.captures(parsed).unwrap();
+                        let res = version.get(0).unwrap().as_str();
+                        return Ok(format!("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", rev = \"{}\", default-features = false, features = [\"abigen\"] }}", res));
+                    } else if parsed.contains("version") {
+                        let regex = Regex::new("version=\"[^\"]*\"")?;
+                        let version = regex.captures(parsed).unwrap();
+                        let res = version.get(0).unwrap().as_str();
+                        return Ok(format!("ethers = {{ version = \"{}\", default-features = false, features = [\"abigen\"] }}", res));
+                    } else {
+                        return Ok("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }}".to_string());
+                    }
+                } else {
+                    let regex = Regex::new("ethers=\"[^\"]*\"")?;
+                    let version = regex.captures(parsed).unwrap();
+                    let res = version.get(0).unwrap().as_str();
+                    return Ok(format!("ethers = {{ version = \"{}\", default-features = false, features = [\"abigen\"] }}", res));
+                }
+            }
+        }
+
+        eyre::bail!("couldn't parse ethers version")
     }
 
     /// Write the contents of `Cargo.toml` to disk
@@ -580,7 +611,8 @@ ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = fal
         name: impl AsRef<str>,
         version: impl AsRef<str>,
     ) -> Result<()> {
-        let contents = self.generate_cargo_toml(name, version)?;
+        let crate_version = self.find_crate_version()?;
+        let contents = self.generate_cargo_toml(name, version, crate_version)?;
 
         let mut file = fs::OpenOptions::new()
             .read(true)
@@ -717,7 +749,8 @@ ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = fal
 
         if check_cargo_toml {
             // additionally check the contents of the cargo
-            let cargo_contents = self.generate_cargo_toml(name, version)?;
+            let crate_version = self.find_crate_version()?;
+            let cargo_contents = self.generate_cargo_toml(name, version, crate_version)?;
             check_file_in_dir(crate_path, "Cargo.toml", &cargo_contents)?;
         }
 
