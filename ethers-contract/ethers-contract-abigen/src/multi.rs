@@ -8,7 +8,7 @@ use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     fs,
     io::Write,
-    path::Path,
+    path::{Path, PathBuf},
 };
 use toml::Value;
 
@@ -570,22 +570,36 @@ impl MultiBindingsInner {
     }
 
     /// parses the active Cargo.toml to get what version of ethers we are using
-    fn find_crate_version(&self) -> Result<String> {
+    fn find_crate_version(&self, lib: &Path) -> Result<String> {
         let cargo_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
         let data = std::fs::read_to_string(cargo_dir)?;
         let toml = data.parse::<Value>()?;
 
-        let Some(Some(ethers)) = toml.get("dependencies").map(|v| v.get("ethers")) else { eyre::bail!("couldn't find ethers dep")};
+        let Some(ethers) = toml.get("dependencies")
+            .and_then (|v| v.get("ethers").or_else(|| v.get("ethers-contract")))
+            else { eyre::bail!("couldn't find ethers or ethers-contract dependency")};
         if ethers.is_table() {
             if let Some(rev) = ethers.get("rev") {
-                return Ok(format!("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", rev = {}, default-features = false, features = [\"abigen\"] }}", rev));
+                Ok(format!("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", rev = {}, default-features = false, features = [\"abigen\"] }}", rev))
             } else if let Some(version) = ethers.get("version") {
-                return Ok(format!("ethers = {{ version = {}, default-features = false, features = [\"abigen\"] }}", version ));
+                if let Some(path) = ethers.get("path") {
+                    let path = Path::new(path.type_str());
+                    let mut res =
+                        lib.to_str().unwrap().split("//").fold(PathBuf::from(""), |mut acc, _| {
+                            acc.push("../");
+                            acc
+                        });
+                    res.extend(path);
+
+                    Ok(format!("ethers = {{ version = {}, path = {} default-features = false, features = [\"abigen\"] }}", version, res.to_string_lossy()))
+                } else {
+                    Ok(format!("ethers = {{ version = {}, default-features = false, features = [\"abigen\"] }}", version ))
+                }
             } else {
-                return Ok("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }}".to_string());
+                Ok("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }}".to_string())
             }
         } else {
-            return Ok(format!(
+            Ok(format!(
                 "ethers = {{ version={}, default-features = false, features = [\"abigen\"] }}",
                 ethers
             ))
@@ -599,7 +613,7 @@ impl MultiBindingsInner {
         name: impl AsRef<str>,
         version: impl AsRef<str>,
     ) -> Result<()> {
-        let crate_version = self.find_crate_version()?;
+        let crate_version = self.find_crate_version(lib)?;
         let contents = self.generate_cargo_toml(name, version, crate_version)?;
 
         let mut file = fs::OpenOptions::new()
@@ -737,7 +751,7 @@ impl MultiBindingsInner {
 
         if check_cargo_toml {
             // additionally check the contents of the cargo
-            let crate_version = self.find_crate_version()?;
+            let crate_version = self.find_crate_version(crate_path)?;
             let cargo_contents = self.generate_cargo_toml(name, version, crate_version)?;
             check_file_in_dir(crate_path, "Cargo.toml", &cargo_contents)?;
         }
