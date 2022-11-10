@@ -589,7 +589,7 @@ impl MultiBindingsInner {
                         let Some(version) = regex.captures(parsed) else { eyre::bail!("couldn't parse extra args version regex")};
                         let res = version.get(0).unwrap().as_str();
                         return Ok(format!(
-                            "ethers = {{ {} default-features = false, features = [\"abigen\"] }}",
+                            "ethers = {{ {}, default-features = false, features = [\"abigen\"] }}",
                             res
                         ))
                     } else {
