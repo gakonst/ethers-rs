@@ -576,17 +576,17 @@ impl MultiBindingsInner {
         let file = File::open(cargo_dir)?;
         let reader = BufReader::new(file).lines();
         for line in reader.flatten() {
-            let parsed = line.trim();
+            let parsed: String = line.split_whitespace().collect();
             if parsed.starts_with("ethers") {
-                if parsed.contains("{{") {
+                if parsed.contains('{') {
                     if parsed.contains("git") && parsed.contains("rev") {
                         let regex = Regex::new("rev=\"[^\"]*\"")?;
-                        let Some(rev) = regex.captures(parsed) else { eyre::bail!("couldn't capture revision regex")};
+                        let Some(rev) = regex.captures(&parsed) else { eyre::bail!("couldn't capture revision regex")};
                         let res = rev.get(0).unwrap().as_str();
                         return Ok(format!("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", {}, default-features = false, features = [\"abigen\"] }}", res));
                     } else if parsed.contains("version") {
                         let regex = Regex::new("version=\"[^\"]*\"")?;
-                        let Some(version) = regex.captures(parsed) else { eyre::bail!("couldn't parse extra args version regex")};
+                        let Some(version) = regex.captures(&parsed) else { eyre::bail!("couldn't parse extra args version regex")};
                         let res = version.get(0).unwrap().as_str();
                         return Ok(format!(
                             "ethers = {{ {}, default-features = false, features = [\"abigen\"] }}",
@@ -597,7 +597,7 @@ impl MultiBindingsInner {
                     }
                 } else {
                     let regex = Regex::new("ethers=\"[^\"]*\"")?;
-                    let Some(version) = regex.captures(parsed) else { eyre::bail!("couldn't parse version regex")};
+                    let Some(version) = regex.captures(&parsed) else { eyre::bail!("couldn't parse version regex")};
                     let res = &version.get(0).unwrap().as_str()[7..];
                     return Ok(format!("ethers = {{ version={}, default-features = false, features = [\"abigen\"] }}", res));
                 }
@@ -1370,7 +1370,7 @@ contract Enum {
                 .ensure_consistent_crate(name, version, mod_root, single_file, true)
                 .expect("Inconsistent bindings");
         });
-        
+
         run_test(|context| {
             let Context { multi_gen, mod_root } = context;
             let tmp = TempProject::dapptools().unwrap();
