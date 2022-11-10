@@ -1,17 +1,16 @@
 //! Generate bindings for multiple `Abigen`
+use crate::{util, Abigen, Context, ContractBindings, ContractFilter, ExpandedContract};
 use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::TokenStream;
 use quote::quote;
-use regex::Regex;
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
-    fs::{self, File},
-    io::{BufRead, BufReader, Write},
+    fs,
+    io::Write,
     path::Path,
 };
-
-use crate::{util, Abigen, Context, ContractBindings, ContractFilter, ExpandedContract};
+use toml::Value;
 
 /// Collects Abigen structs for a series of contracts, pending generation of
 /// the contract bindings.
@@ -573,38 +572,24 @@ impl MultiBindingsInner {
     /// parses the active Cargo.toml to get what version of ethers we are using
     fn find_crate_version(&self) -> Result<String> {
         let cargo_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
-        let file = File::open(cargo_dir)?;
-        let reader = BufReader::new(file).lines();
-        for line in reader.flatten() {
-            let parsed: String = line.split_whitespace().collect();
-            if parsed.starts_with("ethers") {
-                if parsed.contains('{') {
-                    if parsed.contains("git") && parsed.contains("rev") {
-                        let regex = Regex::new("rev=\"[^\"]*\"")?;
-                        let Some(rev) = regex.captures(&parsed) else { eyre::bail!("couldn't capture revision regex")};
-                        let res = rev.get(0).unwrap().as_str();
-                        return Ok(format!("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", {}, default-features = false, features = [\"abigen\"] }}", res));
-                    } else if parsed.contains("version") {
-                        let regex = Regex::new("version=\"[^\"]*\"")?;
-                        let Some(version) = regex.captures(&parsed) else { eyre::bail!("couldn't parse extra args version regex")};
-                        let res = version.get(0).unwrap().as_str();
-                        return Ok(format!(
-                            "ethers = {{ {}, default-features = false, features = [\"abigen\"] }}",
-                            res
-                        ))
-                    } else {
-                        return Ok("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }}".to_string());
-                    }
-                } else {
-                    let regex = Regex::new("\"[^\"]*\"")?;
-                    let Some(version) = regex.captures(&parsed) else { eyre::bail!("couldn't parse version regex")};
-                    let res = version.get(0).unwrap().as_str();
-                    return Ok(format!("ethers = {{ version={}, default-features = false, features = [\"abigen\"] }}", res));
-                }
-            }
-        }
+        let data = std::fs::read_to_string(cargo_dir)?;
+        let toml = data.parse::<Value>()?;
 
-        eyre::bail!("couldn't parse ethers version")
+        let Some(Some(ethers)) = toml.get("dependencies").map(|v| v.get("ethers")) else { eyre::bail!("couldn't find ethers dep")};
+        if ethers.is_table() {
+            if let Some(rev) = ethers.get("rev") {
+                return Ok(format!("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", rev = {}, default-features = false, features = [\"abigen\"] }}", rev));
+            } else if let Some(version) = ethers.get("version") {
+                return Ok(format!("ethers = {{ version = {}, default-features = false, features = [\"abigen\"] }}", version ));
+            } else {
+                return Ok("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }}".to_string());
+            }
+        } else {
+            return Ok(format!(
+                "ethers = {{ version={}, default-features = false, features = [\"abigen\"] }}",
+                ethers
+            ))
+        }
     }
 
     /// Write the contents of `Cargo.toml` to disk
