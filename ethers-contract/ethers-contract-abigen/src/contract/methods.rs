@@ -1,4 +1,4 @@
-use std::collections::{btree_map::Entry, BTreeMap, HashMap};
+use std::collections::{btree_map::Entry, BTreeMap, HashMap, HashSet};
 
 use super::{types, util, Context};
 use crate::{
@@ -534,11 +534,21 @@ impl Context {
             }
             // compare each overloaded function with the `first_fun`
             for (idx, overloaded_fun) in functions.into_iter().skip(1) {
+                // keep track of matched params
+                let mut already_matched_param_diff = HashSet::new();
                 // attempt to find diff in the input arguments
                 let mut diff = Vec::new();
                 let mut same_params = true;
                 for (idx, i1) in overloaded_fun.inputs.iter().enumerate() {
-                    if first_fun.inputs.iter().all(|i2| i1 != i2) {
+                    // Find the first param that differs and hasn't already been matched as diff
+                    if let Some((pos, _)) = first_fun
+                        .inputs
+                        .iter()
+                        .enumerate()
+                        .filter(|(pos, _)| !already_matched_param_diff.contains(pos))
+                        .find(|(_, i2)| i1 != *i2)
+                    {
+                        already_matched_param_diff.insert(pos);
                         diff.push(i1);
                         same_params = false;
                     } else {

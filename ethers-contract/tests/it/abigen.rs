@@ -737,3 +737,16 @@ fn can_generate_event_with_structs() {
     assert_eq!("MyEvent((uint256,uint256),uint256)", MyEventFilter::abi_signature());
     assert_event::<MyEventFilter>();
 }
+
+#[test]
+fn can_handle_overloaded_function_with_array() {
+    abigen!(
+        Test,
+        r#"[
+         serializeString(string calldata, string calldata, string calldata) external returns (string memory)
+         serializeString(string calldata, string calldata, string[] calldata) external returns (string memory)
+         serializeBool(string calldata, string calldata, bool) external returns (string memory)
+         serializeBool(string calldata, string calldata, bool[] calldata) external returns (string memory)
+    ]"#,
+    );
+}
