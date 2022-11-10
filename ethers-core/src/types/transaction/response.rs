@@ -1067,7 +1067,11 @@ mod tests {
         .expect("unable to decode raw tx");
         decoded_tx.recover_from_mut().unwrap();
         decoded_tx.hash = decoded_tx.hash();
-        dbg!(&decoded_tx);
+        assert_eq!(
+            H256::from_str("0xeae304417079580c334ccc07e3933a906699461802a17b722034a8191c4a38ea")
+                .unwrap(),
+            decoded_tx.hash
+        );
     }
 
     #[test]
