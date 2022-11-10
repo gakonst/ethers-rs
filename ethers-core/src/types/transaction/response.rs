@@ -275,12 +275,11 @@ impl Transaction {
         *offset += 1;
         self.gas = rlp.val_at(*offset)?;
         *offset += 1;
+        println!("got past gas");
 
         #[cfg(feature = "celo")]
         self.decode_celo_metadata(rlp, offset)?;
 
-        self.gas = rlp.val_at(*offset)?;
-        *offset += 1;
         self.to = Some(rlp.val_at(*offset)?);
         *offset += 1;
         self.value = rlp.val_at(*offset)?;
@@ -368,6 +367,7 @@ impl Decodable for Transaction {
 
             let bytes = data.get(1..).ok_or(DecoderError::Custom("no tx body"))?;
             let rest = rlp::Rlp::new(bytes);
+            println!("got to the first byte stuff!");
             match first {
                 0x01 => {
                     txn.decode_base_eip2930(&rest, &mut offset)?;
@@ -1070,5 +1070,25 @@ mod tests {
         decoded_tx.recover_from_mut().unwrap();
         decoded_tx.hash = decoded_tx.hash();
         dbg!(&decoded_tx);
+    }
+
+    #[test]
+    fn test_rlp_decoding_issue_1848_first() {
+        // slot 5097934, tx index 40, hash
+        // 0xf98c9f1a2f30ee316ea1db18c132ccab6383b8e4933ccf6259ca9d1f27d4a364
+        let s = "01f9012e01826c6f850737be7600830493ef940c3de458b51a11da7d4616f42f66c861e3859d3e80b8c4f5b22c2a000000000000000000000000e67b950f4b84c5b06ee36ded6727a17443fe749300000000000000000000000000000000000000000000005f344f4a335cc50000000000000000000000000000000000000000000005c2f00b834b7f0000000000000000000000000000000000000000000000000005aa64a95b4a40400000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000c3de458b51a11da7d4616f42f66c861e3859d3ec080a0c4023f0b8f7daecd7e143ef7aaa9b67bd059e643a6f2ae509a0e8483a3966e28a065a20662274cb5f7fe60a2af7dbd466244154440e73243f00b6a69bd08eacda4";
+        let b = hex::decode(s).unwrap();
+        let r = rlp::Rlp::new(b.as_slice());
+        Transaction::decode(&r).unwrap();
+    }
+
+    #[test]
+    fn test_rlp_decoding_issue_1848_second() {
+        // slot 5097936, tx index 0, hash
+        // 6d38fc8aee934858815ed41273cece3b676c368e9c6e39f172313a0685e1f175
+        let s = "01f8ee0182034c853d9f1b88158307a120940087bb802d9c0e343f00510000729031ce00bf2780b8841e1326a300000000000000000000000088e6a0c2ddd26feeb64f039a2c41296fcb3f56400000000000000000000000000000000000000000000000000000001d3b3e730000000000000000000000000000000000000000000000000596b93e53696740000000000000000000000000000000000000000000000000000000000000000001c001a0bbfd754ed51b34d0a8577f69b4c42ce6b47fee6ecf49114bb135e7e8eadbb336a0433692134eb7e7686e9aefafa9f69c601aa977c00cc85c827782f5fb1f1cff0f";
+        let b = hex::decode(s).unwrap();
+        let r = rlp::Rlp::new(b.as_slice());
+        Transaction::decode(&r).unwrap();
     }
 }
