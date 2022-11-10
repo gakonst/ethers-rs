@@ -275,7 +275,6 @@ impl Transaction {
         *offset += 1;
         self.gas = rlp.val_at(*offset)?;
         *offset += 1;
-        println!("got past gas");
 
         #[cfg(feature = "celo")]
         self.decode_celo_metadata(rlp, offset)?;
@@ -367,7 +366,6 @@ impl Decodable for Transaction {
 
             let bytes = data.get(1..).ok_or(DecoderError::Custom("no tx body"))?;
             let rest = rlp::Rlp::new(bytes);
-            println!("got to the first byte stuff!");
             match first {
                 0x01 => {
                     txn.decode_base_eip2930(&rest, &mut offset)?;
