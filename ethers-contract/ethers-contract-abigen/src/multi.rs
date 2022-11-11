@@ -576,7 +576,7 @@ impl MultiBindingsInner {
         let toml = data.parse::<Value>()?;
 
         let Some(ethers) = toml.get("dependencies")
-            .or_else(||toml.get("build-dependencies")).and_then (|v| v.get("ethers").or_else(|| v.get("ethers-contract")))
+            .and_then (|v| v.get("ethers").or_else(|| v.get("ethers-contract")))
             else { eyre::bail!("couldn't find ethers or ethers-contract dependency")};
         if let Some(rev) = ethers.get("rev") {
             Ok(format!("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", rev = {}, default-features = false, features = [\"abigen\"] }}", rev))
