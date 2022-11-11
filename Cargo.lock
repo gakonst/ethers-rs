@@ -1685,7 +1685,6 @@ checksum = "3eb42d4fb72227be5778429f9ef5240a38a358925a49f05b5cf702ce7c7e558a"
 dependencies = [
  "futures-channel",
  "futures-task",
- "tokio",
 ]
 
 [[package]]
