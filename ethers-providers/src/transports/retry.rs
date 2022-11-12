@@ -188,7 +188,7 @@ impl Default for RetryClientBuilder {
             timeout_retries: 3,
             // this should be enough to even out heavy loads
             rate_limit_retries: 10,
-            initial_backoff: Duration::from_millis(100),
+            initial_backoff: Duration::from_millis(1000),
             // alchemy max cpus <https://github.com/alchemyplatform/alchemy-docs/blob/master/documentation/compute-units.md#rate-limits-cups>
             compute_units_per_second: 330,
         }
