@@ -289,9 +289,7 @@ where
                 // try to extract the requested backoff from the error or compute the next backoff
                 // based on retry count
                 let mut next_backoff = self.policy.backoff_hint(&err).unwrap_or_else(|| {
-                    Duration::from_millis(
-                        self.initial_backoff.as_millis() as u64
-                    )
+                    Duration::from_millis(self.initial_backoff.as_millis() as u64)
                 });
 
                 // requests are usually weighted and can vary from 10 CU to several 100 CU, cheaper
