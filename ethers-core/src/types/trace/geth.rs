@@ -28,8 +28,9 @@ pub struct GethCallTrace {
     //pub gas_used: u64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub to: Option<Address>,
-    #[serde(serialize_with = "serialize_bytes")]
-    pub input: Bytes,
+    //#[serde(serialize_with = "serialize_bytes")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input: Option<Bytes>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output: Option<Bytes>,
     #[serde(skip_serializing_if = "Option::is_none")]

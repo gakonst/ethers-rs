@@ -189,7 +189,7 @@ impl JsonRpcClient for Ws {
         // wait for the response (the request itself may have errors as well)
         let res = receiver.await??;
 
-        //println!("{}", res);
+        //println!("parsing_res: {:?}", res.get());
 
         // parse it
         Ok(serde_json::from_str(res.get())?)
