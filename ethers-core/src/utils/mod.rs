@@ -76,6 +76,32 @@ pub const EIP1559_FEE_ESTIMATION_PRIORITY_FEE_TRIGGER: u64 = 100_000_000_000;
 /// under it.
 pub const EIP1559_FEE_ESTIMATION_THRESHOLD_MAX_CHANGE: i64 = 200;
 
+/// The types that can use used for format parsing.
+#[derive(Copy, Clone)]
+pub enum BigNumbers {
+    U256(U256),
+    I256(I256),
+}
+
+macro_rules! construct_big_numbers_from {
+    ($( $t:ty[$convert:ident] ),*) => {
+        $(
+            impl From<$t> for BigNumbers {
+                fn from(num: $t) -> Self {
+                    Self::$convert(num.into())
+                }
+            }
+        )*
+    }
+}
+
+// Generate the From<T> code for the given numeric types below.
+construct_big_numbers_from!
+{
+    u8[U256], u16[U256], u32[U256], u64[U256], u128[U256], U256[U256], usize[U256],
+    i8[I256], i16[I256], i32[I256], i64[I256], i128[I256], I256[I256], isize[I256]
+}
+
 /// Format the output for the user which prefer to see values
 /// in ether (instead of wei)
 ///
@@ -97,22 +123,43 @@ pub fn format_ether<T: Into<U256>>(amount: T) -> U256 {
 ///
 /// let eth = format_units(U256::from_dec_str("1395633240123456789").unwrap(), "ether").unwrap();
 /// assert_eq!(eth, "1.395633240123456789");
+///
+/// let eth = format_units(i64::MIN, "gwei").unwrap();
+/// assert_eq!(eth, "-9223372036.854775808");
+///
+/// let eth = format_units(i128::MIN, 36).unwrap();
+/// assert_eq!(eth, "-170.141183460469231731687303715884105728");
 /// ```
 pub fn format_units<T, K>(amount: T, units: K) -> Result<String, ConversionError>
 where
-    T: Into<U256>,
+    T: Into<BigNumbers>,
     K: TryInto<Units, Error = ConversionError>,
 {
     let units = units.try_into()?;
-    let amount = amount.into();
-    let amount_decimals = amount % U256::from(10_u128.pow(units.as_num()));
-    let amount_integer = amount / U256::from(10_u128.pow(units.as_num()));
-    Ok(format!(
-        "{}.{:0width$}",
-        amount_integer,
-        amount_decimals.as_u128(),
-        width = units.as_num() as usize
-    ))
+    match amount.into() {
+        BigNumbers::U256(amount) => {
+            let amount_decimals = amount % U256::from(10_u128.pow(units.as_num()));
+            let amount_integer = amount / U256::from(10_u128.pow(units.as_num()));
+            Ok(format!(
+                "{}.{:0width$}",
+                amount_integer,
+                amount_decimals.as_u128(),
+                width = units.as_num() as usize
+            ))
+        },
+        BigNumbers::I256(amount) => {
+            let sign = if amount.is_negative() { "-" } else { "" };
+            let amount_decimals = amount % I256::from(10_u128.pow(units.as_num()));
+            let amount_integer = amount / I256::from(10_u128.pow(units.as_num()));
+            Ok(format!(
+                "{}{}.{:0width$}",
+                sign,
+                amount_integer.twos_complement(),
+                amount_decimals.twos_complement().as_u128(),
+                width = units.as_num() as usize
+            ))
+        },
+    }
 }
 
 /// Converts the input to a U256 and converts from Ether to Wei.
@@ -177,6 +224,7 @@ where
         Ok(a_uint)
     }
 }
+
 /// The address for an Ethereum contract is deterministically computed from the
 /// address of its creator (sender) and how many transactions the creator has
 /// sent (nonce). The sender and nonce are RLP encoded and then hashed with Keccak-256.
@@ -432,7 +480,7 @@ mod tests {
     }
 
     #[test]
-    fn test_format_units() {
+    fn test_format_units_unsigned() {
         let gwei_in_ether = format_units(WEI_IN_ETHER, 9).unwrap();
         assert_eq!(gwei_in_ether.parse::<f64>().unwrap() as u64, 1e9 as u64);
 
@@ -453,6 +501,60 @@ mod tests {
         let eth =
             format_units(U256::from_dec_str("1005633240123456789").unwrap(), "ether").unwrap();
         assert_eq!(eth, "1.005633240123456789");
+
+        let eth = format_units(255u8, 4).unwrap();
+        assert_eq!(eth, "0.0255");
+
+        let eth = format_units(u16::MAX, "ether").unwrap();
+        assert_eq!(eth, "0.000000000000065535");
+
+        // Note: This covers usize on 32 bit systems.
+        let eth = format_units(u32::MAX, 18).unwrap();
+        assert_eq!(eth, "0.000000004294967295");
+
+        // Note: This covers usize on 64 bit systems.
+        let eth = format_units(u64::MAX, "gwei").unwrap();
+        assert_eq!(eth, "18446744073.709551615");
+
+        let eth = format_units(u128::MAX, 36).unwrap();
+        assert_eq!(eth, "340.282366920938463463374607431768211455");
+    }
+
+    #[test]
+    fn test_format_units_signed() {
+        let eth =
+            format_units(I256::from_dec_str("-1395633240123456000").unwrap(), "ether").unwrap();
+        assert_eq!(eth.parse::<f64>().unwrap(), -1.395633240123456);
+
+        let eth =
+            format_units(I256::from_dec_str("-1395633240123456789").unwrap(), "ether").unwrap();
+        assert_eq!(eth, "-1.395633240123456789");
+
+        let eth =
+            format_units(I256::from_dec_str("1005633240123456789").unwrap(), "ether").unwrap();
+        assert_eq!(eth, "1.005633240123456789");
+
+        let eth = format_units(i8::MIN, 4).unwrap();
+        assert_eq!(eth, "-0.0128");
+        assert_eq!(eth.parse::<f64>().unwrap(), -0.0128_f64);
+
+        let eth = format_units(i8::MAX, 4).unwrap();
+        assert_eq!(eth, "0.0127");
+        assert_eq!(eth.parse::<f64>().unwrap(), 0.0127);
+
+        let eth = format_units(i16::MIN, "ether").unwrap();
+        assert_eq!(eth, "-0.000000000000032768");
+
+        // Note: This covers isize on 32 bit systems.
+        let eth = format_units(i32::MIN, 18).unwrap();
+        assert_eq!(eth, "-0.000000002147483648");
+
+        // Note: This covers isize on 64 bit systems.
+        let eth = format_units(i64::MIN, "gwei").unwrap();
+        assert_eq!(eth, "-9223372036.854775808");
+
+        let eth = format_units(i128::MIN, 36).unwrap();
+        assert_eq!(eth, "-170.141183460469231731687303715884105728");
     }
 
     #[test]

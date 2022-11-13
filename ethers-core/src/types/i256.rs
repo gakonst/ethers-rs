@@ -971,11 +971,19 @@ impl I256 {
         } else {
             let result = self << shift;
             if result.sign() != self.sign() {
-                // Overflow occured
+                // Overflow occurred
                 None
             } else {
                 Some(result)
             }
+        }
+    }
+
+    /// Compute the twos complement of the I256
+    pub fn twos_complement(self) -> U256 {
+        match self.sign() {
+            Sign::Positive => self.into_raw(),
+            Sign::Negative => twos_complement(self.into_raw()),
         }
     }
 }
@@ -1821,5 +1829,26 @@ mod tests {
 
         assert_eq!(I256::from_token(42i32.into_token()).unwrap(), I256::from(42),);
         assert_eq!(I256::from_token(U256::MAX.into_token()).unwrap(), I256::minus_one(),);
+    }
+
+    #[test]
+    fn twos_complement() {
+        macro_rules! assert_twos_complement {
+            ($signed:ty, $unsigned:ty) => {
+                assert_eq!(I256::from(<$signed>::MAX).twos_complement(), U256::from(<$signed>::MAX));
+                assert_eq!(I256::from(<$signed>::MIN).twos_complement(), U256::from(<$signed>::MIN.unsigned_abs()));
+                assert_eq!(I256::from(0 as $signed).twos_complement(), U256::from(0 as $signed));
+
+                assert_eq!(I256::from(<$unsigned>::MAX).twos_complement(), U256::from(<$unsigned>::MAX));
+                assert_eq!(I256::from(0 as $unsigned).twos_complement(), U256::from(0 as $unsigned));
+            };
+        }
+
+        assert_twos_complement!(i8, u8);
+        assert_twos_complement!(i16, u16);
+        assert_twos_complement!(i32, u32);
+        assert_twos_complement!(i64, u64);
+        assert_twos_complement!(i128, u128);
+        assert_twos_complement!(isize, usize);
     }
 }
