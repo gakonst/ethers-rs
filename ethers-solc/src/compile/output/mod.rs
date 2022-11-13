@@ -400,7 +400,9 @@ impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
         if self.compiler_output.is_unchanged() {
             f.write_str("Nothing to compile")
         } else {
-            self.compiler_output.diagnostics(&self.ignored_error_codes, self.compiler_severity_filter.clone()).fmt(f)
+            self.compiler_output
+                .diagnostics(&self.ignored_error_codes, self.compiler_severity_filter.clone())
+                .fmt(f)
         }
     }
 }
@@ -428,15 +430,19 @@ impl AggregatedCompilerOutput {
     }
 
     /// Whether the output contains a compiler error
-    pub fn has_error(&self, ignored_error_codes: &[u64], compiler_severity_filter: &Severity) -> bool {
+    pub fn has_error(
+        &self,
+        ignored_error_codes: &[u64],
+        compiler_severity_filter: &Severity,
+    ) -> bool {
         self.errors.iter().any(|err| {
             if compiler_severity_filter.ge(&err.severity) {
-                if compiler_severity_filter.is_warning()  {
+                if compiler_severity_filter.is_warning() {
                     return self.has_warning(ignored_error_codes)
                 }
                 return true
             }
-            return false
+            false
         })
     }
 
@@ -451,7 +457,11 @@ impl AggregatedCompilerOutput {
         })
     }
 
-    pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64], compiler_severity_filter: Severity) -> OutputDiagnostics {
+    pub fn diagnostics<'a>(
+        &'a self,
+        ignored_error_codes: &'a [u64],
+        compiler_severity_filter: Severity,
+    ) -> OutputDiagnostics {
         OutputDiagnostics { compiler_output: self, ignored_error_codes, compiler_severity_filter }
     }
 
@@ -719,7 +729,7 @@ pub struct OutputDiagnostics<'a> {
 impl<'a> OutputDiagnostics<'a> {
     /// Returns true if there is at least one error of high severity
     pub fn has_error(&self) -> bool {
-        self.compiler_output.has_error(&self.ignored_error_codes, &self.compiler_severity_filter)
+        self.compiler_output.has_error(self.ignored_error_codes, &self.compiler_severity_filter)
     }
 
     /// Returns true if there is at least one warning
