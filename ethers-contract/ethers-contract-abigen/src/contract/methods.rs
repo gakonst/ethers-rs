@@ -1,4 +1,4 @@
-use std::collections::{btree_map::Entry, BTreeMap, HashMap};
+use std::collections::{btree_map::Entry, BTreeMap, HashMap, HashSet};
 
 use super::{types, util, Context};
 use crate::{
@@ -34,7 +34,7 @@ impl Context {
             .map(|function| {
                 let signature = function.abi_signature();
                 self.expand_function(function, aliases.get(&signature).cloned())
-                    .with_context(|| format!("error expanding function '{}'", signature))
+                    .with_context(|| format!("error expanding function '{signature}'"))
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -534,11 +534,21 @@ impl Context {
             }
             // compare each overloaded function with the `first_fun`
             for (idx, overloaded_fun) in functions.into_iter().skip(1) {
+                // keep track of matched params
+                let mut already_matched_param_diff = HashSet::new();
                 // attempt to find diff in the input arguments
                 let mut diff = Vec::new();
                 let mut same_params = true;
                 for (idx, i1) in overloaded_fun.inputs.iter().enumerate() {
-                    if first_fun.inputs.iter().all(|i2| i1 != i2) {
+                    // Find the first param that differs and hasn't already been matched as diff
+                    if let Some((pos, _)) = first_fun
+                        .inputs
+                        .iter()
+                        .enumerate()
+                        .filter(|(pos, _)| !already_matched_param_diff.contains(pos))
+                        .find(|(_, i2)| i1 != *i2)
+                    {
+                        already_matched_param_diff.insert(pos);
                         diff.push(i1);
                         same_params = false;
                     } else {
@@ -593,7 +603,7 @@ impl Context {
                             name_conflicts(*idx, &diffs)
                         {
                             needs_alias_for_first_fun_using_idx = true;
-                            format!("{}{}", overloaded_fun.name.to_snake_case(), idx)
+                            format!("{}{idx}", overloaded_fun.name.to_snake_case())
                         } else {
                             format!(
                                 "{}_with_{}",
@@ -608,7 +618,7 @@ impl Context {
                             name_conflicts(*idx, &diffs)
                         {
                             needs_alias_for_first_fun_using_idx = true;
-                            format!("{}{}", overloaded_fun.name.to_snake_case(), idx)
+                            format!("{}{idx}", overloaded_fun.name.to_snake_case())
                         } else {
                             // 1 + n additional input params
                             let and = diff
@@ -632,7 +642,7 @@ impl Context {
 
             if needs_alias_for_first_fun_using_idx {
                 // insert an alias for the root duplicated call
-                let prev_alias = format!("{}{}", first_fun.name.to_snake_case(), first_fun_idx);
+                let prev_alias = format!("{}{first_fun_idx}", first_fun.name.to_snake_case());
 
                 let alias = MethodAlias::new(&prev_alias);
 
@@ -698,9 +708,9 @@ fn expand_struct_name_postfix(
     postfix: &str,
 ) -> Ident {
     let name = if let Some(alias) = alias {
-        format!("{}{}", alias.struct_name, postfix)
+        format!("{}{postfix}", alias.struct_name)
     } else {
-        format!("{}{}", util::safe_pascal_case(&function.name), postfix)
+        format!("{}{postfix}", util::safe_pascal_case(&function.name))
     };
     util::ident(&name)
 }

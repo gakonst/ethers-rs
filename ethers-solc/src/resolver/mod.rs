@@ -787,7 +787,7 @@ impl VersionedSources {
             } else {
                 // find installed svm
                 Solc::find_svm_installed_version(version.to_string())?.ok_or_else(|| {
-                    SolcError::msg(format!("solc \"{}\" should have been installed", version))
+                    SolcError::msg(format!("solc \"{version}\" should have been installed"))
                 })?
             };
 

@@ -127,7 +127,7 @@ impl StructFieldType {
         if path.is_empty() {
             name.to_string()
         } else {
-            format!("{}.{}", path, name)
+            format!("{path}.{name}")
         }
     }
 

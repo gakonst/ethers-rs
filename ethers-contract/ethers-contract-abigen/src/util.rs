@@ -19,7 +19,7 @@ pub fn ident(name: &str) -> Ident {
 ///
 /// Parsing keywords like `self` can fail, in this case we add an underscore.
 pub fn safe_ident(name: &str) -> Ident {
-    syn::parse_str::<SynIdent>(name).unwrap_or_else(|_| ident(&format!("{}_", name)))
+    syn::parse_str::<SynIdent>(name).unwrap_or_else(|_| ident(&format!("{name}_")))
 }
 
 ///  Converts a `&str` to `snake_case` `String` while respecting identifier rules
@@ -35,7 +35,7 @@ pub fn safe_pascal_case(ident: &str) -> String {
 /// respects identifier rules, such as, an identifier must not start with a numeric char
 fn safe_identifier_name(name: String) -> String {
     if name.starts_with(|c: char| c.is_numeric()) {
-        format!("_{}", name)
+        format!("_{name}")
     } else {
         name
     }
@@ -76,7 +76,7 @@ pub fn preserve_underscore_delim(ident: &str, alias: &str) -> String {
 /// identifiers that are reserved keywords get `_` appended to them.
 pub fn expand_input_name(index: usize, name: &str) -> TokenStream {
     let name_str = match name {
-        "" => format!("p{}", index),
+        "" => format!("p{index}"),
         n => n.to_snake_case(),
     };
     let name = safe_ident(&name_str);

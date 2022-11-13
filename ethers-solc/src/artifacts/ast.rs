@@ -73,7 +73,7 @@ impl FromStr for SourceLocation {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let invalid_location = move || format!("{} invalid source location", s);
+        let invalid_location = move || format!("{s} invalid source location");
 
         let mut split = s.split(':');
         let start = split

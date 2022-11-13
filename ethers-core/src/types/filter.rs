@@ -626,7 +626,7 @@ where
         }
 
         match serde_json::from_value::<Variadic<T>>(value).map_err(|err| {
-            serde::de::Error::custom(format!("Invalid variadic value or array type: {}", err))
+            serde::de::Error::custom(format!("Invalid variadic value or array type: {err}"))
         })? {
             Variadic::Value(val) => Ok(ValueOrArray::Value(val)),
             Variadic::Array(arr) => Ok(ValueOrArray::Array(arr)),

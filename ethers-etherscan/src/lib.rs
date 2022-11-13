@@ -139,22 +139,22 @@ impl Client {
 
     /// Return the URL for the given block number
     pub fn block_url(&self, block: u64) -> String {
-        format!("{}block/{}", self.etherscan_url, block)
+        format!("{}block/{block}", self.etherscan_url)
     }
 
     /// Return the URL for the given address
     pub fn address_url(&self, address: Address) -> String {
-        format!("{}address/{:?}", self.etherscan_url, address)
+        format!("{}address/{address:?}", self.etherscan_url)
     }
 
     /// Return the URL for the given transaction hash
     pub fn transaction_url(&self, tx_hash: H256) -> String {
-        format!("{}tx/{:?}", self.etherscan_url, tx_hash)
+        format!("{}tx/{tx_hash:?}", self.etherscan_url)
     }
 
     /// Return the URL for the given token hash
     pub fn token_url(&self, token_hash: Address) -> String {
-        format!("{}token/{:?}", self.etherscan_url, token_hash)
+        format!("{}token/{token_hash:?}", self.etherscan_url)
     }
 
     /// Execute an GET request with parameters.
@@ -373,7 +373,7 @@ impl Cache {
     }
 
     fn set<T: Serialize>(&self, prefix: &str, address: Address, item: T) {
-        let path = self.root.join(prefix).join(format!("{:?}.json", address));
+        let path = self.root.join(prefix).join(format!("{address:?}.json"));
         let writer = std::fs::File::create(path).ok().map(std::io::BufWriter::new);
         if let Some(mut writer) = writer {
             let _ = serde_json::to_writer(
@@ -393,7 +393,7 @@ impl Cache {
     }
 
     fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Option<T> {
-        let path = self.root.join(prefix).join(format!("{:?}.json", address));
+        let path = self.root.join(prefix).join(format!("{address:?}.json"));
         let reader = std::io::BufReader::new(std::fs::File::open(path).ok()?);
         if let Ok(inner) = serde_json::from_reader::<_, CacheEnvelope<T>>(reader) {
             // If this does not return None then we have passed the expiry
@@ -459,7 +459,7 @@ mod tests {
         let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
         let block: u64 = 1;
         let block_url: String = etherscan.block_url(block);
-        assert_eq!(block_url, format!("https://etherscan.io/block/{}", block));
+        assert_eq!(block_url, format!("https://etherscan.io/block/{block}"));
     }
 
     #[test]
@@ -467,7 +467,7 @@ mod tests {
         let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
         let addr: Address = Address::zero();
         let address_url: String = etherscan.address_url(addr);
-        assert_eq!(address_url, format!("https://etherscan.io/address/{:?}", addr));
+        assert_eq!(address_url, format!("https://etherscan.io/address/{addr:?}"));
     }
 
     #[test]
@@ -475,7 +475,7 @@ mod tests {
         let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
         let tx_hash = H256::zero();
         let tx_url: String = etherscan.transaction_url(tx_hash);
-        assert_eq!(tx_url, format!("https://etherscan.io/tx/{:?}", tx_hash));
+        assert_eq!(tx_url, format!("https://etherscan.io/tx/{tx_hash:?}"));
     }
 
     #[test]
@@ -483,7 +483,7 @@ mod tests {
         let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
         let token_hash = Address::zero();
         let token_url: String = etherscan.token_url(token_hash);
-        assert_eq!(token_url, format!("https://etherscan.io/token/{:?}", token_hash));
+        assert_eq!(token_url, format!("https://etherscan.io/token/{token_hash:?}"));
     }
 
     #[test]

@@ -448,16 +448,16 @@ impl TokenQueryOption {
         let mut params: HashMap<&'static str, String> = list_params.into();
         match self {
             TokenQueryOption::ByAddress(address) => {
-                params.insert("address", format!("{:?}", address));
+                params.insert("address", format!("{address:?}"));
                 params
             }
             TokenQueryOption::ByContract(contract) => {
-                params.insert("contractaddress", format!("{:?}", contract));
+                params.insert("contractaddress", format!("{contract:?}"));
                 params
             }
             TokenQueryOption::ByAddressAndContract(address, contract) => {
-                params.insert("address", format!("{:?}", address));
-                params.insert("contractaddress", format!("{:?}", contract));
+                params.insert("address", format!("{address:?}"));
+                params.insert("contractaddress", format!("{contract:?}"));
                 params
             }
         }
@@ -507,7 +507,7 @@ impl Client {
         tag: Option<Tag>,
     ) -> Result<AccountBalance> {
         let tag_str = tag.unwrap_or_default().to_string();
-        let addr_str = format!("{:?}", address);
+        let addr_str = format!("{address:?}");
         let query = self.create_query(
             "account",
             "balance",
@@ -542,7 +542,7 @@ impl Client {
         tag: Option<Tag>,
     ) -> Result<Vec<AccountBalance>> {
         let tag_str = tag.unwrap_or_default().to_string();
-        let addrs = addresses.iter().map(|x| format!("{:?}", x)).collect::<Vec<String>>().join(",");
+        let addrs = addresses.iter().map(|x| format!("{x:?}")).collect::<Vec<String>>().join(",");
         let query: Query<HashMap<&str, &str>> = self.create_query(
             "account",
             "balancemulti",
@@ -577,7 +577,7 @@ impl Client {
         params: Option<TxListParams>,
     ) -> Result<Vec<NormalTransaction>> {
         let mut tx_params: HashMap<&str, String> = params.unwrap_or_default().into();
-        tx_params.insert("address", format!("{:?}", address));
+        tx_params.insert("address", format!("{address:?}"));
         let query = self.create_query("account", "txlist", tx_params);
         let response: Response<Vec<NormalTransaction>> = self.get_json(&query).await?;
 
@@ -608,10 +608,10 @@ impl Client {
         let mut tx_params: HashMap<&str, String> = params.unwrap_or_default().into();
         match tx_query_option {
             InternalTxQueryOption::ByAddress(address) => {
-                tx_params.insert("address", format!("{:?}", address));
+                tx_params.insert("address", format!("{address:?}"));
             }
             InternalTxQueryOption::ByTransactionHash(tx_hash) => {
-                tx_params.insert("txhash", format!("{:?}", tx_hash));
+                tx_params.insert("txhash", format!("{tx_hash:?}"));
             }
             _ => {}
         }
@@ -730,7 +730,7 @@ impl Client {
         page_and_offset: Option<(u64, u64)>,
     ) -> Result<Vec<MinedBlock>> {
         let mut params = HashMap::new();
-        params.insert("address", format!("{:?}", address));
+        params.insert("address", format!("{address:?}"));
         params.insert("blocktype", block_type.unwrap_or_default().to_string());
         if let Some((page, offset)) = page_and_offset {
             params.insert("page", page.to_string());

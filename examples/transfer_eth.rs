@@ -30,8 +30,8 @@ async fn main() -> Result<()> {
     let balance_after = provider.get_balance(from, None).await?;
     assert!(balance_after < balance_before);
 
-    println!("Balance before {}", balance_before);
-    println!("Balance after {}", balance_after);
+    println!("Balance before {balance_before}");
+    println!("Balance after {balance_after}");
 
     Ok(())
 }

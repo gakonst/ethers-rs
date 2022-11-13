@@ -14,7 +14,7 @@ use thiserror::Error;
 
 /// The block type returned from RPC calls.
 /// This is generic over a `TX` type which will be either the hash or the full transaction,
-/// i.e. `Block<TxHash>` or Block<Transaction>`.
+/// i.e. `Block<TxHash>` or `Block<Transaction>`.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Block<TX> {
     /// Hash of the block
@@ -461,7 +461,7 @@ impl Serialize for BlockId {
         match *self {
             BlockId::Hash(ref x) => {
                 let mut s = serializer.serialize_struct("BlockIdEip1898", 1)?;
-                s.serialize_field("blockHash", &format!("{:?}", x))?;
+                s.serialize_field("blockHash", &format!("{x:?}"))?;
                 s.end()
             }
             BlockId::Number(ref num) => num.serialize(serializer),
@@ -599,7 +599,7 @@ impl Serialize for BlockNumber {
         S: Serializer,
     {
         match *self {
-            BlockNumber::Number(ref x) => serializer.serialize_str(&format!("0x{:x}", x)),
+            BlockNumber::Number(ref x) => serializer.serialize_str(&format!("0x{x:x}")),
             BlockNumber::Latest => serializer.serialize_str("latest"),
             BlockNumber::Finalized => serializer.serialize_str("finalized"),
             BlockNumber::Safe => serializer.serialize_str("safe"),
@@ -638,7 +638,7 @@ impl FromStr for BlockNumber {
 impl fmt::Display for BlockNumber {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            BlockNumber::Number(ref x) => format!("0x{:x}", x).fmt(f),
+            BlockNumber::Number(ref x) => format!("0x{x:x}").fmt(f),
             BlockNumber::Latest => f.write_str("latest"),
             BlockNumber::Finalized => f.write_str("finalized"),
             BlockNumber::Safe => f.write_str("safe"),

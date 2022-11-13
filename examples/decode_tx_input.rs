@@ -18,8 +18,8 @@ fn main() -> Result<()> {
     let from = path.next().unwrap();
     let to = path.next().unwrap();
     println!(
-        "Swapped {} of token {} for {} of token {}",
-        decoded.amount_in, from, decoded.amount_out_min, to
+        "Swapped {} of token {from} for {} of token {to}",
+        decoded.amount_in, decoded.amount_out_min
     );
 
     Ok(())

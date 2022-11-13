@@ -85,7 +85,7 @@ fn can_gen_structs_readable() {
     assert_codec::<Value>();
     assert_codec::<Addresses>();
     let encoded = addr.clone().encode();
-    let other = Addresses::decode(&encoded).unwrap();
+    let other = Addresses::decode(encoded).unwrap();
     assert_eq!(addr, other);
 }
 
@@ -178,7 +178,7 @@ fn can_gen_return_struct() {
         binding: T,
     ) {
         let encoded = binding.clone().encode();
-        let decoded = T::decode(&encoded).unwrap();
+        let decoded = T::decode(encoded).unwrap();
         assert_eq!(binding, decoded);
     }
 
@@ -736,4 +736,17 @@ fn can_generate_event_with_structs() {
     let _filter = MyEventFilter { p0: MyStruct::default(), c: U256::zero() };
     assert_eq!("MyEvent((uint256,uint256),uint256)", MyEventFilter::abi_signature());
     assert_event::<MyEventFilter>();
+}
+
+#[test]
+fn can_handle_overloaded_function_with_array() {
+    abigen!(
+        Test,
+        r#"[
+         serializeString(string calldata, string calldata, string calldata) external returns (string memory)
+         serializeString(string calldata, string calldata, string[] calldata) external returns (string memory)
+         serializeBool(string calldata, string calldata, bool) external returns (string memory)
+         serializeBool(string calldata, string calldata, bool[] calldata) external returns (string memory)
+    ]"#,
+    );
 }

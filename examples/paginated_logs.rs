@@ -10,7 +10,7 @@ async fn main() -> Result<()> {
     let client = Arc::new(client);
 
     let last_block = client.get_block(BlockNumber::Latest).await?.unwrap().number.unwrap();
-    println!("last_block: {}", last_block);
+    println!("last_block: {last_block}");
 
     let erc20_transfer_filter = Filter::new()
         .from_block(last_block - 10000)
