@@ -493,8 +493,8 @@ mod tests {
         assert_eq!(parse_units("3_3_0", 3).unwrap(), U256::from(330000), "underscore");
         assert_eq!(parse_units("330", 0).unwrap(), U256::from(330), "zero decimals");
         assert_eq!(parse_units(".1234", 3).unwrap(), U256::from(123), "truncate too many decimals");
-        assert_eq!(parse_units("1", 80).is_err(), true, "overflow");
-        assert_eq!(parse_units("1", -1).is_err(), true, "neg units");
+        assert!(parse_units("1", 80).is_err(), "overflow");
+        assert!(parse_units("1", -1).is_err(), "neg units");
         let two_e30 = U256::from(2) * U256([0x4674edea40000000, 0xc9f2c9cd0, 0x0, 0x0]);
         assert_eq!(parse_units("2", 30).unwrap(), two_e30, "2e30");
         assert_eq!(parse_units(".33_319_2", 0).unwrap(), U256::zero(), "mix");
