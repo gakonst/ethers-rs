@@ -188,7 +188,7 @@ impl Default for RetryClientBuilder {
             timeout_retries: 3,
             // this should be enough to even out heavy loads
             rate_limit_retries: 10,
-            initial_backoff: Duration::from_millis(100),
+            initial_backoff: Duration::from_millis(1000),
             // alchemy max cpus <https://github.com/alchemyplatform/alchemy-docs/blob/master/documentation/compute-units.md#rate-limits-cups>
             compute_units_per_second: 330,
         }
@@ -289,13 +289,7 @@ where
                 // try to extract the requested backoff from the error or compute the next backoff
                 // based on retry count
                 let mut next_backoff = self.policy.backoff_hint(&err).unwrap_or_else(|| {
-                    // using `retry_number` for creating back pressure because
-                    // of already queued requests
-                    // this increases exponentially with retries and adds a delay based on how many
-                    // requests are currently queued
-                    Duration::from_millis(
-                        self.initial_backoff.as_millis().pow(rate_limit_retry_number) as u64,
-                    )
+                    Duration::from_millis(self.initial_backoff.as_millis() as u64)
                 });
 
                 // requests are usually weighted and can vary from 10 CU to several 100 CU, cheaper
