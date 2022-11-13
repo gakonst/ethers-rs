@@ -1021,7 +1021,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         block: Option<BlockNumber>,
         trace_options: GethDebugTracingOptions,
         state_overrides: spoof::State,
-    ) -> Result<GethCallTrace, ProviderError> {
+    ) -> Result<Vec<Vec<GethCallTrace>>, ProviderError> {
         let txs: Vec<TypedTransaction> = txs.into_iter().map(|x| x.into()).collect();
         //let txs= utils::serialize(&txs);
 

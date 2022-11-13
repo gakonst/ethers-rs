@@ -15,6 +15,9 @@ pub use struct_def::SolStruct;
 mod codec;
 pub use codec::{AbiDecode, AbiEncode};
 
+mod encode_packed;
+pub use encode_packed::{abi::encode_packed, SolidityDataType, TakeLastXBytes};
+
 mod error;
 pub use error::{AbiError, ParseError};
 
