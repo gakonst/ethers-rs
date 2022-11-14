@@ -93,7 +93,9 @@
 -   [#1632](https://github.com/gakonst/ethers-rs/pull/1632) Re-export `H32` from `ethabi`.
 -   [#1634](https://github.com/gakonst/ethers-rs/pull/1634) Derive missing `Clone`, `Copy` and `Debug` impls in ethers-etherscan.
 -   Bytes debug format now displays hex literals [#1658](https://github.com/gakonst/ethers-rs/pull/1658)
-- [#1451](https://github.com/gakonst/ethers-rs/issues/1451) Add Arithemtic Shift Left operation for I256 
+-   [#1451](https://github.com/gakonst/ethers-rs/issues/1451) Add Arithemtic Shift Left operation for I256
+-   Update I256 type documentation calling out the inconsistency between its right shift operator and
+    standard library numeric types.
 
 ## ethers-contract-abigen
 
