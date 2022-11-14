@@ -67,7 +67,7 @@ pub enum OpCode {
 
     // 0x20 range - crypto.
     /// Opcode 0x20 - Compute Keccak-256 hash
-    KECCAK256,
+    SHA3,
 
     // 0x21 - 0x2F are invalid
 
