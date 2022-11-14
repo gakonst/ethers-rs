@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+-   Add 'ethers_core::types::OpCode' and use in 'ethers_core::types::VMOperation' [1857](https://github.com/gakonst/ethers-rs/issues/1857)
 -   Remove rust_decimals dependency for ethers-core
 -   Add support for numbers greater than 2^96 for `ethers_core::utils::parse_units` [#1822](https://github.com/gakonst/ethers-rs/issues/1822)
 -   Add comment about safety of u8 -> u64 cast in `ethers_core::types::Signature`
