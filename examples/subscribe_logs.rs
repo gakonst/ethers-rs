@@ -16,7 +16,7 @@ async fn main() -> Result<()> {
 
     let erc20_transfer_filter = Filter::new()
         .from_block(last_block - 25)
-        .topic0(ValueOrArray::Value(H256::from(keccak256("Transfer(address,address,uint256)"))));
+        .event("Transfer(address,address,uint256)");
 
     let mut stream = client.subscribe_logs(&erc20_transfer_filter).await?;
 
