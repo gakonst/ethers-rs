@@ -29,6 +29,7 @@ dunce = "1.0.2"
 walkdir = "2.3.2"
 eyre = "0.6"
 regex = "1.6.0"
+toml = "0.5.9"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly

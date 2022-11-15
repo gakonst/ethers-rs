@@ -1,4 +1,5 @@
 //! Generate bindings for multiple `Abigen`
+use crate::{util, Abigen, Context, ContractBindings, ContractFilter, ExpandedContract};
 use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::TokenStream;
@@ -7,10 +8,9 @@ use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     fs,
     io::Write,
-    path::Path,
+    path::{Path, PathBuf},
 };
-
-use crate::{util, Abigen, Context, ContractBindings, ContractFilter, ExpandedContract};
+use toml::Value;
 
 /// Collects Abigen structs for a series of contracts, pending generation of
 /// the contract bindings.
@@ -553,6 +553,7 @@ impl MultiBindingsInner {
         &self,
         name: impl AsRef<str>,
         version: impl AsRef<str>,
+        crate_version: String,
     ) -> Result<Vec<u8>> {
         let mut toml = vec![];
 
@@ -564,13 +565,29 @@ impl MultiBindingsInner {
         writeln!(toml, "# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html")?;
         writeln!(toml)?;
         writeln!(toml, "[dependencies]")?;
-        writeln!(
-            toml,
-            r#"
-ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = false, features = ["abigen"] }}
-"#
-        )?;
+        writeln!(toml, r#"{}"#, crate_version)?;
         Ok(toml)
+    }
+
+    /// parses the active Cargo.toml to get what version of ethers we are using
+    fn find_crate_version(&self) -> Result<String> {
+        let cargo_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+        let data = std::fs::read_to_string(cargo_dir)?;
+        let toml = data.parse::<Value>()?;
+
+        let Some(ethers) = toml.get("dependencies")
+            .and_then (|v| v.get("ethers").or_else(|| v.get("ethers-contract")))
+            else { eyre::bail!("couldn't find ethers or ethers-contract dependency")};
+        if let Some(rev) = ethers.get("rev") {
+            Ok(format!("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", rev = {}, default-features = false, features = [\"abigen\"] }}", rev))
+        } else if let Some(version) = ethers.get("version") {
+            Ok(format!(
+                "ethers = {{ version = {}, default-features = false, features = [\"abigen\"] }}",
+                version
+            ))
+        } else {
+            Ok("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }}".to_string())
+        }
     }
 
     /// Write the contents of `Cargo.toml` to disk
@@ -580,7 +597,8 @@ ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = fal
         name: impl AsRef<str>,
         version: impl AsRef<str>,
     ) -> Result<()> {
-        let contents = self.generate_cargo_toml(name, version)?;
+        let crate_version = self.find_crate_version()?;
+        let contents = self.generate_cargo_toml(name, version, crate_version)?;
 
         let mut file = fs::OpenOptions::new()
             .read(true)
@@ -717,7 +735,8 @@ ethers = {{ git = "https://github.com/gakonst/ethers-rs", default-features = fal
 
         if check_cargo_toml {
             // additionally check the contents of the cargo
-            let cargo_contents = self.generate_cargo_toml(name, version)?;
+            let crate_version = self.find_crate_version()?;
+            let cargo_contents = self.generate_cargo_toml(name, version, crate_version)?;
             check_file_in_dir(crate_path, "Cargo.toml", &cargo_contents)?;
         }
 
@@ -775,7 +794,7 @@ mod tests {
 
     use crate::{ExcludeContracts, SelectContracts};
     use ethers_solc::project_util::TempProject;
-    use std::{panic, path::PathBuf};
+    use std::{env, panic, path::PathBuf};
 
     struct Context {
         multi_gen: MultiAbigen,
@@ -1237,5 +1256,196 @@ contract Enum {
         assert!(mod_.exists());
         let content = fs::read_to_string(&mod_).unwrap();
         assert!(content.contains("pub mod mod_ {"));
+    }
+
+    #[test]
+    fn parse_ethers_crate() {
+        // gotta bunch these all together as we are overwriting env vars
+        run_test(|context| {
+            let Context { multi_gen, mod_root } = context;
+            let tmp = TempProject::dapptools().unwrap();
+
+            tmp.add_source(
+            "Cargo.toml",
+            r#"
+ [package]
+        name = "ethers-contract"
+        version = "1.0.0"
+        edition = "2018"
+        rust-version = "1.62"
+        authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+        license = "MIT OR Apache-2.0"
+        description = "Smart contract bindings for the ethers-rs crate"
+        homepage = "https://docs.rs/ethers"
+        repository = "https://github.com/gakonst/ethers-rs"
+        keywords = ["ethereum", "web3", "celo", "ethers"]
+
+        [dependencies]
+        ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-features = false }
+"#,
+        )
+        .unwrap();
+
+            let _ = tmp.compile().unwrap();
+            env::set_var("CARGO_MANIFEST_DIR", tmp.root());
+            let single_file = false;
+            let name = "a-name";
+            let version = "290.3782.3";
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .write_to_crate(name, version, mod_root, single_file)
+                .unwrap();
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .ensure_consistent_crate(name, version, mod_root, single_file, true)
+                .expect("Inconsistent bindings");
+        });
+
+        run_test(|context| {
+            let Context { multi_gen, mod_root } = context;
+            let tmp = TempProject::dapptools().unwrap();
+
+            tmp.add_source(
+                "Cargo.toml",
+                r#"
+ [package]
+        name = "ethers-contract"
+        version = "1.0.0"
+        edition = "2018"
+        rust-version = "1.62"
+        authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+        license = "MIT OR Apache-2.0"
+        description = "Smart contract bindings for the ethers-rs crate"
+        homepage = "https://docs.rs/ethers"
+        repository = "https://github.com/gakonst/ethers-rs"
+        keywords = ["ethereum", "web3", "celo", "ethers"]
+
+        [dependencies]
+        ethers-contracts = "0.4.0"
+"#,
+            )
+            .unwrap();
+
+            let _ = tmp.compile().unwrap();
+            env::set_var("CARGO_MANIFEST_DIR", tmp.root());
+
+            let single_file = false;
+            let name = "a-name";
+            let version = "290.3782.3";
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .write_to_crate(name, version, mod_root, single_file)
+                .unwrap();
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .ensure_consistent_crate(name, version, mod_root, single_file, true)
+                .expect("Inconsistent bindings");
+        });
+
+        run_test(|context| {
+            let Context { multi_gen, mod_root } = context;
+            let tmp = TempProject::dapptools().unwrap();
+
+            tmp.add_source(
+            "Cargo.toml",
+            r#"
+    [package]
+        name = "ethers-contract"
+        version = "1.0.0"
+        edition = "2018"
+        rust-version = "1.62"
+        authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+        license = "MIT OR Apache-2.0"
+        description = "Smart contract bindings for the ethers-rs crate"
+        homepage = "https://docs.rs/ethers"
+        repository = "https://github.com/gakonst/ethers-rs"
+        keywords = ["ethereum", "web3", "celo", "ethers"]
+
+        [dependencies]
+        ethers = {git="https://github.com/gakonst/ethers-rs", rev = "fd8ebf5",features = ["ws", "rustls", "ipc"] }
+"#,
+        )
+        .unwrap();
+
+            let _ = tmp.compile().unwrap();
+            env::set_var("CARGO_MANIFEST_DIR", tmp.root());
+
+            let single_file = false;
+            let name = "a-name";
+            let version = "290.3782.3";
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .write_to_crate(name, version, mod_root, single_file)
+                .unwrap();
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .ensure_consistent_crate(name, version, mod_root, single_file, true)
+                .expect("Inconsistent bindings");
+        });
+
+        run_test(|context| {
+            let Context { multi_gen, mod_root } = context;
+            let tmp = TempProject::dapptools().unwrap();
+
+            tmp.add_source(
+                "Cargo.toml",
+                r#"
+    [package]
+        name = "ethers-contract"
+        version = "1.0.0"
+        edition = "2018"
+        rust-version = "1.62"
+        authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+        license = "MIT OR Apache-2.0"
+        description = "Smart contract bindings for the ethers-rs crate"
+        homepage = "https://docs.rs/ethers"
+        repository = "https://github.com/gakonst/ethers-rs"
+        keywords = ["ethereum", "web3", "celo", "ethers"]
+
+        [dependencies]
+        ethers = {git="https://github.com/gakonst/ethers-rs" ,features = ["ws", "rustls", "ipc"] }
+"#,
+            )
+            .unwrap();
+
+            let _ = tmp.compile().unwrap();
+            env::set_var("CARGO_MANIFEST_DIR", tmp.root());
+
+            let single_file = false;
+            let name = "a-name";
+            let version = "290.3782.3";
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .write_to_crate(name, version, mod_root, single_file)
+                .unwrap();
+
+            multi_gen
+                .clone()
+                .build()
+                .unwrap()
+                .ensure_consistent_crate(name, version, mod_root, single_file, true)
+                .expect("Inconsistent bindings");
+        });
     }
 }
