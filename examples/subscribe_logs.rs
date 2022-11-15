@@ -14,9 +14,8 @@ async fn main() -> Result<()> {
     let last_block = client.get_block(BlockNumber::Latest).await?.unwrap().number.unwrap();
     println!("last_block: {last_block}");
 
-    let erc20_transfer_filter = Filter::new()
-        .from_block(last_block - 25)
-        .event("Transfer(address,address,uint256)");
+    let erc20_transfer_filter =
+        Filter::new().from_block(last_block - 25).event("Transfer(address,address,uint256)");
 
     let mut stream = client.subscribe_logs(&erc20_transfer_filter).await?;
 

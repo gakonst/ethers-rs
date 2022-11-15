@@ -8,7 +8,7 @@ use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     fs,
     io::Write,
-    path::{Path, PathBuf},
+    path::Path,
 };
 use toml::Value;
 
