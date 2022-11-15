@@ -181,7 +181,7 @@ impl JsonRpcClient for Ws {
             sender,
         };
 
-        println!("{:#?}", payload);
+        //println!("{:#?}", payload);
 
         // send the data
         self.send(payload)?;
