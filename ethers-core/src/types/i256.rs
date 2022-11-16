@@ -89,6 +89,12 @@ impl Sign {
 }
 
 /// Little-endian 256-bit signed integer.
+///
+/// ## Diversion from standard numeric types
+/// The right shift operator on I256 doesn't act in the same manner as standard numeric types
+/// (e.g. `i8`, `i16` etc). On standard types if the number is negative right shift will perform
+/// an arithmetic shift, whereas on I256 this will perform a bit-wise shift.
+/// Arithmetic shift on I256 is done via the [asr](I256::asr) and [asl](I256::asl) functions.
 #[derive(Clone, Copy, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(transparent)]
 pub struct I256(U256);

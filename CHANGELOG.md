@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+-   Add 'ethers_core::types::OpCode' and use in 'ethers_core::types::VMOperation' [1857](https://github.com/gakonst/ethers-rs/issues/1857)
 -   Remove rust_decimals dependency for ethers-core
 -   Add support for numbers greater than 2^96 for `ethers_core::utils::parse_units` [#1822](https://github.com/gakonst/ethers-rs/issues/1822)
 -   Add comment about safety of u8 -> u64 cast in `ethers_core::types::Signature`
@@ -93,12 +94,14 @@
 -   [#1632](https://github.com/gakonst/ethers-rs/pull/1632) Re-export `H32` from `ethabi`.
 -   [#1634](https://github.com/gakonst/ethers-rs/pull/1634) Derive missing `Clone`, `Copy` and `Debug` impls in ethers-etherscan.
 -   Bytes debug format now displays hex literals [#1658](https://github.com/gakonst/ethers-rs/pull/1658)
-- [#1451](https://github.com/gakonst/ethers-rs/issues/1451) Add Arithemtic Shift Left operation for I256 
+-   [#1451](https://github.com/gakonst/ethers-rs/issues/1451) Add Arithemtic Shift Left operation for I256
+-   [#1860](https://github.com/gakonst/ethers-rs/pull/1860)Update I256 type documentation calling out the inconsistency 
+    between its right shift operator and standard library numeric types.
 
 ## ethers-contract-abigen
 
 ### Unreleased
-
+-   Fix Cargo.toml generation issue that could cause dependency conflicts [#1852](https://github.com/gakonst/ethers-rs/pull/1852)
 -   Use corresponding rust structs for event fields if they're solidity structs [#1674](https://github.com/gakonst/ethers-rs/pull/1674)
 -   Add `ContractFilter` to filter contracts in `MultiAbigen` [#1564](https://github.com/gakonst/ethers-rs/pull/1564)
 -   generate error bindings for custom errors [#1549](https://github.com/gakonst/ethers-rs/pull/1549)
