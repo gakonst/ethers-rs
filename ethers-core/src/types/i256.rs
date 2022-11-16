@@ -4,6 +4,7 @@
 use crate::{
     abi::{InvalidOutputType, Token, Tokenizable},
     types::U256,
+    utils::ParseUnits,
 };
 use ethabi::ethereum_types::FromDecStrErr;
 use serde::{Deserialize, Serialize};
@@ -1050,6 +1051,15 @@ impl TryFrom<I256> for U256 {
     }
 }
 
+impl From<ParseUnits> for I256 {
+    fn from(n: ParseUnits) -> Self {
+        match n {
+            ParseUnits::U256(n) => Self::from_raw(n),
+            ParseUnits::I256(n) => n,
+        }
+    }
+}
+
 impl str::FromStr for I256 {
     type Err = ParseI256Error;
 
@@ -1841,12 +1851,24 @@ mod tests {
     fn twos_complement() {
         macro_rules! assert_twos_complement {
             ($signed:ty, $unsigned:ty) => {
-                assert_eq!(I256::from(<$signed>::MAX).twos_complement(), U256::from(<$signed>::MAX));
-                assert_eq!(I256::from(<$signed>::MIN).twos_complement(), U256::from(<$signed>::MIN.unsigned_abs()));
+                assert_eq!(
+                    I256::from(<$signed>::MAX).twos_complement(),
+                    U256::from(<$signed>::MAX)
+                );
+                assert_eq!(
+                    I256::from(<$signed>::MIN).twos_complement(),
+                    U256::from(<$signed>::MIN.unsigned_abs())
+                );
                 assert_eq!(I256::from(0 as $signed).twos_complement(), U256::from(0 as $signed));
 
-                assert_eq!(I256::from(<$unsigned>::MAX).twos_complement(), U256::from(<$unsigned>::MAX));
-                assert_eq!(I256::from(0 as $unsigned).twos_complement(), U256::from(0 as $unsigned));
+                assert_eq!(
+                    I256::from(<$unsigned>::MAX).twos_complement(),
+                    U256::from(<$unsigned>::MAX)
+                );
+                assert_eq!(
+                    I256::from(0 as $unsigned).twos_complement(),
+                    U256::from(0 as $unsigned)
+                );
             };
         }
 

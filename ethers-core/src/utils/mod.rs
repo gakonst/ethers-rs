@@ -31,7 +31,7 @@ pub use rlp;
 /// Re-export hex
 pub use hex;
 
-use crate::types::{Address, Bytes, I256, U256};
+use crate::types::{Address, Bytes, ParseI256Error, I256, U256};
 use elliptic_curve::sec1::ToEncodedPoint;
 use ethabi::ethereum_types::FromDecStrErr;
 use k256::{ecdsa::SigningKey, PublicKey as K256PublicKey};
@@ -58,6 +58,8 @@ pub enum ConversionError {
     FromDecStrError(#[from] FromDecStrErr),
     #[error("Overflow parsing string")]
     ParseOverflow,
+    #[error(transparent)]
+    ParseI256Error(#[from] ParseI256Error),
 }
 
 /// 1 Ether = 1e18 Wei == 0x0de0b6b3a7640000 Wei
@@ -76,17 +78,27 @@ pub const EIP1559_FEE_ESTIMATION_PRIORITY_FEE_TRIGGER: u64 = 100_000_000_000;
 /// under it.
 pub const EIP1559_FEE_ESTIMATION_THRESHOLD_MAX_CHANGE: i64 = 200;
 
-/// The types that can use used for format parsing.
+/// This enum holds the numeric types that a possible to be returned by `parse_units` and
+/// that are taken by `format_units`.
 #[derive(Copy, Clone)]
-pub enum BigNumbers {
+pub enum ParseUnits {
     U256(U256),
     I256(I256),
 }
 
-macro_rules! construct_big_numbers_from {
+impl From<ParseUnits> for U256 {
+    fn from(n: ParseUnits) -> Self {
+        match n {
+            ParseUnits::U256(n) => n,
+            ParseUnits::I256(n) => n.into_raw(),
+        }
+    }
+}
+
+macro_rules! construct_format_units_from {
     ($( $t:ty[$convert:ident] ),*) => {
         $(
-            impl From<$t> for BigNumbers {
+            impl From<$t> for ParseUnits {
                 fn from(num: $t) -> Self {
                     Self::$convert(num.into())
                 }
@@ -96,8 +108,7 @@ macro_rules! construct_big_numbers_from {
 }
 
 // Generate the From<T> code for the given numeric types below.
-construct_big_numbers_from!
-{
+construct_format_units_from! {
     u8[U256], u16[U256], u32[U256], u64[U256], u128[U256], U256[U256], usize[U256],
     i8[I256], i16[I256], i32[I256], i64[I256], i128[I256], I256[I256], isize[I256]
 }
@@ -132,12 +143,12 @@ pub fn format_ether<T: Into<U256>>(amount: T) -> U256 {
 /// ```
 pub fn format_units<T, K>(amount: T, units: K) -> Result<String, ConversionError>
 where
-    T: Into<BigNumbers>,
+    T: Into<ParseUnits>,
     K: TryInto<Units, Error = ConversionError>,
 {
     let units = units.try_into()?;
     match amount.into() {
-        BigNumbers::U256(amount) => {
+        ParseUnits::U256(amount) => {
             let amount_decimals = amount % U256::from(10_u128.pow(units.as_num()));
             let amount_integer = amount / U256::from(10_u128.pow(units.as_num()));
             Ok(format!(
@@ -146,8 +157,8 @@ where
                 amount_decimals.as_u128(),
                 width = units.as_num() as usize
             ))
-        },
-        BigNumbers::I256(amount) => {
+        }
+        ParseUnits::I256(amount) => {
             let sign = if amount.is_negative() { "-" } else { "" };
             let amount_decimals = amount % I256::from(10_u128.pow(units.as_num()));
             let amount_integer = amount / I256::from(10_u128.pow(units.as_num()));
@@ -158,7 +169,7 @@ where
                 amount_decimals.twos_complement().as_u128(),
                 width = units.as_num() as usize
             ))
-        },
+        }
     }
 }
 
@@ -176,7 +187,7 @@ pub fn parse_ether<S>(eth: S) -> Result<U256, ConversionError>
 where
     S: ToString,
 {
-    parse_units(eth, "ether")
+    Ok(parse_units(eth, "ether")?.into())
 }
 
 /// Multiplies the provided amount with 10^{units} provided.
@@ -186,24 +197,25 @@ where
 /// let amount_in_eth = U256::from_dec_str("15230001000000000000").unwrap();
 /// let amount_in_gwei = U256::from_dec_str("15230001000").unwrap();
 /// let amount_in_wei = U256::from_dec_str("15230001000").unwrap();
-/// assert_eq!(amount_in_eth, parse_units("15.230001000000000000", "ether").unwrap());
-/// assert_eq!(amount_in_gwei, parse_units("15.230001000000000000", "gwei").unwrap());
-/// assert_eq!(amount_in_wei, parse_units("15230001000", "wei").unwrap());
+/// assert_eq!(amount_in_eth, parse_units("15.230001000000000000", "ether").unwrap().into());
+/// assert_eq!(amount_in_gwei, parse_units("15.230001000000000000", "gwei").unwrap().into());
+/// assert_eq!(amount_in_wei, parse_units("15230001000", "wei").unwrap().into());
 /// ```
 /// Example of trying to parse decimal WEI, which should fail, as WEI is the smallest
 /// ETH denominator. 1 ETH = 10^18 WEI.
 /// ```should_panic
 /// use ethers_core::{types::U256, utils::parse_units};
 /// let amount_in_wei = U256::from_dec_str("15230001000").unwrap();
-/// assert_eq!(amount_in_wei, parse_units("15.230001000000000000", "wei").unwrap());
+/// assert_eq!(amount_in_wei, parse_units("15.230001000000000000", "wei").unwrap().into());
 /// ```
-pub fn parse_units<K, S>(amount: S, units: K) -> Result<U256, ConversionError>
+pub fn parse_units<K, S>(amount: S, units: K) -> Result<ParseUnits, ConversionError>
 where
     S: ToString,
     K: TryInto<Units, Error = ConversionError> + Copy,
 {
     let exponent: u32 = units.try_into()?.as_num();
     let mut amount_str = amount.to_string().replace('_', "");
+    let negative = amount_str.chars().next().unwrap_or_default() == '-';
     let dec_len = if let Some(di) = amount_str.find('.') {
         amount_str.remove(di);
         amount_str[di..].len() as u32
@@ -214,14 +226,34 @@ where
     if dec_len > exponent {
         // Truncate the decimal part if it is longer than the exponent
         let amount_str = &amount_str[..(amount_str.len() - (dec_len - exponent) as usize)];
-        let a_uint = U256::from_dec_str(amount_str)?;
-        Ok(a_uint)
+        if negative {
+            // Edge case: We have removed the entire number and only the negative sign is left.
+            //            Return 0 as a I256 given the input was signed.
+            if amount_str == "-" {
+                Ok(ParseUnits::I256(I256::zero()))
+            } else {
+                Ok(ParseUnits::I256(I256::from_dec_str(amount_str)?))
+            }
+        } else {
+            Ok(ParseUnits::U256(U256::from_dec_str(amount_str)?))
+        }
+    } else if negative {
+        // Edge case: Only a negative sign was given, return 0 as a I256 given the input was signed.
+        if amount_str == "-" {
+            Ok(ParseUnits::I256(I256::zero()))
+        } else {
+            let mut n = I256::from_dec_str(&amount_str)?;
+            n *= I256::from(10)
+                .checked_pow(exponent - dec_len)
+                .ok_or(ConversionError::ParseOverflow)?;
+            Ok(ParseUnits::I256(n))
+        }
     } else {
         let mut a_uint = U256::from_dec_str(&amount_str)?;
         a_uint *= U256::from(10)
             .checked_pow(U256::from(exponent - dec_len))
             .ok_or(ConversionError::ParseOverflow)?;
-        Ok(a_uint)
+        Ok(ParseUnits::U256(a_uint))
     }
 }
 
@@ -561,45 +593,113 @@ mod tests {
     fn parse_large_units() {
         let decimals = 27u32;
         let val = "10.55";
-        let unit = parse_units(val, decimals).unwrap();
-        assert_eq!(unit.to_string(), "10550000000000000000000000000");
+
+        let n: U256 = parse_units(val, decimals).unwrap().into();
+        assert_eq!(n.to_string(), "10550000000000000000000000000");
     }
 
     #[test]
     fn test_parse_units() {
-        let gwei = parse_units(1.5, 9).unwrap();
+        let gwei: U256 = parse_units(1.5, 9).unwrap().into();
         assert_eq!(gwei.as_u64(), 15e8 as u64);
 
-        let token = parse_units(1163.56926418, 8).unwrap();
+        let token: U256 = parse_units(1163.56926418, 8).unwrap().into();
         assert_eq!(token.as_u64(), 116356926418);
 
-        let eth_dec_float = parse_units(1.39563324, "ether").unwrap();
+        let eth_dec_float: U256 = parse_units(1.39563324, "ether").unwrap().into();
         assert_eq!(eth_dec_float, U256::from_dec_str("1395633240000000000").unwrap());
 
-        let eth_dec_string = parse_units("1.39563324", "ether").unwrap();
+        let eth_dec_string: U256 = parse_units("1.39563324", "ether").unwrap().into();
         assert_eq!(eth_dec_string, U256::from_dec_str("1395633240000000000").unwrap());
 
-        let eth = parse_units(1, "ether").unwrap();
+        let eth: U256 = parse_units(1, "ether").unwrap().into();
         assert_eq!(eth, WEI_IN_ETHER);
 
-        let val = parse_units("2.3", "ether").unwrap();
+        let val: U256 = parse_units("2.3", "ether").unwrap().into();
         assert_eq!(val, U256::from_dec_str("2300000000000000000").unwrap());
 
-        assert_eq!(parse_units(".2", 2).unwrap(), U256::from(20), "leading dot");
-        assert_eq!(parse_units("333.21", 2).unwrap(), U256::from(33321), "trailing dot");
-        assert_eq!(
-            parse_units("98766", 16).unwrap(),
-            U256::from_dec_str("987660000000000000000").unwrap(),
-            "no dot"
-        );
-        assert_eq!(parse_units("3_3_0", 3).unwrap(), U256::from(330000), "underscore");
-        assert_eq!(parse_units("330", 0).unwrap(), U256::from(330), "zero decimals");
-        assert_eq!(parse_units(".1234", 3).unwrap(), U256::from(123), "truncate too many decimals");
+        let n: U256 = parse_units(".2", 2).unwrap().into();
+        assert_eq!(n, U256::from(20), "leading dot");
+
+        let n: U256 = parse_units("333.21", 2).unwrap().into();
+        assert_eq!(n, U256::from(33321), "trailing dot");
+
+        let n: U256 = parse_units("98766", 16).unwrap().into();
+        assert_eq!(n, U256::from_dec_str("987660000000000000000").unwrap(), "no dot");
+
+        let n: U256 = parse_units("3_3_0", 3).unwrap().into();
+        assert_eq!(n, U256::from(330000), "underscore");
+
+        let n: U256 = parse_units("330", 0).unwrap().into();
+        assert_eq!(n, U256::from(330), "zero decimals");
+
+        let n: U256 = parse_units(".1234", 3).unwrap().into();
+        assert_eq!(n, U256::from(123), "truncate too many decimals");
+
         assert!(parse_units("1", 80).is_err(), "overflow");
         assert!(parse_units("1", -1).is_err(), "neg units");
+
         let two_e30 = U256::from(2) * U256([0x4674edea40000000, 0xc9f2c9cd0, 0x0, 0x0]);
-        assert_eq!(parse_units("2", 30).unwrap(), two_e30, "2e30");
-        assert_eq!(parse_units(".33_319_2", 0).unwrap(), U256::zero(), "mix");
+        let n: U256 = parse_units("2", 30).unwrap().into();
+        assert_eq!(n, two_e30, "2e30");
+
+        let n: U256 = parse_units(".33_319_2", 0).unwrap().into();
+        assert_eq!(n, U256::zero(), "mix");
+
+        let n: U256 = parse_units("", 3).unwrap().into();
+        assert_eq!(n, U256::zero(), "empty");
+    }
+
+    #[test]
+    fn test_signed_parse_units() {
+        let gwei: I256 = parse_units(-1.5, 9).unwrap().into();
+        assert_eq!(gwei.as_i64(), -15e8 as i64);
+
+        let token: I256 = parse_units(-1163.56926418, 8).unwrap().into();
+        assert_eq!(token.as_i64(), -116356926418);
+
+        let eth_dec_float: I256 = parse_units(-1.39563324, "ether").unwrap().into();
+        assert_eq!(eth_dec_float, I256::from_dec_str("-1395633240000000000").unwrap());
+
+        let eth_dec_string: I256 = parse_units("-1.39563324", "ether").unwrap().into();
+        assert_eq!(eth_dec_string, I256::from_dec_str("-1395633240000000000").unwrap());
+
+        let eth: I256 = parse_units(-1, "ether").unwrap().into();
+        assert_eq!(eth, I256::from_raw(WEI_IN_ETHER) * I256::minus_one());
+
+        let val: I256 = parse_units("-2.3", "ether").unwrap().into();
+        assert_eq!(val, I256::from_dec_str("-2300000000000000000").unwrap());
+
+        let n: I256 = parse_units("-.2", 2).unwrap().into();
+        assert_eq!(n, I256::from(-20), "leading dot");
+
+        let n: I256 = parse_units("-333.21", 2).unwrap().into();
+        assert_eq!(n, I256::from(-33321), "trailing dot");
+
+        let n: I256 = parse_units("-98766", 16).unwrap().into();
+        assert_eq!(n, I256::from_dec_str("-987660000000000000000").unwrap(), "no dot");
+
+        let n: I256 = parse_units("-3_3_0", 3).unwrap().into();
+        assert_eq!(n, I256::from(-330000), "underscore");
+
+        let n: I256 = parse_units("-330", 0).unwrap().into();
+        assert_eq!(n, I256::from(-330), "zero decimals");
+
+        let n: I256 = parse_units("-.1234", 3).unwrap().into();
+        assert_eq!(n, I256::from(-123), "truncate too many decimals");
+
+        assert!(parse_units("-1", 80).is_err(), "overflow");
+
+        let two_e30 =
+            I256::from(-2) * I256::from_raw(U256([0x4674edea40000000, 0xc9f2c9cd0, 0x0, 0x0]));
+        let n: I256 = parse_units("-2", 30).unwrap().into();
+        assert_eq!(n, two_e30, "-2e30");
+
+        let n: I256 = parse_units("-.33_319_2", 0).unwrap().into();
+        assert_eq!(n, I256::zero(), "mix");
+
+        let n: I256 = parse_units("-", 3).unwrap().into();
+        assert_eq!(n, I256::zero(), "empty");
     }
 
     #[test]
