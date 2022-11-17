@@ -4,7 +4,7 @@ use crate::{
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MockProvider,
-    PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
+    NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
 };
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "ws"))]
@@ -33,6 +33,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
+use enr::{k256::ecdsa::SigningKey, Enr};
 use ethers_core::types::Chain;
 use futures_util::{lock::Mutex, try_join};
 use std::{
@@ -796,6 +797,38 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
 
         self.request("eth_getProof", [from, locations, block]).await
+    }
+
+    // Admin namespace
+
+    /// docs: TODO
+    async fn add_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
+        todo!()
+    }
+
+    /// docs: TODO
+    async fn add_trusted_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
+        todo!()
+    }
+
+    /// docs: TODO
+    async fn node_info(&self) -> Result<NodeInfo, Self::Error> {
+        todo!()
+    }
+
+    /// docs: TODO
+    async fn peers(&self) -> Result<Vec<PeerInfo>, Self::Error> {
+        todo!()
+    }
+
+    /// docs: TODO
+    async fn remove_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
+        todo!()
+    }
+
+    /// docs: TODO
+    async fn remove_trusted_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
+        todo!()
     }
 
     ////// Ethereum Naming Service

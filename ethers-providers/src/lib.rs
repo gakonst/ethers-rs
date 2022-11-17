@@ -10,6 +10,10 @@ pub use transports::*;
 mod provider;
 pub use provider::{is_local_endpoint, FilterKind, Provider, ProviderError, ProviderExt};
 
+// types for the admin api
+pub mod admin;
+pub use admin::{NodeInfo, PeerInfo};
+
 // ENS support
 pub mod ens;
 
@@ -36,6 +40,7 @@ pub mod erc;
 
 use async_trait::async_trait;
 use auto_impl::auto_impl;
+use enr::{k256::ecdsa::SigningKey, Enr};
 use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
@@ -486,6 +491,32 @@ pub trait Middleware: Sync + Send + Debug {
         block: Option<BlockId>,
     ) -> Result<EIP1186ProofResponse, Self::Error> {
         self.inner().get_proof(from, locations, block).await.map_err(FromErr::from)
+    }
+
+    // Admin namespace
+
+    async fn add_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
+        self.inner().add_peer(node_record).await.map_err(FromErr::from)
+    }
+
+    async fn add_trusted_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
+        self.inner().add_trusted_peer(node_record).await.map_err(FromErr::from)
+    }
+
+    async fn node_info(&self) -> Result<NodeInfo, Self::Error> {
+        self.inner().node_info().await.map_err(FromErr::from)
+    }
+
+    async fn peers(&self) -> Result<Vec<PeerInfo>, Self::Error> {
+        self.inner().peers().await.map_err(FromErr::from)
+    }
+
+    async fn remove_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
+        self.inner().remove_peer(node_record).await.map_err(FromErr::from)
+    }
+
+    async fn remove_trusted_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
+        self.inner().remove_trusted_peer(node_record).await.map_err(FromErr::from)
     }
 
     // Mempool inspection for Geth's API
