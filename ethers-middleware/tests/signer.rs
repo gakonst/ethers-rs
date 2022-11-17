@@ -97,6 +97,7 @@ async fn pending_txs_with_confirmations_testnet() {
 
 #[cfg(not(feature = "celo"))]
 use ethers_core::types::{Address, Eip1559TransactionRequest};
+use ethers_core::utils::parse_ether;
 
 // different keys to avoid nonce errors
 #[tokio::test]
@@ -317,7 +318,7 @@ impl TestWallets {
                 .nonce(nonce)
                 .to(addr)
                 // 0.1 eth per wallet
-                .value(parse_units("1", 18).unwrap());
+                .value(parse_ether("1").unwrap());
             pending_txs.push(
                 provider.send_transaction(tx, Some(BlockNumber::Pending.into())).await.unwrap(),
             );
