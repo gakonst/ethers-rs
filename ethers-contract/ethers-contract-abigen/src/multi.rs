@@ -575,9 +575,11 @@ impl MultiBindingsInner {
         let data = std::fs::read_to_string(cargo_dir)?;
         let toml = data.parse::<Value>()?;
 
-        let Some(ethers) = toml.get("dependencies")
-            .and_then (|v| v.get("ethers").or_else(|| v.get("ethers-contract")))
-            else { eyre::bail!("couldn't find ethers or ethers-contract dependency")};
+        let ethers = toml
+            .get("dependencies")
+            .and_then(|v| v.get("ethers").or_else(|| v.get("ethers-contract")))
+            .ok_or_else(|| eyre::eyre!("couldn't find ethers or ethers-contract dependency"))?;
+
         if let Some(rev) = ethers.get("rev") {
             Ok(format!("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", rev = {}, default-features = false, features = [\"abigen\"] }}", rev))
         } else if let Some(version) = ethers.get("version") {
