@@ -571,7 +571,7 @@ impl MultiBindingsInner {
 
     /// parses the active Cargo.toml to get what version of ethers we are using
     fn find_crate_version(&self) -> Result<String> {
-        let cargo_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+        let cargo_dir = std::env::current_dir()?.join("Cargo.toml");
         let data = std::fs::read_to_string(cargo_dir)?;
         let toml = data.parse::<Value>()?;
 
