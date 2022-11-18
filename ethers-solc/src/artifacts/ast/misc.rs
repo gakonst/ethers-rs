@@ -34,7 +34,7 @@ impl FromStr for SourceLocation {
             .parse::<isize>()
             .map_err(|_| invalid_location())?;
 
-        let start = if start < 0 { None } else { Some(length as usize) };
+        let start = if start < 0 { None } else { Some(start as usize) };
         let length = if length < 0 { None } else { Some(length as usize) };
         let index = if index < 0 { None } else { Some(index as usize) };
 
