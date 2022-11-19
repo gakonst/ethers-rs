@@ -29,7 +29,7 @@ yubihsm = { version = "0.41.0", features = ["secp256k1", "http", "usb"], optiona
 futures-util = { version = "^0.3", optional = true }
 futures-executor = { version = "^0.3", optional = true }
 semver = { version = "1.0.14", optional = true }
-trezor-client = { version = "0.0.6", optional = true, default-features = false, features = [
+trezor-client = { version = "0.0.7", optional = true, default-features = false, features = [
     "f_ethereum",
 ] }
 
