@@ -1,9 +1,10 @@
 use ethers_core::types::{
     transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
-    Address, BlockId, Bytes, Signature, U256,
+    Address, BlockId, Bytes, Chain, Signature, TransactionRequest, U256,
 };
 use ethers_providers::{maybe, FromErr, Middleware, PendingTransaction};
 use ethers_signers::Signer;
+use std::convert::TryFrom;
 
 use async_trait::async_trait;
 use thiserror::Error;
@@ -251,6 +252,18 @@ where
             tx.set_chain_id(chain_id);
         }
 
+        // If a chain_id is matched to a known chain that doesn't support EIP-1559, automatically
+        // change transaction to be Legacy type.
+        if let Some(chain_id) = tx.chain_id() {
+            let chain = Chain::try_from(chain_id.as_u64());
+            if chain.unwrap_or_default().is_legacy() {
+                if let TypedTransaction::Eip1559(inner) = tx {
+                    let tx_req: TransactionRequest = inner.clone().into();
+                    *tx = TypedTransaction::Legacy(tx_req);
+                }
+            }
+        }
+
         let nonce = maybe(tx.nonce().cloned(), self.get_transaction_count(from, block)).await?;
         tx.set_nonce(nonce);
         self.inner()
@@ -303,9 +316,13 @@ where
         self.signer.sign_message(data.into()).await.map_err(SignerMiddlewareError::SignerError)
     }
 
-    async fn estimate_gas(&self, tx: &TypedTransaction) -> Result<U256, Self::Error> {
+    async fn estimate_gas(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<U256, Self::Error> {
         let tx = self.set_tx_from_if_none(tx);
-        self.inner.estimate_gas(&tx).await.map_err(SignerMiddlewareError::MiddlewareError)
+        self.inner.estimate_gas(&tx, block).await.map_err(SignerMiddlewareError::MiddlewareError)
     }
 
     async fn create_access_list(
@@ -334,7 +351,7 @@ where
 mod tests {
     use super::*;
     use ethers_core::{
-        types::TransactionRequest,
+        types::{Eip1559TransactionRequest, TransactionRequest},
         utils::{self, keccak256, Anvil},
     };
     use ethers_providers::Provider;
@@ -498,5 +515,73 @@ mod tests {
         let hash = *client.send_transaction(request_from_other, None).await.unwrap();
         let tx = client.get_transaction(hash).await.unwrap().unwrap();
         assert_eq!(tx.from, acc);
+    }
+
+    #[tokio::test]
+    async fn converts_tx_to_legacy_to_match_chain() {
+        let eip1559 = Eip1559TransactionRequest {
+            from: None,
+            to: Some("F0109fC8DF283027b6285cc889F5aA624EaC1F55".parse::<Address>().unwrap().into()),
+            value: Some(1_000_000_000.into()),
+            gas: Some(2_000_000.into()),
+            nonce: Some(U256::zero()),
+            access_list: Default::default(),
+            max_priority_fee_per_gas: None,
+            data: None,
+            chain_id: None,
+            max_fee_per_gas: None,
+        };
+        let mut tx = TypedTransaction::Eip1559(eip1559);
+
+        let chain_id = 10u64; // optimism does not support EIP-1559
+
+        // Signer middlewares now rely on a working provider which it can query the chain id from,
+        // so we make sure Anvil is started with the chain id that the expected tx was signed
+        // with
+        let anvil = Anvil::new().args(vec!["--chain-id".to_string(), chain_id.to_string()]).spawn();
+        let provider = Provider::try_from(anvil.endpoint()).unwrap();
+        let key = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
+            .parse::<LocalWallet>()
+            .unwrap()
+            .with_chain_id(chain_id);
+        let client = SignerMiddleware::new(provider, key);
+        client.fill_transaction(&mut tx, None).await.unwrap();
+
+        assert!(tx.as_eip1559_ref().is_none());
+        assert_eq!(tx, TypedTransaction::Legacy(tx.as_legacy_ref().unwrap().clone()));
+    }
+
+    #[tokio::test]
+    async fn does_not_convert_to_legacy_for_eip1559_chain() {
+        let eip1559 = Eip1559TransactionRequest {
+            from: None,
+            to: Some("F0109fC8DF283027b6285cc889F5aA624EaC1F55".parse::<Address>().unwrap().into()),
+            value: Some(1_000_000_000.into()),
+            gas: Some(2_000_000.into()),
+            nonce: Some(U256::zero()),
+            access_list: Default::default(),
+            max_priority_fee_per_gas: None,
+            data: None,
+            chain_id: None,
+            max_fee_per_gas: None,
+        };
+        let mut tx = TypedTransaction::Eip1559(eip1559);
+
+        let chain_id = 1u64; // eth main supports EIP-1559
+
+        // Signer middlewares now rely on a working provider which it can query the chain id from,
+        // so we make sure Anvil is started with the chain id that the expected tx was signed
+        // with
+        let anvil = Anvil::new().args(vec!["--chain-id".to_string(), chain_id.to_string()]).spawn();
+        let provider = Provider::try_from(anvil.endpoint()).unwrap();
+        let key = "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318"
+            .parse::<LocalWallet>()
+            .unwrap()
+            .with_chain_id(chain_id);
+        let client = SignerMiddleware::new(provider, key);
+        client.fill_transaction(&mut tx, None).await.unwrap();
+
+        assert!(tx.as_legacy_ref().is_none());
+        assert_eq!(tx, TypedTransaction::Eip1559(tx.as_eip1559_ref().unwrap().clone()));
     }
 }

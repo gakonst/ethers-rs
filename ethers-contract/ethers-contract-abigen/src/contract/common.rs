@@ -64,7 +64,7 @@ where
 }
 
 pub(crate) fn imports(name: &str) -> TokenStream {
-    let doc = util::expand_doc(&format!("{} was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs", name));
+    let doc = util::expand_doc(&format!("{name} was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs"));
 
     let ethers_core = ethers_core_crate();
     let ethers_providers = ethers_providers_crate();
@@ -95,16 +95,20 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
     let abi_name = cx.inline_abi_ident();
 
     let ethers_core = ethers_core_crate();
-    let ethers_providers = ethers_providers_crate();
     let ethers_contract = ethers_contract_crate();
 
     let abi_parse = if !cx.human_readable {
         quote! {
-            pub static #abi_name: #ethers_contract::Lazy<#ethers_core::abi::Abi> = #ethers_contract::Lazy::new(|| #ethers_core::utils::__serde_json::from_str(#abi)
+            #[rustfmt::skip]
+            const __ABI: &str = #abi;
+
+            /// The parsed JSON-ABI of the contract.
+            pub static #abi_name: #ethers_contract::Lazy<#ethers_core::abi::Abi> = #ethers_contract::Lazy::new(|| #ethers_core::utils::__serde_json::from_str(__ABI)
                                               .expect("invalid abi"));
         }
     } else {
         quote! {
+            /// The parsed human readable ABI of the contract.
             pub static #abi_name: #ethers_contract::Lazy<#ethers_core::abi::Abi> = #ethers_contract::Lazy::new(|| #ethers_core::abi::parse_abi_str(#abi)
                                                 .expect("invalid abi"));
         }
@@ -112,7 +116,7 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
 
     let bytecode = if let Some(ref bytecode) = cx.contract_bytecode {
         let bytecode_name = cx.inline_bytecode_ident();
-        let hex_bytecode = format!("{}", bytecode);
+        let hex_bytecode = format!("{bytecode}");
         quote! {
             /// Bytecode of the #name contract
             pub static #bytecode_name: #ethers_contract::Lazy<#ethers_core::types::Bytes> = #ethers_contract::Lazy::new(|| #hex_bytecode.parse()
@@ -144,7 +148,7 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
             fn deref(&self) -> &Self::Target { &self.0 }
         }
 
-        impl<M: #ethers_providers::Middleware> std::fmt::Debug for #name<M> {
+        impl<M> std::fmt::Debug for #name<M> {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 f.debug_tuple(stringify!(#name))
                     .field(&self.address())

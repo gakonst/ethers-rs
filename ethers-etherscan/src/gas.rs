@@ -7,7 +7,7 @@ use ethers_core::types::U256;
 
 use crate::{Client, EtherscanError, Response, Result};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct GasOracle {
     #[serde(deserialize_with = "deserialize_number_from_string")]

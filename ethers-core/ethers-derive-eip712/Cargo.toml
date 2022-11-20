@@ -1,6 +1,6 @@
 [package]
 name = "ethers-derive-eip712"
-version = "0.17.0"
+version = "1.0.0"
 edition = "2018"
 description = "Custom derive macro for EIP-712 typed data"
 license = "MIT OR Apache-2.0"
@@ -11,11 +11,9 @@ proc-macro = true
 [dependencies]
 quote = "1.0.9"
 syn = "1.0.77"
-ethers-core = { version = "^0.17.0", path = "../", default-features = false, features = ["eip712", "macros"] }
+ethers-core = { version = "^1.0.0", path = "../", default-features = false, features = ["eip712", "macros"] }
 hex = "0.4.3"
 serde_json = "1.0.68"
 
 [dev-dependencies]
-ethers-contract = { version = "^0.17.0", path = "../../ethers-contract", features = ["abigen"]}
-ethers-contract-derive = { version = "^0.17.0", path = "../../ethers-contract/ethers-contract-derive" }
-ethers-signers = { version = "^0.17.0", path = "../../ethers-signers" }
+ethers-contract-derive = { version = "^1.0.0", path = "../../ethers-contract/ethers-contract-derive" }

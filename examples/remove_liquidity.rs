@@ -19,11 +19,13 @@ abigen!(
     ]"#
 );
 
+fn main() {}
+
 // Remove liquidity from uniswap V2.
-// This example will remove 500 liquidity of 2 test tokens, TA and TB on Rinkeby testnet.
+// This example will remove 500 liquidity of 2 test tokens, TA and TB on goerli testnet.
 // This example uses pair contract and uniswap swap contract to remove liquidity.
-#[tokio::main]
-async fn main() -> Result<()> {
+#[allow(dead_code)]
+async fn example() -> Result<()> {
     let provider = Arc::new({
         // connect to the network
         let provider = Provider::<Http>::try_from(
@@ -47,12 +49,12 @@ async fn main() -> Result<()> {
 
     let (reserve0, reserve1, _) = pair.get_reserves().call().await?;
 
-    println!("Reserves (token A, Token B): ({}, {})", reserve0, reserve1);
+    println!("Reserves (token A, Token B): ({reserve0}, {reserve1})");
 
     let price =
         if reserve0 > reserve1 { 1000 * reserve0 / reserve1 } else { 1000 * reserve1 / reserve0 } /
             1000;
-    println!("token0 / token1 price = {}", price);
+    println!("token0 / token1 price = {price}");
 
     let liquidity = 100.into();
 
@@ -60,9 +62,9 @@ async fn main() -> Result<()> {
     let receipt =
         pair.approve(router.address(), liquidity).send().await?.await?.expect("no receipt found");
     println!("contract approved succesfully!");
-    println!("{:?}", receipt);
+    println!("{receipt:?}");
 
-    println!("Removing {} liquidity!", liquidity);
+    println!("Removing {liquidity} liquidity!");
 
     let token0 = pair.token_0().call().await?;
     let token1 = pair.token_1().call().await?;
@@ -82,7 +84,7 @@ async fn main() -> Result<()> {
         .await?
         .expect("no receipt for remove_liquidity");
     println!("liquidity removed succesfully!");
-    println!("{:?}", receipt);
+    println!("{receipt:?}");
 
     Ok(())
 }

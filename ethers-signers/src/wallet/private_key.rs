@@ -48,17 +48,6 @@ pub enum WalletError {
     Eip712Error(String),
 }
 
-impl Clone for Wallet<SigningKey> {
-    fn clone(&self) -> Self {
-        Self {
-            // TODO: Can we have a better way to clone here?
-            signer: SigningKey::from_bytes(&self.signer.to_bytes()).unwrap(),
-            address: self.address,
-            chain_id: self.chain_id,
-        }
-    }
-}
-
 impl Wallet<SigningKey> {
     /// Creates a new random encrypted JSON with the provided password and stores it in the
     /// provided directory. Returns a tuple (Wallet, String) of the wallet instance for the
@@ -163,7 +152,7 @@ mod tests {
         // read from the encrypted JSON keystore and decrypt it, while validating that the
         // signatures produced by both the keys should match
         let path = Path::new(dir.path()).join(uuid);
-        let key2 = Wallet::<SigningKey>::decrypt_keystore(&path.clone(), "randpsswd").unwrap();
+        let key2 = Wallet::<SigningKey>::decrypt_keystore(path.clone(), "randpsswd").unwrap();
         let signature2 = key2.sign_message(message).await.unwrap();
         assert_eq!(signature, signature2);
         std::fs::remove_file(&path).unwrap();

@@ -147,8 +147,8 @@ impl<M: Middleware, C: From<Contract<M>>> ContractDeployer<M, C> {
         self.deployer.abi()
     }
 
-    /// Returns a reference to the deployer's client
-    pub fn client(&self) -> &M {
+    /// Returns a pointer to the deployer's client
+    pub fn client(&self) -> Arc<M> {
         self.deployer.client()
     }
 }
@@ -261,9 +261,9 @@ impl<M: Middleware> Deployer<M> {
         &self.abi
     }
 
-    /// Returns a reference to the deployer's client
-    pub fn client(&self) -> &M {
-        &self.client
+    /// Returns a pointer to the deployer's client
+    pub fn client(&self) -> Arc<M> {
+        self.client.clone()
     }
 }
 

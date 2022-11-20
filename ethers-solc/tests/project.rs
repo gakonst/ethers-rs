@@ -11,8 +11,8 @@ use ethers_solc::{
     info::ContractInfo,
     project_util::*,
     remappings::Remapping,
-    CompilerInput, ConfigurableArtifacts, ExtraOutputValues, Graph, Project, ProjectCompileOutput,
-    ProjectPathsConfig, Solc, TestFileFilter,
+    Artifact, CompilerInput, ConfigurableArtifacts, ExtraOutputValues, Graph, Project,
+    ProjectCompileOutput, ProjectPathsConfig, Solc, TestFileFilter,
 };
 use pretty_assertions::assert_eq;
 use semver::Version;
@@ -385,7 +385,7 @@ fn can_compile_dapp_sample_with_cache() {
     assert!(compiled.is_unchanged());
 
     // deleted artifacts cause recompile even with cache
-    std::fs::remove_dir_all(&project.artifacts_path()).unwrap();
+    std::fs::remove_dir_all(project.artifacts_path()).unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.find_first("Dapp").is_some());
     assert!(!compiled.is_unchanged());
@@ -421,7 +421,7 @@ fn can_compile_dapp_sample_with_cache() {
     );
 
     // deleted artifact is not taken from the cache
-    std::fs::remove_file(&project.paths.sources.join("Dapp.sol")).unwrap();
+    std::fs::remove_file(project.paths.sources.join("Dapp.sol")).unwrap();
     let compiled: ProjectCompileOutput<_> = project.compile().unwrap();
     assert!(compiled.find_first("Dapp").is_none());
 }
@@ -636,7 +636,7 @@ contract FooBar {}
 fn can_flatten_on_solang_failure() {
     let root =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-flatten-solang-failure");
-    let paths = ProjectPathsConfig::builder().sources(&root.join("contracts"));
+    let paths = ProjectPathsConfig::builder().sources(root.join("contracts"));
     let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
 
     let target = root.join("contracts/Contract.sol");
@@ -1202,7 +1202,7 @@ library MyLib {
 #[test]
 fn can_recompile_with_changes() {
     let mut tmp = TempProject::dapptools().unwrap();
-    tmp.project_mut().allowed_lib_paths = vec![tmp.root().join("modules")].into();
+    tmp.project_mut().allowed_paths = vec![tmp.root().join("modules")].into();
 
     let content = r#"
     pragma solidity ^0.8.10;
@@ -1231,7 +1231,7 @@ fn can_recompile_with_changes() {
     assert!(compiled.is_unchanged());
 
     // modify A.sol
-    tmp.add_source("A", format!("{}\n", content)).unwrap();
+    tmp.add_source("A", format!("{content}\n")).unwrap();
     let compiled = tmp.compile().unwrap();
     assert!(!compiled.has_compiler_errors());
     assert!(!compiled.is_unchanged());
@@ -1286,7 +1286,7 @@ fn can_recompile_with_lowercase_names() {
     assert!(compiled.is_unchanged());
 
     // modify upgradeProxy.sol
-    tmp.add_source("upgradeProxy.sol", format!("{}\n", upgrade)).unwrap();
+    tmp.add_source("upgradeProxy.sol", format!("{upgrade}\n")).unwrap();
     let compiled = tmp.compile().unwrap();
     assert!(!compiled.has_compiler_errors());
     assert!(!compiled.is_unchanged());
@@ -1339,7 +1339,7 @@ fn can_recompile_unchanged_with_empty_files() {
     assert!(compiled.is_unchanged());
 
     // modify C.sol
-    tmp.add_source("C", format!("{}\n", c)).unwrap();
+    tmp.add_source("C", format!("{c}\n")).unwrap();
     let compiled = tmp.compile().unwrap();
     assert!(!compiled.has_compiler_errors());
     assert!(!compiled.is_unchanged());
@@ -1616,6 +1616,81 @@ fn can_compile_model_checker_sample() {
     assert!(compiled.find_first("Assert").is_some());
     assert!(!compiled.has_compiler_errors());
     assert!(compiled.has_compiler_warnings());
+}
+
+#[test]
+fn test_compiler_severity_filter() {
+    fn gen_test_data_warning_path() -> ProjectPathsConfig {
+        let root =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-contract-warnings");
+
+        ProjectPathsConfig::builder().sources(root).build().unwrap()
+    }
+
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_warning_path())
+        .ephemeral()
+        .build()
+        .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.has_compiler_warnings());
+    assert!(!compiled.has_compiler_errors());
+
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_warning_path())
+        .ephemeral()
+        .set_compiler_severity_filter(ethers_solc::artifacts::Severity::Warning)
+        .build()
+        .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.has_compiler_warnings());
+    assert!(compiled.has_compiler_errors());
+}
+
+#[test]
+fn test_compiler_severity_filter_and_ignored_error_codes() {
+    fn gen_test_data_licensing_warning() -> ProjectPathsConfig {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("test-data/test-contract-warnings/LicenseWarning.sol");
+
+        ProjectPathsConfig::builder().sources(root).build().unwrap()
+    }
+
+    let missing_license_error_code = 1878;
+
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_licensing_warning())
+        .ephemeral()
+        .build()
+        .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.has_compiler_warnings());
+
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_licensing_warning())
+        .ephemeral()
+        .ignore_error_code(missing_license_error_code)
+        .build()
+        .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_warnings());
+    assert!(!compiled.has_compiler_errors());
+
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_licensing_warning())
+        .ephemeral()
+        .ignore_error_code(missing_license_error_code)
+        .set_compiler_severity_filter(ethers_solc::artifacts::Severity::Warning)
+        .build()
+        .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_warnings());
+    assert!(!compiled.has_compiler_errors());
 }
 
 fn remove_solc_if_exists(version: &Version) {
@@ -2127,4 +2202,388 @@ fn can_handle_conflicting_files() {
             PathBuf::from("tokens/Greeter.sol/Greeter.json"),
         ]
     );
+}
+
+// <https://github.com/foundry-rs/foundry/issues/2843>
+#[test]
+fn can_handle_conflicting_files_recompile() {
+    let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+
+    project
+        .add_source(
+            "A",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract A {
+            function foo() public{}
+    }
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "inner/A",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract A {
+            function bar() public{}
+    }
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let artifacts = compiled.artifacts().count();
+    assert_eq!(artifacts, 2);
+
+    // nothing to compile
+    let compiled = project.compile().unwrap();
+    assert!(compiled.is_unchanged());
+    let artifacts = compiled.artifacts().count();
+    assert_eq!(artifacts, 2);
+
+    let cache = SolFilesCache::read(project.cache_path()).unwrap();
+
+    let mut source_files = cache.files.keys().cloned().collect::<Vec<_>>();
+    source_files.sort_unstable();
+
+    assert_eq!(source_files, vec![PathBuf::from("src/A.sol"), PathBuf::from("src/inner/A.sol"),]);
+
+    let mut artifacts =
+        project.artifacts_snapshot().unwrap().artifacts.into_stripped_file_prefixes(project.root());
+    artifacts.strip_prefix_all(&project.paths().artifacts);
+
+    assert_eq!(artifacts.len(), 2);
+    let mut artifact_files = artifacts.artifact_files().map(|f| f.file.clone()).collect::<Vec<_>>();
+    artifact_files.sort_unstable();
+
+    let expected_files = vec![PathBuf::from("A.sol/A.json"), PathBuf::from("inner/A.sol/A.json")];
+    assert_eq!(artifact_files, expected_files);
+
+    // overwrite conflicting nested file, effectively changing it
+    project
+        .add_source(
+            "inner/A",
+            r#"
+    pragma solidity ^0.8.10;
+    contract A {
+    function bar() public{}
+    function baz() public{}
+    }
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let mut recompiled_artifacts =
+        project.artifacts_snapshot().unwrap().artifacts.into_stripped_file_prefixes(project.root());
+    recompiled_artifacts.strip_prefix_all(&project.paths().artifacts);
+
+    assert_eq!(recompiled_artifacts.len(), 2);
+    let mut artifact_files =
+        recompiled_artifacts.artifact_files().map(|f| f.file.clone()).collect::<Vec<_>>();
+    artifact_files.sort_unstable();
+    assert_eq!(artifact_files, expected_files);
+
+    // ensure that `a.sol/A.json` is unchanged
+    let outer = artifacts.find("src/A.sol", "A").unwrap();
+    let outer_recompiled = recompiled_artifacts.find("src/A.sol", "A").unwrap();
+    assert_eq!(outer, outer_recompiled);
+
+    let inner_recompiled = recompiled_artifacts.find("src/inner/A.sol", "A").unwrap();
+    assert!(inner_recompiled.get_abi().unwrap().functions.contains_key("baz"));
+}
+
+// <https://github.com/foundry-rs/foundry/issues/2843>
+#[test]
+fn can_handle_conflicting_files_case_sensitive_recompile() {
+    let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+
+    project
+        .add_source(
+            "a",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract A {
+            function foo() public{}
+    }
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "inner/A",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract A {
+            function bar() public{}
+    }
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let artifacts = compiled.artifacts().count();
+    assert_eq!(artifacts, 2);
+
+    // nothing to compile
+    let compiled = project.compile().unwrap();
+    assert!(compiled.is_unchanged());
+    let artifacts = compiled.artifacts().count();
+    assert_eq!(artifacts, 2);
+
+    let cache = SolFilesCache::read(project.cache_path()).unwrap();
+
+    let mut source_files = cache.files.keys().cloned().collect::<Vec<_>>();
+    source_files.sort_unstable();
+
+    assert_eq!(source_files, vec![PathBuf::from("src/a.sol"), PathBuf::from("src/inner/A.sol"),]);
+
+    let mut artifacts =
+        project.artifacts_snapshot().unwrap().artifacts.into_stripped_file_prefixes(project.root());
+    artifacts.strip_prefix_all(&project.paths().artifacts);
+
+    assert_eq!(artifacts.len(), 2);
+    let mut artifact_files = artifacts.artifact_files().map(|f| f.file.clone()).collect::<Vec<_>>();
+    artifact_files.sort_unstable();
+
+    let expected_files = vec![PathBuf::from("a.sol/A.json"), PathBuf::from("inner/A.sol/A.json")];
+    assert_eq!(artifact_files, expected_files);
+
+    // overwrite conflicting nested file, effectively changing it
+    project
+        .add_source(
+            "inner/A",
+            r#"
+    pragma solidity ^0.8.10;
+    contract A {
+    function bar() public{}
+    function baz() public{}
+    }
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let mut recompiled_artifacts =
+        project.artifacts_snapshot().unwrap().artifacts.into_stripped_file_prefixes(project.root());
+    recompiled_artifacts.strip_prefix_all(&project.paths().artifacts);
+
+    assert_eq!(recompiled_artifacts.len(), 2);
+    let mut artifact_files =
+        recompiled_artifacts.artifact_files().map(|f| f.file.clone()).collect::<Vec<_>>();
+    artifact_files.sort_unstable();
+    assert_eq!(artifact_files, expected_files);
+
+    // ensure that `a.sol/A.json` is unchanged
+    let outer = artifacts.find("src/a.sol", "A").unwrap();
+    let outer_recompiled = recompiled_artifacts.find("src/a.sol", "A").unwrap();
+    assert_eq!(outer, outer_recompiled);
+
+    let inner_recompiled = recompiled_artifacts.find("src/inner/A.sol", "A").unwrap();
+    assert!(inner_recompiled.get_abi().unwrap().functions.contains_key("baz"));
+}
+
+#[test]
+fn can_checkout_repo() {
+    let project = TempProject::checkout("transmissions11/solmate").unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    let _artifacts = project.artifacts_snapshot().unwrap();
+}
+
+#[test]
+fn can_detect_config_changes() {
+    let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+
+    let remapping = project.paths().libraries[0].join("remapping");
+    project
+        .paths_mut()
+        .remappings
+        .push(Remapping::from_str(&format!("remapping/={}/", remapping.display())).unwrap());
+
+    project
+        .add_source(
+            "Foo",
+            r#"
+    pragma solidity ^0.8.10;
+    import "remapping/Bar.sol";
+
+    contract Foo {}
+   "#,
+        )
+        .unwrap();
+    project
+        .add_lib(
+            "remapping/Bar",
+            r#"
+    pragma solidity ^0.8.10;
+
+    contract Bar {}
+    "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+
+    let cache = SolFilesCache::read(&project.paths().cache).unwrap();
+    assert_eq!(cache.files.len(), 2);
+
+    // nothing to compile
+    let compiled = project.compile().unwrap();
+    assert!(compiled.is_unchanged());
+
+    project.project_mut().solc_config.settings.optimizer.enabled = Some(true);
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(!compiled.is_unchanged());
+}
+
+#[test]
+fn can_add_basic_contract_and_library() {
+    let mut project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+
+    let remapping = project.paths().libraries[0].join("remapping");
+    project
+        .paths_mut()
+        .remappings
+        .push(Remapping::from_str(&format!("remapping/={}/", remapping.display())).unwrap());
+
+    let src = project.add_basic_source("Foo.sol", "^0.8.0").unwrap();
+
+    let lib = project.add_basic_source("Bar", "^0.8.0").unwrap();
+
+    let graph = Graph::resolve(project.paths()).unwrap();
+    assert_eq!(graph.files().len(), 2);
+    assert!(graph.files().contains_key(&src));
+    assert!(graph.files().contains_key(&lib));
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find_first("Foo").is_some());
+    assert!(compiled.find_first("Bar").is_some());
+}
+
+// <https://github.com/foundry-rs/foundry/issues/2706>
+#[test]
+fn can_handle_nested_absolute_imports() {
+    let mut project = TempProject::dapptools().unwrap();
+
+    let remapping = project.paths().libraries[0].join("myDepdendency");
+    project
+        .paths_mut()
+        .remappings
+        .push(Remapping::from_str(&format!("myDepdendency/={}/", remapping.display())).unwrap());
+
+    project
+        .add_lib(
+            "myDepdendency/src/interfaces/IConfig.sol",
+            r#"
+    pragma solidity ^0.8.10;
+
+    interface IConfig {}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_lib(
+            "myDepdendency/src/Config.sol",
+            r#"
+    pragma solidity ^0.8.10;
+    import "src/interfaces/IConfig.sol";
+
+    contract Config {}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Greeter",
+            r#"
+    pragma solidity ^0.8.10;
+    import "myDepdendency/src/Config.sol";
+
+    contract Greeter {}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find_first("Greeter").is_some());
+    assert!(compiled.find_first("Config").is_some());
+    assert!(compiled.find_first("IConfig").is_some());
+}
+
+#[test]
+fn can_handle_nested_test_absolute_imports() {
+    let project = TempProject::dapptools().unwrap();
+
+    project
+        .add_source(
+            "Contract.sol",
+            r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity =0.8.13;
+
+library Library {
+    function f(uint256 a, uint256 b) public pure returns (uint256) {
+        return a + b;
+    }
+}
+
+contract Contract {
+    uint256 c;
+
+    constructor() {
+        c = Library.f(1, 2);
+    }
+}
+   "#,
+        )
+        .unwrap();
+
+    project
+        .add_test(
+            "Contract.t.sol",
+            r#"
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity =0.8.13;
+
+import "src/Contract.sol";
+
+contract ContractTest {
+    function setUp() public {
+    }
+
+    function test() public {
+        new Contract();
+    }
+}
+   "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    assert!(compiled.find_first("Contract").is_some());
 }

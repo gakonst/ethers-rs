@@ -60,16 +60,14 @@
 //! There is an Inner helper attribute `#[eip712]` for fields that will eventually be used to
 //! determine if there is a nested eip712 struct. However, this work is not yet complete.
 
-#![deny(rustdoc::broken_intra_doc_links)]
-
-use std::convert::TryFrom;
-
+#![deny(missing_docs, unsafe_code, rustdoc::broken_intra_doc_links)]
 use ethers_core::{macros::ethers_core_crate, types::transaction::eip712};
-
 use proc_macro::TokenStream;
 use quote::quote;
+use std::convert::TryFrom;
 use syn::parse_macro_input;
 
+/// Derive macro for `Eip712`
 #[proc_macro_derive(Eip712, attributes(eip712))]
 pub fn eip_712_derive(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input);

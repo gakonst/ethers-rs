@@ -362,15 +362,16 @@ impl MockProjectGenerator {
     }
 }
 
-impl From<MockProjectSkeleton> for MockProjectGenerator {
-    fn from(inner: MockProjectSkeleton) -> Self {
-        Self { inner, ..Default::default() }
+#[allow(clippy::derivable_impls)]
+impl Default for MockProjectGenerator {
+    fn default() -> Self {
+        Self { name_strategy: Box::<SimpleNamingStrategy>::default(), inner: Default::default() }
     }
 }
 
-impl Default for MockProjectGenerator {
-    fn default() -> Self {
-        Self { name_strategy: Box::new(SimpleNamingStrategy::default()), inner: Default::default() }
+impl From<MockProjectSkeleton> for MockProjectGenerator {
+    fn from(inner: MockProjectSkeleton) -> Self {
+        Self { inner, ..Default::default() }
     }
 }
 
@@ -394,15 +395,15 @@ pub struct SimpleNamingStrategy {
 
 impl NamingStrategy for SimpleNamingStrategy {
     fn new_source_file_name(&mut self, id: usize) -> String {
-        format!("SourceFile{}", id)
+        format!("SourceFile{id}")
     }
 
     fn new_lib_file_name(&mut self, id: usize) -> String {
-        format!("LibFile{}", id)
+        format!("LibFile{id}")
     }
 
     fn new_lib_name(&mut self, id: usize) -> String {
-        format!("Lib{}", id)
+        format!("Lib{id}")
     }
 }
 

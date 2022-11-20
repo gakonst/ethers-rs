@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
         Provider::<Http>::try_from(anvil.endpoint())?.interval(Duration::from_millis(10u64));
 
     // 4. instantiate the client with the wallet
-    let client = SignerMiddleware::new(provider, wallet);
+    let client = SignerMiddleware::new(provider, wallet.with_chain_id(anvil.chain_id()));
     let client = Arc::new(client);
 
     // 5. create a factory which will be used to deploy instances of the contract
@@ -56,7 +56,7 @@ async fn main() -> Result<()> {
     // 11. get the new value
     let value = contract.get_value().call().await?;
 
-    println!("Value: {}. Logs: {}", value, serde_json::to_string(&logs)?);
+    println!("Value: {value}. Logs: {}", serde_json::to_string(&logs)?);
 
     Ok(())
 }

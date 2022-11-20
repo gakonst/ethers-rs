@@ -52,12 +52,18 @@ use std::fmt;
 /// let message = b"hello";
 /// let signature = wallet.sign_message(message).await?;
 /// assert_eq!(signature.recover(&message[..]).unwrap(), wallet.address());
+///
+/// // LocalWallet is clonable:
+/// let wallet_clone = wallet.clone();
+/// let signature2 = wallet_clone.sign_message(message).await?;
+/// assert_eq!(signature, signature2);
 /// # Ok(())
 /// # }
 /// ```
 ///
 /// [`Signature`]: ethers_core::types::Signature
 /// [`hash_message`]: fn@ethers_core::utils::hash_message
+#[derive(Clone)]
 pub struct Wallet<D: DigestSigner<Sha256Proxy, RecoverableSignature>> {
     /// The Wallet's private Key
     pub(crate) signer: D,
@@ -91,7 +97,7 @@ impl<D: Sync + Send + DigestSigner<Sha256Proxy, RecoverableSignature>> Signer fo
 
     async fn sign_transaction(&self, tx: &TypedTransaction) -> Result<Signature, Self::Error> {
         let mut tx_with_chain = tx.clone();
-        if tx_with_chain.chain_id() == None {
+        if tx_with_chain.chain_id().is_none() {
             // in the case we don't have a chain_id, let's use the signer chain id instead
             tx_with_chain.set_chain_id(self.chain_id);
         }

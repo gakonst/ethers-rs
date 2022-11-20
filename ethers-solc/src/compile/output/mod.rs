@@ -3,7 +3,7 @@
 use crate::{
     artifacts::{
         contract::{CompactContractBytecode, CompactContractRef, Contract},
-        Error,
+        Error, Severity,
     },
     buildinfo::RawBuildInfo,
     info::ContractInfoRef,
@@ -31,6 +31,8 @@ pub struct ProjectCompileOutput<T: ArtifactOutput = ConfigurableArtifacts> {
     pub(crate) cached_artifacts: Artifacts<T::Artifact>,
     /// errors that should be omitted
     pub(crate) ignored_error_codes: Vec<u64>,
+    /// set minimum level of severity that is treated as an error
+    pub(crate) compiler_severity_filter: Severity,
 }
 
 impl<T: ArtifactOutput> ProjectCompileOutput<T> {
@@ -80,11 +82,30 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// let artifacts: BTreeMap<String, &ConfigurableContractArtifact> = project.compile().unwrap().artifacts().collect();
     /// ```
     pub fn artifacts(&self) -> impl Iterator<Item = (String, &T::Artifact)> {
+        self.versioned_artifacts().map(|(name, (artifact, _))| (name, artifact))
+    }
+
+    /// This returns a chained iterator of both cached and recompiled contract artifacts that yields
+    /// the contract name and the corresponding artifact
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::collections::btree_map::BTreeMap;
+    /// use semver::Version;
+    /// use ethers_solc::ConfigurableContractArtifact;
+    /// use ethers_solc::Project;
+    ///
+    /// let project = Project::builder().build().unwrap();
+    /// let artifacts: BTreeMap<String, (&ConfigurableContractArtifact, &Version)> = project.compile().unwrap().versioned_artifacts().collect();
+    /// ```
+    pub fn versioned_artifacts(&self) -> impl Iterator<Item = (String, (&T::Artifact, &Version))> {
         self.cached_artifacts
             .artifact_files()
             .chain(self.compiled_artifacts.artifact_files())
             .filter_map(|artifact| {
-                T::contract_name(&artifact.file).map(|name| (name, &artifact.artifact))
+                T::contract_name(&artifact.file)
+                    .map(|name| (name, (&artifact.artifact, &artifact.version)))
             })
     }
 
@@ -178,7 +199,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
 
     /// Whether there were errors
     pub fn has_compiler_errors(&self) -> bool {
-        self.compiler_output.has_error()
+        self.compiler_output.has_error(&self.ignored_error_codes, &self.compiler_severity_filter)
     }
 
     /// Whether there were warnings
@@ -204,12 +225,12 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     pub fn compiled_contracts_by_compiler_version(
         &self,
     ) -> BTreeMap<Version, Vec<(String, Contract)>> {
-        let mut contracts = BTreeMap::new();
+        let mut contracts: BTreeMap<_, Vec<_>> = BTreeMap::new();
         let versioned_contracts = &self.compiler_output.contracts;
         for (_, name, contract, version) in versioned_contracts.contracts_with_files_and_version() {
             contracts
                 .entry(version.to_owned())
-                .or_insert(Vec::<(String, Contract)>::new())
+                .or_default()
                 .push((name.to_string(), contract.clone()));
         }
         contracts
@@ -361,9 +382,10 @@ impl ProjectCompileOutput<ConfigurableArtifacts> {
     /// use std::collections::btree_map::BTreeMap;
     /// use ethers_solc::artifacts::contract::CompactContractBytecode;
     /// use ethers_solc::{ArtifactId, Project};
+    /// use ethers_solc::contracts::ArtifactContracts;
     ///
     /// let project = Project::builder().build().unwrap();
-    /// let contracts: BTreeMap<ArtifactId, CompactContractBytecode> = project.compile().unwrap().into_contract_bytecodes().collect();
+    /// let contracts: ArtifactContracts = project.compile().unwrap().into_contract_bytecodes().collect();
     /// ```
     pub fn into_contract_bytecodes(
         self,
@@ -378,7 +400,9 @@ impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
         if self.compiler_output.is_unchanged() {
             f.write_str("Nothing to compile")
         } else {
-            self.compiler_output.diagnostics(&self.ignored_error_codes).fmt(f)
+            self.compiler_output
+                .diagnostics(&self.ignored_error_codes, self.compiler_severity_filter.clone())
+                .fmt(f)
         }
     }
 }
@@ -406,8 +430,20 @@ impl AggregatedCompilerOutput {
     }
 
     /// Whether the output contains a compiler error
-    pub fn has_error(&self) -> bool {
-        self.errors.iter().any(|err| err.severity.is_error())
+    pub fn has_error(
+        &self,
+        ignored_error_codes: &[u64],
+        compiler_severity_filter: &Severity,
+    ) -> bool {
+        self.errors.iter().any(|err| {
+            if compiler_severity_filter.ge(&err.severity) {
+                if compiler_severity_filter.is_warning() {
+                    return self.has_warning(ignored_error_codes)
+                }
+                return true
+            }
+            false
+        })
     }
 
     /// Whether the output contains a compiler warning
@@ -421,8 +457,12 @@ impl AggregatedCompilerOutput {
         })
     }
 
-    pub fn diagnostics<'a>(&'a self, ignored_error_codes: &'a [u64]) -> OutputDiagnostics {
-        OutputDiagnostics { compiler_output: self, ignored_error_codes }
+    pub fn diagnostics<'a>(
+        &'a self,
+        ignored_error_codes: &'a [u64],
+        compiler_severity_filter: Severity,
+    ) -> OutputDiagnostics {
+        OutputDiagnostics { compiler_output: self, ignored_error_codes, compiler_severity_filter }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -682,12 +722,14 @@ pub struct OutputDiagnostics<'a> {
     compiler_output: &'a AggregatedCompilerOutput,
     /// the error codes to ignore
     ignored_error_codes: &'a [u64],
+    /// set minimum level of severity that is treated as an error
+    compiler_severity_filter: Severity,
 }
 
 impl<'a> OutputDiagnostics<'a> {
     /// Returns true if there is at least one error of high severity
     pub fn has_error(&self) -> bool {
-        self.compiler_output.has_error()
+        self.compiler_output.has_error(self.ignored_error_codes, &self.compiler_severity_filter)
     }
 
     /// Returns true if there is at least one warning
@@ -732,10 +774,10 @@ impl<'a> fmt::Display for OutputDiagnostics<'a> {
                 });
 
                 if !is_ignored {
-                    writeln!(f, "\n{}", err)?;
+                    writeln!(f, "\n{err}")?;
                 }
             } else {
-                writeln!(f, "\n{}", err)?;
+                writeln!(f, "\n{err}")?;
             }
         }
         Ok(())

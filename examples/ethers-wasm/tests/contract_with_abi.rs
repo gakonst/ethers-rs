@@ -1,12 +1,14 @@
 #![cfg(target_arch = "wasm32")]
 
-use wasm_bindgen_test::*;
-
-use ethers::prelude::{
-    abigen, ContractFactory, Http, JsonRpcClient, LocalWallet, Provider, SignerMiddleware, Ws,
+use ethers::{
+    prelude::{
+        abigen, ContractFactory, Http, JsonRpcClient, LocalWallet, Provider, SignerMiddleware, Ws,
+    },
+    signers::Signer,
+    types::Chain,
 };
-
 use std::{convert::TryFrom, sync::Arc};
+use wasm_bindgen_test::*;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -22,14 +24,14 @@ abigen!(
 async fn http_connect_and_deploy() {
     console_log!("connecting http...");
     let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-    deploy(provider, ethers_wasm::utils::key(0)).await;
+    deploy(provider, ethers_wasm::utils::key(0).with_chain_id(Chain::AnvilHardhat)).await;
 }
 
 #[wasm_bindgen_test]
 async fn ws_connect_and_deploy() {
     console_log!("connecting ws...");
     let provider = Provider::new(Ws::connect("ws://localhost:8545").await.unwrap());
-    deploy(provider, ethers_wasm::utils::key(1)).await;
+    deploy(provider, ethers_wasm::utils::key(1).with_chain_id(Chain::AnvilHardhat)).await;
 }
 
 async fn deploy<T: JsonRpcClient>(provider: Provider<T>, wallet: LocalWallet) {

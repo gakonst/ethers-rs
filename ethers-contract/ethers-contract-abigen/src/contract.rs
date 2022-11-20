@@ -3,16 +3,13 @@ mod common;
 mod errors;
 mod events;
 mod methods;
-mod structs;
+pub(crate) mod structs;
 mod types;
 
 use super::{util, Abigen};
-use crate::{
-    contract::{methods::MethodAlias, structs::InternalStructs},
-    rawabi::JsonAbi,
-};
+use crate::contract::{methods::MethodAlias, structs::InternalStructs};
 use ethers_core::{
-    abi::{Abi, AbiParser, ErrorExt, EventExt},
+    abi::{Abi, AbiParser, ErrorExt, EventExt, JsonAbi},
     macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
     types::Bytes,
 };
@@ -191,7 +188,9 @@ impl Context {
         // holds the bytecode parsed from the abi_str, if present
         let mut contract_bytecode = None;
 
-        let (abi, human_readable, abi_parser) = parse_abi(&abi_str)?;
+        let (abi, human_readable, abi_parser) = parse_abi(&abi_str).wrap_err_with(|| {
+            eyre::eyre!("error parsing abi for contract: {}", args.contract_name)
+        })?;
 
         // try to extract all the solidity structs from the normal JSON ABI
         // we need to parse the json abi again because we need the internalType fields which are
@@ -205,6 +204,7 @@ impl Context {
                 .rust_type_names
                 .extend(abi_parser.function_params.values().map(|ty| (ty.clone(), ty.clone())));
             internal_structs.function_params = abi_parser.function_params.clone();
+            internal_structs.event_params = abi_parser.event_params.clone();
             internal_structs.outputs = abi_parser.outputs.clone();
 
             internal_structs
@@ -337,7 +337,7 @@ where
     if not_aliased.len() > 1 {
         let mut overloaded_aliases = Vec::new();
         for (idx, (sig, name)) in not_aliased.into_iter().enumerate() {
-            let unique_name = format!("{}{}", name, idx + 1);
+            let unique_name = format!("{name}{}", idx + 1);
             overloaded_aliases.push((sig, get_ident(&unique_name)));
         }
         aliases.extend(overloaded_aliases);
@@ -351,7 +351,8 @@ fn parse_abi(abi_str: &str) -> Result<(Abi, bool, AbiParser)> {
         (abi, true, abi_parser)
     } else {
         // a best-effort coercion of an ABI or an artifact JSON into an artifact JSON.
-        let contract: JsonContract = serde_json::from_str(abi_str)?;
+        let contract: JsonContract = serde_json::from_str(abi_str)
+            .wrap_err_with(|| eyre::eyre!("failed deserializing abi:\n{}", abi_str))?;
 
         (contract.into_abi(), false, abi_parser)
     };

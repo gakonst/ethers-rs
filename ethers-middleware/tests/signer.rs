@@ -1,5 +1,5 @@
 #![allow(unused)]
-use ethers_providers::{Http, JsonRpcClient, Middleware, Provider, RINKEBY};
+use ethers_providers::{Http, JsonRpcClient, Middleware, Provider, GOERLI};
 
 use ethers_core::{
     types::{BlockNumber, TransactionRequest},
@@ -50,10 +50,44 @@ async fn send_eth() {
     assert!(balance_before > balance_after);
 }
 
+// hardhat compatibility test, to show hardhat rejects tx signed for other chains
+#[tokio::test]
+#[cfg(not(feature = "celo"))]
+#[ignore]
+async fn send_with_chain_id_hardhat() {
+    let wallet: LocalWallet =
+        "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80".parse().unwrap();
+    let provider = Provider::try_from("http://localhost:8545").unwrap();
+    let client = SignerMiddleware::new(provider, wallet);
+
+    let tx = TransactionRequest::new().to(Address::random()).value(100u64);
+    let res = client.send_transaction(tx, None).await;
+
+    let err = res.unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("Trying to send an incompatible EIP-155 transaction, signed for another chain."));
+}
+
+#[tokio::test]
+#[cfg(not(feature = "celo"))]
+#[ignore]
+async fn send_with_chain_id_anvil() {
+    let wallet: LocalWallet =
+        "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80".parse().unwrap();
+    let provider = Provider::try_from("http://localhost:8545").unwrap();
+    let client = SignerMiddleware::new(provider, wallet);
+
+    let tx = TransactionRequest::new().to(Address::random()).value(100u64);
+    let res = client.send_transaction(tx, None).await;
+
+    let _err = res.unwrap_err();
+}
+
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn pending_txs_with_confirmations_testnet() {
-    let provider = RINKEBY.provider().interval(Duration::from_millis(3000));
+    let provider = GOERLI.provider().interval(Duration::from_millis(3000));
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();
@@ -63,12 +97,13 @@ async fn pending_txs_with_confirmations_testnet() {
 
 #[cfg(not(feature = "celo"))]
 use ethers_core::types::{Address, Eip1559TransactionRequest};
+use ethers_core::utils::parse_ether;
 
 // different keys to avoid nonce errors
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn websocket_pending_txs_with_confirmations_testnet() {
-    let provider = RINKEBY.ws().await.interval(Duration::from_millis(3000));
+    let provider = GOERLI.ws().await.interval(Duration::from_millis(3000));
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
     let address = wallet.address();
@@ -89,7 +124,7 @@ async fn generic_pending_txs_test<M: Middleware>(provider: M, who: Address) {
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn typed_txs() {
-    let provider = RINKEBY.provider();
+    let provider = GOERLI.provider();
 
     let chain_id = provider.get_chainid().await.unwrap();
     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
@@ -113,18 +148,22 @@ async fn typed_txs() {
         assert_eq!(tx.transaction_type, Some(expected.into()));
     }
 
-    let mut nonce = provider.get_transaction_count(address, None).await.unwrap();
-    let tx = TransactionRequest::new().from(address).to(address).nonce(nonce);
-    nonce += 1.into();
-    let tx1 =
-        provider.send_transaction(tx.clone(), Some(BlockNumber::Pending.into())).await.unwrap();
+    let nonce = provider.get_transaction_count(address, None).await.unwrap();
+    let bn = Some(BlockNumber::Pending.into());
+    let gas_price = provider.get_gas_price().await.unwrap() * 125 / 100;
 
-    let tx = tx.clone().nonce(nonce).from(address).to(address).with_access_list(vec![]);
-    nonce += 1.into();
-    let tx2 = provider.send_transaction(tx, Some(BlockNumber::Pending.into())).await.unwrap();
+    let tx = TransactionRequest::new().from(address).to(address).nonce(nonce).gas_price(gas_price);
+    let tx1 = provider.send_transaction(tx.clone(), bn).await.unwrap();
 
-    let tx = Eip1559TransactionRequest::new().from(address).to(address).nonce(nonce);
-    let tx3 = provider.send_transaction(tx, Some(BlockNumber::Pending.into())).await.unwrap();
+    let tx = tx.clone().from(address).to(address).nonce(nonce + 1).with_access_list(vec![]);
+    let tx2 = provider.send_transaction(tx, bn).await.unwrap();
+
+    let tx = Eip1559TransactionRequest::new()
+        .from(address)
+        .to(address)
+        .nonce(nonce + 2)
+        .max_fee_per_gas(gas_price);
+    let tx3 = provider.send_transaction(tx, bn).await.unwrap();
 
     futures_util::join!(check_tx(tx1, 0), check_tx(tx2, 1), check_tx(tx3, 2),);
 }
@@ -211,7 +250,7 @@ async fn deploy_and_call_contract() {
 
     // compiles the given contract and returns the ABI and Bytecode
     fn compile_contract(path: &str, name: &str) -> (Abi, Bytes) {
-        let path = format!("./tests/solidity-contracts/{}", path);
+        let path = format!("./tests/solidity-contracts/{path}");
         let compiled = Solc::default().compile_source(&path).unwrap();
         let contract = compiled.get(&path, name).expect("could not find contract");
         let (abi, bin, _) = contract.into_parts_or_default();
@@ -263,7 +302,7 @@ impl TestWallets {
     #[allow(unused)]
     pub async fn fund<T: JsonRpcClient, U: Into<u32>>(&self, provider: &Provider<T>, n: U) {
         let addrs = (0..n.into()).map(|i| self.get(i).address()).collect::<Vec<_>>();
-        // hardcoded funder address private key, rinkeby
+        // hardcoded funder address private key, goerli
         let signer = "39aa18eeb5d12c071e5f19d8e9375a872e90cb1f2fa640384ffd8800a2f3e8f1"
             .parse::<LocalWallet>()
             .unwrap()
@@ -274,12 +313,12 @@ impl TestWallets {
         let mut nonce = provider.get_transaction_count(addr, None).await.unwrap();
         let mut pending_txs = Vec::new();
         for addr in addrs {
-            println!("Funding wallet {:?}", addr);
+            println!("Funding wallet {addr:?}");
             let tx = TransactionRequest::new()
                 .nonce(nonce)
                 .to(addr)
                 // 0.1 eth per wallet
-                .value(parse_units("1", 18).unwrap());
+                .value(parse_ether("1").unwrap());
             pending_txs.push(
                 provider.send_transaction(tx, Some(BlockNumber::Pending.into())).await.unwrap(),
             );

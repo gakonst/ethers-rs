@@ -5,8 +5,8 @@ use crate::{
     error::{Result, SolcError},
     filter::{FilteredSource, FilteredSourceInfo, FilteredSources},
     resolver::GraphEdges,
-    utils, ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, Project, ProjectPathsConfig,
-    Source,
+    utils, ArtifactFile, ArtifactOutput, Artifacts, ArtifactsMap, OutputContext, Project,
+    ProjectPathsConfig, Source,
 };
 use semver::Version;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -301,12 +301,19 @@ impl SolFilesCache {
     /// let artifacts = cache.read_artifacts::<CompactContractBytecode>().unwrap();
     /// # }
     /// ```
-    pub fn read_artifacts<Artifact: DeserializeOwned>(&self) -> Result<Artifacts<Artifact>> {
-        let mut artifacts = ArtifactsMap::new();
-        for (file, entry) in self.files.iter() {
-            let file_name = format!("{}", file.display());
-            artifacts.insert(file_name, entry.read_artifact_files()?);
-        }
+    pub fn read_artifacts<Artifact: DeserializeOwned + Send + Sync>(
+        &self,
+    ) -> Result<Artifacts<Artifact>> {
+        use rayon::prelude::*;
+
+        let artifacts = self
+            .files
+            .par_iter()
+            .map(|(file, entry)| {
+                let file_name = format!("{}", file.display());
+                entry.read_artifact_files().map(|files| (file_name, files))
+            })
+            .collect::<Result<ArtifactsMap<_>>>()?;
         Ok(Artifacts(artifacts))
     }
 
@@ -523,6 +530,11 @@ impl CacheEntry {
         self.artifacts.values().flat_map(|artifacts| artifacts.iter())
     }
 
+    /// Returns the artifact file for the contract and version pair
+    pub fn find_artifact(&self, contract: &str, version: &Version) -> Option<&PathBuf> {
+        self.artifacts.get(contract).and_then(|files| files.get(version))
+    }
+
     /// Iterator that yields all artifact files and their version
     pub fn artifacts_for_version<'a>(
         &'a self,
@@ -602,7 +614,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
             .collect();
 
         let entry = CacheEntry {
-            last_modification_date: CacheEntry::read_last_modification_date(&file)
+            last_modification_date: CacheEntry::read_last_modification_date(file)
                 .unwrap_or_default(),
             content_hash: source.content_hash(),
             source_name: utils::source_name(file, self.project.root()).into(),
@@ -716,7 +728,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     /// returns `false` if the corresponding cache entry remained unchanged otherwise `true`
     fn is_dirty(&self, file: &Path, version: &Version) -> bool {
         if let Some(hash) = self.content_hashes.get(file) {
-            if let Some(entry) = self.cache.entry(&file) {
+            if let Some(entry) = self.cache.entry(file) {
                 if entry.content_hash.as_bytes() != hash.as_bytes() {
                     tracing::trace!("changed content hash for source file \"{}\"", file.display());
                     return true
@@ -864,6 +876,13 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
         }
     }
 
+    pub fn output_ctx(&self) -> OutputContext {
+        match self {
+            ArtifactsCache::Ephemeral(_, _) => Default::default(),
+            ArtifactsCache::Cached(inner) => OutputContext::new(&inner.cache),
+        }
+    }
+
     pub fn project(&self) -> &'a Project<T> {
         match self {
             ArtifactsCache::Ephemeral(_, project) => project,
@@ -948,7 +967,8 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
                                         }).unwrap_or_default();
                                     if !retain {
                                         tracing::trace!(
-                                            "purging obsolete cached artifact for contract {} and version {}",
+                                            "purging obsolete cached artifact {:?} for contract {} and version {}",
+                                            f.file,
                                             name,
                                             f.version
                                         );

@@ -29,7 +29,7 @@ use ethers_core::{
     utils,
 };
 use hex::FromHex;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
@@ -352,34 +352,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             }
         }
 
-        // If the tx has an access list but it is empty, it is an Eip1559 or Eip2930 tx,
-        // and we attempt to populate the acccess list. This may require `eth_estimateGas`,
-        // in which case we save the result in maybe_gas_res for later
-        let mut maybe_gas = None;
-        if let Some(starting_al) = tx.access_list() {
-            if starting_al.0.is_empty() {
-                let (gas_res, al_res) = futures_util::join!(
-                    maybe(tx.gas().cloned(), self.estimate_gas(tx)),
-                    self.create_access_list(tx, block)
-                );
-                let mut gas = gas_res?;
-
-                if let Ok(al_with_gas) = al_res {
-                    // Set access list if it saves gas over the estimated (or previously set) value
-                    if al_with_gas.gas_used < gas {
-                        // Update the gas estimate with the lower amount
-                        gas = al_with_gas.gas_used;
-                        tx.set_access_list(al_with_gas.access_list);
-                    }
-                }
-                maybe_gas = Some(gas);
-            }
-        }
-
         // Set gas to estimated value only if it was not set by the caller,
         // even if the access list has been populated and saves gas
         if tx.gas().is_none() {
-            let gas_estimate = maybe(maybe_gas, self.estimate_gas(tx)).await?;
+            let gas_estimate = self.estimate_gas(tx, block).await?;
             tx.set_gas(gas_estimate);
         }
 
@@ -563,26 +539,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
     /// Return current client syncing status. If IsFalse sync is over.
     async fn syncing(&self) -> Result<SyncingStatus, Self::Error> {
-        #[derive(Debug, Serialize, Deserialize)]
-        #[serde(untagged)]
-        pub enum SyncingStatusIntermediate {
-            /// When client is synced to highest block, eth_syncing with return string "false"
-            IsFalse(bool),
-            /// When client is still syncing past blocks we get IsSyncing information.
-            IsSyncing { starting_block: U256, current_block: U256, highest_block: U256 },
-        }
-        let intermediate: SyncingStatusIntermediate = self.request("eth_syncing", ()).await?;
-        match intermediate {
-            SyncingStatusIntermediate::IsFalse(false) => Ok(SyncingStatus::IsFalse),
-            SyncingStatusIntermediate::IsFalse(true) => Err(ProviderError::CustomError(
-                "eth_syncing returned `true` that is undefined value.".to_owned(),
-            )),
-            SyncingStatusIntermediate::IsSyncing {
-                starting_block,
-                current_block,
-                highest_block,
-            } => Ok(SyncingStatus::IsSyncing { starting_block, current_block, highest_block }),
-        }
+        self.request("eth_syncing", ()).await
     }
 
     /// Returns the network version.
@@ -611,8 +568,20 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// required (as a U256) to send it This is free, but only an estimate. Providing too little
     /// gas will result in a transaction being rejected (while still consuming all provided
     /// gas).
-    async fn estimate_gas(&self, tx: &TypedTransaction) -> Result<U256, ProviderError> {
-        self.request("eth_estimateGas", [tx]).await
+    async fn estimate_gas(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<U256, ProviderError> {
+        let tx = utils::serialize(tx);
+        // Some nodes (e.g. old Optimism clients) don't support a block ID being passed as a param,
+        // so refrain from defaulting to BlockNumber::Latest.
+        let params = if let Some(block_id) = block {
+            vec![tx, utils::serialize(&block_id)]
+        } else {
+            vec![tx]
+        };
+        self.request("eth_estimateGas", params).await
     }
 
     async fn create_access_list(
@@ -970,11 +939,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         };
         let data = self.call(&tx.into(), None).await?;
         let mut metadata_url = Url::parse(&decode_bytes::<String>(ParamType::String, data))
-            .map_err(|e| ProviderError::CustomError(format!("Invalid metadata url: {}", e)))?;
+            .map_err(|e| ProviderError::CustomError(format!("Invalid metadata url: {e}")))?;
 
         if token.type_ == erc::ERCNFTType::ERC1155 {
-            metadata_url
-                .set_path(&metadata_url.path().replace("%7Bid%7D", &hex::encode(&token.id)));
+            metadata_url.set_path(&metadata_url.path().replace("%7Bid%7D", &hex::encode(token.id)));
         }
         if metadata_url.scheme() == "ipfs" {
             metadata_url = erc::http_link_ipfs(metadata_url).map_err(ProviderError::CustomError)?;
@@ -1263,12 +1231,50 @@ impl<P: JsonRpcClient> Provider<P> {
             return Err(ProviderError::EnsError(ens_name.to_string()))
         }
 
+        if let ParamType::Address = param {
+            // Reverse resolver reverts when calling `supportsInterface(bytes4)`
+            self.validate_resolver(resolver_address, selector, ens_name).await?;
+        }
+
         // resolve
         let data = self
             .call(&ens::resolve(resolver_address, selector, ens_name, parameters).into(), None)
             .await?;
 
         Ok(decode_bytes(param, data))
+    }
+
+    /// Validates that the resolver supports `selector`.
+    async fn validate_resolver(
+        &self,
+        resolver_address: Address,
+        selector: Selector,
+        ens_name: &str,
+    ) -> Result<(), ProviderError> {
+        let data =
+            self.call(&ens::supports_interface(resolver_address, selector).into(), None).await?;
+
+        if data.is_empty() {
+            return Err(ProviderError::EnsError(format!(
+                "`{}` resolver ({:?}) is invalid.",
+                ens_name, resolver_address
+            )))
+        }
+
+        let supports_selector = abi::decode(&[ParamType::Bool], data.as_ref())
+            .map(|token| token[0].clone().into_bool().unwrap_or_default())
+            .unwrap_or_default();
+
+        if !supports_selector {
+            return Err(ProviderError::EnsError(format!(
+                "`{}` resolver ({:?}) does not support selector {}.",
+                ens_name,
+                resolver_address,
+                hex::encode(selector)
+            )))
+        }
+
+        Ok(())
     }
 
     #[cfg(test)]
@@ -1826,7 +1832,7 @@ mod tests {
             ("cdixon.eth", "https://ipfs.io/ipfs/QmYA6ZpEARgHvRHZQdFPynMMX8NtdL2JCadvyuyG2oA88u"),
             ("0age.eth", "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHN0eWxlPSJiYWNrZ3JvdW5kLWNvbG9yOmJsYWNrIiB2aWV3Qm94PSIwIDAgNTAwIDUwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB4PSIxNTUiIHk9IjYwIiB3aWR0aD0iMTkwIiBoZWlnaHQ9IjM5MCIgZmlsbD0iIzY5ZmYzNyIvPjwvc3ZnPg==")
         ] {
-        println!("Resolving: {}", ens_name);
+        println!("Resolving: {ens_name}");
         assert_eq!(provider.resolve_avatar(ens_name).await.unwrap(), Url::parse(res).unwrap());
     }
     }
@@ -2026,41 +2032,13 @@ mod tests {
         assert_eq!(tx.gas_price(), Some(max_fee));
         assert_eq!(tx.access_list(), Some(&access_list));
 
-        // --- fills a 1559 transaction, leaving the existing gas limit unchanged, but including
-        // access list if cheaper
-        let gas_with_al = gas - 1;
+        // --- fills a 1559 transaction, leaving the existing gas limit unchanged,
+        // without generating an access-list
         let mut tx = Eip1559TransactionRequest::new()
             .gas(gas)
             .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
             .into();
-
-        mock.push(AccessListWithGasUsed {
-            access_list: access_list.clone(),
-            gas_used: gas_with_al,
-        })
-        .unwrap();
-
-        provider.fill_transaction(&mut tx, None).await.unwrap();
-
-        assert_eq!(tx.from(), provider.from.as_ref());
-        assert!(tx.to().is_none());
-        assert_eq!(tx.gas(), Some(&gas));
-        assert_eq!(tx.access_list(), Some(&access_list));
-
-        // --- fills a 1559 transaction, ignoring access list if more expensive
-        let gas_with_al = gas + 1;
-        let mut tx = Eip1559TransactionRequest::new()
-            .max_fee_per_gas(max_fee)
-            .max_priority_fee_per_gas(prio_fee)
-            .into();
-
-        mock.push(AccessListWithGasUsed {
-            access_list: access_list.clone(),
-            gas_used: gas_with_al,
-        })
-        .unwrap();
-        mock.push(gas).unwrap();
 
         provider.fill_transaction(&mut tx, None).await.unwrap();
 
@@ -2069,14 +2047,12 @@ mod tests {
         assert_eq!(tx.gas(), Some(&gas));
         assert_eq!(tx.access_list(), Some(&Default::default()));
 
-        // --- fills a 1559 transaction, using estimated gas if create_access_list() errors
+        // --- fills a 1559 transaction, using estimated gas
         let mut tx = Eip1559TransactionRequest::new()
             .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
             .into();
 
-        // bad mock value causes error response for eth_createAccessList
-        mock.push(b'b').unwrap();
         mock.push(gas).unwrap();
 
         provider.fill_transaction(&mut tx, None).await.unwrap();
@@ -2132,5 +2108,20 @@ mod tests {
         assert_eq!(tx.gas(), Some(&gas));
         assert_eq!(tx.gas_price(), Some(gas_price));
         assert!(tx.access_list().is_none());
+    }
+
+    #[tokio::test]
+    async fn mainnet_lookup_address_invalid_resolver() {
+        let provider = crate::MAINNET.provider();
+
+        let err = provider
+            .lookup_address("0x30c9223d9e3d23e0af1073a38e0834b055bf68ed".parse().unwrap())
+            .await
+            .unwrap_err();
+
+        assert_eq!(
+            &err.to_string(),
+            "ens name not found: `ox63616e.eth` resolver (0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) is invalid."
+        );
     }
 }

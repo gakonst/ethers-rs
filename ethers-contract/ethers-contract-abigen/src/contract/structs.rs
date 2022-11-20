@@ -1,13 +1,12 @@
 //! Methods for expanding structs
 use crate::{
     contract::{types, Context},
-    rawabi::{Component, RawAbi},
     util,
 };
 use ethers_core::{
     abi::{
         struct_def::{FieldDeclaration, FieldType, StructFieldType, StructType},
-        HumanReadableParser, ParamType, SolStruct,
+        Component, HumanReadableParser, ParamType, RawAbi, SolStruct,
     },
     macros::ethers_contract_crate,
 };
@@ -130,9 +129,9 @@ impl Context {
             "".to_string()
         };
 
-        let abi_signature = format!("{}({})", name, sig,);
+        let abi_signature = format!("{name}({sig})",);
 
-        let abi_signature_doc = util::expand_doc(&format!("`{}`", abi_signature));
+        let abi_signature_doc = util::expand_doc(&format!("`{abi_signature}`"));
 
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);
@@ -185,7 +184,7 @@ impl Context {
             param_types.iter().map(|kind| kind.to_string()).collect::<Vec<_>>().join(","),
         );
 
-        let abi_signature_doc = util::expand_doc(&format!("`{}`", abi_signature));
+        let abi_signature_doc = util::expand_doc(&format!("`{abi_signature}`"));
 
         let name = util::ident(name);
 
@@ -226,8 +225,14 @@ pub struct InternalStructs {
     /// from ethabi.
     pub(crate) function_params: HashMap<(String, String), String>,
 
-    /// (function name) -> Vec<structs> all structs the function returns
+    /// (function name) -> `Vec<structs>` all structs the function returns
     pub(crate) outputs: HashMap<String, Vec<String>>,
+
+    /// (event name, idx) -> struct which are the identifying properties we get the name
+    /// from ethabi.
+    ///
+    /// Note: we need to map the index of the event here because events can contain nameless inputs
+    pub(crate) event_params: HashMap<(String, usize), String>,
 
     /// All the structs extracted from the abi with their identifier as key
     pub(crate) structs: HashMap<String, SolStruct>,
@@ -245,23 +250,37 @@ impl InternalStructs {
         let mut top_level_internal_types = HashMap::new();
         let mut function_params = HashMap::new();
         let mut outputs = HashMap::new();
+        let mut event_params = HashMap::new();
         let mut structs = HashMap::new();
         for item in abi
             .into_iter()
-            .filter(|item| item.type_field == "constructor" || item.type_field == "function")
+            .filter(|item| matches!(item.type_field.as_str(), "constructor" | "function" | "event"))
         {
+            let is_event = item.type_field == "event";
+
             if let Some(name) = item.name {
-                for input in item.inputs {
+                for (idx, input) in item.inputs.into_iter().enumerate() {
                     if let Some(ty) = input
                         .internal_type
                         .as_deref()
                         .filter(|ty| ty.starts_with("struct "))
                         .map(struct_type_identifier)
                     {
-                        function_params.insert((name.clone(), input.name.clone()), ty.to_string());
+                        if is_event {
+                            event_params.insert((name.clone(), idx), ty.to_string());
+                        } else {
+                            function_params
+                                .insert((name.clone(), input.name.clone()), ty.to_string());
+                        }
                         top_level_internal_types.insert(ty.to_string(), input);
                     }
                 }
+
+                if is_event {
+                    // no outputs in an event
+                    continue
+                }
+
                 let mut output_structs = Vec::new();
                 for output in item.outputs {
                     if let Some(ty) = output
@@ -300,6 +319,7 @@ impl InternalStructs {
             function_params,
             outputs,
             structs,
+            event_params,
             struct_tuples,
             rust_type_names: type_names
                 .into_iter()
@@ -316,6 +336,15 @@ impl InternalStructs {
             .get(&key)
             .and_then(|id| self.rust_type_names.get(id))
             .map(String::as_str)
+    }
+
+    /// Returns the name of the rust type that will be generated if the given input is a struct
+    /// This takes the index of event's parameter instead of the parameter's name like
+    /// [`Self::get_function_input_struct_type`] does because we can't rely on the name since events
+    /// support nameless parameters NOTE: this does not account for arrays or fixed arrays
+    pub fn get_event_input_struct_type(&self, event: &str, idx: usize) -> Option<&str> {
+        let key = (event.to_string(), idx);
+        self.event_params.get(&key).and_then(|id| self.rust_type_names.get(id)).map(String::as_str)
     }
 
     /// Returns the name of the rust type that will be generated if the given output is a struct
@@ -343,6 +372,11 @@ impl InternalStructs {
     pub fn rust_type_names(&self) -> &HashMap<String, String> {
         &self.rust_type_names
     }
+
+    /// Returns all the solidity struct types
+    pub fn structs_types(&self) -> &HashMap<String, SolStruct> {
+        &self.structs
+    }
 }
 
 /// This will determine the name of the rust type and will make sure that possible collisions are
@@ -358,12 +392,12 @@ fn insert_rust_type_name(
         let mut other_name = name.clone();
         // name collision `A.name` `B.name`, rename to `AName`, `BName`
         if !other_projections.is_empty() {
-            other_name = format!("{}{}", other_projections.remove(0).to_pascal_case(), other_name);
+            other_name = format!("{}{other_name}", other_projections.remove(0).to_pascal_case());
         }
         insert_rust_type_name(type_names, other_name, other_projections, other_id);
 
         if !projections.is_empty() {
-            name = format!("{}{}", projections.remove(0).to_pascal_case(), name);
+            name = format!("{}{name}", projections.remove(0).to_pascal_case());
         }
         insert_rust_type_name(type_names, name, projections, id);
     } else {

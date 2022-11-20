@@ -16,7 +16,7 @@ async fn main() -> Result<()> {
 
     // sign message from your wallet and print out signature produced.
     let signature = wallet.sign_message(message).await?;
-    println!("Produced signature {}", signature);
+    println!("Produced signature {signature}");
 
     // verify the signature produced from your wallet.
     signature.verify(message, wallet.address()).unwrap();

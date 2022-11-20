@@ -4,13 +4,13 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SourceTreeEntry {
     pub path: PathBuf,
     pub contents: String,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SourceTree {
     pub entries: Vec<SourceTreeEntry>,
 }
@@ -19,7 +19,7 @@ impl SourceTree {
     /// Expand the source tree into the provided directory.  This method sanitizes paths to ensure
     /// that no directory traversal happens.
     pub fn write_to(&self, dir: &Path) -> Result<()> {
-        create_dir_all(&dir)?;
+        create_dir_all(dir)?;
         for entry in &self.entries {
             let mut sanitized_path = sanitize_path(&entry.path);
             if sanitized_path.extension().is_none() {
@@ -37,10 +37,13 @@ impl SourceTree {
 
 /// Remove any components in a smart contract source path that could cause a directory traversal.
 fn sanitize_path(path: &Path) -> PathBuf {
-    Path::new(path)
+    let sanitized = Path::new(path)
         .components()
         .filter(|x| x.as_os_str() != Component::ParentDir.as_os_str())
-        .collect::<PathBuf>()
+        .collect::<PathBuf>();
+
+    // Force absolute paths to be relative
+    sanitized.strip_prefix("/").map(PathBuf::from).unwrap_or(sanitized)
 }
 
 #[cfg(test)]
@@ -81,14 +84,19 @@ mod tests {
                     path: PathBuf::from("../b/../b.sol"),
                     contents: String::from("Test 2"),
                 },
+                SourceTreeEntry {
+                    path: PathBuf::from("/c/c.sol"),
+                    contents: String::from("Test 3"),
+                },
             ],
         };
         st.write_to(tempdir.path()).unwrap();
         let written_paths = read_dir(tempdir.path()).unwrap();
         let paths: Vec<PathBuf> =
             written_paths.into_iter().filter_map(|x| x.ok()).map(|x| x.path()).collect();
-        assert_eq!(paths.len(), 2);
+        assert_eq!(paths.len(), 3);
         assert!(paths.contains(&tempdir.path().join("a")));
         assert!(paths.contains(&tempdir.path().join("b")));
+        assert!(paths.contains(&tempdir.path().join("c")));
     }
 }

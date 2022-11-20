@@ -40,6 +40,14 @@ pub const BERLIN_SOLC: Version = Version::new(0, 8, 5);
 /// <https://blog.soliditylang.org/2021/08/11/solidity-0.8.7-release-announcement/>
 pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 
+// `--base-path` was introduced in 0.6.9 <https://github.com/ethereum/solidity/releases/tag/v0.6.9>
+pub static SUPPORTS_BASE_PATH: once_cell::sync::Lazy<VersionReq> =
+    once_cell::sync::Lazy::new(|| VersionReq::parse(">=0.6.9").unwrap());
+
+// `--include-path` was introduced in 0.8.8 <https://github.com/ethereum/solidity/releases/tag/v0.8.8>
+pub static SUPPORTS_INCLUDE_PATH: once_cell::sync::Lazy<VersionReq> =
+    once_cell::sync::Lazy::new(|| VersionReq::parse(">=0.8.8").unwrap());
+
 #[cfg(any(test, feature = "tests"))]
 use std::sync::Mutex;
 
@@ -141,7 +149,7 @@ impl Default for Solc {
         #[cfg(not(target_arch = "wasm32"))]
         {
             if let Some(solc) = Solc::svm_global_version()
-                .and_then(|vers| Solc::find_svm_installed_version(&vers.to_string()).ok())
+                .and_then(|vers| Solc::find_svm_installed_version(vers.to_string()).ok())
                 .flatten()
             {
                 return solc
@@ -271,7 +279,7 @@ impl Solc {
         let solc = Self::svm_home()
             .ok_or_else(|| SolcError::solc("svm home dir not found"))?
             .join(version)
-            .join(format!("solc-{}", version));
+            .join(format!("solc-{version}"));
 
         if !solc.is_file() {
             return Ok(None)
@@ -457,7 +465,7 @@ impl Solc {
         if checksum_calc == checksum_found {
             Ok(())
         } else {
-            let expected = hex::encode(&checksum_found);
+            let expected = hex::encode(checksum_found);
             let detected = hex::encode(checksum_calc);
             tracing:: warn!(target : "solc", "checksum mismatch for {:?}, expected {}, but found {} for file {:?}", version, expected, detected, version_path);
             Err(SolcError::ChecksumMismatch { version, expected, detected, file: version_path })
@@ -527,6 +535,7 @@ impl Solc {
         let mut cmd = Command::new(&self.solc);
         if let Some(ref base_path) = self.base_path {
             cmd.current_dir(base_path);
+            cmd.arg("--base-path").arg(base_path);
         }
         let mut child = cmd
             .args(&self.args)
@@ -679,7 +688,7 @@ fn version_from_output(output: Output) -> Result<Version> {
             .lines()
             .last()
             .ok_or_else(|| SolcError::solc("version not found in solc output"))?
-            .map_err(|err| SolcError::msg(format!("Failed to read output: {}", err)))?;
+            .map_err(|err| SolcError::msg(format!("Failed to read output: {err}")))?;
         // NOTE: semver doesn't like `+` in g++ in build metadata which is invalid semver
         Ok(Version::from_str(&version.trim_start_matches("Version: ").replace(".g++", ".gcc"))?)
     } else {
@@ -823,7 +832,7 @@ mod tests {
             // update this test whenever there's a new sol
             // version. that's ok! good reminder to check the
             // patch notes.
-            (">=0.5.0", "0.8.15"),
+            (">=0.5.0", "0.8.17"),
             // range
             (">=0.4.0 <0.5.0", "0.4.26"),
         ]
@@ -849,8 +858,8 @@ mod tests {
         {
             Solc::blocking_install(&version).unwrap();
         }
-        let res = Solc::find_svm_installed_version(&version.to_string()).unwrap().unwrap();
-        let expected = svm::SVM_HOME.join(ver).join(format!("solc-{}", ver));
+        let res = Solc::find_svm_installed_version(version.to_string()).unwrap().unwrap();
+        let expected = svm::SVM_HOME.join(ver).join(format!("solc-{ver}"));
         assert_eq!(res.solc, expected);
     }
 
@@ -867,7 +876,7 @@ mod tests {
     fn does_not_find_not_installed_version() {
         let ver = "1.1.1";
         let version = Version::from_str(ver).unwrap();
-        let res = Solc::find_svm_installed_version(&version.to_string()).unwrap();
+        let res = Solc::find_svm_installed_version(version.to_string()).unwrap();
         assert!(res.is_none());
     }
 
@@ -899,6 +908,6 @@ mod tests {
     ///// helpers
 
     fn source(version: &str) -> Source {
-        Source { content: format!("pragma solidity {};\n", version) }
+        Source { content: format!("pragma solidity {version};\n") }
     }
 }

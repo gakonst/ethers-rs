@@ -13,7 +13,7 @@ async fn main() -> Result<()> {
     let provider = Provider::<Http>::try_from(anvil.endpoint())?;
 
     // connect the wallet to the provider
-    let client = SignerMiddleware::new(provider, wallet);
+    let client = SignerMiddleware::new(provider, wallet.with_chain_id(anvil.chain_id()));
 
     // craft the transaction
     let tx = TransactionRequest::new().to(wallet2.address()).value(10000);

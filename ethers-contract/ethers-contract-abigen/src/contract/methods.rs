@@ -1,8 +1,9 @@
-use std::collections::{btree_map::Entry, BTreeMap, HashMap};
+use std::collections::{btree_map::Entry, BTreeMap, HashMap, HashSet};
 
 use super::{types, util, Context};
-use crate::contract::common::{
-    expand_data_struct, expand_data_tuple, expand_param_type, expand_params,
+use crate::{
+    contract::common::{expand_data_struct, expand_data_tuple, expand_param_type, expand_params},
+    util::can_derive_defaults,
 };
 use ethers_core::{
     abi::{Function, FunctionExt, Param, ParamType},
@@ -33,7 +34,7 @@ impl Context {
             .map(|function| {
                 let signature = function.abi_signature();
                 self.expand_function(function, aliases.get(&signature).cloned())
-                    .with_context(|| format!("error expanding function '{}'", signature))
+                    .with_context(|| format!("error expanding function '{signature}'"))
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -134,9 +135,20 @@ impl Context {
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);
 
+        // rust-std only derives default automatically for arrays len <= 32
+        // for large array types we skip derive(Default) <https://github.com/gakonst/ethers-rs/issues/1640>
+        let derive_default = if can_derive_defaults(&function.inputs) {
+            quote! {
+                #[derive(Default)]
+            }
+        } else {
+            quote! {}
+        };
+
         Ok(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthCall, #ethers_contract::EthDisplay, #derives)]
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthCall, #ethers_contract::EthDisplay, #derives)]
+            #derive_default
             #[ethcall( name = #function_name, abi = #abi_signature )]
             pub #call_type_definition
         })
@@ -175,9 +187,20 @@ impl Context {
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);
 
+        // rust-std only derives default automatically for arrays len <= 32
+        // for large array types we skip derive(Default) <https://github.com/gakonst/ethers-rs/issues/1640>
+        let derive_default = if can_derive_defaults(&function.outputs) {
+            quote! {
+                #[derive(Default)]
+            }
+        } else {
+            quote! {}
+        };
+
         Ok(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
+            #[derive(Clone, Debug,Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
+             #derive_default
             pub #return_type_definition
         })
     }
@@ -356,6 +379,7 @@ impl Context {
         param: &str,
         kind: &ParamType,
     ) -> Result<TokenStream> {
+        let ethers_core = ethers_core_crate();
         match kind {
             ParamType::Array(ty) => {
                 let ty = self.expand_input_param_type(fun, param, ty)?;
@@ -364,7 +388,18 @@ impl Context {
                 })
             }
             ParamType::FixedArray(ty, size) => {
-                let ty = self.expand_input_param_type(fun, param, ty)?;
+                let ty = match **ty {
+                    ParamType::Uint(size) => {
+                        if size / 8 == 1 {
+                            // this prevents type ambiguity with `FixedBytes`
+                            quote! { #ethers_core::types::Uint8}
+                        } else {
+                            self.expand_input_param_type(fun, param, ty)?
+                        }
+                    }
+                    _ => self.expand_input_param_type(fun, param, ty)?,
+                };
+
                 let size = *size;
                 Ok(quote! {[#ty; #size]})
             }
@@ -499,11 +534,21 @@ impl Context {
             }
             // compare each overloaded function with the `first_fun`
             for (idx, overloaded_fun) in functions.into_iter().skip(1) {
+                // keep track of matched params
+                let mut already_matched_param_diff = HashSet::new();
                 // attempt to find diff in the input arguments
                 let mut diff = Vec::new();
                 let mut same_params = true;
                 for (idx, i1) in overloaded_fun.inputs.iter().enumerate() {
-                    if first_fun.inputs.iter().all(|i2| i1 != i2) {
+                    // Find the first param that differs and hasn't already been matched as diff
+                    if let Some((pos, _)) = first_fun
+                        .inputs
+                        .iter()
+                        .enumerate()
+                        .filter(|(pos, _)| !already_matched_param_diff.contains(pos))
+                        .find(|(_, i2)| i1 != *i2)
+                    {
+                        already_matched_param_diff.insert(pos);
                         diff.push(i1);
                         same_params = false;
                     } else {
@@ -558,7 +603,7 @@ impl Context {
                             name_conflicts(*idx, &diffs)
                         {
                             needs_alias_for_first_fun_using_idx = true;
-                            format!("{}{}", overloaded_fun.name.to_snake_case(), idx)
+                            format!("{}{idx}", overloaded_fun.name.to_snake_case())
                         } else {
                             format!(
                                 "{}_with_{}",
@@ -573,7 +618,7 @@ impl Context {
                             name_conflicts(*idx, &diffs)
                         {
                             needs_alias_for_first_fun_using_idx = true;
-                            format!("{}{}", overloaded_fun.name.to_snake_case(), idx)
+                            format!("{}{idx}", overloaded_fun.name.to_snake_case())
                         } else {
                             // 1 + n additional input params
                             let and = diff
@@ -597,7 +642,7 @@ impl Context {
 
             if needs_alias_for_first_fun_using_idx {
                 // insert an alias for the root duplicated call
-                let prev_alias = format!("{}{}", first_fun.name.to_snake_case(), first_fun_idx);
+                let prev_alias = format!("{}{first_fun_idx}", first_fun.name.to_snake_case());
 
                 let alias = MethodAlias::new(&prev_alias);
 
@@ -663,9 +708,9 @@ fn expand_struct_name_postfix(
     postfix: &str,
 ) -> Ident {
     let name = if let Some(alias) = alias {
-        format!("{}{}", alias.struct_name, postfix)
+        format!("{}{postfix}", alias.struct_name)
     } else {
-        format!("{}{}", util::safe_pascal_case(&function.name), postfix)
+        format!("{}{postfix}", util::safe_pascal_case(&function.name))
     };
     util::ident(&name)
 }

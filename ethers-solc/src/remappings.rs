@@ -67,22 +67,26 @@ impl Remapping {
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq, PartialOrd)]
 pub enum RemappingError {
-    #[error("no prefix found")]
-    NoPrefix,
-    #[error("no target found")]
-    NoTarget,
+    #[error("invalid remapping format, found `{0}`, expected `<key>=<value>`")]
+    InvalidRemapping(String),
+    #[error("remapping key can't be empty, found `{0}`, expected `<key>=<value>`")]
+    EmptyRemappingKey(String),
+    #[error("remapping value must be a path, found `{0}`, expected `<key>=<value>`")]
+    EmptyRemappingValue(String),
 }
 
 impl FromStr for Remapping {
     type Err = RemappingError;
 
-    fn from_str(remapping: &str) -> std::result::Result<Self, Self::Err> {
-        let (name, path) = remapping.split_once('=').ok_or(RemappingError::NoPrefix)?;
+    fn from_str(remapping: &str) -> Result<Self, Self::Err> {
+        let (name, path) = remapping
+            .split_once('=')
+            .ok_or_else(|| RemappingError::InvalidRemapping(remapping.to_string()))?;
         if name.trim().is_empty() {
-            return Err(RemappingError::NoPrefix)
+            return Err(RemappingError::EmptyRemappingKey(remapping.to_string()))
         }
         if path.trim().is_empty() {
-            return Err(RemappingError::NoTarget)
+            return Err(RemappingError::EmptyRemappingValue(remapping.to_string()))
         }
         Ok(Remapping { name: name.to_string(), path: path.to_string() })
     }
@@ -213,7 +217,7 @@ impl Remapping {
                 if let Some(name) = candidate.window_start.file_name().and_then(|s| s.to_str()) {
                     insert_prioritized(
                         &mut all_remappings,
-                        format!("{}/", name),
+                        format!("{name}/"),
                         candidate.source_dir,
                     );
                 }
@@ -743,17 +747,17 @@ mod tests {
     }
 
     #[test]
-    fn serde() {
+    fn remapping_errors() {
         let remapping = "oz=../b/c/d";
         let remapping = Remapping::from_str(remapping).unwrap();
         assert_eq!(remapping.name, "oz".to_string());
         assert_eq!(remapping.path, "../b/c/d".to_string());
 
         let err = Remapping::from_str("").unwrap_err();
-        assert_eq!(err, RemappingError::NoPrefix);
+        matches!(err, RemappingError::InvalidRemapping(_));
 
         let err = Remapping::from_str("oz=").unwrap_err();
-        assert_eq!(err, RemappingError::NoTarget);
+        matches!(err, RemappingError::EmptyRemappingValue(_));
     }
 
     // <https://doc.rust-lang.org/rust-by-example/std_misc/fs.html>
@@ -774,7 +778,7 @@ mod tests {
                 touch(&path).unwrap();
             } else {
                 let path = tmp.join(path);
-                std::fs::create_dir_all(&path).unwrap();
+                std::fs::create_dir_all(path).unwrap();
             }
         }
     }
@@ -797,7 +801,7 @@ mod tests {
         assert_eq!(remappings.len(), 1);
 
         assert_eq!(remappings[0].name, "repo1/");
-        assert_eq!(remappings[0].path, format!("{}/src/", path));
+        assert_eq!(remappings[0].path, format!("{path}/src/"));
     }
 
     #[test]
@@ -1011,7 +1015,7 @@ mod tests {
             "node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol",
         ];
         mkdir_or_touch(tmp_dir.path(), &paths[..]);
-        let remappings = Remapping::find_many(&tmp_dir_node_modules);
+        let remappings = Remapping::find_many(tmp_dir_node_modules);
         let mut paths = ProjectPathsConfig::hardhat(tmp_dir.path()).unwrap();
         paths.remappings = remappings;
 
@@ -1050,7 +1054,7 @@ mod tests {
         mkdir_or_touch(tmp_dir_path, &paths[..]);
 
         let path = tmp_dir_path.display().to_string();
-        let mut remappings = Remapping::find_many(&path);
+        let mut remappings = Remapping::find_many(path);
         remappings.sort_unstable();
 
         let mut expected = vec![
@@ -1111,7 +1115,7 @@ mod tests {
         touch(&contract2).unwrap();
 
         let path = tmp_dir_path.display().to_string();
-        let mut remappings = Remapping::find_many(&path);
+        let mut remappings = Remapping::find_many(path);
         remappings.sort_unstable();
         let mut expected = vec![
             Remapping {
@@ -1147,7 +1151,7 @@ mod tests {
         mkdir_or_touch(tmp_dir_path, &paths[..]);
 
         let path = tmp_dir_path.display().to_string();
-        let mut remappings = Remapping::find_many(&path);
+        let mut remappings = Remapping::find_many(path);
         remappings.sort_unstable();
 
         let mut expected = vec![

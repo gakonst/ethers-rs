@@ -4,14 +4,14 @@ use serde::Deserialize;
 
 use crate::{Client, EtherscanError, Response, Result};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 struct ContractExecutionStatus {
     is_error: String,
     err_description: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone, Debug)]
 struct TransactionReceiptStatus {
     status: String,
 }

@@ -233,7 +233,7 @@ impl TrezorEthereum {
 mod tests {
     use super::*;
     use crate::Signer;
-    use ethers_contract::EthAbiType;
+    use ethers_contract_derive::EthAbiType;
     use ethers_core::types::{
         transaction::{
             eip2930::{AccessList, AccessListItem},

@@ -20,7 +20,7 @@ mod pending_escalator;
 pub use pending_escalator::EscalatingPending;
 
 mod log_query;
-pub use log_query::LogQuery;
+pub use log_query::{LogQuery, LogQueryError};
 
 mod stream;
 pub use futures_util::StreamExt;
@@ -88,15 +88,6 @@ where
     }
 }
 
-/// Structure used in eth_syncing RPC
-#[derive(Clone, Debug)]
-pub enum SyncingStatus {
-    /// When client is synced to highest block, eth_syncing with return string "false"
-    IsFalse,
-    /// When client is still syncing past blocks we get IsSyncing information.
-    IsSyncing { starting_block: U256, current_block: U256, highest_block: U256 },
-}
-
 /// A middleware allows customizing requests send and received from an ethereum node.
 ///
 /// Writing a middleware is as simple as:
@@ -106,7 +97,7 @@ pub enum SyncingStatus {
 ///
 /// ```rust
 /// use ethers_providers::{Middleware, FromErr};
-/// use ethers_core::types::{U64, TransactionRequest, U256, transaction::eip2718::TypedTransaction};
+/// use ethers_core::types::{U64, TransactionRequest, U256, transaction::eip2718::TypedTransaction, BlockId};
 /// use thiserror::Error;
 /// use async_trait::async_trait;
 ///
@@ -147,9 +138,9 @@ pub enum SyncingStatus {
 ///
 ///     /// Overrides the default `estimate_gas` method to log that it was called,
 ///     /// before forwarding the call to the next layer.
-///     async fn estimate_gas(&self, tx: &TypedTransaction) -> Result<U256, Self::Error> {
+///     async fn estimate_gas(&self, tx: &TypedTransaction, block: Option<BlockId>) -> Result<U256, Self::Error> {
 ///         println!("Estimating gas...");
-///         self.inner().estimate_gas(tx).await.map_err(FromErr::from)
+///         self.inner().estimate_gas(tx, block).await.map_err(FromErr::from)
 ///     }
 /// }
 /// ```
@@ -182,15 +173,11 @@ pub trait Middleware: Sync + Send + Debug {
     /// This function is defined on providers to behave as follows:
     /// 1. populate the `from` field with the default sender
     /// 2. resolve any ENS names in the tx `to` field
-    /// 3. Estimate gas usage _without_ access lists
-    /// 4. Estimate gas usage _with_ access lists
-    /// 5. Enable access lists IFF they are cheaper
-    /// 6. Poll and set legacy or 1559 gas prices
-    /// 7. Set the chain_id with the provider's, if not already set
+    /// 3. Estimate gas usage
+    /// 4. Poll and set legacy or 1559 gas prices
+    /// 5. Set the chain_id with the provider's, if not already set
     ///
     /// It does NOT set the nonce by default.
-    /// It MAY override the gas amount set by the user, if access lists are
-    /// cheaper.
     ///
     /// Middleware are encouraged to override any values _before_ delegating
     /// to the inner implementation AND/OR modify the values provided by the
@@ -321,8 +308,12 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().get_transaction_count(from, block).await.map_err(FromErr::from)
     }
 
-    async fn estimate_gas(&self, tx: &TypedTransaction) -> Result<U256, Self::Error> {
-        self.inner().estimate_gas(tx).await.map_err(FromErr::from)
+    async fn estimate_gas(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Result<U256, Self::Error> {
+        self.inner().estimate_gas(tx, block).await.map_err(FromErr::from)
     }
 
     async fn call(
@@ -684,7 +675,7 @@ pub trait CeloMiddleware: Middleware {
     }
 }
 
-pub use test_provider::{GOERLI, MAINNET, RINKEBY, ROPSTEN};
+pub use test_provider::{GOERLI, MAINNET, ROPSTEN};
 
 /// Pre-instantiated Infura HTTP clients which rotate through multiple API keys
 /// to prevent rate limits
@@ -704,11 +695,9 @@ pub mod test_provider {
         "5c812e02193c4ba793f8c214317582bd",
     ];
 
-    pub static RINKEBY: Lazy<TestProvider> =
-        Lazy::new(|| TestProvider::new(INFURA_KEYS, "rinkeby"));
+    pub static GOERLI: Lazy<TestProvider> = Lazy::new(|| TestProvider::new(INFURA_KEYS, "goerli"));
     pub static MAINNET: Lazy<TestProvider> =
         Lazy::new(|| TestProvider::new(INFURA_KEYS, "mainnet"));
-    pub static GOERLI: Lazy<TestProvider> = Lazy::new(|| TestProvider::new(INFURA_KEYS, "goerli"));
     pub static ROPSTEN: Lazy<TestProvider> =
         Lazy::new(|| TestProvider::new(INFURA_KEYS, "ropsten"));
 

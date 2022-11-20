@@ -22,6 +22,7 @@ use std::{
     },
 };
 use thiserror::Error;
+use tracing::trace;
 
 use super::common::{Params, Response};
 
@@ -317,6 +318,7 @@ where
     }
 
     async fn handle_text(&mut self, inner: String) -> Result<(), ClientError> {
+        trace!(msg=?inner, "received message");
         let (id, result) = match serde_json::from_str(&inner)? {
             Response::Success { id, result } => (id, Ok(result.to_owned())),
             Response::Error { id, error } => (id, Err(error)),
@@ -417,7 +419,7 @@ where
 
 // TrySendError is private :(
 fn to_client_error<T: Debug>(err: T) -> ClientError {
-    ClientError::ChannelError(format!("{:?}", err))
+    ClientError::ChannelError(format!("{err:?}"))
 }
 
 #[derive(Error, Debug)]

@@ -1,10 +1,9 @@
 //! This module implements extensions to the [`ethabi`](https://docs.rs/ethabi) API.
 // Adapted from [Gnosis' ethcontract](https://github.com/gnosis/ethcontract-rs/blob/master/common/src/abiext.rs)
 use crate::{
-    types::{Bytes, Selector},
+    types::{Bytes, Selector, Uint8, H256, H512, I256, U128, U256, U64},
     utils::id,
 };
-
 pub use ethabi::{self, Contract as Abi, *};
 
 mod tokens;
@@ -24,7 +23,8 @@ pub use human_readable::{
     lexer::HumanReadableParser, parse as parse_abi, parse_str as parse_abi_str, AbiParser,
 };
 
-use crate::types::{H256, H512, I256, U128, U256, U64};
+mod raw;
+pub use raw::{AbiObject, Component, Item, JsonAbi, RawAbi};
 
 mod sealed {
     use ethabi::{Event, Function};
@@ -95,7 +95,7 @@ impl ErrorExt for ethabi::AbiError {
             return format!("{}()", self.name)
         }
         let inputs = self.inputs.iter().map(|p| p.kind.to_string()).collect::<Vec<_>>().join(",");
-        format!("{}({})", self.name, inputs)
+        format!("{}({inputs})", self.name)
     }
 
     fn selector(&self) -> Selector {
@@ -166,6 +166,7 @@ impl_abi_type!(
     str => String,
     H256 => FixedBytes(32),
     H512 => FixedBytes(64),
+    Uint8 => Uint(8),
     U64 => Uint(64),
     U128 => Uint(128),
     U256 => Uint(256),

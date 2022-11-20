@@ -387,14 +387,14 @@ fn eth_display_works() {
 
     let val = format!(
         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, 50, 100, 0x{}, {}, 0x{}, {:?}, 0x{}",
-        hex::encode(&item.h),
+        hex::encode(item.h),
         item.i,
-        hex::encode(&item.arr_u8),
+        hex::encode(item.arr_u8),
         item.arr_u16,
         hex::encode(&item.v),
     );
 
-    assert_eq!(val, format!("{}", item));
+    assert_eq!(val, format!("{item}"));
 }
 
 #[test]
@@ -408,9 +408,9 @@ fn eth_display_works_for_human_readable() {
     );
 
     let log = LogFilter("abc".to_string());
-    assert_eq!("abc".to_string(), format!("{}", log));
+    assert_eq!("abc".to_string(), format!("{log}"));
     let log = Log2Filter { x: "abc".to_string() };
-    assert_eq!("abc".to_string(), format!("{}", log));
+    assert_eq!("abc".to_string(), format!("{log}"));
 }
 
 #[test]
@@ -493,7 +493,7 @@ fn can_derive_abi_codec() {
     let val = SomeType { inner: Default::default(), msg: "hello".to_string() };
 
     let encoded = val.clone().encode();
-    let other = SomeType::decode(&encoded).unwrap();
+    let other = SomeType::decode(encoded).unwrap();
     assert_eq!(val, other);
 }
 
@@ -603,7 +603,7 @@ fn eth_display_works_on_ethers_bytes() {
     }
     let call = LogBytesCall { p_0: hex::decode(b"aaaaaa").unwrap().into() };
 
-    let s = format!("{}", call);
+    let s = format!("{call}");
     assert_eq!(s, "0xaaaaaa");
 }
 

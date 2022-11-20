@@ -1,5 +1,8 @@
 use semver::Version;
-use std::{io, path::PathBuf};
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, SolcError>;
@@ -27,6 +30,15 @@ pub enum SolcError {
     /// Failed to resolve a file
     #[error("Failed to resolve file: {0}.\n Check configured remappings.")]
     Resolve(SolcIoError),
+    #[error("File could not be resolved due to broken symlink: {0}.")]
+    ResolveBadSymlink(SolcIoError),
+    #[error(
+        r#"Failed to resolve file: {0}.
+    --> {1:?}
+        {2:?}
+    Check configured remappings."#
+    )]
+    FailedResolveImport(SolcIoError, PathBuf, PathBuf),
     #[cfg(feature = "svm-solc")]
     #[error(transparent)]
     SvmError(#[from] svm::SolcVmError),
@@ -82,6 +94,16 @@ pub struct SolcIoError {
 impl SolcIoError {
     pub fn new(io: io::Error, path: impl Into<PathBuf>) -> Self {
         Self { io, path: path.into() }
+    }
+
+    /// The path at which the error occurred
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// The underlying `io::Error`
+    pub fn source(&self) -> &io::Error {
+        &self.io
     }
 }
 

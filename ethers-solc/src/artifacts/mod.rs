@@ -2,7 +2,6 @@
 use crate::{
     compile::*, error::SolcIoError, remappings::Remapping, utils, ProjectPathsConfig, SolcError,
 };
-use colored::Colorize;
 use ethers_core::abi::Abi;
 use md5::Digest;
 use semver::{Version, VersionReq};
@@ -14,6 +13,7 @@ use std::{
     str::FromStr,
 };
 use tracing::warn;
+use yansi::Paint;
 
 pub mod ast;
 pub use ast::*;
@@ -49,6 +49,7 @@ pub(crate) type VersionedSources = BTreeMap<Solc, (Version, Sources)>;
 pub(crate) type VersionedFilteredSources = BTreeMap<Solc, (Version, FilteredSources)>;
 
 const SOLIDITY: &str = "Solidity";
+const YUL: &str = "Yul";
 
 /// Input type `solc` expects
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -88,7 +89,7 @@ impl CompilerInput {
         }
         if !yul_sources.is_empty() {
             res.push(Self {
-                language: "Yul".to_string(),
+                language: YUL.to_string(),
                 sources: yul_sources,
                 settings: Default::default(),
             });
@@ -105,6 +106,8 @@ impl CompilerInput {
             once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.10").unwrap());
         static PRE_V0_7_5: once_cell::sync::Lazy<VersionReq> =
             once_cell::sync::Lazy::new(|| VersionReq::parse("<0.7.5").unwrap());
+        static PRE_V0_8_18: once_cell::sync::Lazy<VersionReq> =
+            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.18").unwrap());
 
         if PRE_V0_6_0.matches(version) {
             if let Some(ref mut meta) = self.settings.metadata {
@@ -132,12 +135,31 @@ impl CompilerInput {
             self.settings.via_ir.take();
         }
 
+        if PRE_V0_8_18.matches(version) {
+            // introduced in 0.8.18 <https://github.com/ethereum/solidity/releases/tag/v0.8.18>
+            if let Some(ref mut meta) = self.settings.metadata {
+                meta.cbor_metadata = None;
+            }
+        }
+
         self
     }
 
     /// Sets the settings for compilation
     #[must_use]
-    pub fn settings(mut self, settings: Settings) -> Self {
+    pub fn settings(mut self, mut settings: Settings) -> Self {
+        if self.is_yul() {
+            if !settings.remappings.is_empty() {
+                warn!("omitting remappings supplied for the yul sources");
+                settings.remappings = vec![];
+            }
+            if let Some(debug) = settings.debug.as_mut() {
+                if debug.revert_strings.is_some() {
+                    warn!("omitting revertStrings supplied for the yul sources");
+                    debug.revert_strings = None;
+                }
+            }
+        }
         self.settings = settings;
         self
     }
@@ -168,7 +190,11 @@ impl CompilerInput {
 
     #[must_use]
     pub fn with_remappings(mut self, remappings: Vec<Remapping>) -> Self {
-        self.settings.remappings = remappings;
+        if self.is_yul() {
+            warn!("omitting remappings supplied for the yul sources");
+        } else {
+            self.settings.remappings = remappings;
+        }
         self
     }
 
@@ -199,6 +225,12 @@ impl CompilerInput {
         let base = base.as_ref();
         self.settings = self.settings.with_base_path(base);
         self.strip_prefix(base)
+    }
+
+    /// The flag indicating whether the current [CompilerInput] is
+    /// constructed for the yul sources
+    pub fn is_yul(&self) -> bool {
+        self.language == YUL
     }
 }
 
@@ -490,14 +522,14 @@ impl Libraries {
         for lib in libs {
             let mut items = lib.split(':');
             let file = items.next().ok_or_else(|| {
-                SolcError::msg(format!("failed to parse path to library file: {}", lib))
+                SolcError::msg(format!("failed to parse path to library file: {lib}"))
             })?;
             let lib = items
                 .next()
-                .ok_or_else(|| SolcError::msg(format!("failed to parse library name: {}", lib)))?;
-            let addr = items.next().ok_or_else(|| {
-                SolcError::msg(format!("failed to parse library address: {}", lib))
-            })?;
+                .ok_or_else(|| SolcError::msg(format!("failed to parse library name: {lib}")))?;
+            let addr = items
+                .next()
+                .ok_or_else(|| SolcError::msg(format!("failed to parse library address: {lib}")))?;
             if items.next().is_some() {
                 return Err(SolcError::msg(format!(
                     "failed to parse, too many arguments passed: {}",
@@ -703,7 +735,7 @@ impl fmt::Display for EvmVersion {
             EvmVersion::London => "london",
             EvmVersion::Byzantium => "byzantium",
         };
-        write!(f, "{}", string)
+        write!(f, "{string}")
     }
 }
 
@@ -721,7 +753,7 @@ impl FromStr for EvmVersion {
             "berlin" => Ok(EvmVersion::Berlin),
             "london" => Ok(EvmVersion::London),
             "byzantium" => Ok(EvmVersion::Byzantium),
-            s => Err(format!("Unknown evm version: {}", s)),
+            s => Err(format!("Unknown evm version: {s}")),
         }
     }
 }
@@ -775,7 +807,7 @@ impl fmt::Display for RevertStrings {
             RevertStrings::Debug => "debug",
             RevertStrings::VerboseDebug => "verboseDebug",
         };
-        write!(f, "{}", string)
+        write!(f, "{string}")
     }
 }
 
@@ -788,7 +820,7 @@ impl FromStr for RevertStrings {
             "strip" => Ok(RevertStrings::Strip),
             "debug" => Ok(RevertStrings::Debug),
             "verboseDebug" | "verbosedebug" => Ok(RevertStrings::VerboseDebug),
-            s => Err(format!("Unknown evm version: {}", s)),
+            s => Err(format!("Unknown evm version: {s}")),
         }
     }
 }
@@ -815,11 +847,19 @@ pub struct SettingsMetadata {
         with = "serde_helpers::display_from_str_opt"
     )]
     pub bytecode_hash: Option<BytecodeHash>,
+    #[serde(default, rename = "appendCBOR", skip_serializing_if = "Option::is_none")]
+    pub cbor_metadata: Option<bool>,
+}
+
+impl SettingsMetadata {
+    pub fn new(hash: BytecodeHash, cbor: bool) -> Self {
+        Self { use_literal_content: None, bytecode_hash: Some(hash), cbor_metadata: Some(cbor) }
+    }
 }
 
 impl From<BytecodeHash> for SettingsMetadata {
     fn from(hash: BytecodeHash) -> Self {
-        Self { use_literal_content: None, bytecode_hash: Some(hash) }
+        Self { use_literal_content: None, bytecode_hash: Some(hash), cbor_metadata: None }
     }
 }
 
@@ -847,7 +887,7 @@ impl FromStr for BytecodeHash {
             "none" => Ok(BytecodeHash::None),
             "ipfs" => Ok(BytecodeHash::Ipfs),
             "bzzr1" => Ok(BytecodeHash::Bzzr1),
-            s => Err(format!("Unknown bytecode hash: {}", s)),
+            s => Err(format!("Unknown bytecode hash: {s}")),
         }
     }
 }
@@ -942,8 +982,15 @@ pub struct MetadataSettings {
     #[serde(default, rename = "compilationTarget")]
     pub compilation_target: BTreeMap<String, String>,
     /// Metadata settings
+    ///
+    /// Note: this differs from `Libraries` and does not require another mapping for file name
+    /// since metadata is per file
     #[serde(default)]
-    pub libraries: Libraries,
+    pub libraries: BTreeMap<String, String>,
+    /// Change compilation pipeline to go through the Yul intermediate representation. This is
+    /// false by default.
+    #[serde(rename = "viaIR", default, skip_serializing_if = "Option::is_none")]
+    pub via_ir: Option<bool>,
 }
 
 /// Compilation source files/source units, keys are file names
@@ -1003,7 +1050,7 @@ impl fmt::Display for ModelCheckerEngine {
             ModelCheckerEngine::BMC => "bmc",
             ModelCheckerEngine::CHC => "chc",
         };
-        write!(f, "{}", string)
+        write!(f, "{string}")
     }
 }
 
@@ -1016,7 +1063,7 @@ impl FromStr for ModelCheckerEngine {
             "all" => Ok(ModelCheckerEngine::All),
             "bmc" => Ok(ModelCheckerEngine::BMC),
             "chc" => Ok(ModelCheckerEngine::CHC),
-            s => Err(format!("Unknown model checker engine: {}", s)),
+            s => Err(format!("Unknown model checker engine: {s}")),
         }
     }
 }
@@ -1053,7 +1100,7 @@ impl fmt::Display for ModelCheckerTarget {
             ModelCheckerTarget::OutOfBounds => "outOfBounds",
             ModelCheckerTarget::Balance => "balance",
         };
-        write!(f, "{}", string)
+        write!(f, "{string}")
     }
 }
 
@@ -1070,7 +1117,7 @@ impl FromStr for ModelCheckerTarget {
             "popEmptyArray" => Ok(ModelCheckerTarget::PopEmptyArray),
             "outOfBounds" => Ok(ModelCheckerTarget::OutOfBounds),
             "balance" => Ok(ModelCheckerTarget::Balance),
-            s => Err(format!("Unknown model checker target: {}", s)),
+            s => Err(format!("Unknown model checker target: {s}")),
         }
     }
 }
@@ -1140,10 +1187,6 @@ pub struct Source {
 }
 
 impl Source {
-    /// this is a heuristically measured threshold at which we can generally expect a speedup by
-    /// using rayon's `par_iter`, See `Self::read_all_files`
-    pub const NUM_READ_PAR: usize = 8;
-
     /// Reads the file content
     pub fn read(file: impl AsRef<Path>) -> Result<Self, SolcIoError> {
         let file = file.as_ref();
@@ -1159,17 +1202,7 @@ impl Source {
     ///
     /// Depending on the len of the vec it will try to read the files in parallel
     pub fn read_all_files(files: Vec<PathBuf>) -> Result<Sources, SolcIoError> {
-        use rayon::prelude::*;
-
-        if files.len() < Self::NUM_READ_PAR {
-            Self::read_all(files)
-        } else {
-            files
-                .par_iter()
-                .map(Into::into)
-                .map(|file| Self::read(&file).map(|source| (file, source)))
-                .collect()
-        }
+        Self::read_all(files)
     }
 
     /// Reads all files
@@ -1188,7 +1221,7 @@ impl Source {
     /// Parallelized version of `Self::read_all` that reads all files using a parallel iterator
     ///
     /// NOTE: this is only expected to be faster than `Self::read_all` if the given iterator
-    /// contains at least several paths. see also `Self::read_all_files`.
+    /// contains at least several paths or the files are rather large.
     pub fn par_read_all<T, I>(files: I) -> Result<Sources, SolcIoError>
     where
         I: IntoIterator<Item = T>,
@@ -1682,15 +1715,15 @@ impl fmt::Display for Error {
             match self.severity {
                 Severity::Error => {
                     if let Some(code) = self.error_code {
-                        format!("error[{}]: ", code).as_str().red().fmt(f)?;
+                        Paint::red(format!("error[{code}]: ")).fmt(f)?;
                     }
-                    msg.as_str().red().fmt(f)
+                    Paint::red(msg).fmt(f)
                 }
                 Severity::Warning | Severity::Info => {
                     if let Some(code) = self.error_code {
-                        format!("warning[{}]: ", code).as_str().yellow().fmt(f)?;
+                        Paint::yellow(format!("warning[{code}]: ")).fmt(f)?;
                     }
-                    msg.as_str().yellow().fmt(f)
+                    Paint::yellow(msg).fmt(f)
                 }
             }
         } else {
@@ -1700,8 +1733,9 @@ impl fmt::Display for Error {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Default)]
 pub enum Severity {
+    #[default]
     Error,
     Warning,
     Info,
@@ -1710,8 +1744,8 @@ pub enum Severity {
 impl fmt::Display for Severity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Severity::Error => f.write_str(&"Error".red()),
-            Severity::Warning => f.write_str(&"Warning".yellow()),
+            Severity::Error => Paint::red("Error").fmt(f),
+            Severity::Warning => Paint::yellow("Warning").fmt(f),
             Severity::Info => f.write_str("Info"),
         }
     }
@@ -1739,7 +1773,7 @@ impl FromStr for Severity {
             "error" => Ok(Severity::Error),
             "warning" => Ok(Severity::Warning),
             "info" => Ok(Severity::Info),
-            s => Err(format!("Invalid severity: {}", s)),
+            s => Err(format!("Invalid severity: {s}")),
         }
     }
 }
@@ -2043,6 +2077,29 @@ mod tests {
     }
 
     #[test]
+    fn can_sanitize_cbor_metadata() {
+        let version: Version = "0.8.18".parse().unwrap();
+
+        let settings = Settings {
+            metadata: Some(SettingsMetadata::new(BytecodeHash::Ipfs, true)),
+            ..Default::default()
+        };
+
+        let input = CompilerInput {
+            language: "Solidity".to_string(),
+            sources: Default::default(),
+            settings,
+        };
+
+        let i = input.clone().sanitized(&version);
+        assert_eq!(i.settings.metadata.unwrap().cbor_metadata, Some(true));
+
+        let version: Version = "0.8.0".parse().unwrap();
+        let i = input.sanitized(&version);
+        assert!(i.settings.metadata.unwrap().cbor_metadata.is_none());
+    }
+
+    #[test]
     fn can_parse_libraries() {
         let libraries = ["./src/lib/LibraryContract.sol:Library:0xaddress".to_string()];
 
@@ -2137,5 +2194,14 @@ mod tests {
         let input = include_str!("../../test-data/foundryissue2462.json");
         let layout: StorageLayout = serde_json::from_str(input).unwrap();
         pretty_assertions::assert_eq!(input, &serde_json::to_string_pretty(&layout).unwrap());
+    }
+
+    // <https://github.com/foundry-rs/foundry/issues/3012>
+    #[test]
+    fn can_parse_compiler_output_spells_0_6_12() {
+        let path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/0.6.12-with-libs.json");
+        let content = fs::read_to_string(path).unwrap();
+        let _output: CompilerOutput = serde_json::from_str(&content).unwrap();
     }
 }

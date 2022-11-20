@@ -16,6 +16,8 @@ use fs_extra::{dir, file};
 use std::{
     fmt,
     path::{Path, PathBuf},
+    process,
+    process::Command,
 };
 use tempfile::TempDir;
 
@@ -183,6 +185,7 @@ impl<T: ArtifactOutput> TempProject<T> {
         version: impl AsRef<str>,
     ) -> Result<PathBuf> {
         let name = name.as_ref();
+        let name = name.strip_suffix(".sol").unwrap_or(name);
         self.add_lib(
             name,
             format!(
@@ -191,10 +194,24 @@ impl<T: ArtifactOutput> TempProject<T> {
 pragma solidity {};
 contract {} {{}}
             "#,
+                version.as_ref(),
                 name,
-                version.as_ref()
             ),
         )
+    }
+
+    /// Adds a new test file inside the project's test dir
+    pub fn add_test(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
+        let name = contract_file_name(name);
+        let tests = self.paths().tests.join(name);
+        create_contract_file(tests, content)
+    }
+
+    /// Adds a new script file inside the project's script dir
+    pub fn add_script(&self, name: impl AsRef<str>, content: impl AsRef<str>) -> Result<PathBuf> {
+        let name = contract_file_name(name);
+        let script = self.paths().scripts.join(name);
+        create_contract_file(script, content)
     }
 
     /// Adds a new source file inside the project's source dir
@@ -211,6 +228,7 @@ contract {} {{}}
         version: impl AsRef<str>,
     ) -> Result<PathBuf> {
         let name = name.as_ref();
+        let name = name.strip_suffix(".sol").unwrap_or(name);
         self.add_source(
             name,
             format!(
@@ -219,8 +237,8 @@ contract {} {{}}
 pragma solidity {};
 contract {} {{}}
             "#,
+                version.as_ref(),
                 name,
-                version.as_ref()
             ),
         )
     }
@@ -370,7 +388,7 @@ fn contract_file_name(name: impl AsRef<str>) -> String {
     if name.ends_with(".sol") {
         name.to_string()
     } else {
-        format!("{}.sol", name)
+        format!("{name}.sol")
     }
 }
 
@@ -401,10 +419,30 @@ impl TempProject<ConfigurableArtifacts> {
     pub fn dapptools_init() -> Result<Self> {
         let mut project = Self::dapptools()?;
         let orig_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/dapp-sample");
-        copy_dir(&orig_root, project.root())?;
+        copy_dir(orig_root, project.root())?;
         project.project_mut().paths.remappings = Remapping::find_many(project.root());
 
         Ok(project)
+    }
+
+    /// Clones the given repo into a temp dir, initializes it recursively and configures it.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_solc::project_util::TempProject;
+    /// # fn t() {
+    /// let project = TempProject::checkout("transmissions11/solmate").unwrap();
+    /// # }
+    /// ```
+    pub fn checkout(repo: impl AsRef<str>) -> Result<Self> {
+        let tmp_dir = tempdir("tmp_checkout")?;
+        clone_remote(&format!("https://github.com/{}", repo.as_ref()), tmp_dir.path())
+            .map_err(|err| SolcIoError::new(err, tmp_dir.path()))?;
+        let paths = ProjectPathsConfig::dapptools(tmp_dir.path())?;
+
+        let inner = Project::builder().paths(paths).build()?;
+        Ok(Self::create_new(tmp_dir, inner)?)
     }
 
     /// Create a new temporary project and populate it with mock files
@@ -505,6 +543,17 @@ pub fn copy_file(source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> Resu
 pub fn copy_dir(source: impl AsRef<Path>, target_dir: impl AsRef<Path>) -> Result<()> {
     fs_extra::dir::copy(source, target_dir, &dir_copy_options())?;
     Ok(())
+}
+
+/// Clones a remote repository into the specified directory.
+pub fn clone_remote(
+    repo_url: &str,
+    target_dir: impl AsRef<Path>,
+) -> std::io::Result<process::Output> {
+    Command::new("git")
+        .args(["clone", "--depth", "1", "--recursive", repo_url])
+        .arg(target_dir.as_ref())
+        .output()
 }
 
 #[cfg(test)]

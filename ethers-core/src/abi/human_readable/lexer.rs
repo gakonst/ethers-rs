@@ -94,12 +94,12 @@ impl<'input> Token<'input> {
 impl<'input> fmt::Display for Token<'input> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Token::Identifier(id) => write!(f, "{}", id),
-            Token::Number(num) => write!(f, "{}", num),
-            Token::HexNumber(num) => write!(f, "0x{}", num),
-            Token::Uint(w) => write!(f, "uint{}", w),
-            Token::Int(w) => write!(f, "int{}", w),
-            Token::Bytes(w) => write!(f, "bytes{}", w),
+            Token::Identifier(id) => write!(f, "{id}"),
+            Token::Number(num) => write!(f, "{num}"),
+            Token::HexNumber(num) => write!(f, "0x{num}"),
+            Token::Uint(w) => write!(f, "uint{w}"),
+            Token::Int(w) => write!(f, "int{w}"),
+            Token::Bytes(w) => write!(f, "bytes{w}"),
             Token::Byte => write!(f, "byte"),
             Token::DynamicBytes => write!(f, "bytes"),
             Token::Semicolon => write!(f, ";"),
@@ -1217,5 +1217,12 @@ mod tests {
             },
             event
         );
+    }
+
+    #[test]
+    fn parse_large_function() {
+        let f = "function atomicMatch_(address[14] addrs, uint[18] uints, uint8[8] feeMethodsSidesKindsHowToCalls, bytes calldataBuy, bytes calldataSell, bytes replacementPatternBuy, bytes replacementPatternSell, bytes staticExtradataBuy, bytes staticExtradataSell, uint8[2] vs, bytes32[5] rssMetadata) public payable";
+
+        let _fun = HumanReadableParser::parse_function(f).unwrap();
     }
 }

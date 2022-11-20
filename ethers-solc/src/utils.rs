@@ -43,7 +43,7 @@ pub static RE_THREE_OR_MORE_NEWLINES: Lazy<Regex> = Lazy::new(|| Regex::new("\n{
 
 /// Create a regex that matches any library or contract name inside a file
 pub fn create_contract_or_lib_name_regex(name: &str) -> Regex {
-    Regex::new(&format!(r#"(?:using\s+(?P<n1>{name})\s+|is\s+(?:\w+\s*,\s*)*(?P<n2>{name})(?:\s*,\s*\w+)*|(?:(?P<ignore>(?:function|error|as)\s+|\n[^\n]*(?:"([^"\n]|\\")*|'([^'\n]|\\')*))|\W+)(?P<n3>{name})(?:\.|\(| ))"#, name = name)).unwrap()
+    Regex::new(&format!(r#"(?:using\s+(?P<n1>{name})\s+|is\s+(?:\w+\s*,\s*)*(?P<n2>{name})(?:\s*,\s*\w+)*|(?:(?P<ignore>(?:function|error|as)\s+|\n[^\n]*(?:"([^"\n]|\\")*|'([^'\n]|\\')*))|\W+)(?P<n3>{name})(?:\.|\(| ))"#)).unwrap()
 }
 
 /// Move a range by a specified offset
@@ -223,6 +223,37 @@ pub fn resolve_library(libs: &[impl AsRef<Path>], source: impl AsRef<Path>) -> O
     }
 }
 
+/// Tries to find an absolute import like `src/interfaces/IConfig.sol` in `cwd`, moving up the path
+/// until the `root` is reached.
+///
+/// If an existing file under `root` is found, this returns the path up to the `import` path and the
+/// canonicalized `import` path itself:
+///
+/// For example for following layout:
+///
+/// ```text
+/// <root>/mydependency/
+/// ├── src (`cwd`)
+/// │   ├── interfaces
+/// │   │   ├── IConfig.sol
+/// ```
+/// and `import` as `src/interfaces/IConfig.sol` and `cwd` as `src` this will return
+/// (`<root>/mydependency/`, `<root>/mydependency/src/interfaces/IConfig.sol`)
+pub fn resolve_absolute_library(
+    root: &Path,
+    cwd: &Path,
+    import: &Path,
+) -> Option<(PathBuf, PathBuf)> {
+    let mut parent = cwd.parent()?;
+    while parent != root {
+        if let Ok(import) = canonicalize(parent.join(import)) {
+            return Some((parent.to_path_buf(), import))
+        }
+        parent = parent.parent()?;
+    }
+    None
+}
+
 /// Reads the list of Solc versions that have been installed in the machine. The version list is
 /// sorted in ascending order.
 /// Checks for installed solc versions under the given path as
@@ -254,7 +285,7 @@ pub fn library_fully_qualified_placeholder(name: impl AsRef<str>) -> String {
 pub fn library_hash_placeholder(name: impl AsRef<[u8]>) -> String {
     let hash = library_hash(name);
     let placeholder = hex::encode(hash);
-    format!("${}$", placeholder)
+    format!("${placeholder}$")
 }
 
 /// Returns the library placeholder for the given name
@@ -427,8 +458,26 @@ mod tests {
         collections::HashSet,
         fs::{create_dir_all, File},
     };
-
     use tempdir;
+
+    #[test]
+    fn can_create_parent_dirs_with_ext() {
+        let tmp_dir = tempdir("out").unwrap();
+        let path = tmp_dir.path().join("IsolationModeMagic.sol/IsolationModeMagic.json");
+        create_parent_dir_all(&path).unwrap();
+        assert!(path.parent().unwrap().is_dir());
+    }
+
+    #[test]
+    fn can_create_parent_dirs_versioned() {
+        let tmp_dir = tempdir("out").unwrap();
+        let path = tmp_dir.path().join("IVersioned.sol/IVersioned.0.8.16.json");
+        create_parent_dir_all(&path).unwrap();
+        assert!(path.parent().unwrap().is_dir());
+        let path = tmp_dir.path().join("IVersioned.sol/IVersioned.json");
+        create_parent_dir_all(&path).unwrap();
+        assert!(path.parent().unwrap().is_dir());
+    }
 
     #[test]
     fn can_determine_local_paths() {
@@ -533,7 +582,7 @@ pragma solidity ^0.8.0;
         let a = Path::new("/foo/bar/bar/test.txt");
         let b = Path::new("/foo/bar/foo/example/constract.sol");
         let expected = Path::new("/foo/bar");
-        assert_eq!(common_ancestor(&a, &b).unwrap(), expected.to_path_buf())
+        assert_eq!(common_ancestor(a, b).unwrap(), expected.to_path_buf())
     }
 
     #[test]

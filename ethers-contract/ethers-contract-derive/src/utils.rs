@@ -168,20 +168,20 @@ pub fn derive_abi_inputs_from_fields(
             Fields::Unit => {
                 return Err(Error::new(
                     input.span(),
-                    format!("{} cannot be derived for empty structs and unit", trait_name),
+                    format!("{trait_name} cannot be derived for empty structs and unit"),
                 ))
             }
         },
         Data::Enum(_) => {
             return Err(Error::new(
                 input.span(),
-                format!("{} cannot be derived for enums", trait_name),
+                format!("{trait_name} cannot be derived for enums"),
             ))
         }
         Data::Union(_) => {
             return Err(Error::new(
                 input.span(),
-                format!("{} cannot be derived for unions", trait_name),
+                format!("{trait_name} cannot be derived for unions"),
             ))
         }
     };
@@ -258,20 +258,20 @@ pub fn derive_abi_parameters_array(
             Fields::Unit => {
                 return Err(Error::new(
                     input.span(),
-                    format!("{} cannot be derived for empty structs and unit", trait_name),
+                    format!("{trait_name} cannot be derived for empty structs and unit"),
                 ))
             }
         },
         Data::Enum(_) => {
             return Err(Error::new(
                 input.span(),
-                format!("{} cannot be derived for enums", trait_name),
+                format!("{trait_name} cannot be derived for enums"),
             ))
         }
         Data::Union(_) => {
             return Err(Error::new(
                 input.span(),
-                format!("{} cannot be derived for unions", trait_name),
+                format!("{trait_name} cannot be derived for unions"),
             ))
         }
     };

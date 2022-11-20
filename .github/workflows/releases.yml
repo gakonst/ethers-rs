@@ -1,99 +1,99 @@
 name: Release
 
 on:
-  schedule:
-    - cron: "0 0 * * 0"
+    schedule:
+        - cron: "0 0 * * 0"
 
-  workflow_dispatch:
-    inputs:
-      release_type:
-        type: choice
-        description: Release type
-        options:
-          - major
-          - minor
-          - patch
-          - rc
-          - beta
-          - alpha
+    workflow_dispatch:
+        inputs:
+            release_type:
+                type: choice
+                description: Release type
+                options:
+                    - major
+                    - minor
+                    - patch
+                    - rc
+                    - beta
+                    - alpha
 
 permissions:
-  contents: write
+    contents: write
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
-    env:
-      CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
-      RELEASE_TYPE: ${{ github.event.inputs.release_type }}
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Configure git
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-      - name: Rust stable
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
-      - name: Install cargo-release
-        uses: actions-rs/install@v0.1
-        with:
-          crate: cargo-release
-          version: latest
-      - name: Cargo login
-        run: |
-          cargo login $CARGO_TOKEN
-      - name: Dry-run cargo release
-        run: |
-          cargo release --workspace ${RELEASE_TYPE:-alpha} --exclude ethers-wasm
-      - name: Publish release
-        run: |
-          cargo release --workspace ${RELEASE_TYPE:-alpha} --exclude ethers-wasm --execute --no-confirm
-      - name: Setup node
-        uses: actions/setup-node@v3
-        with:
-          node-version: 14
-      - run: |
-          npm i semver
-      - name: Install git-cliff
-        uses: actions-rs/install@v0.1
-        with:
-          crate: git-cliff
-          version: latest
-      - name: Publish changelog
-        id: changelog
-        run: |
-          current_version=$(git tag --contains HEAD -l "v*" | head -1)
-          from_version=$(node .github/workflows/release-tag-from.js $current_version $RELEASE_TYPE)
-          echo from $from_version to $current_version
-
-          echo "::set-output name=release_version::$(echo $current_version)"
-
-          if git rev-parse "$from_version" >/dev/null 2>&1; then
-            echo "tag exists, can generate changelog";
-          else
-            echo "tag does not exist, cannot generate changelog, publish github release manually"
-            exit 0
-          fi
-
-          git cliff $from_version..$current_version > GENERATED_CHANGELOG.md
-          cat GENERATED_CHANGELOG.md
-      - name: Create GitHub release
-        id: release
-        uses: actions/create-release@v1
+    release:
+        runs-on: ubuntu-latest
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_VERSION: ${{ steps.changelog.outputs.release_version }}
-        with:
-          tag_name: ${{ env.RELEASE_VERSION }}
-          release_name: ${{ env.RELEASE_VERSION }}
-          body_path: GENERATED_CHANGELOG.md
-          prerelease: ${{ env.RELEASE_TYPE == 'alpha' }}
+            CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+            RELEASE_TYPE: ${{ github.event.inputs.release_type }}
+        steps:
+            - name: Checkout sources
+              uses: actions/checkout@v3
+              with:
+                  fetch-depth: 0
+            - name: Configure git
+              run: |
+                  git config user.name github-actions
+                  git config user.email github-actions@github.com
+            - name: Rust stable
+              uses: actions-rs/toolchain@v1
+              with:
+                  profile: minimal
+                  toolchain: stable
+            - uses: Swatinem/rust-cache@v1
+              with:
+                  cache-on-failure: true
+            - name: Install cargo-release
+              uses: actions-rs/install@v0.1
+              with:
+                  crate: cargo-release
+                  version: latest
+            - name: Cargo login
+              run: |
+                  cargo login $CARGO_TOKEN
+            - name: Dry-run cargo release
+              run: |
+                  cargo release --workspace ${RELEASE_TYPE:-alpha} --exclude ethers-wasm
+            - name: Publish release
+              run: |
+                  cargo release --workspace ${RELEASE_TYPE:-alpha} --exclude ethers-wasm --execute --no-confirm
+            - name: Setup node
+              uses: actions/setup-node@v3
+              with:
+                  node-version: 14
+            - run: |
+                  npm i semver
+            - name: Install git-cliff
+              uses: actions-rs/install@v0.1
+              with:
+                  crate: git-cliff
+                  version: latest
+            - name: Publish changelog
+              id: changelog
+              run: |
+                  current_version=$(git tag --contains HEAD -l "v*" | head -1)
+                  from_version=$(node .github/workflows/release-tag-from.js $current_version $RELEASE_TYPE)
+                  echo from $from_version to $current_version
+
+                  echo "::set-output name=release_version::$(echo $current_version)"
+
+                  if git rev-parse "$from_version" >/dev/null 2>&1; then
+                    echo "tag exists, can generate changelog";
+                  else
+                    echo "tag does not exist, cannot generate changelog, publish github release manually"
+                    exit 0
+                  fi
+
+                  git cliff $from_version..$current_version > GENERATED_CHANGELOG.md
+                  cat GENERATED_CHANGELOG.md
+            - name: Create GitHub release
+              id: release
+              uses: actions/create-release@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  RELEASE_VERSION: ${{ steps.changelog.outputs.release_version }}
+              with:
+                  tag_name: ${{ env.RELEASE_VERSION }}
+                  release_name: ${{ env.RELEASE_VERSION }}
+                  body_path: GENERATED_CHANGELOG.md
+                  prerelease: ${{ env.RELEASE_TYPE == 'alpha' }}

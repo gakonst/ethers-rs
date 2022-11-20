@@ -1,5 +1,4 @@
 use std::{
-    fmt,
     fmt::Debug,
     future::Future,
     pin::Pin,
@@ -166,7 +165,7 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
     /// This is the minimum of all provider's block numbers
     async fn get_minimum_block_number(&self) -> Result<U64, ProviderError> {
         let mut numbers = join_all(self.providers.iter().map(|provider| async move {
-            let block = provider.inner.request("eth_blockNumber", serde_json::json!(())).await?;
+            let block = provider.inner.request("eth_blockNumber", QuorumParams::Zst).await?;
             serde_json::from_value::<U64>(block).map_err(ProviderError::from)
         }))
         .await
@@ -181,7 +180,13 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
     }
 
     /// Normalizes the request payload depending on the call
-    async fn normalize_request(&self, method: &str, params: &mut Value) {
+    async fn normalize_request(&self, method: &str, q_params: &mut QuorumParams) {
+        let params = if let QuorumParams::Value(v) = q_params {
+            v
+        } else {
+            // at this time no normalization is required for calls with zero parameters.
+            return
+        };
         match method {
             "eth_call" |
             "eth_createAccessList" |
@@ -364,8 +369,8 @@ impl From<QuorumError> for ProviderError {
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-pub trait JsonRpcClientWrapper: Send + Sync + fmt::Debug {
-    async fn request(&self, method: &str, params: Value) -> Result<Value, ProviderError>;
+pub trait JsonRpcClientWrapper: Send + Sync + Debug {
+    async fn request(&self, method: &str, params: QuorumParams) -> Result<Value, ProviderError>;
 }
 type NotificationStream =
     Box<dyn futures_core::Stream<Item = Box<RawValue>> + Send + Unpin + 'static>;
@@ -381,14 +386,20 @@ pub trait PubsubClientWrapper: JsonRpcClientWrapper {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<C: JsonRpcClient> JsonRpcClientWrapper for C {
-    async fn request(&self, method: &str, params: Value) -> Result<Value, ProviderError> {
-        Ok(JsonRpcClient::request(self, method, params).await.map_err(C::Error::into)?)
+    async fn request(&self, method: &str, params: QuorumParams) -> Result<Value, ProviderError> {
+        let fut = if let QuorumParams::Value(params) = params {
+            JsonRpcClient::request(self, method, params)
+        } else {
+            JsonRpcClient::request(self, method, ())
+        };
+
+        Ok(fut.await.map_err(C::Error::into)?)
     }
 }
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl JsonRpcClientWrapper for Box<dyn JsonRpcClientWrapper> {
-    async fn request(&self, method: &str, params: Value) -> Result<Value, ProviderError> {
+    async fn request(&self, method: &str, params: QuorumParams) -> Result<Value, ProviderError> {
         self.as_ref().request(method, params).await
     }
 }
@@ -396,7 +407,7 @@ impl JsonRpcClientWrapper for Box<dyn JsonRpcClientWrapper> {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl JsonRpcClientWrapper for Box<dyn PubsubClientWrapper> {
-    async fn request(&self, method: &str, params: Value) -> Result<Value, ProviderError> {
+    async fn request(&self, method: &str, params: QuorumParams) -> Result<Value, ProviderError> {
         self.as_ref().request(method, params).await
     }
 }
@@ -437,7 +448,12 @@ where
         method: &str,
         params: T,
     ) -> Result<R, Self::Error> {
-        let mut params = serde_json::to_value(params)?;
+        let mut params = if std::mem::size_of::<T>() == 0 {
+            // we don't want `()` to become `"null"`.
+            QuorumParams::Zst
+        } else {
+            QuorumParams::Value(serde_json::to_value(params)?)
+        };
         self.normalize_request(method, &mut params).await;
 
         let requests = self
@@ -554,6 +570,15 @@ where
         }
         Ok(())
     }
+}
+
+/// Helper type that can be used to pass through the `params` value.
+/// This is necessary because the wrapper provider is supposed to skip the `params` if it's of
+/// size 0, see `crate::transports::common::Request`
+#[derive(Clone)]
+pub enum QuorumParams {
+    Value(Value),
+    Zst,
 }
 
 #[cfg(test)]

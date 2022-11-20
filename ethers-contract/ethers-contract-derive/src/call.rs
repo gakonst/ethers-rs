@@ -33,7 +33,7 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> TokenStream {
             ) {
                 Ok(derived) => derived,
                 Err(err) => {
-                    Error::new(span, format!("Unable to determine ABI for `{}` : {}", src, err))
+                    Error::new(span, format!("Unable to determine ABI for `{src}` : {err}"))
                         .to_compile_error()
                 }
             }

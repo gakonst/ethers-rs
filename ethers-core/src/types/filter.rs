@@ -254,11 +254,19 @@ impl Filter {
         self
     }
 
-    /// given the event in string form, it hashes it and adds it to the topics to monitor
+    /// Given the event signature in string form, it hashes it and adds it to the topics to monitor
     #[must_use]
     pub fn event(self, event_name: &str) -> Self {
         let hash = H256::from(keccak256(event_name.as_bytes()));
         self.topic0(hash)
+    }
+
+    /// Hashes all event signatures and sets them as array to topic0
+    #[must_use]
+    pub fn events(self, events: impl IntoIterator<Item = impl AsRef<[u8]>>) -> Self {
+        let events =
+            events.into_iter().map(|e| H256::from(keccak256(e.as_ref()))).collect::<Vec<_>>();
+        self.topic0(events)
     }
 
     /// Sets topic0 (the event name for non-anonymous events)
@@ -429,7 +437,7 @@ impl<'de> Deserialize<'de> for Filter {
                 let mut to_block: Option<Option<BlockNumber>> = None;
                 let mut block_hash: Option<Option<H256>> = None;
                 let mut address: Option<Option<ValueOrArray<Address>>> = None;
-                let mut topics: Option<Vec<Option<Topic>>> = None;
+                let mut topics: Option<Option<Vec<Option<Topic>>>> = None;
 
                 while let Some(key) = map.next_key::<String>()? {
                     match key.as_str() {
@@ -492,7 +500,7 @@ impl<'de> Deserialize<'de> for Filter {
                 let to_block = to_block.unwrap_or_default();
                 let block_hash = block_hash.unwrap_or_default();
                 let address = address.unwrap_or_default();
-                let topics_vec = topics.unwrap_or_default();
+                let topics_vec = topics.flatten().unwrap_or_default();
 
                 // maximum allowed filter len
                 if topics_vec.len() > 4 {
@@ -541,6 +549,12 @@ impl From<Vec<H160>> for ValueOrArray<H160> {
 impl From<H256> for Topic {
     fn from(src: H256) -> Self {
         ValueOrArray::Value(Some(src))
+    }
+}
+
+impl From<Vec<H256>> for ValueOrArray<H256> {
+    fn from(src: Vec<H256>) -> Self {
+        ValueOrArray::Array(src)
     }
 }
 
@@ -612,7 +626,7 @@ where
         }
 
         match serde_json::from_value::<Variadic<T>>(value).map_err(|err| {
-            serde::de::Error::custom(format!("Invalid variadic value or array type: {}", err))
+            serde::de::Error::custom(format!("Invalid variadic value or array type: {err}"))
         })? {
             Variadic::Value(val) => Ok(ValueOrArray::Value(val)),
             Variadic::Array(arr) => Ok(ValueOrArray::Array(arr)),
@@ -1169,6 +1183,31 @@ mod tests {
                     ))),
                     None,
                 ],
+            }
+        );
+    }
+
+    #[test]
+    fn can_convert_to_ethers_filter_with_null_fields() {
+        let json = json!(
+                    {
+          "fromBlock": "0x429d3b",
+          "toBlock": "0x429d3b",
+          "address": null,
+          "topics": null
+        }
+            );
+
+        let filter: Filter = serde_json::from_value(json).unwrap();
+        assert_eq!(
+            filter,
+            Filter {
+                block_option: FilterBlockOption::Range {
+                    from_block: Some(4365627u64.into()),
+                    to_block: Some(4365627u64.into()),
+                },
+                address: None,
+                topics: [None, None, None, None,],
             }
         );
     }

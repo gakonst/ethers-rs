@@ -14,7 +14,14 @@ use ethers_providers::{
     Middleware, PendingTransaction, ProviderError,
 };
 
-use std::{borrow::Cow, fmt::Debug, future::Future, marker::PhantomData, sync::Arc};
+use std::{
+    borrow::Cow,
+    fmt::Debug,
+    future::{Future, IntoFuture},
+    marker::PhantomData,
+    pin::Pin,
+    sync::Arc,
+};
 
 use thiserror::Error as ThisError;
 
@@ -150,7 +157,7 @@ where
 
     /// Returns the estimated gas cost for the underlying transaction to be executed
     pub async fn estimate_gas(&self) -> Result<U256, ContractError<M>> {
-        self.client.estimate_gas(&self.tx).await.map_err(ContractError::MiddlewareError)
+        self.client.estimate_gas(&self.tx, self.block).await.map_err(ContractError::MiddlewareError)
     }
 
     /// Queries the blockchain via an `eth_call` for the provided transaction.
@@ -209,5 +216,21 @@ where
             .send_transaction(self.tx.clone(), self.block)
             .await
             .map_err(ContractError::MiddlewareError)
+    }
+}
+
+/// [`ContractCall`] can be turned into [`Future`] automatically with `.await`.
+/// Defaults to calling [`ContractCall::call`].
+impl<M, D> IntoFuture for ContractCall<M, D>
+where
+    Self: 'static,
+    M: Middleware,
+    D: Detokenize,
+{
+    type Output = Result<D, ContractError<M>>;
+    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output>>>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        Box::pin(async move { self.call().await })
     }
 }

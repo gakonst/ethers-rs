@@ -28,19 +28,35 @@ pub const NAME_SELECTOR: Selector = [105, 31, 52, 49];
 /// text(bytes32, string)
 pub const FIELD_SELECTOR: Selector = [89, 209, 212, 60];
 
+/// supportsInterface(bytes4 interfaceID)
+pub const INTERFACE_SELECTOR: Selector = [1, 255, 201, 167];
+
 /// Returns a transaction request for calling the `resolver` method on the ENS server
-pub fn get_resolver<T: Into<Address>>(ens_address: T, name: &str) -> TransactionRequest {
+pub fn get_resolver<T: Into<NameOrAddress>>(ens_address: T, name: &str) -> TransactionRequest {
     // keccak256('resolver(bytes32)')
     let data = [&RESOLVER[..], &namehash(name).0].concat();
     TransactionRequest {
         data: Some(data.into()),
-        to: Some(NameOrAddress::Address(ens_address.into())),
+        to: Some(ens_address.into()),
+        ..Default::default()
+    }
+}
+
+/// Returns a transaction request for checking interface support
+pub fn supports_interface<T: Into<NameOrAddress>>(
+    resolver_address: T,
+    selector: Selector,
+) -> TransactionRequest {
+    let data = [&INTERFACE_SELECTOR[..], &selector[..], &[0; 28]].concat();
+    TransactionRequest {
+        data: Some(data.into()),
+        to: Some(resolver_address.into()),
         ..Default::default()
     }
 }
 
 /// Returns a transaction request for calling
-pub fn resolve<T: Into<Address>>(
+pub fn resolve<T: Into<NameOrAddress>>(
     resolver_address: T,
     selector: Selector,
     name: &str,
@@ -49,14 +65,14 @@ pub fn resolve<T: Into<Address>>(
     let data = [&selector[..], &namehash(name).0, parameters.unwrap_or_default()].concat();
     TransactionRequest {
         data: Some(data.into()),
-        to: Some(NameOrAddress::Address(resolver_address.into())),
+        to: Some(resolver_address.into()),
         ..Default::default()
     }
 }
 
 /// Returns the reverse-registrar name of an address.
 pub fn reverse_address(addr: Address) -> String {
-    format!("{:?}.{}", addr, ENS_REVERSE_REGISTRAR_DOMAIN)[2..].to_string()
+    format!("{addr:?}.{ENS_REVERSE_REGISTRAR_DOMAIN}")[2..].to_string()
 }
 
 /// Returns the ENS namehash as specified in [EIP-137](https://eips.ethereum.org/EIPS/eip-137)
@@ -67,7 +83,7 @@ pub fn namehash(name: &str) -> H256 {
 
     // iterate in reverse
     name.rsplit('.')
-        .fold([0u8; 32], |node, label| keccak256(&[node, keccak256(label.as_bytes())].concat()))
+        .fold([0u8; 32], |node, label| keccak256([node, keccak256(label.as_bytes())].concat()))
         .into()
 }
 

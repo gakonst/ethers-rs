@@ -32,14 +32,14 @@ pub fn parse_calllike_attributes(
                                 Meta::Path(path) => {
                                     return Err(Error::new(
                                         path.span(),
-                                        format!("unrecognized {} parameter", attr_name),
+                                        format!("unrecognized {attr_name} parameter"),
                                     )
                                     .to_compile_error())
                                 }
                                 Meta::List(meta) => {
                                     return Err(Error::new(
                                         meta.path.span(),
-                                        format!("unrecognized {} parameter", attr_name),
+                                        format!("unrecognized {attr_name} parameter"),
                                     )
                                     .to_compile_error())
                                 }
@@ -85,7 +85,7 @@ pub fn parse_calllike_attributes(
                                     } else {
                                         return Err(Error::new(
                                             meta.span(),
-                                            format!("unrecognized {} parameter", attr_name),
+                                            format!("unrecognized {attr_name} parameter"),
                                         )
                                         .to_compile_error())
                                     }

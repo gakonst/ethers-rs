@@ -1,16 +1,15 @@
 [package]
 name = "ethers"
-version = "0.17.0"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.62"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
-edition = "2021"
 readme = "README.md"
 documentation = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 homepage = "https://docs.rs/ethers"
-description = """
-Complete Ethereum library and wallet implementation in Rust.
-"""
+description = "Complete Ethereum library and wallet implementation in Rust."
 
 [workspace]
 members = [
@@ -44,19 +43,18 @@ rustdoc-args = ["--cfg", "docsrs"]
 features = ["full"]
 
 [features]
+default = ["abigen"]
+
 celo = [
     "ethers-core/celo",
     "ethers-providers/celo",
     "ethers-signers/celo",
     "ethers-contract/celo",
     "ethers-middleware/celo",
-    "legacy"
+    "legacy",
 ]
 
-legacy = [
-    "ethers-core/legacy",
-    "ethers-contract/legacy"
-]
+legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
 
 # individual features per sub-crate
 ## core
@@ -64,8 +62,18 @@ eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
 ## providers
 ws = ["ethers-providers/ws"]
 ipc = ["ethers-providers/ipc"]
-rustls = ["ethers-providers/rustls", "ethers-etherscan/rustls", "ethers-contract/rustls", "ethers-solc/rustls"]
-openssl = ["ethers-providers/openssl", "ethers-etherscan/openssl", "ethers-contract/openssl", "ethers-solc/openssl"]
+rustls = [
+    "ethers-providers/rustls",
+    "ethers-etherscan/rustls",
+    "ethers-contract/rustls",
+    "ethers-solc/rustls",
+]
+openssl = [
+    "ethers-providers/openssl",
+    "ethers-etherscan/openssl",
+    "ethers-contract/openssl",
+    "ethers-solc/openssl",
+]
 dev-rpc = ["ethers-providers/dev-rpc"]
 ## signers
 ledger = ["ethers-signers/ledger"]
@@ -81,21 +89,29 @@ solc-tests = ["ethers-solc", "ethers-solc/tests"]
 solc-sha2-asm = ["ethers-solc", "ethers-solc/asm"]
 
 [dependencies]
-ethers-addressbook = { version = "^0.17.0", default-features = false, path = "./ethers-addressbook" }
-ethers-contract = { version = "^0.17.0", default-features = false, path = "./ethers-contract" }
-ethers-core = { version = "^0.17.0", default-features = false, path = "./ethers-core" }
-ethers-providers = { version = "^0.17.0", default-features = false, path = "./ethers-providers" }
-ethers-signers = { version = "^0.17.0", default-features = false, path = "./ethers-signers" }
-ethers-middleware = { version = "^0.17.0", default-features = false, path = "./ethers-middleware" }
-ethers-solc = { version = "^0.17.0", default-features = false, path = "./ethers-solc", optional = true }
-ethers-etherscan = { version = "^0.17.0", default-features = false, path = "./ethers-etherscan" }
+ethers-addressbook = { version = "^1.0.0", default-features = false, path = "./ethers-addressbook" }
+ethers-contract = { version = "^1.0.0", default-features = false, path = "./ethers-contract" }
+ethers-core = { version = "^1.0.0", default-features = false, path = "./ethers-core" }
+ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers" }
+ethers-signers = { version = "^1.0.0", default-features = false, path = "./ethers-signers" }
+ethers-middleware = { version = "^1.0.0", default-features = false, path = "./ethers-middleware" }
+ethers-solc = { version = "^1.0.0", default-features = false, path = "./ethers-solc", optional = true }
+ethers-etherscan = { version = "^1.0.0", default-features = false, path = "./ethers-etherscan" }
 
 [dev-dependencies]
-ethers-contract = { version = "^0.17.0", default-features = false, path = "./ethers-contract", features = ["abigen", "eip712"] }
-ethers-providers = { version = "^0.17.0", default-features = false, path = "./ethers-providers", features = ["ws"] }
+ethers-contract = { version = "^1.0.0", default-features = false, path = "./ethers-contract", features = [
+    "abigen",
+    "eip712",
+] }
+ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers", features = [
+    "ws",
+] }
 
 [target.'cfg(target_family = "unix")'.dev-dependencies]
-ethers-providers = { version = "^0.17.0", default-features = false, path = "./ethers-providers", features = ["ws", "ipc"] }
+ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers", features = [
+    "ws",
+    "ipc",
+] }
 eyre = "0.6"
 rand = "0.8.5"
 serde = { version = "1.0.124", features = ["derive"] }
@@ -104,12 +120,10 @@ tokio = { version = "1.18", features = ["macros", "rt-multi-thread"] }
 hex = "0.4.3"
 bytes = "1.2.1"
 
-
 # profile for the wasm example
 [profile.release.package.ethers-wasm]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
-
 
 [[example]]
 name = "abigen"
@@ -160,3 +174,13 @@ required-features = ["yubi"]
 name = "paginated_logs"
 path = "examples/paginated_logs.rs"
 required-features = ["rustls"]
+
+[[example]]
+name = "subscribe_contract_events"
+path = "examples/subscribe_contract_events.rs"
+required-features = ["rustls", "ws"]
+
+[[example]]
+name = "subscribe_contract_events_with_meta"
+path = "examples/subscribe_contract_events_with_meta.rs"
+required-features = ["rustls", "ws"]

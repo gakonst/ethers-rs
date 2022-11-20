@@ -10,27 +10,31 @@ use crate::{
     error::Result,
     sourcemap::{SourceMap, SyntaxError},
     sources::VersionedSourceFile,
-    utils, HardhatArtifact, ProjectPathsConfig, SolcError,
+    utils, HardhatArtifact, ProjectPathsConfig, SolFilesCache, SolcError, SolcIoError,
 };
 use ethers_core::{abi::Abi, types::Bytes};
 use semver::Version;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     borrow::Cow,
-    collections::{btree_map::BTreeMap, HashMap, HashSet},
+    collections::{btree_map::BTreeMap, HashSet},
     ffi::OsString,
-    fmt, fs, io,
+    fmt, fs,
+    hash::Hash,
+    io,
     ops::Deref,
     path::{Path, PathBuf},
 };
-use tracing::trace;
+use tracing::{error, trace};
 
 mod configurable;
-use crate::contracts::VersionedContract;
+pub(crate) mod files;
+
+use crate::files::MappedContract;
 pub use configurable::*;
 
 /// Represents unique artifact metadata for identifying artifacts on output
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct ArtifactId {
     /// `artifact` cache path
     pub path: PathBuf,
@@ -58,7 +62,7 @@ impl ArtifactId {
         self
     }
 
-    /// Returns a <filename>:<name> slug that identifies an artifact
+    /// Returns a `<filename>:<name>` slug that identifies an artifact
     ///
     /// Note: This identifier is not necessarily unique. If two contracts have the same name, they
     /// will share the same slug. For a unique identifier see [ArtifactId::identifier].
@@ -66,12 +70,12 @@ impl ArtifactId {
         format!("{}.json:{}", self.path.file_stem().unwrap().to_string_lossy(), self.name)
     }
 
-    /// Returns a <source path>:<name> slug that uniquely identifies an artifact
+    /// Returns a `<source path>:<name>` slug that uniquely identifies an artifact
     pub fn identifier(&self) -> String {
         format!("{}:{}", self.source.to_string_lossy(), self.name)
     }
 
-    /// Returns a <filename><version>:<name> slug that identifies an artifact
+    /// Returns a `<filename><version>:<name>` slug that identifies an artifact
     pub fn slug_versioned(&self) -> String {
         format!(
             "{}.{}.{}.{}.json:{}",
@@ -98,6 +102,7 @@ pub struct ArtifactFile<T> {
 impl<T: Serialize> ArtifactFile<T> {
     /// Writes the given contract to the `out` path creating all parent directories
     pub fn write(&self) -> Result<()> {
+        trace!("writing artifact file {:?} {}", self.file, self.version);
         utils::create_parent_dir_all(&self.file)?;
         fs::write(&self.file, serde_json::to_vec_pretty(&self.artifact)?)
             .map_err(|err| SolcError::io(err, &self.file))?;
@@ -118,11 +123,6 @@ impl<T> ArtifactFile<T> {
         }
     }
 }
-
-/// Internal helper type alias that maps all files for the contracts
-/// `output -> [(file, name, contract)]`
-pub(crate) type ArtifactFiles<'a> =
-    HashMap<PathBuf, Vec<(&'a str, &'a str, &'a VersionedContract)>>;
 
 /// local helper type alias `file name -> (contract name  -> Vec<..>)`
 pub(crate) type ArtifactsMap<T> = FileToContractsMap<Vec<ArtifactFile<T>>>;
@@ -563,7 +563,7 @@ where
 /// relationship (1-N+).
 pub trait ArtifactOutput {
     /// Represents the artifact that will be stored for a `Contract`
-    type Artifact: Artifact + DeserializeOwned + Serialize + fmt::Debug;
+    type Artifact: Artifact + DeserializeOwned + Serialize + fmt::Debug + Send + Sync;
 
     /// Handle the aggregated set of compiled contracts from the solc [`crate::CompilerOutput`].
     ///
@@ -574,8 +574,14 @@ pub trait ArtifactOutput {
         contracts: &VersionedContracts,
         sources: &VersionedSourceFiles,
         layout: &ProjectPathsConfig,
+        ctx: OutputContext,
     ) -> Result<Artifacts<Self::Artifact>> {
-        let mut artifacts = self.output_to_artifacts(contracts, sources);
+        let mut artifacts = self.output_to_artifacts(contracts, sources, ctx, layout);
+        fs::create_dir_all(&layout.artifacts).map_err(|err| {
+            error!(dir=?layout.artifacts, "Failed to create artifacts folder");
+            SolcIoError::new(err, &layout.artifacts)
+        })?;
+
         artifacts.join_all(&layout.artifacts);
         artifacts.write_all()?;
 
@@ -646,23 +652,31 @@ pub trait ArtifactOutput {
         already_taken: &HashSet<PathBuf>,
         conflict: PathBuf,
         contract_file: impl AsRef<Path>,
+        artifacts_folder: impl AsRef<Path>,
     ) -> PathBuf {
-        let mut candidate = conflict.clone();
+        let artifacts_folder = artifacts_folder.as_ref();
+        let mut rel_candidate = conflict;
+        if let Ok(stripped) = rel_candidate.strip_prefix(artifacts_folder) {
+            rel_candidate = stripped.to_path_buf();
+        }
+        let mut candidate = rel_candidate.clone();
         let contract_file = contract_file.as_ref();
         let mut current_parent = contract_file.parent();
 
-        while let Some(parent) = current_parent.and_then(|f| f.file_name()) {
-            candidate = Path::new(parent).join(&candidate);
-            if !already_taken.contains(&candidate) {
-                trace!("found alternative output file={:?} for {:?}", candidate, contract_file);
-                return candidate
+        while let Some(parent_name) = current_parent.and_then(|f| f.file_name()) {
+            // this is problematic if both files are absolute
+            candidate = Path::new(parent_name).join(&candidate);
+            let out_path = artifacts_folder.join(&candidate);
+            if !already_taken.contains(&out_path) {
+                trace!("found alternative output file={:?} for {:?}", out_path, contract_file);
+                return out_path
             }
             current_parent = current_parent.and_then(|f| f.parent());
         }
 
         // this means we haven't found an alternative yet, which shouldn't actually happen since
         // `contract_file` are unique, but just to be safe, handle this case in which case
-        // we simply numerate
+        // we simply numerate the parent folder
 
         trace!("no conflict free output file found after traversing the file");
 
@@ -671,7 +685,7 @@ pub trait ArtifactOutput {
         loop {
             // this will attempt to find an alternate path by numerating the first component in the
             // path: `<root>+_<num>/....sol`
-            let mut components = conflict.components();
+            let mut components = rel_candidate.components();
             let first = components.next().expect("path not empty");
             let name = first.as_os_str();
             let mut numerated = OsString::with_capacity(name.len() + 2);
@@ -792,6 +806,8 @@ pub trait ArtifactOutput {
         &self,
         contracts: &VersionedContracts,
         sources: &VersionedSourceFiles,
+        ctx: OutputContext,
+        layout: &ProjectPathsConfig,
     ) -> Artifacts<Self::Artifact> {
         let mut artifacts = ArtifactsMap::new();
 
@@ -799,14 +815,15 @@ pub trait ArtifactOutput {
         let mut non_standalone_sources = HashSet::new();
 
         // this holds all output files and the contract(s) it belongs to
-        let artifact_files = contracts.artifact_files::<Self>();
+        let artifact_files = contracts.artifact_files::<Self>(&ctx);
 
         // this tracks the final artifacts, which we use as lookup for checking conflicts when
         // converting stand-alone artifacts in the next step
         let mut final_artifact_paths = HashSet::new();
 
-        for (artifact_path, contracts) in artifact_files {
-            for (idx, (file, name, contract)) in contracts.iter().enumerate() {
+        for contracts in artifact_files.files.into_values() {
+            for (idx, mapped_contract) in contracts.iter().enumerate() {
+                let MappedContract { file, name, contract, artifact_path } = mapped_contract;
                 // track `SourceFile`s that can be mapped to contracts
                 let source_file = sources.find_file_and_version(file, &contract.version);
 
@@ -821,17 +838,18 @@ pub trait ArtifactOutput {
                     // contracts need to adjust the paths properly
 
                     // we keep the top most conflicting file unchanged
-                    let is_top_most = contracts.iter().enumerate().filter(|(i, _)| *i != idx).all(
-                        |(_, (f, _, _))| {
-                            Path::new(file).components().count() < Path::new(f).components().count()
-                        },
-                    );
+                    let is_top_most =
+                        contracts.iter().enumerate().filter(|(i, _)| *i != idx).all(|(_, c)| {
+                            Path::new(file).components().count() <
+                                Path::new(c.file).components().count()
+                        });
                     if !is_top_most {
                         // we resolve the conflicting by finding a new unique, alternative path
                         artifact_path = Self::conflict_free_output_file(
                             &final_artifact_paths,
                             artifact_path,
                             file,
+                            &layout.artifacts,
                         );
                     }
                 }
@@ -890,6 +908,7 @@ pub trait ArtifactOutput {
                                     &final_artifact_paths,
                                     artifact_path,
                                     file,
+                                    &layout.artifacts,
                                 );
                                 final_artifact_paths.insert(artifact_path.clone());
                             }
@@ -930,6 +949,46 @@ pub trait ArtifactOutput {
         _path: &str,
         _file: &VersionedSourceFile,
     ) -> Option<Self::Artifact>;
+}
+
+/// Additional context to use during [`ArtifactOutput::on_output()`]
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct OutputContext<'a> {
+    /// Cache file of the project or empty if no caching is enabled
+    ///
+    /// This context is required for partially cached recompile with conflicting files, so that we
+    /// can use the same adjusted output path for conflicting files like:
+    ///
+    /// ```text
+    /// src
+    /// ├── a.sol
+    /// └── inner
+    ///     └── a.sol
+    /// ```
+    pub cache: Cow<'a, SolFilesCache>,
+}
+
+// === impl OutputContext
+
+impl<'a> OutputContext<'a> {
+    /// Create a new context with the given cache file
+    pub fn new(cache: &'a SolFilesCache) -> Self {
+        Self { cache: Cow::Borrowed(cache) }
+    }
+
+    /// Returns the path of the already existing artifact for the `contract` of the `file` compiled
+    /// with the `version`.
+    ///
+    /// Returns `None` if no file exists
+    pub fn existing_artifact(
+        &self,
+        file: impl AsRef<Path>,
+        contract: &str,
+        version: &Version,
+    ) -> Option<&PathBuf> {
+        self.cache.entry(file)?.find_artifact(contract, version)
+    }
 }
 
 /// An `Artifact` implementation that uses a compact representation
@@ -984,8 +1043,9 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
         output: &VersionedContracts,
         sources: &VersionedSourceFiles,
         layout: &ProjectPathsConfig,
+        ctx: OutputContext,
     ) -> Result<Artifacts<Self::Artifact>> {
-        MinimalCombinedArtifacts::default().on_output(output, sources, layout)
+        MinimalCombinedArtifacts::default().on_output(output, sources, layout, ctx)
     }
 
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
@@ -994,10 +1054,10 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
         if let Ok(a) = serde_json::from_str(&content) {
             Ok(a)
         } else {
-            tracing::error!("Failed to deserialize compact artifact");
-            tracing::trace!("Fallback to hardhat artifact deserialization");
+            error!("Failed to deserialize compact artifact");
+            trace!("Fallback to hardhat artifact deserialization");
             let artifact = serde_json::from_str::<HardhatArtifact>(&content)?;
-            tracing::trace!("successfully deserialized hardhat artifact");
+            trace!("successfully deserialized hardhat artifact");
             Ok(artifact.into_contract_bytecode())
         }
     }
@@ -1038,26 +1098,46 @@ mod tests {
         let mut already_taken = HashSet::new();
 
         let file = "v1/tokens/Greeter.sol";
-        let conflict = PathBuf::from("Greeter.sol/Greeter.json");
+        let conflict = PathBuf::from("out/Greeter.sol/Greeter.json");
 
         let alternative = ConfigurableArtifacts::conflict_free_output_file(
             &already_taken,
             conflict.clone(),
             file,
+            "out",
         );
-        assert_eq!(alternative, PathBuf::from("tokens/Greeter.sol/Greeter.json"));
+        assert_eq!(alternative, PathBuf::from("out/tokens/Greeter.sol/Greeter.json"));
 
-        already_taken.insert("tokens/Greeter.sol/Greeter.json".into());
+        already_taken.insert("out/tokens/Greeter.sol/Greeter.json".into());
         let alternative = ConfigurableArtifacts::conflict_free_output_file(
             &already_taken,
             conflict.clone(),
             file,
+            "out",
         );
-        assert_eq!(alternative, PathBuf::from("v1/tokens/Greeter.sol/Greeter.json"));
+        assert_eq!(alternative, PathBuf::from("out/v1/tokens/Greeter.sol/Greeter.json"));
 
-        already_taken.insert("v1/tokens/Greeter.sol/Greeter.json".into());
+        already_taken.insert("out/v1/tokens/Greeter.sol/Greeter.json".into());
         let alternative =
-            ConfigurableArtifacts::conflict_free_output_file(&already_taken, conflict, file);
+            ConfigurableArtifacts::conflict_free_output_file(&already_taken, conflict, file, "out");
         assert_eq!(alternative, PathBuf::from("Greeter.sol_1/Greeter.json"));
+    }
+
+    #[test]
+    fn can_find_alternate_path_conflict() {
+        let mut already_taken = HashSet::new();
+
+        let file = "/Users/carter/dev/goldfinch/mono/packages/protocol/test/forge/mainnet/utils/BaseMainnetForkingTest.t.sol";
+        let conflict = PathBuf::from("/Users/carter/dev/goldfinch/mono/packages/protocol/artifacts/BaseMainnetForkingTest.t.sol/BaseMainnetForkingTest.json");
+        already_taken.insert("/Users/carter/dev/goldfinch/mono/packages/protocol/artifacts/BaseMainnetForkingTest.t.sol/BaseMainnetForkingTest.json".into());
+
+        let alternative = ConfigurableArtifacts::conflict_free_output_file(
+            &already_taken,
+            conflict,
+            file,
+            "/Users/carter/dev/goldfinch/mono/packages/protocol/artifacts",
+        );
+
+        assert_eq!(alternative, PathBuf::from("/Users/carter/dev/goldfinch/mono/packages/protocol/artifacts/utils/BaseMainnetForkingTest.t.sol/BaseMainnetForkingTest.json"));
     }
 }

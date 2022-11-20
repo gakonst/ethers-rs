@@ -1,5 +1,5 @@
 use crate::{
-    types::Address,
+    types::{Address, Chain},
     utils::{secret_key_to_address, unused_port},
 };
 use k256::{ecdsa::SigningKey, SecretKey as K256SecretKey};
@@ -11,7 +11,7 @@ use std::{
 };
 
 /// How long we will wait for anvil to indicate that it is ready.
-const ANVIL_STARTUP_TIMEOUT_MILLIS: u64 = 5_000;
+const ANVIL_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
 
 /// An anvil CLI instance. Will close the instance when dropped.
 ///
@@ -21,6 +21,7 @@ pub struct AnvilInstance {
     private_keys: Vec<K256SecretKey>,
     addresses: Vec<Address>,
     port: u16,
+    chain_id: Option<u64>,
 }
 
 impl AnvilInstance {
@@ -37,6 +38,11 @@ impl AnvilInstance {
     /// Returns the port of this instance
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    /// Returns the chain of the anvil instance
+    pub fn chain_id(&self) -> u64 {
+        self.chain_id.unwrap_or_else(|| Chain::AnvilHardhat.into())
     }
 
     /// Returns the HTTP endpoint of this instance
@@ -82,10 +88,12 @@ pub struct Anvil {
     program: Option<PathBuf>,
     port: Option<u16>,
     block_time: Option<u64>,
+    chain_id: Option<u64>,
     mnemonic: Option<String>,
     fork: Option<String>,
     fork_block_number: Option<u64>,
     args: Vec<String>,
+    timeout: Option<u64>,
 }
 
 impl Anvil {
@@ -136,6 +144,13 @@ impl Anvil {
     #[must_use]
     pub fn port<T: Into<u16>>(mut self, port: T) -> Self {
         self.port = Some(port.into());
+        self
+    }
+
+    /// Sets the chain_id the `anvil` instance will use.
+    #[must_use]
+    pub fn chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
+        self.chain_id = Some(chain_id.into());
         self
     }
 
@@ -192,6 +207,13 @@ impl Anvil {
         self
     }
 
+    /// Sets the timeout which will be used when the `anvil` instance is launched.
+    #[must_use]
+    pub fn timeout<T: Into<u64>>(mut self, timeout: T) -> Self {
+        self.timeout = Some(timeout.into());
+        self
+    }
+
     /// Consumes the builder and spawns `anvil` with stdout redirected
     /// to /dev/null.
     pub fn spawn(self) -> AnvilInstance {
@@ -200,12 +222,16 @@ impl Anvil {
         } else {
             Command::new("anvil")
         };
-        cmd.stdout(std::process::Stdio::piped());
+        cmd.stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::inherit());
         let port = if let Some(port) = self.port { port } else { unused_port() };
         cmd.arg("-p").arg(port.to_string());
 
         if let Some(mnemonic) = self.mnemonic {
             cmd.arg("-m").arg(mnemonic);
+        }
+
+        if let Some(chain_id) = self.chain_id {
+            cmd.arg("--chain-id").arg(chain_id.to_string());
         }
 
         if let Some(block_time) = self.block_time {
@@ -224,7 +250,7 @@ impl Anvil {
 
         let mut child = cmd.spawn().expect("couldnt start anvil");
 
-        let stdout = child.stdout.expect("Unable to get stdout for anvil child process");
+        let stdout = child.stdout.take().expect("Unable to get stdout for anvil child process");
 
         let start = Instant::now();
         let mut reader = BufReader::new(stdout);
@@ -233,7 +259,9 @@ impl Anvil {
         let mut addresses = Vec::new();
         let mut is_private_key = false;
         loop {
-            if start + Duration::from_millis(ANVIL_STARTUP_TIMEOUT_MILLIS) <= Instant::now() {
+            if start + Duration::from_millis(self.timeout.unwrap_or(ANVIL_STARTUP_TIMEOUT_MILLIS)) <=
+                Instant::now()
+            {
                 panic!("Timed out waiting for anvil to start. Is anvil installed?")
             }
 
@@ -256,9 +284,7 @@ impl Anvil {
             }
         }
 
-        child.stdout = Some(reader.into_inner());
-
-        AnvilInstance { pid: child, private_keys, addresses, port }
+        AnvilInstance { pid: child, private_keys, addresses, port, chain_id: self.chain_id }
     }
 }
 

@@ -231,7 +231,7 @@ impl From<LenientBlockNumber> for BlockNumber {
 /// > blockNumber: QUANTITY - a block number
 /// > blockHash: DATA - a block hash
 ///
-/// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md
+/// <https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md>
 ///
 /// EIP-1898 does not all calls that use `BlockNumber` like `eth_getBlockByNumber` and doesn't list
 /// raw integers as supported.
@@ -253,4 +253,26 @@ where
 {
     let num = <[LenientBlockNumber; 1]>::deserialize(deserializer)?[0].into();
     Ok(num)
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    #[cfg(feature = "eip712")]
+    fn test_deserialize_string_chain_id() {
+        use crate::types::transaction::eip712::EIP712Domain;
+
+        let val = serde_json::json!(
+                  {
+          "name": "Seaport",
+          "version": "1.1",
+          "chainId": "137",
+          "verifyingContract": "0x00000000006c3852cbEf3e08E8dF289169EdE581"
+        }
+              );
+
+        let domain: EIP712Domain = serde_json::from_value(val).unwrap();
+        assert_eq!(domain.chain_id, Some(137u64.into()));
+    }
 }

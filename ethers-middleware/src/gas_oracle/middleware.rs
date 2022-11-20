@@ -56,24 +56,11 @@ where
         &self.inner
     }
 
-    async fn get_gas_price(&self) -> Result<U256, Self::Error> {
-        Ok(self.gas_oracle.fetch().await?)
-    }
-
-    async fn estimate_eip1559_fees(
+    async fn fill_transaction(
         &self,
-        _: Option<fn(U256, Vec<Vec<U256>>) -> (U256, U256)>,
-    ) -> Result<(U256, U256), Self::Error> {
-        Ok(self.gas_oracle.estimate_eip1559_fees().await?)
-    }
-
-    async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
-        &self,
-        tx: T,
+        tx: &mut TypedTransaction,
         block: Option<BlockId>,
-    ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
-        let mut tx = tx.into();
-
+    ) -> Result<(), Self::Error> {
         match tx {
             TypedTransaction::Legacy(ref mut tx) => {
                 if tx.gas_price.is_none() {
@@ -98,6 +85,28 @@ where
                 }
             }
         };
+
+        self.inner().fill_transaction(tx, block).await.map_err(FromErr::from)
+    }
+
+    async fn get_gas_price(&self) -> Result<U256, Self::Error> {
+        Ok(self.gas_oracle.fetch().await?)
+    }
+
+    async fn estimate_eip1559_fees(
+        &self,
+        _: Option<fn(U256, Vec<Vec<U256>>) -> (U256, U256)>,
+    ) -> Result<(U256, U256), Self::Error> {
+        Ok(self.gas_oracle.estimate_eip1559_fees().await?)
+    }
+
+    async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
+        &self,
+        tx: T,
+        block: Option<BlockId>,
+    ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
+        let mut tx = tx.into();
+        self.fill_transaction(&mut tx, block).await?;
         self.inner.send_transaction(tx, block).await.map_err(MiddlewareError::MiddlewareError)
     }
 }

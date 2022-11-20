@@ -1,11 +1,12 @@
-use ethers_core::types::Address;
-use std::path::PathBuf;
-
+use ethers_core::{
+    abi::{Param, ParamType},
+    types::Address,
+};
 use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
-
+use std::path::PathBuf;
 use syn::{Ident as SynIdent, Path};
 
 /// Expands a identifier string into a token.
@@ -18,7 +19,7 @@ pub fn ident(name: &str) -> Ident {
 ///
 /// Parsing keywords like `self` can fail, in this case we add an underscore.
 pub fn safe_ident(name: &str) -> Ident {
-    syn::parse_str::<SynIdent>(name).unwrap_or_else(|_| ident(&format!("{}_", name)))
+    syn::parse_str::<SynIdent>(name).unwrap_or_else(|_| ident(&format!("{name}_")))
 }
 
 ///  Converts a `&str` to `snake_case` `String` while respecting identifier rules
@@ -34,7 +35,7 @@ pub fn safe_pascal_case(ident: &str) -> String {
 /// respects identifier rules, such as, an identifier must not start with a numeric char
 fn safe_identifier_name(name: String) -> String {
     if name.starts_with(|c: char| c.is_numeric()) {
-        format!("_{}", name)
+        format!("_{name}")
     } else {
         name
     }
@@ -75,7 +76,7 @@ pub fn preserve_underscore_delim(ident: &str, alias: &str) -> String {
 /// identifiers that are reserved keywords get `_` appended to them.
 pub fn expand_input_name(index: usize, name: &str) -> TokenStream {
     let name_str = match name {
-        "" => format!("p{}", index),
+        "" => format!("p{index}"),
         n => n.to_snake_case(),
     };
     let name = safe_ident(&name_str);
@@ -185,9 +186,41 @@ pub fn json_files(root: impl AsRef<std::path::Path>) -> Vec<PathBuf> {
         .collect()
 }
 
+/// rust-std derives `Default` automatically only for arrays len <= 32
+///
+/// Returns whether the corresponding struct can derive `Default`
+pub fn can_derive_defaults(params: &[Param]) -> bool {
+    params.iter().map(|param| &param.kind).all(can_derive_default)
+}
+
+pub fn can_derive_default(param: &ParamType) -> bool {
+    const MAX_SUPPORTED_LEN: usize = 32;
+    match param {
+        ParamType::FixedBytes(len) => *len <= MAX_SUPPORTED_LEN,
+        ParamType::FixedArray(ty, len) => {
+            if *len > MAX_SUPPORTED_LEN {
+                false
+            } else {
+                can_derive_default(ty)
+            }
+        }
+        ParamType::Tuple(params) => params.iter().all(can_derive_default),
+        _ => true,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn can_detect_non_default() {
+        let param = ParamType::FixedArray(Box::new(ParamType::Uint(64)), 128);
+        assert!(!can_derive_default(&param));
+
+        let param = ParamType::FixedArray(Box::new(ParamType::Uint(64)), 32);
+        assert!(can_derive_default(&param));
+    }
 
     #[test]
     fn can_resolve_path() {
