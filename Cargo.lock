@@ -4189,6 +4189,8 @@ dependencies = [
 [[package]]
 name = "trezor-client"
 version = "0.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d3e4b569b95a8d24d10b2e8f60196348eb15023d50d2b38a4463e7f150afd27"
 dependencies = [
  "byteorder",
  "hex",
