@@ -22,6 +22,7 @@ pub struct GethInstance {
     pid: Child,
     port: u16,
     ipc: Option<PathBuf>,
+    data_dir: Option<PathBuf>,
 }
 
 impl GethInstance {
@@ -40,8 +41,14 @@ impl GethInstance {
         format!("ws://localhost:{}", self.port)
     }
 
+    /// Returns the path to this instances' IPC socket
     pub fn ipc_path(&self) -> &Option<PathBuf> {
         &self.ipc
+    }
+
+    /// Returns the path to this instances' data directory
+    pub fn data_dir(&self) -> &Option<PathBuf> {
+        &self.data_dir
     }
 }
 
@@ -77,6 +84,7 @@ pub struct Geth {
     port: Option<u16>,
     block_time: Option<u64>,
     ipc_path: Option<PathBuf>,
+    data_dir: Option<PathBuf>,
 }
 
 impl Geth {
@@ -107,6 +115,13 @@ impl Geth {
         self
     }
 
+    /// Sets the data directory for geth.
+    #[must_use]
+    pub fn data_dir<T: Into<PathBuf>>(mut self, path: T) -> Self {
+        self.data_dir = Some(path.into());
+        self
+    }
+
     /// Consumes the builder and spawns `geth` with stdout redirected
     /// to /dev/null.
     pub fn spawn(self) -> GethInstance {
@@ -124,6 +139,10 @@ impl Geth {
         cmd.arg("--ws");
         cmd.arg("--ws.port").arg(port.to_string());
         cmd.arg("--ws.api").arg(API);
+
+        if let Some(data_dir) = self.data_dir {
+            cmd.arg("--datadir").arg(data_dir);
+        }
 
         // Dev mode with custom block time
         cmd.arg("--dev");
@@ -158,6 +177,6 @@ impl Geth {
 
         child.stderr = Some(reader.into_inner());
 
-        GethInstance { pid: child, port, ipc: self.ipc_path }
+        GethInstance { pid: child, port, ipc: self.ipc_path, data_dir: self.data_dir }
     }
 }
