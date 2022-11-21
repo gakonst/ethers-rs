@@ -12,7 +12,7 @@ use crate::{
 };
 use contracts::{VersionedContract, VersionedContracts};
 use semver::Version;
-use std::{collections::BTreeMap, fmt, path::Path};
+use std::{collections::BTreeMap, env, fmt, path::Path};
 use tracing::trace;
 
 pub mod contracts;
@@ -278,7 +278,9 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// # }
     /// ```
     pub fn find(&self, path: impl AsRef<str>, contract: impl AsRef<str>) -> Option<&T::Artifact> {
-        let contract_path = path.as_ref();
+        let mut current_dir = env::current_dir().unwrap();
+        current_dir.push(path.as_ref());
+        let contract_path = current_dir.to_str().unwrap();
         let contract_name = contract.as_ref();
         if let artifact @ Some(_) = self.compiled_artifacts.find(contract_path, contract_name) {
             return artifact
