@@ -85,6 +85,7 @@ pub struct Geth {
     block_time: Option<u64>,
     ipc_path: Option<PathBuf>,
     data_dir: Option<PathBuf>,
+    dev: bool,
 }
 
 impl Geth {
@@ -105,6 +106,7 @@ impl Geth {
     #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
+        self.dev = true;
         self
     }
 
@@ -112,6 +114,15 @@ impl Geth {
     #[must_use]
     pub fn ipc_path<T: Into<PathBuf>>(mut self, path: T) -> Self {
         self.ipc_path = Some(path.into());
+        self
+    }
+
+    /// Sets whether or not the geth instance will be run in `dev` mode.
+    ///
+    /// This will automatically be `true` if `block_time` is set.
+    #[must_use]
+    pub fn dev(mut self, dev: bool) -> Self {
+        self.dev = dev;
         self
     }
 
@@ -145,9 +156,11 @@ impl Geth {
         }
 
         // Dev mode with custom block time
-        cmd.arg("--dev");
-        if let Some(block_time) = self.block_time {
-            cmd.arg("--dev.period").arg(block_time.to_string());
+        if self.dev {
+            cmd.arg("--dev");
+            if let Some(block_time) = self.block_time {
+                cmd.arg("--dev.period").arg(block_time.to_string());
+            }
         }
 
         if let Some(ref ipc) = self.ipc_path {
