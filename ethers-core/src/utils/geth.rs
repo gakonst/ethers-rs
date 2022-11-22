@@ -1,5 +1,6 @@
 use super::{unused_port, Genesis};
 use std::{
+    env::temp_dir,
     fs::File,
     io::{BufRead, BufReader, Read},
     path::PathBuf,
@@ -247,6 +248,31 @@ impl Geth {
         cmd.arg("--ws");
         cmd.arg("--ws.port").arg(port.to_string());
         cmd.arg("--ws.api").arg(API);
+
+        // use geth init to initialize the datadir if the genesis exists
+        if let Some(genesis) = self.genesis {
+            // create a temp dir to store the genesis file
+            let temp_genesis_path = temp_dir().join("genesis.json");
+
+            // create the genesis file
+            let mut file = File::create(&temp_genesis_path).expect("could not create genesis file");
+
+            // serialize genesis and write to file
+            serde_json::to_writer_pretty(&mut file, &genesis)
+                .expect("could not write genesis to file");
+
+            let mut init_cmd = Command::new(GETH);
+            if let Some(ref data_dir) = self.data_dir {
+                init_cmd.arg("--datadir").arg(data_dir);
+            }
+
+            init_cmd.arg("init").arg(temp_genesis_path);
+            init_cmd
+                .spawn()
+                .expect("failed to spawn geth init")
+                .wait()
+                .expect("failed to wait for geth init");
+        }
 
         if let Some(ref data_dir) = self.data_dir {
             cmd.arg("--datadir").arg(data_dir);
