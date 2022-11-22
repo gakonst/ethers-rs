@@ -58,6 +58,35 @@ impl Drop for GethInstance {
     }
 }
 
+/// Whether or not geth is in `dev` mode and configuration options that depend on the mode.
+#[derive(Debug, Clone)]
+pub enum GethMode {
+    /// Options that can be set in dev mode
+    Dev(DevOptions),
+    /// Options that cannot be set in dev mode
+    NonDev(PrivateNetOptions),
+}
+
+impl Default for GethMode {
+    fn default() -> Self {
+        Self::Dev(Default::default())
+    }
+}
+
+/// Configuration options that can be set in dev mode.
+#[derive(Debug, Clone, Default)]
+pub struct DevOptions {
+    /// The interval at which the dev chain will mine new blocks.
+    pub block_time: Option<u64>,
+}
+
+/// Configuration options that cannot be set in dev mode.
+#[derive(Debug, Clone, Default)]
+pub struct PrivateNetOptions {
+    /// The p2p port to use.
+    pub p2p_port: Option<u16>,
+}
+
 /// Builder for launching `geth`.
 ///
 /// # Panics
@@ -85,7 +114,7 @@ pub struct Geth {
     block_time: Option<u64>,
     ipc_path: Option<PathBuf>,
     data_dir: Option<PathBuf>,
-    dev: bool,
+    mode: GethMode,
 }
 
 impl Geth {
@@ -108,7 +137,6 @@ impl Geth {
     #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
-        self.dev = true;
         self
     }
 
@@ -116,17 +144,6 @@ impl Geth {
     #[must_use]
     pub fn ipc_path<T: Into<PathBuf>>(mut self, path: T) -> Self {
         self.ipc_path = Some(path.into());
-        self
-    }
-
-    /// Sets whether or not the geth instance will be run in `dev` mode.
-    ///
-    /// This will not be set to `false` if `block_time` is already set.
-    #[must_use]
-    pub fn dev(mut self, dev: bool) -> Self {
-        if self.block_time.is_none() {
-            self.dev = dev;
-        }
         self
     }
 
@@ -160,9 +177,9 @@ impl Geth {
         }
 
         // Dev mode with custom block time
-        if self.dev {
+        if let GethMode::Dev(options) = self.mode {
             cmd.arg("--dev");
-            if let Some(block_time) = self.block_time {
+            if let Some(block_time) = options.block_time {
                 cmd.arg("--dev.period").arg(block_time.to_string());
             }
         }
