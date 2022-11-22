@@ -225,6 +225,7 @@ impl From<RetryClientError> for ProviderError {
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl<T> JsonRpcClient for RetryClient<T>
 where
     T: JsonRpcClient + 'static,
@@ -310,6 +311,11 @@ where
                 next_backoff += Duration::from_secs(seconds_to_wait_for_compute_budget);
 
                 trace!("retrying and backing off for {:?}", next_backoff);
+
+                #[cfg(target_arch = "wasm32")]
+                wasm_timer::Delay::new(next_backoff).await;
+
+                #[cfg(not(target_arch = "wasm32"))]
                 tokio::time::sleep(next_backoff).await;
             } else {
                 let err: ProviderError = err.into();
@@ -407,7 +413,7 @@ fn compute_unit_offset_in_secs(
 /// `request::Error::TimedOut`
 fn maybe_connectivity(err: &ProviderError) -> bool {
     if let ProviderError::HTTPError(reqwest_err) = err {
-        if reqwest_err.is_timeout() || reqwest_err.is_connect() {
+        if reqwest_err.is_timeout() {
             return true
         }
         // Error HTTP codes (5xx) are considered connectivity issues and will prompt retry
