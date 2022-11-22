@@ -23,6 +23,7 @@ mod hash;
 pub use hash::{hash_message, id, keccak256, serialize};
 
 mod units;
+use serde::{Deserialize, Deserializer};
 pub use units::Units;
 
 /// Re-export RLP
@@ -37,6 +38,7 @@ use ethabi::ethereum_types::FromDecStrErr;
 use k256::{ecdsa::SigningKey, PublicKey as K256PublicKey};
 use std::{
     convert::{TryFrom, TryInto},
+    str::FromStr,
     fmt,
 };
 use thiserror::Error;
@@ -450,6 +452,23 @@ pub fn eip1559_default_estimator(base_fee_per_gas: U256, rewards: Vec<Vec<U256>>
         potential_max_fee
     };
     (max_fee_per_gas, max_priority_fee_per_gas)
+}
+
+/// Deserializes the input into a U256, accepting both 0x-prefixed hex and decimal strings.
+pub fn from_int_or_hex<'de, D>(deserializer: D) -> Result<U256, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum IntOrHex {
+        Int(u64),
+        Hex(String),
+    }
+    match IntOrHex::deserialize(deserializer)? {
+        IntOrHex::Int(n) => Ok(U256::from(n)),
+        IntOrHex::Hex(s) => U256::from_str(s.as_str()).map_err(serde::de::Error::custom),
+    }
 }
 
 fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {
