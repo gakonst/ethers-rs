@@ -111,7 +111,7 @@ impl<M, D: EthLogDecode> Event<'_, M, D> {
 
     /// Sets the filter's address.
     pub fn address(mut self, address: ValueOrArray<H160>) -> Self {
-        self.filter.address = Some(address);
+        self.filter = self.filter.address(address);
         self
     }
 }
