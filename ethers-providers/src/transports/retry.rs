@@ -206,6 +206,7 @@ pub enum RetryClientError {
     TimeoutError,
     #[error(transparent)]
     SerdeJson(serde_json::Error),
+    TimerError,
 }
 
 impl std::fmt::Display for RetryClientError {
@@ -220,6 +221,7 @@ impl From<RetryClientError> for ProviderError {
             RetryClientError::ProviderError(err) => err,
             RetryClientError::TimeoutError => ProviderError::JsonRpcClientError(Box::new(src)),
             RetryClientError::SerdeJson(err) => err.into(),
+            RetryClientError::TimerError => ProviderError::JsonRpcClientError(Box::new(src)),
         }
     }
 }
@@ -313,7 +315,9 @@ where
                 trace!("retrying and backing off for {:?}", next_backoff);
 
                 #[cfg(target_arch = "wasm32")]
-                wasm_timer::Delay::new(next_backoff).await;
+                wasm_timer::Delay::new(next_backoff)
+                    .await
+                    .map_err(|_| RetryClientError::TimerError)?;
 
                 #[cfg(not(target_arch = "wasm32"))]
                 tokio::time::sleep(next_backoff).await;
@@ -416,6 +420,12 @@ fn maybe_connectivity(err: &ProviderError) -> bool {
         if reqwest_err.is_timeout() {
             return true
         }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        if reqwest_err.is_connect() {
+            return true
+        }
+
         // Error HTTP codes (5xx) are considered connectivity issues and will prompt retry
         if let Some(status) = reqwest_err.status() {
             let code = status.as_u16();
