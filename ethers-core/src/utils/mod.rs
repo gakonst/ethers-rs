@@ -35,7 +35,10 @@ use crate::types::{Address, Bytes, ParseI256Error, I256, U256};
 use elliptic_curve::sec1::ToEncodedPoint;
 use ethabi::ethereum_types::FromDecStrErr;
 use k256::{ecdsa::SigningKey, PublicKey as K256PublicKey};
-use std::convert::{TryFrom, TryInto};
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt,
+};
 use thiserror::Error;
 
 /// Re-export of serde-json
@@ -80,7 +83,7 @@ pub const EIP1559_FEE_ESTIMATION_THRESHOLD_MAX_CHANGE: i64 = 200;
 
 /// This enum holds the numeric types that a possible to be returned by `parse_units` and
 /// that are taken by `format_units`.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq)]
 pub enum ParseUnits {
     U256(U256),
     I256(I256),
@@ -91,6 +94,15 @@ impl From<ParseUnits> for U256 {
         match n {
             ParseUnits::U256(n) => n,
             ParseUnits::I256(n) => n.into_raw(),
+        }
+    }
+}
+
+impl fmt::Display for ParseUnits {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParseUnits::U256(val) => val.fmt(f),
+            ParseUnits::I256(val) => val.fmt(f),
         }
     }
 }
