@@ -188,7 +188,7 @@ impl Default for RetryClientBuilder {
             timeout_retries: 3,
             // this should be enough to even out heavy loads
             rate_limit_retries: 10,
-            initial_backoff: Duration::from_millis(100),
+            initial_backoff: Duration::from_millis(1000),
             // alchemy max cpus <https://github.com/alchemyplatform/alchemy-docs/blob/master/documentation/compute-units.md#rate-limits-cups>
             compute_units_per_second: 330,
         }
@@ -210,7 +210,7 @@ pub enum RetryClientError {
 
 impl std::fmt::Display for RetryClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -289,13 +289,7 @@ where
                 // try to extract the requested backoff from the error or compute the next backoff
                 // based on retry count
                 let mut next_backoff = self.policy.backoff_hint(&err).unwrap_or_else(|| {
-                    // using `retry_number` for creating back pressure because
-                    // of already queued requests
-                    // this increases exponentially with retries and adds a delay based on how many
-                    // requests are currently queued
-                    Duration::from_millis(
-                        self.initial_backoff.as_millis().pow(rate_limit_retry_number) as u64,
-                    )
+                    Duration::from_millis(self.initial_backoff.as_millis() as u64)
                 });
 
                 // requests are usually weighted and can vary from 10 CU to several 100 CU, cheaper
@@ -352,6 +346,12 @@ impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
                 if *code == 429 {
                     return true
                 }
+
+                // alternative alchemy error for specific IPs
+                if *code == -32016 && message.contains("rate limit") {
+                    return true
+                }
+
                 match message.as_str() {
                     // this is commonly thrown by infura and is apparently a load balancer issue, see also <https://github.com/MetaMask/metamask-extension/issues/7234>
                     "header not found" => true,
@@ -499,5 +499,15 @@ mod tests {
         });
         let backoff = HttpRateLimitRetryPolicy.backoff_hint(&err);
         assert!(backoff.is_none());
+    }
+
+    #[test]
+    fn test_alchemy_ip_rate_limit() {
+        let s = "{\"code\":-32016,\"message\":\"Your IP has exceeded its requests per second capacity. To increase your rate limits, please sign up for a free Alchemy account at https://www.alchemy.com/optimism.\"}";
+        let err: JsonRpcError = serde_json::from_str(s).unwrap();
+        let err = ClientError::JsonRpcError(err);
+
+        let should_retry = HttpRateLimitRetryPolicy::default().should_retry(&err);
+        assert!(should_retry);
     }
 }

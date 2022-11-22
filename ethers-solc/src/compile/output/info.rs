@@ -41,7 +41,7 @@ impl ContractInfo {
 impl fmt::Display for ContractInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(ref path) = self.path {
-            write!(f, "{}:{}", path, self.name)
+            write!(f, "{path}:{}", self.name)
         } else {
             write!(f, "{}", self.name)
         }

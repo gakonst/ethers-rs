@@ -230,7 +230,7 @@ impl ProjectPathsConfig {
             // if the import is relative we assume it's already part of the processed input
             // file set
             utils::canonicalize(cwd.join(import)).map_err(|err| {
-                SolcError::msg(format!("failed to resolve relative import \"{:?}\"", err))
+                SolcError::msg(format!("failed to resolve relative import \"{err:?}\""))
             })
         } else {
             // resolve library file
@@ -477,7 +477,7 @@ impl ProjectPathsConfig {
         }
 
         let result = String::from_utf8(content).map_err(|err| {
-            SolcError::msg(format!("failed to convert extended bytes to string: {}", err))
+            SolcError::msg(format!("failed to convert extended bytes to string: {err}"))
         })?;
 
         Ok(result)
@@ -497,7 +497,7 @@ impl fmt::Display for ProjectPathsConfig {
         }
         writeln!(f, "remappings:")?;
         for remapping in &self.remappings {
-            writeln!(f, "    {}", remapping)?;
+            writeln!(f, "    {remapping}")?;
         }
         Ok(())
     }
@@ -588,7 +588,7 @@ impl PathStyle {
                 .artifacts(root.join("out"))
                 .build_infos(root.join("out").join("build-info"))
                 .lib(root.join("lib"))
-                .remappings(Remapping::find_many(&root.join("lib")))
+                .remappings(Remapping::find_many(root.join("lib")))
                 .root(root)
                 .build()?,
             PathStyle::HardHat => ProjectPathsConfig::builder()
@@ -883,7 +883,7 @@ impl fmt::Display for AllowedLibPaths {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let lib_paths =
             self.paths().map(|path| format!("{}", path.display())).collect::<Vec<_>>().join(",");
-        write!(f, "{}", lib_paths)
+        write!(f, "{lib_paths}")
     }
 }
 

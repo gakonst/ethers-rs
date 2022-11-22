@@ -38,7 +38,7 @@ enum Token<'a> {
 impl<'a> fmt::Debug for Token<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Token::Number(s) => write!(f, "NUMBER({:?})", s),
+            Token::Number(s) => write!(f, "NUMBER({s:?})"),
             Token::Semicolon => write!(f, "SEMICOLON"),
             Token::Colon => write!(f, "COLON"),
             Token::In => write!(f, "JMP(i)"),
@@ -291,7 +291,7 @@ impl SourceElementBuilder {
 
     fn set_jmp(&mut self, jmp: Jump, i: usize) -> Option<SyntaxError> {
         if self.jump.is_some() {
-            return Some(SyntaxError::new(format!("Jump already set: {}", i)))
+            return Some(SyntaxError::new(format!("Jump already set: {i}")))
         }
         self.jump = Some(jmp);
         None
@@ -299,7 +299,7 @@ impl SourceElementBuilder {
 
     fn set_offset(&mut self, offset: usize, i: usize) -> Option<SyntaxError> {
         if self.offset.is_some() {
-            return Some(SyntaxError::new(format!("Offset already set: {}", i)))
+            return Some(SyntaxError::new(format!("Offset already set: {i}")))
         }
         self.offset = Some(offset);
         None
@@ -307,7 +307,7 @@ impl SourceElementBuilder {
 
     fn set_length(&mut self, length: usize, i: usize) -> Option<SyntaxError> {
         if self.length.is_some() {
-            return Some(SyntaxError::new(format!("Length already set: {}", i)))
+            return Some(SyntaxError::new(format!("Length already set: {i}")))
         }
         self.length = Some(length);
         None
@@ -315,7 +315,7 @@ impl SourceElementBuilder {
 
     fn set_index(&mut self, index: Option<u32>, i: usize) -> Option<SyntaxError> {
         if self.index.is_some() {
-            return Some(SyntaxError::new(format!("Index already set: {}", i)))
+            return Some(SyntaxError::new(format!("Index already set: {i}")))
         }
         self.index = Some(index);
         None
@@ -323,7 +323,7 @@ impl SourceElementBuilder {
 
     fn set_modifier(&mut self, modifier_depth: usize, i: usize) -> Option<SyntaxError> {
         if self.modifier_depth.is_some() {
-            return Some(SyntaxError::new(format!("Modifier depth already set: {}", i)))
+            return Some(SyntaxError::new(format!("Modifier depth already set: {i}")))
         }
         self.modifier_depth = Some(modifier_depth);
         None
@@ -486,7 +486,7 @@ impl State {
             State::Length => *self = State::Index,
             State::Index => *self = State::Jmp,
             State::Jmp => *self = State::Modifier,
-            State::Modifier => return Some(SyntaxError::new(format!("unexpected colon at {}", i))),
+            State::Modifier => return Some(SyntaxError::new(format!("unexpected colon at {i}"))),
         }
         None
     }

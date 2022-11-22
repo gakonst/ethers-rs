@@ -152,7 +152,7 @@ mod tests {
         // read from the encrypted JSON keystore and decrypt it, while validating that the
         // signatures produced by both the keys should match
         let path = Path::new(dir.path()).join(uuid);
-        let key2 = Wallet::<SigningKey>::decrypt_keystore(&path.clone(), "randpsswd").unwrap();
+        let key2 = Wallet::<SigningKey>::decrypt_keystore(path.clone(), "randpsswd").unwrap();
         let signature2 = key2.sign_message(message).await.unwrap();
         assert_eq!(signature, signature2);
         std::fs::remove_file(&path).unwrap();

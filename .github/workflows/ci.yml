@@ -20,7 +20,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout sources
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
             - name: Install Anvil
               uses: foundry-rs/foundry-toolchain@v1
               with:
@@ -63,7 +63,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout sources
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
             # TODO: can we combine these shared steps in github actions?
             - name: Install Anvil
               uses: foundry-rs/foundry-toolchain@v1
@@ -107,7 +107,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout sources
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
             - name: Install toolchain
               uses: actions-rs/toolchain@v1
               with:
@@ -123,13 +123,33 @@ jobs:
             - name: cargo clippy
               run: cargo +nightly clippy --all-features -- -D warnings
 
+    docs:
+        name: docs
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout sources
+              uses: actions/checkout@v3
+            - name: Install toolchain
+              uses: actions-rs/toolchain@v1
+              with:
+                  toolchain: nightly
+                  override: true
+            - uses: Swatinem/rust-cache@v1
+              with:
+                  cache-on-failure: true
+            - name: cargo doc
+              run: cargo +nightly doc --lib --all-features
+              env:
+                  RUSTFLAGS: --cfg docsrs
+                  RUSTDOCFLAGS: --cfg docsrs -Dwarnings
+
     wasm:
         name: WASM
         runs-on: ubuntu-latest
 
         steps:
             - name: Checkout sources
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
             - name: Install rust
               uses: actions-rs/toolchain@v1
               with:
@@ -176,7 +196,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout sources
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
 
             - name: Install geth (for state overrides example)
               run: |
@@ -261,16 +281,14 @@ jobs:
 
         steps:
             - name: checkout
-              uses: actions/checkout@v2
+              uses: actions/checkout@v3
 
               # Run build
-            - name: Install Rustup using win.rustup.rs
+            - name: Update Rustup
               run: |
                   # disable download progress bar
                   $ProgressPreference = "SilentlyContinue"
-                  Invoke-WebRequest https://win.rustup.rs/ -OutFile rustup-init.exe
-                  .\rustup-init.exe -y --default-host=x86_64-pc-windows-msvc --default-toolchain=none
-                  del rustup-init.exe
+                  rustup update
                   rustup target add ${{ matrix.target }}
               shell: powershell
 

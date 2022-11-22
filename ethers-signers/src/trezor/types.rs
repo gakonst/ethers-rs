@@ -23,7 +23,7 @@ impl fmt::Display for DerivationType {
             f,
             "{}",
             match self {
-                DerivationType::TrezorLive(index) => format!("m/44'/60'/{}'/0/0", index),
+                DerivationType::TrezorLive(index) => format!("m/44'/60'/{index}'/0/0"),
                 DerivationType::Other(inner) => inner.to_owned(),
             }
         )

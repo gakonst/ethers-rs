@@ -11,6 +11,9 @@ pub use filter::*;
 mod geth;
 pub use geth::*;
 
+mod opcodes;
+pub use opcodes::*;
+
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 /// Description of the type of trace to make
 pub enum TraceType {
@@ -131,6 +134,9 @@ pub struct VMOperation {
     /// Subordinate trace of the CALL/CREATE if applicable.
     // #[serde(bound="VMTrace: Deserialize")]
     pub sub: Option<VMTrace>,
+    /// The executed opcode name
+    #[serde(rename = "op")]
+    pub op: OpCode,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize, Serialize)]

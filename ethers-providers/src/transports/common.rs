@@ -204,8 +204,8 @@ impl Authorization {
 impl fmt::Display for Authorization {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Authorization::Basic(auth_secret) => write!(f, "Basic {}", auth_secret),
-            Authorization::Bearer(token) => write!(f, "Bearer {}", token),
+            Authorization::Basic(auth_secret) => write!(f, "Basic {auth_secret}"),
+            Authorization::Bearer(token) => write!(f, "Bearer {token}"),
         }
     }
 }

@@ -421,7 +421,7 @@ fn can_compile_dapp_sample_with_cache() {
     );
 
     // deleted artifact is not taken from the cache
-    std::fs::remove_file(&project.paths.sources.join("Dapp.sol")).unwrap();
+    std::fs::remove_file(project.paths.sources.join("Dapp.sol")).unwrap();
     let compiled: ProjectCompileOutput<_> = project.compile().unwrap();
     assert!(compiled.find_first("Dapp").is_none());
 }
@@ -636,7 +636,7 @@ contract FooBar {}
 fn can_flatten_on_solang_failure() {
     let root =
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-flatten-solang-failure");
-    let paths = ProjectPathsConfig::builder().sources(&root.join("contracts"));
+    let paths = ProjectPathsConfig::builder().sources(root.join("contracts"));
     let project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
 
     let target = root.join("contracts/Contract.sol");
@@ -1231,7 +1231,7 @@ fn can_recompile_with_changes() {
     assert!(compiled.is_unchanged());
 
     // modify A.sol
-    tmp.add_source("A", format!("{}\n", content)).unwrap();
+    tmp.add_source("A", format!("{content}\n")).unwrap();
     let compiled = tmp.compile().unwrap();
     assert!(!compiled.has_compiler_errors());
     assert!(!compiled.is_unchanged());
@@ -1286,7 +1286,7 @@ fn can_recompile_with_lowercase_names() {
     assert!(compiled.is_unchanged());
 
     // modify upgradeProxy.sol
-    tmp.add_source("upgradeProxy.sol", format!("{}\n", upgrade)).unwrap();
+    tmp.add_source("upgradeProxy.sol", format!("{upgrade}\n")).unwrap();
     let compiled = tmp.compile().unwrap();
     assert!(!compiled.has_compiler_errors());
     assert!(!compiled.is_unchanged());
@@ -1339,7 +1339,7 @@ fn can_recompile_unchanged_with_empty_files() {
     assert!(compiled.is_unchanged());
 
     // modify C.sol
-    tmp.add_source("C", format!("{}\n", c)).unwrap();
+    tmp.add_source("C", format!("{c}\n")).unwrap();
     let compiled = tmp.compile().unwrap();
     assert!(!compiled.has_compiler_errors());
     assert!(!compiled.is_unchanged());
@@ -1616,6 +1616,81 @@ fn can_compile_model_checker_sample() {
     assert!(compiled.find_first("Assert").is_some());
     assert!(!compiled.has_compiler_errors());
     assert!(compiled.has_compiler_warnings());
+}
+
+#[test]
+fn test_compiler_severity_filter() {
+    fn gen_test_data_warning_path() -> ProjectPathsConfig {
+        let root =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data/test-contract-warnings");
+
+        ProjectPathsConfig::builder().sources(root).build().unwrap()
+    }
+
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_warning_path())
+        .ephemeral()
+        .build()
+        .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.has_compiler_warnings());
+    assert!(!compiled.has_compiler_errors());
+
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_warning_path())
+        .ephemeral()
+        .set_compiler_severity_filter(ethers_solc::artifacts::Severity::Warning)
+        .build()
+        .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.has_compiler_warnings());
+    assert!(compiled.has_compiler_errors());
+}
+
+#[test]
+fn test_compiler_severity_filter_and_ignored_error_codes() {
+    fn gen_test_data_licensing_warning() -> ProjectPathsConfig {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("test-data/test-contract-warnings/LicenseWarning.sol");
+
+        ProjectPathsConfig::builder().sources(root).build().unwrap()
+    }
+
+    let missing_license_error_code = 1878;
+
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_licensing_warning())
+        .ephemeral()
+        .build()
+        .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(compiled.has_compiler_warnings());
+
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_licensing_warning())
+        .ephemeral()
+        .ignore_error_code(missing_license_error_code)
+        .build()
+        .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_warnings());
+    assert!(!compiled.has_compiler_errors());
+
+    let project = Project::builder()
+        .no_artifacts()
+        .paths(gen_test_data_licensing_warning())
+        .ephemeral()
+        .ignore_error_code(missing_license_error_code)
+        .set_compiler_severity_filter(ethers_solc::artifacts::Severity::Warning)
+        .build()
+        .unwrap();
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_warnings());
+    assert!(!compiled.has_compiler_errors());
 }
 
 fn remove_solc_if_exists(version: &Version) {

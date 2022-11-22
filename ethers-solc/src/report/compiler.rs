@@ -163,7 +163,7 @@ pub struct BadName {
 fn get_file_name(path: impl Into<PathBuf>, v: &Version) -> PathBuf {
     let mut path = path.into();
     if let Some(stem) = path.file_stem().and_then(|s| s.to_str().map(|s| s.to_string())) {
-        path.set_file_name(format!("{}.{}.{}.{}.json", stem, v.major, v.minor, v.patch));
+        path.set_file_name(format!("{stem}.{}.{}.{}.json", v.major, v.minor, v.patch));
     }
     path
 }

@@ -30,7 +30,7 @@ pub enum Chain {
     Rinkeby = 4,
     Goerli = 5,
     Kovan = 42,
-    #[strum(serialize = "xdai")]
+    #[strum(serialize = "gnosis")]
     XDai = 100,
     Chiado = 10200,
     Polygon = 137,
@@ -234,7 +234,7 @@ impl fmt::Display for Chain {
             Chain::Rinkeby => "rinkeby",
             Chain::Goerli => "goerli",
             Chain::Kovan => "kovan",
-            Chain::XDai => "xdai",
+            Chain::XDai => "gnosis",
             Chain::Chiado => "chiado",
             Chain::Polygon => "polygon",
             Chain::PolygonMumbai => "mumbai",
@@ -271,7 +271,7 @@ impl fmt::Display for Chain {
             Chain::AuroraTestnet => "aurora-testnet",
         };
 
-        write!(formatter, "{}", chain)
+        write!(formatter, "{chain}")
     }
 }
 
@@ -365,7 +365,7 @@ impl FromStr for Chain {
             "rinkeby" => Chain::Rinkeby,
             "goerli" => Chain::Goerli,
             "kovan" => Chain::Kovan,
-            "xdai" => Chain::XDai,
+            "xdai" | "gnosis" | "gnosis-chain" => Chain::XDai,
             "chiado" => Chain::Chiado,
             "polygon" => Chain::Polygon,
             "mumbai" | "polygon-mumbai" => Chain::PolygonMumbai,

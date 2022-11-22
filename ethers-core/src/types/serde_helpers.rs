@@ -231,7 +231,7 @@ impl From<LenientBlockNumber> for BlockNumber {
 /// > blockNumber: QUANTITY - a block number
 /// > blockHash: DATA - a block hash
 ///
-/// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md
+/// <https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md>
 ///
 /// EIP-1898 does not all calls that use `BlockNumber` like `eth_getBlockByNumber` and doesn't list
 /// raw integers as supported.
