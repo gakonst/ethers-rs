@@ -140,7 +140,7 @@ impl Geth {
         cmd.arg("--ws.port").arg(port.to_string());
         cmd.arg("--ws.api").arg(API);
 
-        if let Some(data_dir) = self.data_dir {
+        if let Some(ref data_dir) = self.data_dir {
             cmd.arg("--datadir").arg(data_dir);
         }
 
