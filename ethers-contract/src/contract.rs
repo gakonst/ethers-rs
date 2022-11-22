@@ -192,6 +192,19 @@ impl<M> Contract<M> {
 }
 
 impl<M: Middleware> Contract<M> {
+    /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
+    /// This function operates in a static context, then it does not require a `self`
+    /// to reference to instantiate an [`Event`](crate::builders::Event) builder.
+    pub fn event_of_type<'a, D: EthEvent>(client: &'a Arc<M>) -> Event<'a, M, D> {
+        Event {
+            provider: client,
+            filter: Filter::new().event(&D::abi_signature()),
+            datatype: PhantomData,
+        }
+    }
+}
+
+impl<M: Middleware> Contract<M> {
     /// Creates a new contract from the provided client, abi and address
     pub fn new(
         address: impl Into<Address>,
