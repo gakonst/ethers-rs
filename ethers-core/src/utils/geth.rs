@@ -23,12 +23,18 @@ pub struct GethInstance {
     port: u16,
     ipc: Option<PathBuf>,
     data_dir: Option<PathBuf>,
+    p2p_port: Option<u16>,
 }
 
 impl GethInstance {
     /// Returns the port of this instance
     pub fn port(&self) -> u16 {
         self.port
+    }
+
+    /// Returns the p2p port of this instance
+    pub fn p2p_port(&self) -> Option<u16> {
+        self.p2p_port
     }
 
     /// Returns the HTTP endpoint of this instance
@@ -130,6 +136,16 @@ impl Geth {
         self
     }
 
+    /// Sets the port which will be used for incoming p2p connections.
+    ///
+    /// This will put the geth instance into non-dev mode, discarding any previously set dev-mode
+    /// options.
+    #[must_use]
+    pub fn p2p_port<T: Into<u16>>(mut self, port: T) -> Self {
+        self.mode = GethMode::NonDev(PrivateNetOptions { p2p_port: Some(port.into()) });
+        self
+    }
+
     /// Sets the block-time which will be used when the `geth-cli` instance is launched.
     ///
     /// This will put the geth instance in `dev` mode, discarding any previously set options that
@@ -177,10 +193,17 @@ impl Geth {
         }
 
         // Dev mode with custom block time
-        if let GethMode::Dev(options) = self.mode {
-            cmd.arg("--dev");
-            if let Some(block_time) = options.block_time {
-                cmd.arg("--dev.period").arg(block_time.to_string());
+        match self.mode {
+            GethMode::Dev(DevOptions { block_time }) => {
+                cmd.arg("--dev");
+                if let Some(block_time) = block_time {
+                    cmd.arg("--dev.period").arg(block_time.to_string());
+                }
+            }
+            GethMode::NonDev(PrivateNetOptions { p2p_port }) => {
+                if let Some(p2p_port) = p2p_port {
+                    cmd.arg("--port").arg(p2p_port.to_string());
+                }
             }
         }
 
@@ -210,7 +233,11 @@ impl Geth {
         }
 
         child.stderr = Some(reader.into_inner());
+        let p2p_port = match self.mode {
+            GethMode::Dev(_) => None,
+            GethMode::NonDev(PrivateNetOptions { p2p_port }) => p2p_port,
+        };
 
-        GethInstance { pid: child, port, ipc: self.ipc_path, data_dir: self.data_dir }
+        GethInstance { pid: child, port, ipc: self.ipc_path, data_dir: self.data_dir, p2p_port }
     }
 }
