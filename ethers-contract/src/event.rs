@@ -2,8 +2,8 @@
 
 use crate::{log::LogMeta, stream::EventStream, ContractError, EthLogDecode};
 use ethers_core::{
-    abi::{Detokenize, RawLog},
-    types::{BlockNumber, Filter, Log, Topic, H256},
+    abi::{Address, Detokenize, RawLog},
+    types::{BlockNumber, Filter, Log, Topic, ValueOrArray, H256},
 };
 use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
 use std::{borrow::Cow, marker::PhantomData};
@@ -106,6 +106,12 @@ impl<M, D: EthLogDecode> Event<'_, M, D> {
     /// Sets the filter's 3rd topic
     pub fn topic3<T: Into<Topic>>(mut self, topic: T) -> Self {
         self.filter.topics[3] = Some(topic.into());
+        self
+    }
+
+    /// Sets the filter's address.
+    pub fn address(mut self, address: ValueOrArray<Address>) -> Self {
+        self.filter = self.filter.address(address);
         self
     }
 }
