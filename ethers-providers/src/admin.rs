@@ -165,6 +165,8 @@ pub struct ChainConfig {
 }
 
 /// Represents a short summary of information known about a connected peer.
+///
+/// See [geth's `PeerInfo` struct](https://github.com/ethereum/go-ethereum/blob/64dccf7aa411c5c7cd36090c3d9b9892945ae813/p2p/peer.go#L484) for the source of each field.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PeerInfo {
     /// The peer's ENR.
