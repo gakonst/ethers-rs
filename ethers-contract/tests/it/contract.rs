@@ -6,7 +6,7 @@ use ethers_core::types::{Filter, ValueOrArray, H256};
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
     use super::*;
-    use ethers_contract::{LogMeta, Multicall, MulticallVersion};
+    use ethers_contract::{LogMeta, Multicall, MulticallVersion, EthEvent};
     use ethers_core::{
         abi::{encode, Detokenize, Token, Tokenizable},
         types::{transaction::eip712::Eip712, Address, BlockId, Bytes, I256, U256},
@@ -322,6 +322,22 @@ mod eth_tests {
         let log_2 = stream.next().await.unwrap();
         assert_eq!(log_1.address, contract_1.address());
         assert_eq!(log_2.address, contract_2.address());
+    }
+
+
+    #[tokio::test]
+    async fn build_event_of_type() {
+        abigen!(
+            AggregatorInterface,
+            r#"[
+                event AnswerUpdated(int256 indexed current, uint256 indexed roundId, uint256 updatedAt)
+            ]"#,
+        );
+
+        let anvil = Anvil::new().spawn();
+        let client = connect(&anvil, 0);
+        let event = ethers_contract::Contract::event_of_type::<AnswerUpdatedFilter>(&client);
+        assert_eq!(event.filter, Filter::new().event(&AnswerUpdatedFilter::abi_signature()));
     }
 
     #[tokio::test]
