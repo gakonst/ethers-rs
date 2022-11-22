@@ -571,8 +571,17 @@ impl MultiBindingsInner {
 
     /// parses the active Cargo.toml to get what version of ethers we are using
     fn find_crate_version(&self) -> Result<String> {
-        let cargo_dir = std::env::current_dir()?.join("Cargo.toml");
-        let data = std::fs::read_to_string(cargo_dir)?;
+        let cargo_toml = std::env::current_dir()?.join("Cargo.toml");
+
+        let default_dep = || {
+            "ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }}".to_string()
+        };
+
+        if !cargo_toml.exists() {
+            return Ok(default_dep())
+        }
+
+        let data = fs::read_to_string(cargo_toml)?;
         let toml = data.parse::<Value>()?;
 
         let ethers = toml
@@ -588,7 +597,7 @@ impl MultiBindingsInner {
                 version
             ))
         } else {
-            Ok("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }}".to_string())
+            Ok(default_dep())
         }
     }
 
