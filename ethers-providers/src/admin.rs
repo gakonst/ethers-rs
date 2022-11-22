@@ -240,3 +240,33 @@ pub struct CliqueConfig {
     /// Epoch length to reset votes and checkpoints.
     pub epoch: u64,
 }
+
+/// An event emitted by geth when a peer is added or removed, or when a message is sent or
+/// received.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct PeerEvent {
+    /// The type of event.
+    #[serde(rename = "type")]
+    pub event_type: String,
+
+    /// The peer's enode ID.
+    pub peer: String,
+
+    /// The error associated with the event.
+    pub error: Option<String>,
+
+    /// The protocol associated with the event.
+    pub protocol: Option<String>,
+
+    /// The message code.
+    pub msg_code: Option<u64>,
+
+    /// The message size.
+    pub msg_size: Option<u64>,
+
+    /// The local address of the peer.
+    pub local_address: Option<SocketAddr>,
+
+    /// The remote address of the peer.
+    pub remote_address: Option<SocketAddr>,
+}

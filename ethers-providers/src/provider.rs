@@ -2168,12 +2168,28 @@ mod tests {
         let port = 8545u16;
         let url = format!("http://localhost:{}", port);
 
-        let geth = Geth::new().port(port).spawn();
+        let p2p_listener_port = 13337u16;
+        let network = 1337u64;
+        // we disable discovery because otherwise it will peer with nodes with chainid 1337 and
+        // try to sync
+        let geth = Geth::new()
+            .port(port)
+            .p2p_port(p2p_listener_port)
+            .chain_id(network)
+            .disable_discovery()
+            .spawn();
         let provider = Provider::try_from(url).unwrap();
 
         let info = provider.node_info().await.unwrap();
-        dbg!(&info);
+        drop(geth);
 
-        drop(geth); // this will kill the instance
+        // check that the port we set works
+        assert_eq!(info.ports.listener, p2p_listener_port);
+
+        // make sure it is running eth
+        assert!(info.protocols.eth.is_some());
+
+        // check that the network id is correct
+        assert_eq!(info.protocols.eth.unwrap().network, network);
     }
 }

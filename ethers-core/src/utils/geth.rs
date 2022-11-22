@@ -87,10 +87,22 @@ pub struct DevOptions {
 }
 
 /// Configuration options that cannot be set in dev mode.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct PrivateNetOptions {
     /// The p2p port to use.
     pub p2p_port: Option<u16>,
+
+    /// Whether or not peer discovery is enabled.
+    pub discovery: bool,
+}
+
+impl Default for PrivateNetOptions {
+    fn default() -> Self {
+        Self {
+            p2p_port: None,
+            discovery: true,
+        }
+    }
 }
 
 /// Builder for launching `geth`.
@@ -119,6 +131,7 @@ pub struct Geth {
     port: Option<u16>,
     ipc_path: Option<PathBuf>,
     data_dir: Option<PathBuf>,
+    chain_id: Option<u64>,
     mode: GethMode,
 }
 
@@ -141,8 +154,14 @@ impl Geth {
     /// This will put the geth instance into non-dev mode, discarding any previously set dev-mode
     /// options.
     #[must_use]
-    pub fn p2p_port<T: Into<u16>>(mut self, port: T) -> Self {
-        self.mode = GethMode::NonDev(PrivateNetOptions { p2p_port: Some(port.into()) });
+    pub fn p2p_port(mut self, port: u16) -> Self {
+        match self.mode {
+            GethMode::Dev(_) => self.mode = GethMode::NonDev(PrivateNetOptions {
+                p2p_port: Some(port),
+                ..Default::default()
+            }),
+            GethMode::NonDev(ref mut opts) => opts.p2p_port = Some(port),
+        }
         self
     }
 
@@ -153,6 +172,29 @@ impl Geth {
     #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.mode = GethMode::Dev(DevOptions { block_time: Some(block_time.into()) });
+        self
+    }
+
+    /// Sets the chain id for the geth instance.
+    #[must_use]
+    pub fn chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
+        self.chain_id = Some(chain_id.into());
+        self
+    }
+
+    /// Disable discovery for the geth instance.
+    ///
+    /// This will put the geth instance into non-dev mode, discarding any previously set dev-mode
+    /// options.
+    #[must_use]
+    pub fn disable_discovery(mut self) -> Self {
+        match self.mode {
+            GethMode::Dev(_) => self.mode = GethMode::NonDev(PrivateNetOptions {
+                discovery: false,
+                ..Default::default()
+            }),
+            GethMode::NonDev(ref mut opts) => opts.discovery = false,
+        }
         self
     }
 
@@ -200,10 +242,21 @@ impl Geth {
                     cmd.arg("--dev.period").arg(block_time.to_string());
                 }
             }
-            GethMode::NonDev(PrivateNetOptions { p2p_port }) => {
+            GethMode::NonDev(PrivateNetOptions { p2p_port, .. }) => {
                 if let Some(p2p_port) = p2p_port {
                     cmd.arg("--port").arg(p2p_port.to_string());
                 }
+            }
+        }
+
+        if let Some(chain_id) = self.chain_id {
+            cmd.arg("--networkid").arg(chain_id.to_string());
+        }
+
+        // disable discovery if the flag is set
+        if let GethMode::NonDev(PrivateNetOptions { discovery, .. }) = self.mode {
+            if !discovery {
+                cmd.arg("--nodiscover");
             }
         }
 
@@ -235,7 +288,7 @@ impl Geth {
         child.stderr = Some(reader.into_inner());
         let p2p_port = match self.mode {
             GethMode::Dev(_) => None,
-            GethMode::NonDev(PrivateNetOptions { p2p_port }) => p2p_port,
+            GethMode::NonDev(PrivateNetOptions { p2p_port, .. }) => p2p_port,
         };
 
         GethInstance { pid: child, port, ipc: self.ipc_path, data_dir: self.data_dir, p2p_port }
