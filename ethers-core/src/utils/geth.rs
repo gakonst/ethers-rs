@@ -103,6 +103,8 @@ impl Geth {
     }
 
     /// Sets the block-time which will be used when the `geth-cli` instance is launched.
+    ///
+    /// This will set the `dev` flag to true.
     #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
@@ -119,10 +121,12 @@ impl Geth {
 
     /// Sets whether or not the geth instance will be run in `dev` mode.
     ///
-    /// This will automatically be `true` if `block_time` is set.
+    /// This will not be set to `false` if `block_time` is already set.
     #[must_use]
     pub fn dev(mut self, dev: bool) -> Self {
-        self.dev = dev;
+        if self.block_time.is_none() {
+            self.dev = dev;
+        }
         self
     }
 
