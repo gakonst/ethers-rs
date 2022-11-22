@@ -38,9 +38,7 @@ pub use quorum::{JsonRpcClientWrapper, Quorum, QuorumError, QuorumProvider, Weig
 mod rw;
 pub use rw::{RwClient, RwClientError};
 
-// #[cfg(not(target_arch = "wasm32"))]
 mod retry;
-// #[cfg(not(target_arch = "wasm32"))]
 pub use retry::*;
 
 mod mock;
