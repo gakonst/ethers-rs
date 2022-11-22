@@ -98,10 +98,7 @@ pub struct PrivateNetOptions {
 
 impl Default for PrivateNetOptions {
     fn default() -> Self {
-        Self {
-            p2p_port: None,
-            discovery: true,
-        }
+        Self { p2p_port: None, discovery: true }
     }
 }
 
@@ -156,10 +153,12 @@ impl Geth {
     #[must_use]
     pub fn p2p_port(mut self, port: u16) -> Self {
         match self.mode {
-            GethMode::Dev(_) => self.mode = GethMode::NonDev(PrivateNetOptions {
-                p2p_port: Some(port),
-                ..Default::default()
-            }),
+            GethMode::Dev(_) => {
+                self.mode = GethMode::NonDev(PrivateNetOptions {
+                    p2p_port: Some(port),
+                    ..Default::default()
+                })
+            }
             GethMode::NonDev(ref mut opts) => opts.p2p_port = Some(port),
         }
         self
@@ -189,10 +188,10 @@ impl Geth {
     #[must_use]
     pub fn disable_discovery(mut self) -> Self {
         match self.mode {
-            GethMode::Dev(_) => self.mode = GethMode::NonDev(PrivateNetOptions {
-                discovery: false,
-                ..Default::default()
-            }),
+            GethMode::Dev(_) => {
+                self.mode =
+                    GethMode::NonDev(PrivateNetOptions { discovery: false, ..Default::default() })
+            }
             GethMode::NonDev(ref mut opts) => opts.discovery = false,
         }
         self
