@@ -8,8 +8,8 @@ use std::net::{IpAddr, SocketAddr};
 /// details.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NodeInfo {
-    /// TODO: docs - what kind of key is this?
-    pub id: String,
+    /// The node's secp256k1 public key.
+    pub id: H256,
 
     /// The client user agent, containing a client name, version, OS, and other metadata.
     pub name: String,
@@ -84,95 +84,73 @@ pub struct SnapProtocolInfo {}
 
 /// Represents a node's chain configuration.
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
-#[serde(default)]
+#[serde(default, rename_all = "camelCase")]
 pub struct ChainConfig {
     /// The network's chain ID.
-    #[serde(rename = "chainId")]
     pub chain_id: u64,
 
     /// The homestead switch block (None = no fork, 0 = already homestead).
-    #[serde(rename = "homesteadBlock")]
     pub homestead_block: Option<u64>,
 
     /// The DAO fork switch block (None = no fork).
-    #[serde(rename = "daoForkBlock")]
     pub dao_fork_block: Option<u64>,
 
     /// Whether or not the node supports the DAO hard-fork.
-    #[serde(rename = "daoForkSupport")]
     pub dao_fork_support: bool,
 
     /// The EIP-150 hard fork block (None = no fork).
-    #[serde(rename = "eip150Block")]
     pub eip150_block: Option<u64>,
 
     /// The EIP-150 hard fork hash.
-    #[serde(rename = "eip150Hash")]
     pub eip150_hash: Option<H256>,
 
     /// The EIP-155 hard fork block.
-    #[serde(rename = "eip155Block")]
     pub eip155_block: Option<u64>,
 
     /// The EIP-158 hard fork block.
-    #[serde(rename = "eip158Block")]
     pub eip158_block: Option<u64>,
 
     /// The Byzantium hard fork block.
-    #[serde(rename = "byzantiumBlock")]
     pub byzantium_block: Option<u64>,
 
     /// The Constantinople hard fork block.
-    #[serde(rename = "constantinopleBlock")]
     pub constantinople_block: Option<u64>,
 
     /// The Petersburg hard fork block.
-    #[serde(rename = "petersburgBlock")]
     pub petersburg_block: Option<u64>,
 
     /// The Istanbul hard fork block.
-    #[serde(rename = "istanbulBlock")]
     pub istanbul_block: Option<u64>,
 
     /// The Muir Glacier hard fork block.
-    #[serde(rename = "muirGlacierBlock")]
     pub muir_glacier_block: Option<u64>,
 
     /// The Berlin hard fork block.
-    #[serde(rename = "berlinBlock")]
     pub berlin_block: Option<u64>,
 
     /// The London hard fork block.
-    #[serde(rename = "londonBlock")]
     pub london_block: Option<u64>,
 
     /// The Arrow Glacier hard fork block.
-    #[serde(rename = "arrowGlacierBlock")]
     pub arrow_glacier_block: Option<u64>,
 
     /// The Gray Glacier hard fork block.
-    #[serde(rename = "grayGlacierBlock")]
     pub gray_glacier_block: Option<u64>,
 
     /// Virtual fork after the merge to use as a network splitter.
-    #[serde(rename = "mergeNetsplitBlock")]
     pub merge_netsplit_block: Option<u64>,
 
     /// The Shanghai hard fork block.
-    #[serde(rename = "shanghaiBlock")]
     pub shanghai_block: Option<u64>,
 
     /// The Cancun hard fork block.
-    #[serde(rename = "cancunBlock")]
     pub cancun_block: Option<u64>,
 
     /// Total difficulty reached that triggers the merge consensus upgrade.
-    #[serde(rename = "terminalTotalDifficulty")]
     pub terminal_total_difficulty: Option<U256>,
 
     /// A flag specifying that the network already passed the terminal total difficulty. Its
     /// purpose is to disable legacy sync without having seen the TTD locally.
-    #[serde(rename = "terminalTotalDifficultyPassed")]
     pub terminal_total_difficulty_passed: bool,
 
     /// Ethash parameters.
@@ -186,6 +164,7 @@ pub struct ChainConfig {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PeerInfo {
     /// The peer's ENR.
+    #[serde(default)]
     pub enr: Option<Enr<SigningKey>>,
 
     /// The peer's enode URL.
@@ -210,6 +189,7 @@ pub struct PeerInfo {
 /// Represents networking related information about the peer, including details about whether or
 /// not it is inbound, trusted, or static.
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PeerNetworkInfo {
     /// The local endpoint of the TCP connection.
     pub local_address: SocketAddr,
