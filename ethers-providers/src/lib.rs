@@ -40,7 +40,6 @@ pub mod erc;
 
 use async_trait::async_trait;
 use auto_impl::auto_impl;
-use enr::{k256::ecdsa::SigningKey, Enr};
 use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
@@ -495,12 +494,12 @@ pub trait Middleware: Sync + Send + Debug {
 
     // Admin namespace
 
-    async fn add_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
-        self.inner().add_peer(node_record).await.map_err(FromErr::from)
+    async fn add_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        self.inner().add_peer(enode_url).await.map_err(FromErr::from)
     }
 
-    async fn add_trusted_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
-        self.inner().add_trusted_peer(node_record).await.map_err(FromErr::from)
+    async fn add_trusted_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        self.inner().add_trusted_peer(enode_url).await.map_err(FromErr::from)
     }
 
     async fn node_info(&self) -> Result<NodeInfo, Self::Error> {
@@ -511,12 +510,12 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().peers().await.map_err(FromErr::from)
     }
 
-    async fn remove_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
-        self.inner().remove_peer(node_record).await.map_err(FromErr::from)
+    async fn remove_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        self.inner().remove_peer(enode_url).await.map_err(FromErr::from)
     }
 
-    async fn remove_trusted_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
-        self.inner().remove_trusted_peer(node_record).await.map_err(FromErr::from)
+    async fn remove_trusted_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        self.inner().remove_trusted_peer(enode_url).await.map_err(FromErr::from)
     }
 
     // Mempool inspection for Geth's API

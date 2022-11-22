@@ -33,7 +33,6 @@ use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 use url::{ParseError, Url};
 
-use enr::{k256::ecdsa::SigningKey, Enr};
 use ethers_core::types::Chain;
 use futures_util::{lock::Mutex, try_join};
 use std::{
@@ -801,38 +800,44 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
     // Admin namespace
 
-    /// docs: TODO
-    async fn add_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
-        let node_record = utils::serialize(&node_record);
-        self.request("admin_addPeer", [node_record]).await
+    /// Requests adding the given peer, returning a boolean representing whether or not the peer
+    /// was accepted for tracking.
+    async fn add_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        let enode_url = utils::serialize(&enode_url);
+        self.request("admin_addPeer", [enode_url]).await
     }
 
-    /// docs: TODO
-    async fn add_trusted_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
-        let node_record = utils::serialize(&node_record);
-        self.request("admin_addTrustedPeer", [node_record]).await
+    /// Requests adding the given peer as a trusted peer, which the node will always connect to
+    /// even when its peer slots are full.
+    async fn add_trusted_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        let enode_url = utils::serialize(&enode_url);
+        self.request("admin_addTrustedPeer", [enode_url]).await
     }
 
-    /// docs: TODO
+    /// Returns general information about the node as well as information about the running p2p
+    /// protocols (e.g. `eth`, `snap`).
     async fn node_info(&self) -> Result<NodeInfo, Self::Error> {
         self.request("admin_nodeInfo", ()).await
     }
 
-    /// docs: TODO
+    /// Returns the list of peers currently connected to the node.
     async fn peers(&self) -> Result<Vec<PeerInfo>, Self::Error> {
         self.request("admin_peers", ()).await
     }
 
-    /// docs: TODO
-    async fn remove_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
-        let node_record = utils::serialize(&node_record);
-        self.request("admin_removePeer", [node_record]).await
+    /// Requests to remove the given peer, returning true if the enode was successfully parsed and
+    /// the peer was removed.
+    async fn remove_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        let enode_url = utils::serialize(&enode_url);
+        self.request("admin_removePeer", [enode_url]).await
     }
 
-    /// docs: TODO
-    async fn remove_trusted_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
-        let node_record = utils::serialize(&node_record);
-        self.request("admin_removeTrustedPeer", [node_record]).await
+    /// Requests to remove the given peer, returning a boolean representing whether or not the
+    /// enode url passed was validated. A return value of `true` does not necessarily mean that the
+    /// peer was disconnected.
+    async fn remove_trusted_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        let enode_url = utils::serialize(&enode_url);
+        self.request("admin_removeTrustedPeer", [enode_url]).await
     }
 
     ////// Ethereum Naming Service
