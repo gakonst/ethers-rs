@@ -1,8 +1,9 @@
-use super::unused_port;
+use super::{unused_port, Genesis};
 use std::{
-    io::{BufRead, BufReader},
+    fs::File,
+    io::{BufRead, BufReader, Read},
     path::PathBuf,
-    process::{Child, Command},
+    process::{Child, ChildStderr, Command},
     time::{Duration, Instant},
 };
 
@@ -55,6 +56,11 @@ impl GethInstance {
     /// Returns the path to this instances' data directory
     pub fn data_dir(&self) -> &Option<PathBuf> {
         &self.data_dir
+    }
+
+    /// Return a `BufReader` for the stderr output of this instance
+    pub fn stderr(&mut self) -> BufReader<ChildStderr> {
+        BufReader::new(self.pid.stderr.take().unwrap())
     }
 }
 
@@ -129,6 +135,7 @@ pub struct Geth {
     ipc_path: Option<PathBuf>,
     data_dir: Option<PathBuf>,
     chain_id: Option<u64>,
+    genesis: Option<Genesis>,
     mode: GethMode,
 }
 
@@ -211,6 +218,18 @@ impl Geth {
         self
     }
 
+    /// Sets the `genesis.json` for the geth instance.
+    ///
+    /// If this is set, geth will be initialized with `geth init` and the `--datadir` option will be
+    /// set to the same value as `data_dir`.
+    ///
+    /// This is destructive and will overwrite any existing data in the data directory.
+    #[must_use]
+    pub fn genesis(mut self, genesis: Genesis) -> Self {
+        self.genesis = Some(genesis);
+        self
+    }
+
     /// Consumes the builder and spawns `geth` with stdout redirected
     /// to /dev/null.
     pub fn spawn(self) -> GethInstance {
@@ -279,12 +298,23 @@ impl Geth {
             reader.read_line(&mut line).expect("Failed to read line from geth process");
 
             // geth 1.9.23 uses "server started" while 1.9.18 uses "endpoint opened"
-            if line.contains("HTTP endpoint opened") || line.contains("HTTP server started") {
-                break
+            match self.mode {
+                GethMode::Dev(_) => {
+                    if line.contains("HTTP endpoint opened") || line.contains("HTTP server started")
+                    {
+                        break
+                    }
+                }
+                GethMode::NonDev(_) => {
+                    if line.contains("Started P2P networking") {
+                        break
+                    }
+                }
             }
         }
 
         child.stderr = Some(reader.into_inner());
+
         let p2p_port = match self.mode {
             GethMode::Dev(_) => None,
             GethMode::NonDev(PrivateNetOptions { p2p_port, .. }) => p2p_port,

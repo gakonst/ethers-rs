@@ -9,6 +9,9 @@ pub use ganache::{Ganache, GanacheInstance};
 mod geth;
 #[cfg(not(target_arch = "wasm32"))]
 pub use geth::{Geth, GethInstance};
+#[cfg(not(target_arch = "wasm32"))]
+mod genesis;
+pub use genesis::{ChainConfig, Genesis};
 
 /// Utilities for launching an anvil instance
 #[cfg(not(target_arch = "wasm32"))]

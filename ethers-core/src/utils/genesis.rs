@@ -1,9 +1,52 @@
-use crate::types::{H256, U256};
+use std::collections::HashMap;
+
+use crate::types::{Address, Bytes, H256, U256};
 use serde::{Deserialize, Serialize};
 
 /// This represents the chain configuration, specifying the genesis block, header fields, and hard
 /// fork switch blocks.
-pub struct Genesis {}
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Genesis {
+    /// The fork configuration for this network.
+    pub config: ChainConfig,
+
+    /// The genesis header nonce.
+    pub nonce: u64,
+
+    /// The genesis header timestamp.
+    pub timestamp: u64,
+
+    /// The genesis header extra data.
+    pub extra_data: Bytes,
+
+    /// The genesis header gas limit.
+    pub gas_limit: u64,
+
+    /// The genesis header difficulty.
+    pub difficulty: U256,
+
+    /// The genesis header mix hash.
+    pub mix_hash: H256,
+
+    /// The genesis header coinbase address.
+    pub coinbase: Address,
+
+    /// The initial state of the genesis block.
+    pub alloc: HashMap<Address, GenesisAccount>,
+}
+
+/// An account in the state of the genesis block.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GenesisAccount {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nonce: Option<u64>,
+    pub balance: U256,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub code: Option<Bytes>,
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub storage: Option<HashMap<H256, H256>>,
+}
 
 /// Represents a node's chain configuration.
 ///
@@ -100,4 +143,3 @@ pub struct CliqueConfig {
     /// Epoch length to reset votes and checkpoints.
     pub epoch: u64,
 }
-
