@@ -1796,7 +1796,7 @@ mod tests {
         types::{
             transaction::eip2930::AccessList, Eip1559TransactionRequest, TransactionRequest, H256,
         },
-        utils::Anvil,
+        utils::{Anvil, Geth},
     };
     use futures_util::StreamExt;
 
@@ -2160,5 +2160,20 @@ mod tests {
             &err.to_string(),
             "ens name not found: `ox63616e.eth` resolver (0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) is invalid."
         );
+    }
+
+    #[tokio::test]
+    async fn geth_admin_nodeinfo() {
+        // we can't use the test provider because infura does not expose admin endpoints
+        let port = 8545u16;
+        let url = format!("http://localhost:{}", port);
+
+        let geth = Geth::new().port(port).spawn();
+        let provider = Provider::try_from(url).unwrap();
+
+        let info = provider.node_info().await.unwrap();
+        dbg!(&info);
+
+        drop(geth); // this will kill the instance
     }
 }
