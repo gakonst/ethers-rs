@@ -1,6 +1,5 @@
-use ethers::{prelude::*};
+use ethers::{contract::Contract, prelude::*};
 use std::{error::Error, sync::Arc};
-use ethers::contract::Contract;
 abigen!(
     AggregatorInterface,
     r#"[
@@ -24,11 +23,12 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let client = get_client().await;
     let client = Arc::new(client);
 
-    // Build an Event by type. We are not tied to a contract instance. We use builder functions to refine the event filter
+    // Build an Event by type. We are not tied to a contract instance. We use builder functions to
+    // refine the event filter
     let event = Contract::event_of_type::<AnswerUpdatedFilter>(&client)
         .from_block(16022082)
         .to_block(16022282)
-        .address(ValueOrArray::Array( vec![
+        .address(ValueOrArray::Array(vec![
             PRICE_FEED_1.parse()?,
             PRICE_FEED_2.parse()?,
             PRICE_FEED_3.parse()?,
@@ -45,8 +45,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-
 async fn get_client() -> Provider<Ws> {
     Provider::<Ws>::connect("wss://mainnet.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-    .await.unwrap()
+        .await
+        .unwrap()
 }

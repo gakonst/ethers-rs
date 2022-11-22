@@ -3,7 +3,7 @@
 use crate::{log::LogMeta, stream::EventStream, ContractError, EthLogDecode};
 use ethers_core::{
     abi::{Detokenize, RawLog},
-    types::{BlockNumber, Filter, Log, Topic, H256, ValueOrArray, H160},
+    types::{BlockNumber, Filter, Log, Topic, ValueOrArray, H160, H256},
 };
 use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
 use std::{borrow::Cow, marker::PhantomData};
