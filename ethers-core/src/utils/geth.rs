@@ -111,7 +111,6 @@ pub struct PrivateNetOptions {
 #[derive(Clone, Default)]
 pub struct Geth {
     port: Option<u16>,
-    block_time: Option<u64>,
     ipc_path: Option<PathBuf>,
     data_dir: Option<PathBuf>,
     mode: GethMode,
@@ -133,10 +132,11 @@ impl Geth {
 
     /// Sets the block-time which will be used when the `geth-cli` instance is launched.
     ///
-    /// This will set the `dev` flag to true.
+    /// This will put the geth instance in `dev` mode, discarding any previously set options that
+    /// cannot be used in dev mode.
     #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
-        self.block_time = Some(block_time.into());
+        self.mode = GethMode::Dev(DevOptions { block_time: Some(block_time.into()) });
         self
     }
 
