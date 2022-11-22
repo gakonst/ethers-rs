@@ -803,32 +803,36 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
     /// docs: TODO
     async fn add_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
-        todo!()
+        let node_record = utils::serialize(&node_record);
+        self.request("admin_addPeer", [node_record]).await
     }
 
     /// docs: TODO
     async fn add_trusted_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
-        todo!()
+        let node_record = utils::serialize(&node_record);
+        self.request("admin_addTrustedPeer", [node_record]).await
     }
 
     /// docs: TODO
     async fn node_info(&self) -> Result<NodeInfo, Self::Error> {
-        todo!()
+        self.request("admin_nodeInfo", ()).await
     }
 
     /// docs: TODO
     async fn peers(&self) -> Result<Vec<PeerInfo>, Self::Error> {
-        todo!()
+        self.request("admin_peers", ()).await
     }
 
     /// docs: TODO
     async fn remove_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
-        todo!()
+        let node_record = utils::serialize(&node_record);
+        self.request("admin_removePeer", [node_record]).await
     }
 
     /// docs: TODO
     async fn remove_trusted_peer(&self, node_record: Enr<SigningKey>) -> Result<bool, Self::Error> {
-        todo!()
+        let node_record = utils::serialize(&node_record);
+        self.request("admin_removeTrustedPeer", [node_record]).await
     }
 
     ////// Ethereum Naming Service
