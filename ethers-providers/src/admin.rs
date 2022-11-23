@@ -107,7 +107,7 @@ pub struct PeerInfo {
     pub network: PeerNetworkInfo,
 
     /// The protocols that the peer supports, with protocol metadata.
-    pub protocols: Vec<ProtocolInfo>,
+    pub protocols: ProtocolInfo,
 }
 
 /// Represents networking related information about the peer, including details about whether or
@@ -128,5 +128,6 @@ pub struct PeerNetworkInfo {
     pub trusted: bool,
 
     /// Whether or not the peer is a static peer.
+    #[serde(rename = "static")]
     pub static_node: bool,
 }

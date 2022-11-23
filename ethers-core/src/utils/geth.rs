@@ -2,7 +2,7 @@ use super::{unused_port, Genesis};
 use std::{
     env::temp_dir,
     fs::File,
-    io::{BufRead, BufReader, Read},
+    io::{BufRead, BufReader},
     path::PathBuf,
     process::{Child, ChildStderr, Command},
     time::{Duration, Instant},
@@ -304,6 +304,9 @@ impl Geth {
             }
         }
 
+        // verbosity 5
+        cmd.arg("--verbosity").arg("5");
+
         if let Some(ref ipc) = self.ipc_path {
             cmd.arg("--ipcpath").arg(ipc);
         }
@@ -315,6 +318,8 @@ impl Geth {
         let start = Instant::now();
         let mut reader = BufReader::new(stdout);
 
+        let mut p2p_started = matches!(self.mode, GethMode::Dev(_));
+
         loop {
             if start + Duration::from_millis(GETH_STARTUP_TIMEOUT_MILLIS) <= Instant::now() {
                 panic!("Timed out waiting for geth to start. Is geth installed?")
@@ -323,19 +328,15 @@ impl Geth {
             let mut line = String::new();
             reader.read_line(&mut line).expect("Failed to read line from geth process");
 
+            if matches!(self.mode, GethMode::NonDev(_)) && line.contains("Started P2P networking") {
+                p2p_started = true;
+            }
+
             // geth 1.9.23 uses "server started" while 1.9.18 uses "endpoint opened"
-            match self.mode {
-                GethMode::Dev(_) => {
-                    if line.contains("HTTP endpoint opened") || line.contains("HTTP server started")
-                    {
-                        break
-                    }
-                }
-                GethMode::NonDev(_) => {
-                    if line.contains("Started P2P networking") {
-                        break
-                    }
-                }
+            if p2p_started && line.contains("HTTP endpoint opened") ||
+                line.contains("HTTP server started")
+            {
+                break
             }
         }
 

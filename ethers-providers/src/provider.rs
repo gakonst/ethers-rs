@@ -1795,15 +1795,18 @@ pub mod dev_rpc {
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
     use crate::Http;
     use ethers_core::{
         types::{
             transaction::eip2930::AccessList, Eip1559TransactionRequest, TransactionRequest, H256,
         },
-        utils::{Anvil, Geth},
+        utils::{Anvil, Genesis, Geth, GethInstance},
     };
     use futures_util::StreamExt;
+    use tokio::time::sleep;
 
     #[test]
     fn convert_h256_u256_quantity() {
@@ -2171,19 +2174,11 @@ mod tests {
     async fn geth_admin_nodeinfo() {
         // we can't use the test provider because infura does not expose admin endpoints
         let port = 8545u16;
-        let url = format!("http://localhost:{}", port);
-
         let p2p_listener_port = 13337u16;
         let network = 1337u64;
-        // we disable discovery because otherwise it will peer with nodes with chainid 1337 and
-        // try to sync
-        let geth = Geth::new()
-            .port(port)
-            .p2p_port(p2p_listener_port)
-            .chain_id(network)
-            .disable_discovery()
-            .spawn();
-        let provider = Provider::try_from(url).unwrap();
+
+        let (geth, provider) =
+            spawn_geth_and_create_provider(network, port, p2p_listener_port, None, None);
 
         let info = provider.node_info().await.unwrap();
         drop(geth);
@@ -2196,5 +2191,113 @@ mod tests {
 
         // check that the network id is correct
         assert_eq!(info.protocols.eth.unwrap().network, network);
+    }
+
+    /// Spawn a new `GethInstance` without discovery and crate a `Provider` for it.
+    ///
+    /// These will all use the same genesis config.
+    fn spawn_geth_and_create_provider(
+        chain_id: u64,
+        rpc_port: u16,
+        p2p_port: u16,
+        datadir: Option<PathBuf>,
+        genesis: Option<Genesis>,
+    ) -> (GethInstance, Provider<HttpProvider>) {
+        let geth =
+            Geth::new().port(rpc_port).p2p_port(p2p_port).chain_id(chain_id).disable_discovery();
+
+        let geth = match genesis {
+            Some(genesis) => geth.genesis(genesis),
+            None => geth,
+        };
+
+        let geth = match datadir {
+            Some(dir) => geth.data_dir(dir),
+            None => geth,
+        }
+        .spawn();
+
+        let url = format!("http://localhost:{}", rpc_port);
+        let provider = Provider::try_from(url).unwrap();
+        (geth, provider)
+    }
+
+    #[tokio::test]
+    async fn add_second_geth_peer() {
+        // init each geth directory
+        let dir1 = tempfile::tempdir().unwrap().into_path();
+        let dir2 = tempfile::tempdir().unwrap().into_path();
+
+        // use the default genesis
+        let genesis = utils::Genesis::default();
+
+        // record p2p ports so they can be used to construct enodes
+        let first_port = 30304u16;
+        let second_port = 30305u16;
+
+        let (mut first_geth, first_peer) = spawn_geth_and_create_provider(
+            1337,
+            8546,
+            first_port,
+            Some(dir1.clone()),
+            Some(genesis.clone()),
+        );
+        let (mut second_geth, second_peer) = spawn_geth_and_create_provider(
+            1337,
+            8547,
+            second_port,
+            Some(dir2.clone()),
+            Some(genesis.clone()),
+        );
+
+        // get nodeinfo for each geth instance
+        let first_info = first_peer.node_info().await.unwrap();
+        let second_info = second_peer.node_info().await.unwrap();
+
+        println!("first_id: {}", hex::encode(first_info.id.0));
+        println!("first_nodeinfo: {:?}", first_info);
+
+        // replace the ip in the enode by putting
+        let first_prefix = first_info.enode.split('@').collect::<Vec<&str>>();
+        let second_prefix = second_info.enode.split('@').collect::<Vec<&str>>();
+
+        // create enodes for each geth instance using each id and port
+        let first_enode = format!("{}@localhost:{}", first_prefix.first().unwrap(), first_port);
+        let second_enode = format!("{}@localhost:{}", second_prefix.first().unwrap(), second_port);
+
+        // add the second geth as a peer for the first
+        let res = second_peer.add_peer(first_enode).await.unwrap();
+        assert!(res);
+
+        // wait for the geth dial loop to start and connect the static nodes
+        sleep(Duration::from_secs(20)).await;
+
+        // check that second_geth exists in the first_geth peer list
+        let peers = first_peer.peers().await.unwrap();
+
+        let mut first_stderr = first_geth.stderr();
+        let mut second_stderr = second_geth.stderr();
+
+        drop(first_geth);
+        drop(second_geth);
+
+        // turn the stderrs into a string
+        let mut first_str = String::new();
+        let mut second_str = String::new();
+        first_stderr.read_to_string(&mut first_str).unwrap();
+        second_stderr.read_to_string(&mut second_str).unwrap();
+
+        println!("first stderr: {}", first_str);
+        println!("second stderr: {}", second_str);
+
+        // check that the second peer is in the list (it uses an enr so the enr should be Some)
+        assert_eq!(peers.len(), 1);
+
+        let first_peer = peers.get(0).unwrap();
+        assert_eq!(first_peer.enr, Some(second_info.enr));
+
+        // remove directories
+        // std::fs::remove_dir_all(dir1).unwrap();
+        // std::fs::remove_dir_all(dir2).unwrap();
     }
 }

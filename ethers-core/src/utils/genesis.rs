@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::types::{Address, Bytes, H256, U256};
+use crate::types::{Address, Bytes, H256, U256, U64};
 use serde::{Deserialize, Serialize};
 
 /// This represents the chain configuration, specifying the genesis block, header fields, and hard
@@ -12,16 +12,16 @@ pub struct Genesis {
     pub config: ChainConfig,
 
     /// The genesis header nonce.
-    pub nonce: u64,
+    pub nonce: U64,
 
     /// The genesis header timestamp.
-    pub timestamp: u64,
+    pub timestamp: U64,
 
     /// The genesis header extra data.
     pub extra_data: Bytes,
 
     /// The genesis header gas limit.
-    pub gas_limit: u64,
+    pub gas_limit: U64,
 
     /// The genesis header difficulty.
     pub difficulty: U256,
@@ -60,63 +60,82 @@ pub struct ChainConfig {
     pub chain_id: u64,
 
     /// The homestead switch block (None = no fork, 0 = already homestead).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub homestead_block: Option<u64>,
 
     /// The DAO fork switch block (None = no fork).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub dao_fork_block: Option<u64>,
 
     /// Whether or not the node supports the DAO hard-fork.
     pub dao_fork_support: bool,
 
     /// The EIP-150 hard fork block (None = no fork).
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub eip150_block: Option<u64>,
 
     /// The EIP-150 hard fork hash.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub eip150_hash: Option<H256>,
 
     /// The EIP-155 hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub eip155_block: Option<u64>,
 
     /// The EIP-158 hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub eip158_block: Option<u64>,
 
     /// The Byzantium hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub byzantium_block: Option<u64>,
 
     /// The Constantinople hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub constantinople_block: Option<u64>,
 
     /// The Petersburg hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub petersburg_block: Option<u64>,
 
     /// The Istanbul hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub istanbul_block: Option<u64>,
 
     /// The Muir Glacier hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub muir_glacier_block: Option<u64>,
 
     /// The Berlin hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub berlin_block: Option<u64>,
 
     /// The London hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub london_block: Option<u64>,
 
     /// The Arrow Glacier hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub arrow_glacier_block: Option<u64>,
 
     /// The Gray Glacier hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gray_glacier_block: Option<u64>,
 
     /// Virtual fork after the merge to use as a network splitter.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub merge_netsplit_block: Option<u64>,
 
     /// The Shanghai hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub shanghai_block: Option<u64>,
 
     /// The Cancun hard fork block.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub cancun_block: Option<u64>,
 
     /// Total difficulty reached that triggers the merge consensus upgrade.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub terminal_total_difficulty: Option<U256>,
 
     /// A flag specifying that the network already passed the terminal total difficulty. Its
@@ -124,9 +143,11 @@ pub struct ChainConfig {
     pub terminal_total_difficulty_passed: bool,
 
     /// Ethash parameters.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub ethash: Option<EthashConfig>,
 
     /// Clique parameters.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub clique: Option<CliqueConfig>,
 }
 
