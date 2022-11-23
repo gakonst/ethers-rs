@@ -1795,7 +1795,7 @@ pub mod dev_rpc {
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
-    use std::path::PathBuf;
+    use std::{io::Read, path::PathBuf};
 
     use super::*;
     use crate::Http;
