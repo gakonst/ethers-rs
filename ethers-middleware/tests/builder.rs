@@ -6,7 +6,8 @@ mod tests {
         gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},
         gas_oracle::{EthGasStation, GasOracleMiddleware},
         nonce_manager::NonceManagerMiddleware,
-        signer::SignerMiddleware, ProviderBuilder,
+        signer::SignerMiddleware,
+        ProviderBuilder,
     };
     use ethers_providers::{Middleware, Provider};
     use ethers_signers::{LocalWallet, Signer};
