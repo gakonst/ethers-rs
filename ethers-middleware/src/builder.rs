@@ -1,8 +1,9 @@
 use ethers_providers::Middleware;
 
-/// A builder struct useful to compose different [`Middleware`](crate::Middleware) layers and then
-/// build a composed [`Provider`](crate::Provider) architecture. [`Middleware`](crate::Middleware)
-/// composition acts in a wrapping fashion. Adding a new layer results in wrapping its predecessor.
+/// A builder struct useful to compose different [`Middleware`](ethers_providers::Middleware) layers
+/// and then build a composed [`Provider`](ethers_providers::Provider) architecture.
+/// [`Middleware`](ethers_providers::Middleware) composition acts in a wrapping fashion. Adding a
+/// new layer results in wrapping its predecessor.
 ///
 /// Builder can be used as follows:
 ///

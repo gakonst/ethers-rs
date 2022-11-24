@@ -55,7 +55,7 @@ let provider = NonceManagerMiddleware::new(provider, address);
 ```
 ## Example of a middleware stack using a builder
 
-Ethers provides a builder utility to compose a [`Middleware`](crate::Middleware) stack. As usual the composition acts in a wrapping fashion. Adding a new layer results in wrapping its predecessor.
+Ethers provides a builder utility to compose a [`Middleware`](ethers_providers::Middleware) stack. As usual the composition acts in a wrapping fashion. Adding a new layer results in wrapping its predecessor.
 Builder can be used as follows:
 ```rust
 use ethers_providers::{Middleware, Provider, Http};
