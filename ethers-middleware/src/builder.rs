@@ -1,5 +1,4 @@
 use ethers_providers::Middleware;
-use std::sync::Arc;
 
 /// A builder struct useful to compose different [`Middleware`](crate::Middleware) layers and then build
 /// a composed [`Provider`](crate::Provider) architecture. [`Middleware`](crate::Middleware) composition acts
@@ -31,37 +30,37 @@ use std::sync::Arc;
 /// }
 /// ```
 pub struct ProviderBuilder<M> {
-    inner: Arc<M>,
+    inner: Option<M>,
 }
 
 impl<M> ProviderBuilder<M>
 where
     M: Middleware,
 {
-    /// Wraps a new [`Middleware`](ethers_providers::Middleware) layer by nesting the current one.
+    /// Wraps a new [`Middleware`](ethers_providers::Middleware) around the current one.
     ///
     /// `builder_fn` This closure takes the current [`Middleware`](ethers_providers::Middleware) as an argument.
     /// Use this to build a new [`Middleware`](ethers_providers::Middleware) layer wrapping out the current.
     ///
     pub fn wrap_into<F, R>(&mut self, builder_fn: F) -> ProviderBuilder<R>
     where
-        F: FnOnce(Arc<M>) -> R,
+        F: FnOnce(M) -> R,
         R: Middleware,
     {
-        let provider = self.inner.clone();
-        let provider = builder_fn(provider);
+        let provider = self.inner.take();
+        let provider = builder_fn(provider.unwrap());
         ProviderBuilder::from(provider)
     }
 
     /// Returns the overall[`Middleware`](ethers_providers::Middleware) as a reference to the outermost layer
-    pub fn build(&self) -> Arc<M> {
-        self.inner.clone()
+    pub fn build(&mut self) -> M {
+        self.inner.take().unwrap()
     }
 }
 
 
 impl<M: Middleware> From<M> for ProviderBuilder<M> {
     fn from(provider: M) -> Self {
-        Self { inner: Arc::new(provider) }
+        Self { inner: Some(provider) }
     }
 }

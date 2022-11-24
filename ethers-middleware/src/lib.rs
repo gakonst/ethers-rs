@@ -39,5 +39,5 @@ pub use timelag::TimeLag;
 
 /// The [ProviderBuilder](crate::ProviderBuilder) provides a way to compose many [`Middleware`](ethers_providers::Middleware)
 /// in a concise way
-pub mod provider_builder;
-pub use provider_builder::*;
+pub mod builder;
+pub use builder::ProviderBuilder;
