@@ -3,7 +3,7 @@
 ## ethers-core
 
 ### Unreleased
--   New builder struct to instantiate `Provider` as `Middleware` layers.
+-   New builder struct to instantiate a `Provider` as `Middleware` layers.
 -   An `Event` builder can be instantiated specifying the event filter type, without the need to instantiate a contract.
 -   Add 'ethers_core::types::OpCode' and use in 'ethers_core::types::VMOperation' [1857](https://github.com/gakonst/ethers-rs/issues/1857)
 -   Remove rust_decimals dependency for ethers-core
