@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 /// A builder struct useful to compose different [`Middleware`](crate::Middleware) layers and then build
 /// a composed [`Provider`](crate::Provider) architecture. [`Middleware`](crate::Middleware) composition acts
-/// in a wrapping fashion. Adding a new layer results wrapping its predecessor.
+/// in a wrapping fashion. Adding a new layer results in wrapping its predecessor.
 ///
 /// Builder can be used as follows:
 ///
