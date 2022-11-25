@@ -73,6 +73,7 @@ type Pending = oneshot::Sender<Result<Box<RawValue>, JsonRpcError>>;
 type Subscription = mpsc::UnboundedSender<Box<RawValue>>;
 
 /// Instructions for the `WsServer`.
+#[derive(Debug)]
 enum Instruction {
     /// JSON-RPC request
     Request { id: u64, request: String, sender: Pending },
@@ -170,19 +171,25 @@ impl JsonRpcClient for Ws {
     ) -> Result<R, ClientError> {
         let next_id = self.id.fetch_add(1, Ordering::SeqCst);
 
+        let request = serde_json::to_string(&Request::new(next_id, method, params))?;
+
         // send the message
         let (sender, receiver) = oneshot::channel();
         let payload = Instruction::Request {
             id: next_id,
-            request: serde_json::to_string(&Request::new(next_id, method, params))?,
+            request, 
             sender,
         };
+
+        //println!("{:#?}", payload);
 
         // send the data
         self.send(payload)?;
 
         // wait for the response (the request itself may have errors as well)
         let res = receiver.await??;
+
+        //println!("parsing_res: {:?}", res.get());
 
         // parse it
         Ok(serde_json::from_str(res.get())?)
