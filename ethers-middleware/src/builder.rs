@@ -1,7 +1,8 @@
+use ethers_core::types::Address;
 use ethers_providers::Middleware;
 use ethers_signers::Signer;
 
-use crate::SignerMiddleware;
+use crate::{SignerMiddleware, NonceManagerMiddleware};
 
 /// A builder struct useful to compose different [`Middleware`](ethers_providers::Middleware) layers
 /// and then build a composed [`Provider`](ethers_providers::Provider) architecture.
@@ -41,11 +42,23 @@ impl<M> ProviderBuilder<M>
 where
     M: Middleware,
 {
+
+    /// Wraps the current [`Middleware`](ethers_providers::Middleware) inside a [`SignerMiddleware`](crate::SignerMiddleware).
+    ///
+    /// [`Signer`] ethers_signers::Signer
     pub fn with_signer<S>(self, signer: S) -> ProviderBuilder<SignerMiddleware<M, S>> 
     where
         S: Signer
     {
         let provider = SignerMiddleware::new(self.inner, signer);
+        ProviderBuilder::from(provider)
+    }
+
+    /// Wraps the current [`Middleware`](ethers_providers::Middleware) inside a [`NonceManagerMiddleware`](crate::NonceManagerMiddleware).
+    ///
+    /// [`Address`] ethers_core::types::Address
+    pub fn nonce_manager(self, address: Address) -> ProviderBuilder<NonceManagerMiddleware<M>> {
+        let provider = NonceManagerMiddleware::new(self.inner, address);
         ProviderBuilder::from(provider)
     }
 
@@ -63,7 +76,7 @@ where
         ProviderBuilder::from(provider)
     }
 
-    /// Returns the overall[`Middleware`](ethers_providers::Middleware) as a reference to the
+    /// Returns the overall[`Middleware`](ethers_providers::Middleware) as an owned reference to the
     /// outermost layer
     pub fn build(self) -> M {
         self.inner
