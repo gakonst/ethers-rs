@@ -27,7 +27,7 @@ use crate::{
 ///     let address = signer.address();
 ///     let escalator = GeometricGasPrice::new(1.125, 60_u64, None::<u64>);
 ///     let gas_oracle = EthGasStation::new(None);
-/// 
+///
 ///     let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 ///
 ///     let provider = ProviderBuilder::from(provider)
@@ -37,7 +37,7 @@ use crate::{
 ///         .nonce_manager(address)
 ///         .build();
 /// }
-/// 
+///
 /// fn builder_example_raw_wrap() {
 ///     let key = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169";
 ///     let signer = key.parse::<LocalWallet>().unwrap();
