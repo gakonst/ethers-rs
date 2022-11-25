@@ -1,4 +1,7 @@
 use ethers_providers::Middleware;
+use ethers_signers::Signer;
+
+use crate::SignerMiddleware;
 
 /// A builder struct useful to compose different [`Middleware`](ethers_providers::Middleware) layers
 /// and then build a composed [`Provider`](ethers_providers::Provider) architecture.
@@ -38,6 +41,14 @@ impl<M> ProviderBuilder<M>
 where
     M: Middleware,
 {
+    pub fn with_signer<S>(self, signer: S) -> ProviderBuilder<SignerMiddleware<M, S>> 
+    where
+        S: Signer
+    {
+        let provider = SignerMiddleware::new(self.inner, signer);
+        ProviderBuilder::from(provider)
+    }
+
     /// Wraps a new [`Middleware`](ethers_providers::Middleware) around the current one.
     ///
     /// `builder_fn` This closure takes the current [`Middleware`](ethers_providers::Middleware) as
