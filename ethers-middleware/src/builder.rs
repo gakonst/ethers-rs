@@ -31,7 +31,7 @@ use ethers_providers::Middleware;
 /// }
 /// ```
 pub struct ProviderBuilder<M> {
-    inner: Option<M>,
+    inner: M,
 }
 
 impl<M> ProviderBuilder<M>
@@ -43,25 +43,24 @@ where
     /// `builder_fn` This closure takes the current [`Middleware`](ethers_providers::Middleware) as
     /// an argument. Use this to build a new [`Middleware`](ethers_providers::Middleware) layer
     /// wrapping out the current.
-    pub fn wrap_into<F, R>(&mut self, builder_fn: F) -> ProviderBuilder<R>
+    pub fn wrap_into<F, R>(self, builder_fn: F) -> ProviderBuilder<R>
     where
         F: FnOnce(M) -> R,
         R: Middleware,
     {
-        let provider = self.inner.take();
-        let provider = builder_fn(provider.unwrap());
+        let provider: R = builder_fn(self.inner);
         ProviderBuilder::from(provider)
     }
 
     /// Returns the overall[`Middleware`](ethers_providers::Middleware) as a reference to the
     /// outermost layer
-    pub fn build(&mut self) -> M {
-        self.inner.take().unwrap()
+    pub fn build(self) -> M {
+        self.inner
     }
 }
 
 impl<M: Middleware> From<M> for ProviderBuilder<M> {
     fn from(provider: M) -> Self {
-        Self { inner: Some(provider) }
+        Self { inner: provider }
     }
 }
