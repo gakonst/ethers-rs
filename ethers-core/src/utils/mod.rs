@@ -466,18 +466,14 @@ where
 {
     #[derive(Deserialize)]
     #[serde(untagged)]
-    enum IntOrHexOrBigNum {
-        Int(u64),
+    enum IntOrHex {
+        Int(serde_json::Number),
         Hex(String),
-        BigNumber(serde_json::Number),
     }
 
-    match IntOrHexOrBigNum::deserialize(deserializer)? {
-        IntOrHexOrBigNum::Int(n) => Ok(U256::from(n)),
-        IntOrHexOrBigNum::Hex(s) => U256::from_str(s.as_str()).map_err(serde::de::Error::custom),
-        IntOrHexOrBigNum::BigNumber(b) => {
-            U256::from_dec_str(&b.to_string()).map_err(serde::de::Error::custom)
-        }
+    match IntOrHex::deserialize(deserializer)? {
+        IntOrHex::Hex(s) => U256::from_str(s.as_str()).map_err(serde::de::Error::custom),
+        IntOrHex::Int(n) => U256::from_dec_str(&n.to_string()).map_err(serde::de::Error::custom),
     }
 }
 

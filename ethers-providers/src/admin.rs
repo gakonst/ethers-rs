@@ -220,9 +220,9 @@ mod tests {
         let response = r#"{
             "id":"6e2fe698f3064cd99410926ce16734e35e3cc947d4354461d2594f2d2dd9f7b6",
             "name":"Geth/v1.10.19-stable/darwin-arm64/go1.18.3",
-            "enode":"enode://d7dfaea49c7ef37701e668652bcf1bc63d3abb2ae97593374a949e175e4ff128730a2f35199f3462a56298b981dfc395a5abebd2d6f0284ffe5bdc3d8e258b86@***REMOVED***:30304?discport=0",
+            "enode":"enode://d7dfaea49c7ef37701e668652bcf1bc63d3abb2ae97593374a949e175e4ff128730a2f35199f3462a56298b981dfc395a5abebd2d6f0284ffe5bdc3d8e258b86@127.0.0.1:30304?discport=0",
             "enr":"enr:-Jy4QIvS0dKBLjTTV_RojS8hjriwWsJNHRVyOh4Pk4aUXc5SZjKRVIOeYc7BqzEmbCjLdIY4Ln7x5ZPf-2SsBAc2_zqGAYSwY1zog2V0aMfGhNegsXuAgmlkgnY0gmlwhBiT_DiJc2VjcDI1NmsxoQLX366knH7zdwHmaGUrzxvGPTq7Kul1kzdKlJ4XXk_xKIRzbmFwwIN0Y3CCdmA",
-            "ip":"***REMOVED***",
+            "ip":"127.0.0.1",
             "ports":{
                 "discovery":0,
                 "listener":30304
@@ -252,9 +252,9 @@ mod tests {
         let response = r#"{
             "id":"6e2fe698f3064cd99410926ce16734e35e3cc947d4354461d2594f2d2dd9f7b6",
             "name":"Geth/v1.10.19-stable/darwin-arm64/go1.18.3",
-            "enode":"enode://d7dfaea49c7ef37701e668652bcf1bc63d3abb2ae97593374a949e175e4ff128730a2f35199f3462a56298b981dfc395a5abebd2d6f0284ffe5bdc3d8e258b86@***REMOVED***:30304?discport=0",
+            "enode":"enode://d7dfaea49c7ef37701e668652bcf1bc63d3abb2ae97593374a949e175e4ff128730a2f35199f3462a56298b981dfc395a5abebd2d6f0284ffe5bdc3d8e258b86@127.0.0.1:30304?discport=0",
             "enr":"enr:-Jy4QIvS0dKBLjTTV_RojS8hjriwWsJNHRVyOh4Pk4aUXc5SZjKRVIOeYc7BqzEmbCjLdIY4Ln7x5ZPf-2SsBAc2_zqGAYSwY1zog2V0aMfGhNegsXuAgmlkgnY0gmlwhBiT_DiJc2VjcDI1NmsxoQLX366knH7zdwHmaGUrzxvGPTq7Kul1kzdKlJ4XXk_xKIRzbmFwwIN0Y3CCdmA",
-            "ip":"***REMOVED***",
+            "ip":"127.0.0.1",
             "ports":{
                 "discovery":0,
                 "listener":30304
