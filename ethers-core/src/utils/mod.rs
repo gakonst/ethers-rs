@@ -481,8 +481,8 @@ where
     }
 }
 
-/// Deserializes the input into an Option<U256>, using [`from_int_or_hex`] to deserialize the inner
-/// value.
+/// Deserializes the input into an `Option<U256>`, using [`from_int_or_hex`] to deserialize the
+/// inner value.
 pub fn from_int_or_hex_opt<'de, D>(deserializer: D) -> Result<Option<U256>, D::Error>
 where
     D: Deserializer<'de>,
