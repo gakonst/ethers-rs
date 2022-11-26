@@ -280,4 +280,53 @@ mod tests {
 
         let _: NodeInfo = serde_json::from_str(response).unwrap();
     }
+
+    #[test]
+    fn deserialize_node_info_mainnet_full() {
+        let actual_response = r#"{
+            "id": "74477ca052fcf55ee9eafb369fafdb3e91ad7b64fbd7ae15a4985bfdc43696f2",
+            "name": "Geth/v1.10.26-stable/darwin-arm64/go1.19.3",
+            "enode": "enode://962184c6f2a19e064e2ddf0d5c5a788c8c5ed3a4909b7f75fb4dad967392ff542772bcc498cd7f15e13eecbde830265f379779c6da1f71fb8fe1a4734dfc0a1e@127.0.0.1:13337?discport=0",
+            "enr": "enr:-J-4QFttJyL3f2-B2TQmBZNFxex99TSBv1YtB_8jqUbXWkf6LOREKQAPW2bIn8kJ8QvHbWxCQNFzTX6sehjbrz1ZkSuGAYSyQ0_rg2V0aMrJhPxk7ASDEYwwgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQKWIYTG8qGeBk4t3w1cWniMjF7TpJCbf3X7Ta2Wc5L_VIRzbmFwwIN0Y3CCNBk",
+            "ip": "127.0.0.1",
+            "ports": {
+                "discovery": 0,
+                "listener": 13337
+            },
+            "listenAddr": "[::]:13337",
+            "protocols": {
+                "eth": {
+                    "network": 1337,
+                    "difficulty": 17179869184,
+                    "genesis": "0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3",
+                    "config": {
+                        "chainId": 1,
+                        "homesteadBlock": 1150000,
+                        "daoForkBlock": 1920000,
+                        "daoForkSupport": true,
+                        "eip150Block": 2463000,
+                        "eip150Hash": "0x2086799aeebeae135c246c65021c82b4e15a2c451340993aacfd2751886514f0",
+                        "eip155Block": 2675000,
+                        "eip158Block": 2675000,
+                        "byzantiumBlock": 4370000,
+                        "constantinopleBlock": 7280000,
+                        "petersburgBlock": 7280000,
+                        "istanbulBlock": 9069000,
+                        "muirGlacierBlock": 9200000,
+                        "berlinBlock": 12244000,
+                        "londonBlock": 12965000,
+                        "arrowGlacierBlock": 13773000,
+                        "grayGlacierBlock": 15050000,
+                        "terminalTotalDifficulty": 58750000000000000000000,
+                        "terminalTotalDifficultyPassed": true,
+                        "ethash": {}
+                    },
+                    "head": "0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3"
+                },
+                "snap": {}
+            }
+        }"#;
+
+        let _: NodeInfo = serde_json::from_str(actual_response).unwrap();
+    }
 }
