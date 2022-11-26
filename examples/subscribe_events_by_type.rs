@@ -27,14 +27,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // refine the event filter
     let event = Contract::event_of_type::<AnswerUpdatedFilter>(&client)
         .from_block(16022082)
-        .to_block(16022282)
         .address(ValueOrArray::Array(vec![
             PRICE_FEED_1.parse()?,
             PRICE_FEED_2.parse()?,
             PRICE_FEED_3.parse()?,
         ]));
 
-    let mut stream = event.subscribe_with_meta().await?;
+    let mut stream = event.subscribe_with_meta().await?.take(2);
 
     // Note that `log` has type AnswerUpdatedFilter
     while let Some(Ok((log, meta))) = stream.next().await {

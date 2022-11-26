@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
     let erc20_transfer_filter =
         Filter::new().from_block(last_block - 25).event("Transfer(address,address,uint256)");
 
-    let mut stream = client.subscribe_logs(&erc20_transfer_filter).await?;
+    let mut stream = client.subscribe_logs(&erc20_transfer_filter).await?.take(2);
 
     while let Some(log) = stream.next().await {
         println!(
