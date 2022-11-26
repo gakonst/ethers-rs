@@ -458,21 +458,36 @@ pub fn eip1559_default_estimator(base_fee_per_gas: U256, rewards: Vec<Vec<U256>>
     (max_fee_per_gas, max_priority_fee_per_gas)
 }
 
-/// Deserializes the input into a U256, accepting both 0x-prefixed hex and decimal strings.
+/// Deserializes the input into a U256, accepting both 0x-prefixed hex and decimal strings with
+/// arbitrary precision, defined by serde_json's [`Number`](serde_json::Number).
 pub fn from_int_or_hex<'de, D>(deserializer: D) -> Result<U256, D::Error>
 where
     D: Deserializer<'de>,
 {
     #[derive(Deserialize)]
     #[serde(untagged)]
-    enum IntOrHex {
+    enum IntOrHexOrBigNum {
         Int(u64),
         Hex(String),
+        BigNumber(serde_json::Number),
     }
-    match IntOrHex::deserialize(deserializer)? {
-        IntOrHex::Int(n) => Ok(U256::from(n)),
-        IntOrHex::Hex(s) => U256::from_str(s.as_str()).map_err(serde::de::Error::custom),
+
+    match IntOrHexOrBigNum::deserialize(deserializer)? {
+        IntOrHexOrBigNum::Int(n) => Ok(U256::from(n)),
+        IntOrHexOrBigNum::Hex(s) => U256::from_str(s.as_str()).map_err(serde::de::Error::custom),
+        IntOrHexOrBigNum::BigNumber(b) => {
+            U256::from_dec_str(&b.to_string()).map_err(serde::de::Error::custom)
+        }
     }
+}
+
+/// Deserializes the input into an Option<U256>, using [`from_int_or_hex`] to deserialize the inner
+/// value.
+pub fn from_int_or_hex_opt<'de, D>(deserializer: D) -> Result<Option<U256>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Some(from_int_or_hex(deserializer)?))
 }
 
 fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {

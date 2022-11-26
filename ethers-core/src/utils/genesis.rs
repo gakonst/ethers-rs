@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::types::{Address, Bytes, H256, U256, U64};
+use crate::{
+    types::{Address, Bytes, H256, U256, U64},
+    utils::{from_int_or_hex, from_int_or_hex_opt},
+};
 use serde::{Deserialize, Serialize};
 
 /// This represents the chain configuration, specifying the genesis block, header fields, and hard
@@ -24,6 +27,7 @@ pub struct Genesis {
     pub gas_limit: U64,
 
     /// The genesis header difficulty.
+    #[serde(deserialize_with = "from_int_or_hex")]
     pub difficulty: U256,
 
     /// The genesis header mix hash.
@@ -135,7 +139,7 @@ pub struct ChainConfig {
     pub cancun_block: Option<u64>,
 
     /// Total difficulty reached that triggers the merge consensus upgrade.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "from_int_or_hex_opt")]
     pub terminal_total_difficulty: Option<U256>,
 
     /// A flag specifying that the network already passed the terminal total difficulty. Its
