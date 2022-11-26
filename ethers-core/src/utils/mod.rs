@@ -41,8 +41,8 @@ use ethabi::ethereum_types::FromDecStrErr;
 use k256::{ecdsa::SigningKey, PublicKey as K256PublicKey};
 use std::{
     convert::{TryFrom, TryInto},
-    str::FromStr,
     fmt,
+    str::FromStr,
 };
 use thiserror::Error;
 
