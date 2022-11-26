@@ -2235,14 +2235,14 @@ mod tests {
         let first_port = 30304u16;
         let second_port = 30305u16;
 
-        let (mut first_geth, first_peer) = spawn_geth_and_create_provider(
+        let (first_geth, first_peer) = spawn_geth_and_create_provider(
             1337,
             8546,
             first_port,
             Some(dir1.clone()),
             Some(genesis.clone()),
         );
-        let (mut second_geth, second_peer) = spawn_geth_and_create_provider(
+        let (second_geth, second_peer) = spawn_geth_and_create_provider(
             1337,
             8547,
             second_port,
@@ -2254,16 +2254,11 @@ mod tests {
         let first_info = first_peer.node_info().await.unwrap();
         let second_info = second_peer.node_info().await.unwrap();
 
-        println!("first_id: {}", hex::encode(first_info.id.0));
-        println!("first_nodeinfo: {:?}", first_info);
-
         // replace the ip in the enode by putting
         let first_prefix = first_info.enode.split('@').collect::<Vec<&str>>();
-        let second_prefix = second_info.enode.split('@').collect::<Vec<&str>>();
 
         // create enodes for each geth instance using each id and port
         let first_enode = format!("{}@localhost:{}", first_prefix.first().unwrap(), first_port);
-        let second_enode = format!("{}@localhost:{}", second_prefix.first().unwrap(), second_port);
 
         // add the second geth as a peer for the first
         let res = second_peer.add_peer(first_enode).await.unwrap();
@@ -2275,20 +2270,8 @@ mod tests {
         // check that second_geth exists in the first_geth peer list
         let peers = first_peer.peers().await.unwrap();
 
-        let mut first_stderr = first_geth.stderr();
-        let mut second_stderr = second_geth.stderr();
-
         drop(first_geth);
         drop(second_geth);
-
-        // turn the stderrs into a string
-        let mut first_str = String::new();
-        let mut second_str = String::new();
-        first_stderr.read_to_string(&mut first_str).unwrap();
-        second_stderr.read_to_string(&mut second_str).unwrap();
-
-        println!("first stderr: {}", first_str);
-        println!("second stderr: {}", second_str);
 
         // check that the second peer is in the list (it uses an enr so the enr should be Some)
         assert_eq!(peers.len(), 1);
