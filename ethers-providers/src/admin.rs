@@ -8,8 +8,7 @@ use std::net::{IpAddr, SocketAddr};
 /// details.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct NodeInfo {
-    // TODO: double check that this is a public key
-    /// The node's secp256k1 public key.
+    /// The node's private key.
     pub id: H256,
 
     /// The node's user agent, containing a client name, version, OS, and other metadata.
@@ -143,9 +142,8 @@ pub struct PeerInfo {
     /// The peer's enode URL.
     pub enode: String,
 
-    // TODO: unify comment with the one in `NodeInfo`
     /// The peer's enode ID.
-    pub id: H256,
+    pub id: String,
 
     /// The peer's name.
     pub name: String,
