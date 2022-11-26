@@ -187,7 +187,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn deserialize_peer_info_version() {
+    fn deserialize_peer_info() {
         let response = r#"{
             "enode":"enode://bb37b7302f79e47c1226d6e3ccf0ef6d51146019efdcc1f6e861fd1c1a78d5e84e486225a6a8a503b93d5c50125ee980835c92bde7f7d12f074c16f4e439a578@127.0.0.1:60872",
             "id":"ca23c04b7e796da5d6a5f04a62b81c88d41b1341537db85a2b6443e838d8339b",
@@ -215,7 +215,7 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_node_info_network() {
+    fn deserialize_node_info() {
         // this response also has an enr
         let response = r#"{
             "id":"6e2fe698f3064cd99410926ce16734e35e3cc947d4354461d2594f2d2dd9f7b6",
@@ -236,6 +236,41 @@ mod tests {
                     "config":{
                         "chainId":0,
                         "eip150Hash":"0x0000000000000000000000000000000000000000000000000000000000000000"
+                    },
+                    "head":"0xb04009ddf4b0763f42778e7d5937e49bebf1e11b2d26c9dac6cefb5f84b6f8ea"
+                },
+                "snap":{}
+            }
+        }"#;
+
+        let _: NodeInfo = serde_json::from_str(response).unwrap();
+    }
+
+    #[test]
+    fn deserialize_node_info_post_merge() {
+        // this response also has an enr
+        let response = r#"{
+            "id":"6e2fe698f3064cd99410926ce16734e35e3cc947d4354461d2594f2d2dd9f7b6",
+            "name":"Geth/v1.10.19-stable/darwin-arm64/go1.18.3",
+            "enode":"enode://d7dfaea49c7ef37701e668652bcf1bc63d3abb2ae97593374a949e175e4ff128730a2f35199f3462a56298b981dfc395a5abebd2d6f0284ffe5bdc3d8e258b86@***REMOVED***:30304?discport=0",
+            "enr":"enr:-Jy4QIvS0dKBLjTTV_RojS8hjriwWsJNHRVyOh4Pk4aUXc5SZjKRVIOeYc7BqzEmbCjLdIY4Ln7x5ZPf-2SsBAc2_zqGAYSwY1zog2V0aMfGhNegsXuAgmlkgnY0gmlwhBiT_DiJc2VjcDI1NmsxoQLX366knH7zdwHmaGUrzxvGPTq7Kul1kzdKlJ4XXk_xKIRzbmFwwIN0Y3CCdmA",
+            "ip":"***REMOVED***",
+            "ports":{
+                "discovery":0,
+                "listener":30304
+            },
+            "listenAddr":"[::]:30304",
+            "protocols":{
+                "eth":{
+                    "network":1337,
+                    "difficulty":0,
+                    "genesis":"0xb04009ddf4b0763f42778e7d5937e49bebf1e11b2d26c9dac6cefb5f84b6f8ea",
+                    "config":{
+                        "chainId":0,
+                        "eip150Hash":"0x0000000000000000000000000000000000000000000000000000000000000000",
+                        "terminalTotalDifficulty":58750000000000000000000,
+                        "terminalTotalDifficultyPassed":true,
+                        "ethash":{}
                     },
                     "head":"0xb04009ddf4b0763f42778e7d5937e49bebf1e11b2d26c9dac6cefb5f84b6f8ea"
                 },
