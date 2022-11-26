@@ -2277,7 +2277,7 @@ mod tests {
         assert_eq!(peers.len(), 1);
 
         let peer = peers.get(0).unwrap();
-        assert_eq!(peer.id, second_info.id);
+        assert_eq!(H256::from_str(&peer.id).unwrap(), second_info.id);
 
         // remove directories
         std::fs::remove_dir_all(dir1).unwrap();
