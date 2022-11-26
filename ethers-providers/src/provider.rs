@@ -2293,11 +2293,11 @@ mod tests {
         // check that the second peer is in the list (it uses an enr so the enr should be Some)
         assert_eq!(peers.len(), 1);
 
-        let first_peer = peers.get(0).unwrap();
-        assert_eq!(first_peer.enr, Some(second_info.enr));
+        let peer = peers.get(0).unwrap();
+        assert_eq!(peer.id, second_info.id);
 
         // remove directories
-        // std::fs::remove_dir_all(dir1).unwrap();
-        // std::fs::remove_dir_all(dir2).unwrap();
+        std::fs::remove_dir_all(dir1).unwrap();
+        std::fs::remove_dir_all(dir2).unwrap();
     }
 }
