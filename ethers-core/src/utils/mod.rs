@@ -544,7 +544,7 @@ mod tests {
             format_units(U256::from_dec_str("1005633240123456789").unwrap(), "ether").unwrap();
         assert_eq!(eth, "1.005633240123456789");
 
-        let eth = format_units(255u8, 4).unwrap();
+        let eth = format_units(u8::MAX, 4).unwrap();
         assert_eq!(eth, "0.0255");
 
         let eth = format_units(u16::MAX, "ether").unwrap();
@@ -560,6 +560,15 @@ mod tests {
 
         let eth = format_units(u128::MAX, 36).unwrap();
         assert_eq!(eth, "340.282366920938463463374607431768211455");
+
+        let eth = format_units(U256::MAX, 77).unwrap();
+        assert_eq!(
+            eth,
+            "1.15792089237316195423570985008687907853269984665640564039457584007913129639935"
+        );
+
+        let err = format_units(U256::MAX, 78).unwrap_err();
+        assert!(matches!(err, ConversionError::ParseOverflow));
     }
 
     #[test]
@@ -597,6 +606,15 @@ mod tests {
 
         let eth = format_units(i128::MIN, 36).unwrap();
         assert_eq!(eth, "-170.141183460469231731687303715884105728");
+
+        let eth = format_units(I256::MIN, 77).unwrap();
+        assert_eq!(
+            eth,
+            "-3.10519776906709511441072537478280230366825038335898589901356039980217175900160"
+        );
+
+        let err = format_units(I256::MIN, 78).unwrap_err();
+        assert!(matches!(err, ConversionError::ParseOverflow));
     }
 
     #[test]
