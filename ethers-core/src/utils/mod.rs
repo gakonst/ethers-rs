@@ -158,29 +158,24 @@ where
     T: Into<ParseUnits>,
     K: TryInto<Units, Error = ConversionError>,
 {
-    let units = units.try_into()?;
+    let units: usize = units.try_into()?.into();
+    // 2**256 ~= 10**77
+    if units > 77 {
+        return Err(ConversionError::ParseOverflow)
+    }
+    let exp10 = U256::exp10(units);
     match amount.into() {
         ParseUnits::U256(amount) => {
-            let amount_decimals = amount % U256::from(10_u128.pow(units.as_num()));
-            let amount_integer = amount / U256::from(10_u128.pow(units.as_num()));
-            Ok(format!(
-                "{}.{:0width$}",
-                amount_integer,
-                amount_decimals.as_u128(),
-                width = units.as_num() as usize
-            ))
+            let amount_integer = amount / exp10;
+            let amount_decimals = amount % exp10;
+            Ok(format!("{amount_integer}.{amount_decimals:0units$}"))
         }
         ParseUnits::I256(amount) => {
+            let exp10 = I256::from_raw(exp10);
             let sign = if amount.is_negative() { "-" } else { "" };
-            let amount_decimals = amount % I256::from(10_u128.pow(units.as_num()));
-            let amount_integer = amount / I256::from(10_u128.pow(units.as_num()));
-            Ok(format!(
-                "{}{}.{:0width$}",
-                sign,
-                amount_integer.twos_complement(),
-                amount_decimals.twos_complement().as_u128(),
-                width = units.as_num() as usize
-            ))
+            let amount_integer = (amount / exp10).twos_complement();
+            let amount_decimals = (amount % exp10).twos_complement();
+            Ok(format!("{sign}{amount_integer}.{amount_decimals:0units$}",))
         }
     }
 }
