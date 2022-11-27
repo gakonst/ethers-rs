@@ -1,6 +1,6 @@
 [package]
 name = "ethers-contract-derive"
-version = "1.0.0"
+version = "1.0.2"
 authors = [
     "Nicholas Rodrigues Lordello <nlordell@gmail.com>",
     "Georgios Konstantopoulos <me@gakonst.com>",

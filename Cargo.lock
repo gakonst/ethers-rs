@@ -1306,7 +1306,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-derive"
-version = "1.0.0"
+version = "1.0.2"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-core",
