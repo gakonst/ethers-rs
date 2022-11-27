@@ -159,15 +159,20 @@ where
     K: TryInto<Units, Error = ConversionError>,
 {
     let units: usize = units.try_into()?.into();
+    let amount = amount.into();
 
-    // 2**256 ~= 10**77
-    if units > 77 {
-        return Err(ConversionError::ParseOverflow)
-    }
+    // 78 overflows U256, 77 overflows I256
+    match amount {
+        // 2**256 ~= 1.16e77
+        ParseUnits::U256(_) if units >= 78 => return Err(ConversionError::ParseOverflow),
+        // 2**255 ~= 5.79e76
+        ParseUnits::I256(_) if units >= 77 => return Err(ConversionError::ParseOverflow),
+        _ => {}
+    };
     let exp10 = U256::exp10(units);
 
     // `decimals` are formatted twice because U256 does not support alignment (`:0>width`).
-    match amount.into() {
+    match amount {
         ParseUnits::U256(amount) => {
             let integer = amount / exp10;
             let decimals = (amount % exp10).to_string();
@@ -607,13 +612,13 @@ mod tests {
         let eth = format_units(i128::MIN, 36).unwrap();
         assert_eq!(eth, "-170.141183460469231731687303715884105728");
 
-        let eth = format_units(I256::MIN, 77).unwrap();
+        let eth = format_units(I256::MIN, 76).unwrap();
         assert_eq!(
             eth,
-            "-3.10519776906709511441072537478280230366825038335898589901356039980217175900160"
+            "-5.7896044618658097711785492504343953926634992332820282019728792003956564819968"
         );
 
-        let err = format_units(I256::MIN, 78).unwrap_err();
+        let err = format_units(I256::MIN, 77).unwrap_err();
         assert!(matches!(err, ConversionError::ParseOverflow));
     }
 
