@@ -159,6 +159,7 @@ where
     K: TryInto<Units, Error = ConversionError>,
 {
     let units: usize = units.try_into()?.into();
+    dbg!(&units);
     // 2**256 ~= 10**77
     if units > 77 {
         return Err(ConversionError::ParseOverflow)
@@ -166,16 +167,16 @@ where
     let exp10 = U256::exp10(units);
     match amount.into() {
         ParseUnits::U256(amount) => {
-            let amount_integer = amount / exp10;
-            let amount_decimals = amount % exp10;
-            Ok(format!("{amount_integer}.{amount_decimals:0units$}"))
+            let integer = amount / exp10;
+            let decimals = (amount % exp10).to_string();
+            Ok(format!("{integer}.{decimals:0>units$}"))
         }
         ParseUnits::I256(amount) => {
             let exp10 = I256::from_raw(exp10);
             let sign = if amount.is_negative() { "-" } else { "" };
-            let amount_integer = (amount / exp10).twos_complement();
-            let amount_decimals = (amount % exp10).twos_complement();
-            Ok(format!("{sign}{amount_integer}.{amount_decimals:0units$}",))
+            let integer = (amount / exp10).twos_complement();
+            let decimals = ((amount % exp10).twos_complement()).to_string();
+            Ok(format!("{sign}{integer}.{decimals:0>units$}"))
         }
     }
 }
