@@ -1281,7 +1281,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-abigen"
-version = "1.0.0"
+version = "1.0.2"
 dependencies = [
  "Inflector",
  "cfg-if 1.0.0",
