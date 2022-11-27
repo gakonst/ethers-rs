@@ -159,11 +159,14 @@ where
     K: TryInto<Units, Error = ConversionError>,
 {
     let units: usize = units.try_into()?.into();
+
     // 2**256 ~= 10**77
     if units > 77 {
         return Err(ConversionError::ParseOverflow)
     }
     let exp10 = U256::exp10(units);
+
+    // `decimals` are formatted twice because U256 does not support alignment (`:0>width`).
     match amount.into() {
         ParseUnits::U256(amount) => {
             let integer = amount / exp10;
