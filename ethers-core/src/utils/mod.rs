@@ -41,6 +41,11 @@ use std::{
 };
 use thiserror::Error;
 
+/// I256 overflows for numbers wider than 77 units.
+const OVERFLOW_I256_UNITS: usize = 77;
+/// U256 overflows for numbers wider than 78 units.
+const OVERFLOW_U256_UNITS: usize = 78;
+
 /// Re-export of serde-json
 #[doc(hidden)]
 pub mod __serde_json {
@@ -161,12 +166,15 @@ where
     let units: usize = units.try_into()?.into();
     let amount = amount.into();
 
-    // 78 overflows U256, 77 overflows I256
     match amount {
         // 2**256 ~= 1.16e77
-        ParseUnits::U256(_) if units >= 78 => return Err(ConversionError::ParseOverflow),
+        ParseUnits::U256(_) if units >= OVERFLOW_U256_UNITS => {
+            return Err(ConversionError::ParseOverflow)
+        }
         // 2**255 ~= 5.79e76
-        ParseUnits::I256(_) if units >= 77 => return Err(ConversionError::ParseOverflow),
+        ParseUnits::I256(_) if units >= OVERFLOW_I256_UNITS => {
+            return Err(ConversionError::ParseOverflow)
+        }
         _ => {}
     };
     let exp10 = U256::exp10(units);
