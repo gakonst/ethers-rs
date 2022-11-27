@@ -1448,7 +1448,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-signers"
-version = "1.0.0"
+version = "1.0.2"
 dependencies = [
  "async-trait",
  "coins-bip32",
