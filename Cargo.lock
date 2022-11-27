@@ -1250,7 +1250,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-addressbook"
-version = "1.0.0"
+version = "1.0.2"
 dependencies = [
  "ethers-core",
  "once_cell",
