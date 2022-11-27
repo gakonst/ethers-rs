@@ -655,15 +655,19 @@ impl<M: Middleware> Multicall<M> {
                     .iter()
                     .zip(&return_data)
                     .map(|(call, bytes)| {
-                        let mut tokens: Vec<Token> = call
-                            .function
-                            .decode_output(bytes.as_ref())
-                            .map_err(ContractError::DecodingError)?;
-                        Ok(match tokens.len() {
-                            0 => Token::Tuple(vec![]),
-                            1 => tokens.remove(0),
-                            _ => Token::Tuple(tokens),
-                        })
+                        if bytes.len() == 0 {
+                            Ok(Token::Bytes(Default::default()))
+                        } else {
+                            let mut tokens = call
+                                .function
+                                .decode_output(bytes)
+                                .map_err(ContractError::DecodingError)?;
+                            Ok(match tokens.len() {
+                                0 => Token::Tuple(vec![]),
+                                1 => tokens.remove(0),
+                                _ => Token::Tuple(tokens),
+                            })
+                        }
                     })
                     .collect::<Result<Vec<Token>, M>>()?
             }
@@ -676,17 +680,21 @@ impl<M: Middleware> Multicall<M> {
                     .iter()
                     .zip(&return_data)
                     .map(|(call, res)| {
-                        let ret = &res.return_data;
+                        let bytes = &res.return_data;
                         let res_token: Token = if res.success {
                             // Decode using call.function
-                            let mut res_tokens = call
-                                .function
-                                .decode_output(ret)
-                                .map_err(ContractError::DecodingError)?;
-                            match res_tokens.len() {
-                                0 => Token::Tuple(vec![]),
-                                1 => res_tokens.remove(0),
-                                _ => Token::Tuple(res_tokens),
+                            if bytes.len() == 0 {
+                                Token::Bytes(Default::default())
+                            } else {
+                                let mut res_tokens = call
+                                    .function
+                                    .decode_output(bytes)
+                                    .map_err(ContractError::DecodingError)?;
+                                match res_tokens.len() {
+                                    0 => Token::Tuple(vec![]),
+                                    1 => res_tokens.remove(0),
+                                    _ => Token::Tuple(res_tokens),
+                                }
                             }
                         } else {
                             // Call reverted
@@ -702,14 +710,14 @@ impl<M: Middleware> Multicall<M> {
                             }
 
                             // Decode with "Error(string)" (0x08c379a0)
-                            if ret.len() >= 4 && ret[..4] == [0x08, 0xc3, 0x79, 0xa0] {
+                            if bytes.len() >= 4 && bytes[..4] == [0x08, 0xc3, 0x79, 0xa0] {
                                 Token::String(
-                                    String::decode(&ret[4..]).map_err(ContractError::AbiError)?,
+                                    String::decode(&bytes[4..]).map_err(ContractError::AbiError)?,
                                 )
-                            } else if ret.is_empty() {
+                            } else if bytes.is_empty() {
                                 Token::String(String::new())
                             } else {
-                                Token::Bytes(ret.to_vec())
+                                Token::Bytes(bytes.to_vec())
                             }
                         };
                         // (bool, (...))
