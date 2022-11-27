@@ -56,7 +56,7 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
 criterion = { version = "0.3", features = ["async_tokio"] }
-env_logger = "*"
+env_logger = "0.10.0"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
 rand = "0.8.5"
 pretty_assertions = "1.3.0"
