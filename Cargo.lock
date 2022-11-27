@@ -1382,7 +1382,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-middleware"
-version = "1.0.0"
+version = "1.0.2"
 dependencies = [
  "async-trait",
  "auto_impl 0.5.0",
