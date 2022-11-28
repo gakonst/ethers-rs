@@ -1,21 +1,38 @@
 use super::{unused_port, Genesis};
+use crate::types::H256;
 use std::{
     env::temp_dir,
     fs::File,
     io::{BufRead, BufReader},
     path::PathBuf,
-    process::{Child, ChildStderr, Command},
+    process::{Child, Command},
     time::{Duration, Instant},
 };
 
 /// How long we will wait for geth to indicate that it is ready.
 const GETH_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
 
+/// Timeout for waiting for geth's dial loop to start.
+const GETH_DIAL_LOOP_TIMEOUT: Duration = Duration::new(20, 0);
+
 /// The exposed APIs
 const API: &str = "eth,net,web3,txpool,admin";
 
 /// The geth command
 const GETH: &str = "geth";
+
+/// Errors that can occur when working with the [`GethInstance`].
+#[derive(Debug)]
+pub enum GethInstanceError {
+    /// Timed out waiting for a message from geth's stderr.
+    Timeout(String),
+
+    /// A line could not be read from the geth stderr.
+    ReadLineError(std::io::Error),
+
+    /// The child geth process's stderr was not captured.
+    NoStderr,
+}
 
 /// A geth instance. Will close the instance when dropped.
 ///
@@ -59,9 +76,25 @@ impl GethInstance {
         &self.data_dir
     }
 
-    /// Return a `BufReader` for the stderr output of this instance
-    pub fn stderr(&mut self) -> BufReader<ChildStderr> {
-        BufReader::new(self.pid.stderr.take().unwrap())
+    /// Blocks until geth adds the specified peer, using [`GETH_DIAL_LOOP_TIMEOUT`] as the timeout.
+    pub fn wait_to_add_peer(&mut self, id: H256) -> Result<(), GethInstanceError> {
+        let mut stderr = self.pid.stderr.as_mut().ok_or(GethInstanceError::NoStderr)?;
+        let mut err_reader = BufReader::new(&mut stderr);
+        let mut line = String::new();
+        let start = Instant::now();
+
+        while start.elapsed() < GETH_DIAL_LOOP_TIMEOUT {
+            line.clear();
+            err_reader.read_line(&mut line).map_err(GethInstanceError::ReadLineError)?;
+
+            // geth ids are trunated
+            let truncated_id = hex::encode(&id.0[..8]);
+            if line.contains("Adding p2p peer") && line.contains(&truncated_id) {
+                println!("Found peer in log: {}", line);
+                return Ok(())
+            }
+        }
+        Err(GethInstanceError::Timeout("Timed out waiting for dial loop to start".into()))
     }
 }
 
@@ -133,6 +166,7 @@ impl Default for PrivateNetOptions {
 #[derive(Clone, Default)]
 pub struct Geth {
     port: Option<u16>,
+    authrpc_port: Option<u16>,
     ipc_path: Option<PathBuf>,
     data_dir: Option<PathBuf>,
     chain_id: Option<u64>,
@@ -231,6 +265,13 @@ impl Geth {
         self
     }
 
+    /// Sets the port for authenticated RPC connections.
+    #[must_use]
+    pub fn authrpc_port(mut self, port: u16) -> Self {
+        self.authrpc_port = Some(port);
+        self
+    }
+
     /// Consumes the builder and spawns `geth` with stdout redirected
     /// to /dev/null.
     pub fn spawn(self) -> GethInstance {
@@ -248,6 +289,11 @@ impl Geth {
         cmd.arg("--ws");
         cmd.arg("--ws.port").arg(port.to_string());
         cmd.arg("--ws.api").arg(API);
+
+        // Set the port for authenticated APIs
+        if let Some(authrpc_port) = self.authrpc_port {
+            cmd.arg("--authrpc.port").arg(authrpc_port.to_string());
+        }
 
         // use geth init to initialize the datadir if the genesis exists
         if let Some(genesis) = self.genesis {
@@ -304,8 +350,8 @@ impl Geth {
             }
         }
 
-        // verbosity 5
-        cmd.arg("--verbosity").arg("5");
+        // debug verbosity is needed to check when peers are added
+        cmd.arg("--verbosity").arg("4");
 
         if let Some(ref ipc) = self.ipc_path {
             cmd.arg("--ipcpath").arg(ipc);
@@ -318,7 +364,10 @@ impl Geth {
         let start = Instant::now();
         let mut reader = BufReader::new(stdout);
 
+        // we shouldn't need to wait for p2p to start if geth is in dev mode - p2p is disabled in
+        // dev mode
         let mut p2p_started = matches!(self.mode, GethMode::Dev(_));
+        let mut http_started = false;
 
         loop {
             if start + Duration::from_millis(GETH_STARTUP_TIMEOUT_MILLIS) <= Instant::now() {
@@ -333,9 +382,11 @@ impl Geth {
             }
 
             // geth 1.9.23 uses "server started" while 1.9.18 uses "endpoint opened"
-            if p2p_started && line.contains("HTTP endpoint opened") ||
-                line.contains("HTTP server started")
-            {
+            if line.contains("HTTP endpoint opened") || line.contains("HTTP server started") {
+                http_started = true;
+            }
+
+            if p2p_started && http_started {
                 break
             }
         }
