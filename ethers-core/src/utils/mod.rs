@@ -41,6 +41,11 @@ use std::{
 };
 use thiserror::Error;
 
+/// I256 overflows for numbers wider than 77 units.
+const OVERFLOW_I256_UNITS: usize = 77;
+/// U256 overflows for numbers wider than 78 units.
+const OVERFLOW_U256_UNITS: usize = 78;
+
 /// Re-export of serde-json
 #[doc(hidden)]
 pub mod __serde_json {
@@ -158,29 +163,35 @@ where
     T: Into<ParseUnits>,
     K: TryInto<Units, Error = ConversionError>,
 {
-    let units = units.try_into()?;
-    match amount.into() {
+    let units: usize = units.try_into()?.into();
+    let amount = amount.into();
+
+    match amount {
+        // 2**256 ~= 1.16e77
+        ParseUnits::U256(_) if units >= OVERFLOW_U256_UNITS => {
+            return Err(ConversionError::ParseOverflow)
+        }
+        // 2**255 ~= 5.79e76
+        ParseUnits::I256(_) if units >= OVERFLOW_I256_UNITS => {
+            return Err(ConversionError::ParseOverflow)
+        }
+        _ => {}
+    };
+    let exp10 = U256::exp10(units);
+
+    // `decimals` are formatted twice because U256 does not support alignment (`:0>width`).
+    match amount {
         ParseUnits::U256(amount) => {
-            let amount_decimals = amount % U256::from(10_u128.pow(units.as_num()));
-            let amount_integer = amount / U256::from(10_u128.pow(units.as_num()));
-            Ok(format!(
-                "{}.{:0width$}",
-                amount_integer,
-                amount_decimals.as_u128(),
-                width = units.as_num() as usize
-            ))
+            let integer = amount / exp10;
+            let decimals = (amount % exp10).to_string();
+            Ok(format!("{integer}.{decimals:0>units$}"))
         }
         ParseUnits::I256(amount) => {
+            let exp10 = I256::from_raw(exp10);
             let sign = if amount.is_negative() { "-" } else { "" };
-            let amount_decimals = amount % I256::from(10_u128.pow(units.as_num()));
-            let amount_integer = amount / I256::from(10_u128.pow(units.as_num()));
-            Ok(format!(
-                "{}{}.{:0width$}",
-                sign,
-                amount_integer.twos_complement(),
-                amount_decimals.twos_complement().as_u128(),
-                width = units.as_num() as usize
-            ))
+            let integer = (amount / exp10).twos_complement();
+            let decimals = ((amount % exp10).twos_complement()).to_string();
+            Ok(format!("{sign}{integer}.{decimals:0>units$}"))
         }
     }
 }
@@ -546,7 +557,7 @@ mod tests {
             format_units(U256::from_dec_str("1005633240123456789").unwrap(), "ether").unwrap();
         assert_eq!(eth, "1.005633240123456789");
 
-        let eth = format_units(255u8, 4).unwrap();
+        let eth = format_units(u8::MAX, 4).unwrap();
         assert_eq!(eth, "0.0255");
 
         let eth = format_units(u16::MAX, "ether").unwrap();
@@ -562,6 +573,15 @@ mod tests {
 
         let eth = format_units(u128::MAX, 36).unwrap();
         assert_eq!(eth, "340.282366920938463463374607431768211455");
+
+        let eth = format_units(U256::MAX, 77).unwrap();
+        assert_eq!(
+            eth,
+            "1.15792089237316195423570985008687907853269984665640564039457584007913129639935"
+        );
+
+        let err = format_units(U256::MAX, 78).unwrap_err();
+        assert!(matches!(err, ConversionError::ParseOverflow));
     }
 
     #[test]
@@ -599,6 +619,15 @@ mod tests {
 
         let eth = format_units(i128::MIN, 36).unwrap();
         assert_eq!(eth, "-170.141183460469231731687303715884105728");
+
+        let eth = format_units(I256::MIN, 76).unwrap();
+        assert_eq!(
+            eth,
+            "-5.7896044618658097711785492504343953926634992332820282019728792003956564819968"
+        );
+
+        let err = format_units(I256::MIN, 77).unwrap_err();
+        assert!(matches!(err, ConversionError::ParseOverflow));
     }
 
     #[test]
