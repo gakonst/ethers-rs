@@ -60,6 +60,7 @@ impl<'de> Visitor<'de> for TxpoolInspectSummaryVisitor {
         let addr = match addr_split[0] {
             "" => None,
             "0x" => None,
+            "contract creation" => None,
             addr => {
                 Some(Address::from_str(&addr.to_string().split_off(2)).map_err(de::Error::custom)?)
             }
@@ -89,12 +90,13 @@ impl Serialize for TxpoolInspectSummary {
     where
         S: serde::Serializer,
     {
+        let formatted_to = match self.to {
+            Some(to) => format!("{:?}", to),
+            None => "contract creation".to_string(),
+        };
         let formatted = format!(
-            "{:?}: {} wei + {} gas × {} wei",
-            self.to.unwrap_or_default(),
-            self.value,
-            self.gas,
-            self.gas_price
+            "{}: {} wei + {} gas × {} wei",
+            formatted_to, self.value, self.gas, self.gas_price
         );
         serializer.serialize_str(&formatted)
     }
@@ -341,6 +343,9 @@ mod tests {
       "252351": "0xd10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF: 0 wei + 65792 gas × 2000000000 wei",
       "252352": "0xd10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF: 0 wei + 65780 gas × 2000000000 wei",
       "252353": "0xd10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF: 0 wei + 65780 gas × 2000000000 wei"
+    },
+    "0x00000000863B56a3C1f0F1be8BC4F8b7BD78F57a": {
+      "40": "contract creation: 0 wei + 612412 gas × 6000000000 wei"
     }
   },
   "queued": {
@@ -428,6 +433,20 @@ mod tests {
         );
         pending_map.insert(
             Address::from_str("201354729f8d0f8b64e9a0c353c672c6a66b3857").unwrap(),
+            pending_map_inner.clone(),
+        );
+        pending_map_inner.clear();
+        pending_map_inner.insert(
+            "40".to_string(),
+            TxpoolInspectSummary {
+                to: None,
+                value: U256::from(0u64),
+                gas: U256::from(612412),
+                gas_price: U256::from(6000000000u64),
+            },
+        );
+        pending_map.insert(
+            Address::from_str("00000000863B56a3C1f0F1be8BC4F8b7BD78F57a").unwrap(),
             pending_map_inner,
         );
         let mut queued_map = BTreeMap::new();
