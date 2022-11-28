@@ -1,7 +1,6 @@
 use ethers_core::types::Address;
 use ethers_providers::Middleware;
 use ethers_signers::Signer;
-
 use crate::{
     gas_oracle::{GasOracle, GasOracleMiddleware},
     NonceManagerMiddleware, SignerMiddleware,
