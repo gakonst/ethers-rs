@@ -36,3 +36,8 @@ pub use policy::PolicyMiddleware;
 /// before the chain tip
 pub mod timelag;
 pub use timelag::TimeLag;
+
+/// The [MiddlewareBuilder](crate::MiddlewareBuilder) provides a way to compose many
+/// [`Middleware`](ethers_providers::Middleware) in a concise way
+pub mod builder;
+pub use builder::MiddlewareBuilder;
