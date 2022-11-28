@@ -101,9 +101,6 @@ impl GethInstance {
 impl Drop for GethInstance {
     fn drop(&mut self) {
         self.pid.kill().expect("could not kill geth");
-        // wait for the process to exit - we don't need to use the Result because the process could
-        // have already exited
-        _ = self.pid.wait();
     }
 }
 
