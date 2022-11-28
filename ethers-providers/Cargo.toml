@@ -35,7 +35,7 @@ futures-timer = { version = "3.0.2", default-features = false }
 futures-channel = { version = "0.3.16", default-features = false, optional = true }
 pin-project = { version = "1.0.11", default-features = false }
 
-# peer-related amin namespace
+# peer-related admin namespace
 enr = { version = "0.7.0", default-features = false, features = ["k256", "serde"] }
 
 # tracing
