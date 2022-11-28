@@ -7,12 +7,10 @@ use crate::{
     NonceManagerMiddleware, SignerMiddleware,
 };
 
-/// A builder struct useful to compose different [`Middleware`](ethers_providers::Middleware) layers
+/// A builder trait to compose different [`Middleware`](ethers_providers::Middleware) layers
 /// and then build a composed [`Provider`](ethers_providers::Provider) architecture.
 /// [`Middleware`](ethers_providers::Middleware) composition acts in a wrapping fashion. Adding a
 /// new layer results in wrapping its predecessor.
-///
-/// Builder can be used as follows:
 ///
 /// ```rust
 /// use ethers_providers::{Middleware, Provider, Http};
@@ -28,14 +26,12 @@ use crate::{
 ///     let escalator = GeometricGasPrice::new(1.125, 60_u64, None::<u64>);
 ///     let gas_oracle = EthGasStation::new(None);
 ///
-///     let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-///
-///     let provider = ProviderBuilder::from(provider)
+///     let provider = Provider::<Http>::try_from("http://localhost:8545")
+///         .unwrap()
 ///         .wrap_into(|p| GasEscalatorMiddleware::new(p, escalator, Frequency::PerBlock))
 ///         .gas_oracle(gas_oracle)
 ///         .with_signer(signer)
-///         .nonce_manager(address)
-///         .build();
+///         .nonce_manager(address); // Outermost layer
 /// }
 ///
 /// fn builder_example_raw_wrap() {
@@ -44,80 +40,53 @@ use crate::{
 ///     let address = signer.address();
 ///     let escalator = GeometricGasPrice::new(1.125, 60_u64, None::<u64>);
 ///
-///     let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-///
-///     ProviderBuilder::from(provider)
+///     let provider = Provider::<Http>::try_from("http://localhost:8545")
+///         .unwrap()
 ///         .wrap_into(|p| GasEscalatorMiddleware::new(p, escalator, Frequency::PerBlock))
 ///         .wrap_into(|p| SignerMiddleware::new(p, signer))
 ///         .wrap_into(|p| GasOracleMiddleware::new(p, EthGasStation::new(None)))
-///         .wrap_into(|p| NonceManagerMiddleware::new(p, address)) // Outermost layer
-///         .build();
+///         .wrap_into(|p| NonceManagerMiddleware::new(p, address)); // Outermost layer
 /// }
 /// ```
-pub struct ProviderBuilder<M> {
-    inner: M,
-}
+pub trait MiddlewareBuilder: Middleware + Sized + 'static {
+    /// Wraps `self` inside a new [`Middleware`](ethers_providers::Middleware).
+    ///
+    /// `f` Consumes `self`, must be used to return a new [`Middleware`](ethers_providers::Middleware)
+    /// around `self`.
+    fn wrap_into<F, T>(self, f: F) -> T
+    where
+        F: FnOnce(Self) -> T,
+        T: Middleware,
+    {
+        f(self)
+    }
 
-impl<M> ProviderBuilder<M>
-where
-    M: Middleware,
-{
-    /// Wraps the current [`Middleware`](ethers_providers::Middleware) inside a
-    /// [`SignerMiddleware`](crate::SignerMiddleware).
+    /// Wraps `self` inside a [`SignerMiddleware`](crate::SignerMiddleware).
     ///
     /// [`Signer`] ethers_signers::Signer
-    pub fn with_signer<S>(self, signer: S) -> ProviderBuilder<SignerMiddleware<M, S>>
+    fn with_signer<S>(self, s: S) -> SignerMiddleware<Self, S>
     where
         S: Signer,
     {
-        let provider = SignerMiddleware::new(self.inner, signer);
-        ProviderBuilder::from(provider)
+        SignerMiddleware::new(self, s)
     }
 
-    /// Wraps the current [`Middleware`](ethers_providers::Middleware) inside a
-    /// [`NonceManagerMiddleware`](crate::NonceManagerMiddleware).
+    /// Wraps `self` inside a [`NonceManagerMiddleware`](crate::NonceManagerMiddleware).
     ///
     /// [`Address`] ethers_core::types::Address
-    pub fn nonce_manager(self, address: Address) -> ProviderBuilder<NonceManagerMiddleware<M>> {
-        let provider = NonceManagerMiddleware::new(self.inner, address);
-        ProviderBuilder::from(provider)
+    fn nonce_manager(self, address: Address) -> NonceManagerMiddleware<Self> {
+        NonceManagerMiddleware::new(self, address)
     }
 
-    /// Wraps the current [`Middleware`](ethers_providers::Middleware) inside a
-    /// [`GasOracleMiddleware`](crate::gas_oracle::GasOracleMiddleware).
+    /// Wraps `self` inside a [`GasOracleMiddleware`](crate::gas_oracle::GasOracleMiddleware).
     ///
     /// [`Address`] ethers_core::types::Address
-    pub fn gas_oracle<G>(self, gas_oracle: G) -> ProviderBuilder<GasOracleMiddleware<M, G>>
+    fn gas_oracle<G>(self, gas_oracle: G) -> GasOracleMiddleware<Self, G>
     where
         G: GasOracle,
     {
-        let provider = GasOracleMiddleware::new(self.inner, gas_oracle);
-        ProviderBuilder::from(provider)
-    }
-
-    /// Wraps a new [`Middleware`](ethers_providers::Middleware) around the current one.
-    ///
-    /// `builder_fn` This closure takes the current [`Middleware`](ethers_providers::Middleware) as
-    /// an argument. Use this to build a new [`Middleware`](ethers_providers::Middleware) layer
-    /// wrapping out the current.
-    pub fn wrap_into<F, R>(self, builder_fn: F) -> ProviderBuilder<R>
-    where
-        F: FnOnce(M) -> R,
-        R: Middleware,
-    {
-        let provider: R = builder_fn(self.inner);
-        ProviderBuilder::from(provider)
-    }
-
-    /// Returns the overall[`Middleware`](ethers_providers::Middleware) as an owned reference to the
-    /// outermost layer
-    pub fn build(self) -> M {
-        self.inner
+        GasOracleMiddleware::new(self, gas_oracle)
     }
 }
 
-impl<M: Middleware> From<M> for ProviderBuilder<M> {
-    fn from(provider: M) -> Self {
-        Self { inner: provider }
-    }
-}
+impl<M> MiddlewareBuilder for M where M: Middleware + Sized + 'static {}

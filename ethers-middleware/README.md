@@ -55,7 +55,7 @@ let provider = NonceManagerMiddleware::new(provider, address);
 ```
 ## Example of a middleware stack using a builder
 
-Ethers provides a builder utility to compose a [`Middleware`](ethers_providers::Middleware) stack. As usual the composition acts in a wrapping fashion. Adding a new layer results in wrapping its predecessor.
+Each [`Middleware`](ethers_providers::Middleware) implements the trait [MiddlewareBuilder](crate::MiddlewareBuilder) to help composition of a [`Middleware`](ethers_providers::Middleware) stack. As usual the composition acts in a wrapping fashion. Adding a new layer results in wrapping its predecessor.
 Builder can be used as follows:
 ```rust
 use ethers_providers::{Middleware, Provider, Http};
@@ -63,6 +63,7 @@ use std::sync::Arc;
 use std::convert::TryFrom;
 use ethers_signers::{LocalWallet, Signer};
 use ethers_middleware::{*,gas_escalator::*,gas_oracle::*};
+
 fn builder_example() {
     let key = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169";
     let signer = key.parse::<LocalWallet>().unwrap();
@@ -70,13 +71,12 @@ fn builder_example() {
     let escalator = GeometricGasPrice::new(1.125, 60_u64, None::<u64>);
     let gas_oracle = EthGasStation::new(None);
 
-    let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-    let provider = ProviderBuilder::from(provider)
-        .wrap_into(|p| GasEscalatorMiddleware::new(p, escalator, Frequency::PerBlock))
+    let provider = Provider::<Http>::try_from("http://localhost:8545")
+        .unwrap()
+        .wrap_into(|p| GasEscalatorMiddleware::new(p, escalator, Frequency::PerBlock)) 
         .gas_oracle(gas_oracle)
         .with_signer(signer)
-        .nonce_manager(address)
-        .build();
+        .nonce_manager(address); // Outermost layer
 }
 
 fn builder_example_raw_wrap() {
@@ -84,13 +84,12 @@ fn builder_example_raw_wrap() {
     let signer = key.parse::<LocalWallet>().unwrap();
     let address = signer.address();
     let escalator = GeometricGasPrice::new(1.125, 60_u64, None::<u64>);
-    let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 
-    ProviderBuilder::from(provider)
+    let provider = Provider::<Http>::try_from("http://localhost:8545")
+        .unwrap()
         .wrap_into(|p| GasEscalatorMiddleware::new(p, escalator, Frequency::PerBlock))
         .wrap_into(|p| SignerMiddleware::new(p, signer))
         .wrap_into(|p| GasOracleMiddleware::new(p, EthGasStation::new(None)))
-        .wrap_into(|p| NonceManagerMiddleware::new(p, address)) // Outermost layer
-        .build();
+        .wrap_into(|p| NonceManagerMiddleware::new(p, address)); // Outermost layer
 }
 ```

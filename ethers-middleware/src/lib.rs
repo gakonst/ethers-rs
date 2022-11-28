@@ -37,7 +37,7 @@ pub use policy::PolicyMiddleware;
 pub mod timelag;
 pub use timelag::TimeLag;
 
-/// The [ProviderBuilder](crate::ProviderBuilder) provides a way to compose many
+/// The [MiddlewareBuilder](crate::MiddlewareBuilder) provides a way to compose many
 /// [`Middleware`](ethers_providers::Middleware) in a concise way
 pub mod builder;
-pub use builder::ProviderBuilder;
+pub use builder::MiddlewareBuilder;
