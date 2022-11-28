@@ -1,6 +1,9 @@
 use crate::types::{Bytes, H256, U256};
+use ethabi::Address;
 use serde::{Deserialize, Serialize, Serializer};
 use std::collections::BTreeMap;
+
+use super::Action;
 
 // https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/logger/logger.go#L406-L411
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -11,6 +14,31 @@ pub struct GethTrace {
     pub return_value: Bytes,
     #[serde(rename = "structLogs")]
     pub struct_logs: Vec<StructLog>,
+}
+
+// https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/logger/logger.go#L406-L411
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GethCallTrace {
+    /// Action
+    #[serde(rename = "type")]
+    pub action: String,
+    pub from: Address,
+    //pub gas: u64,
+    //#[serde(rename = "gasUsed")]
+    //pub gas_used: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub to: Option<Address>,
+    //#[serde(serialize_with = "serialize_bytes")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input: Option<Bytes>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output: Option<Bytes>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revertal: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub calls: Option<Vec<GethCallTrace>>,
 }
 
 // https://github.com/ethereum/go-ethereum/blob/366d2169fbc0e0f803b68c042b77b6b480836dbc/eth/tracers/logger/logger.go#L413-L426

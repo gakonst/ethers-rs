@@ -230,6 +230,9 @@ where
 /// Provides types and methods for constructing an `eth_call`
 /// [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set)
 pub mod spoof {
+    use hex::ToHex;
+    use serde::Serializer;
+
     use super::*;
     use std::collections::HashMap;
 
@@ -274,6 +277,7 @@ pub mod spoof {
     /// Storage overrides can either replace the existing state of an account or they can be treated
     /// as a diff on the existing state.
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(into = "StorageParse")]
     pub enum Storage {
         #[serde(rename = "stateDiff")]
         Diff(HashMap<H256, H256>),
@@ -301,6 +305,35 @@ pub mod spoof {
             match self {
                 Self::Diff(map) => map,
                 Self::Replace(map) => map,
+            }
+        }
+    }
+
+    // Some bullshit patch to remove leading zeros wen serializing
+    #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+    pub enum StorageParse {
+        #[serde(rename = "stateDiff")]
+        Diff(HashMap<H256, String>),
+        #[serde(rename = "state")]
+        Replace(HashMap<H256, String>),
+    }
+    impl From<Storage> for StorageParse {
+        fn from(tmp: Storage) -> Self {
+            match tmp {
+                Storage::Diff(map) => {
+                    let mut new_map: HashMap<H256, String> = HashMap::new();
+                    for (k,v) in map {
+                        new_map.insert(k, format!("0x{}", v.encode_hex::<String>().trim_start_matches('0')));
+                    }
+                    StorageParse::Diff(new_map)
+                },
+                Storage::Replace(map) => {
+                    let mut new_map: HashMap<H256, String> = HashMap::new();
+                    for (k,v) in map {
+                        new_map.insert(k, format!("0x{}", v.encode_hex::<String>().trim_start_matches('0')));
+                    }
+                    StorageParse::Replace(new_map)
+                },
             }
         }
     }
