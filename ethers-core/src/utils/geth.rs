@@ -12,7 +12,7 @@ use std::{
 /// How long we will wait for geth to indicate that it is ready.
 const GETH_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
 
-/// Timeout for waiting for geth's dial loop to start.
+/// Timeout for waiting for geth to add a peer.
 const GETH_DIAL_LOOP_TIMEOUT: Duration = Duration::new(20, 0);
 
 /// The exposed APIs
@@ -76,7 +76,7 @@ impl GethInstance {
         &self.data_dir
     }
 
-    /// Blocks until geth adds the specified peer, using [`GETH_DIAL_LOOP_TIMEOUT`] as the timeout.
+    /// Blocks until geth adds the specified peer, using 20s as the timeout.
     pub fn wait_to_add_peer(&mut self, id: H256) -> Result<(), GethInstanceError> {
         let mut stderr = self.pid.stderr.as_mut().ok_or(GethInstanceError::NoStderr)?;
         let mut err_reader = BufReader::new(&mut stderr);
@@ -94,7 +94,7 @@ impl GethInstance {
                 return Ok(())
             }
         }
-        Err(GethInstanceError::Timeout("Timed out waiting for dial loop to start".into()))
+        Err(GethInstanceError::Timeout("Timed out waiting for geth to add a peer".into()))
     }
 }
 
