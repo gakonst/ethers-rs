@@ -5,7 +5,7 @@ use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::PathBuf,
-    process::{Child, Command},
+    process::{Child, Command, Stdio},
     time::{Duration, Instant},
 };
 
@@ -101,6 +101,9 @@ impl GethInstance {
 impl Drop for GethInstance {
     fn drop(&mut self) {
         self.pid.kill().expect("could not kill geth");
+        // wait for the process to exit - we don't need to use the Result because the process could
+        // have already exited
+        _ = self.pid.wait();
     }
 }
 
@@ -312,12 +315,15 @@ impl Geth {
                 init_cmd.arg("--datadir").arg(data_dir);
             }
 
+            // set the stderr to null so we don't pollute the test output
+            init_cmd.stderr(Stdio::null());
+
             init_cmd.arg("init").arg(temp_genesis_path);
             init_cmd
                 .spawn()
                 .expect("failed to spawn geth init")
                 .wait()
-                .expect("failed to wait for geth init");
+                .expect("failed to wait for geth init to exit");
         }
 
         if let Some(ref data_dir) = self.data_dir {
@@ -359,10 +365,10 @@ impl Geth {
 
         let mut child = cmd.spawn().expect("couldnt start geth");
 
-        let stdout = child.stderr.expect("Unable to get stderr for geth child process");
+        let stderr = child.stderr.expect("Unable to get stderr for geth child process");
 
         let start = Instant::now();
-        let mut reader = BufReader::new(stdout);
+        let mut reader = BufReader::new(stderr);
 
         // we shouldn't need to wait for p2p to start if geth is in dev mode - p2p is disabled in
         // dev mode
