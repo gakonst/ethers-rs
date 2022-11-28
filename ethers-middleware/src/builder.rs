@@ -1,10 +1,10 @@
-use ethers_core::types::Address;
-use ethers_providers::Middleware;
-use ethers_signers::Signer;
 use crate::{
     gas_oracle::{GasOracle, GasOracleMiddleware},
     NonceManagerMiddleware, SignerMiddleware,
 };
+use ethers_core::types::Address;
+use ethers_providers::Middleware;
+use ethers_signers::Signer;
 
 /// A builder trait to compose different [`Middleware`](ethers_providers::Middleware) layers
 /// and then build a composed [`Provider`](ethers_providers::Provider) architecture.
@@ -50,8 +50,8 @@ use crate::{
 pub trait MiddlewareBuilder: Middleware + Sized + 'static {
     /// Wraps `self` inside a new [`Middleware`](ethers_providers::Middleware).
     ///
-    /// `f` Consumes `self`, must be used to return a new [`Middleware`](ethers_providers::Middleware)
-    /// around `self`.
+    /// `f` Consumes `self`, must be used to return a new
+    /// [`Middleware`](ethers_providers::Middleware) around `self`.
     fn wrap_into<F, T>(self, f: F) -> T
     where
         F: FnOnce(Self) -> T,
