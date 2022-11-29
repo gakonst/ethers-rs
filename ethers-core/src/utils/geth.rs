@@ -339,22 +339,20 @@ impl Geth {
                     cmd.arg("--dev.period").arg(block_time.to_string());
                 }
             }
-            GethMode::NonDev(PrivateNetOptions { p2p_port, .. }) => {
+            GethMode::NonDev(PrivateNetOptions { p2p_port, discovery }) => {
                 if let Some(p2p_port) = p2p_port {
                     cmd.arg("--port").arg(p2p_port.to_string());
+                }
+
+                // disable discovery if the flag is set
+                if !discovery {
+                    cmd.arg("--nodiscover");
                 }
             }
         }
 
         if let Some(chain_id) = self.chain_id {
             cmd.arg("--networkid").arg(chain_id.to_string());
-        }
-
-        // disable discovery if the flag is set
-        if let GethMode::NonDev(PrivateNetOptions { discovery, .. }) = self.mode {
-            if !discovery {
-                cmd.arg("--nodiscover");
-            }
         }
 
         // debug verbosity is needed to check when peers are added
@@ -390,7 +388,9 @@ impl Geth {
 
             // geth 1.9.23 uses "server started" while 1.9.18 uses "endpoint opened"
             // the unauthenticated api is used for regular non-engine API requests
-            if line.contains("HTTP endpoint opened") || (line.contains("HTTP server started") && !line.contains("auth=true")) {
+            if line.contains("HTTP endpoint opened") ||
+                (line.contains("HTTP server started") && !line.contains("auth=true"))
+            {
                 http_started = true;
             }
 
