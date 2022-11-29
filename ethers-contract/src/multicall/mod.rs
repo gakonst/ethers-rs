@@ -654,7 +654,8 @@ impl<M: Middleware> Multicall<M> {
                     .iter()
                     .zip(&return_data)
                     .map(|(call, bytes)| {
-                        if bytes.len() == 0 {
+                        // Always return an empty Bytes token for calls that return no data
+                        if bytes.is_empty() {
                             Ok(Token::Bytes(Default::default()))
                         } else {
                             let mut tokens = call
@@ -680,7 +681,8 @@ impl<M: Middleware> Multicall<M> {
                     .zip(return_data.into_iter())
                     .map(|(call, res)| {
                         let bytes = &res.return_data;
-                        let res_token: Token = if bytes.len() == 0 {
+                        // Always return an empty Bytes token for calls that return no data
+                        let res_token: Token = if bytes.is_empty() {
                             Token::Bytes(Default::default())
                         } else if res.success {
                             // Decode using call.function
