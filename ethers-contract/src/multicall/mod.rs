@@ -1,17 +1,15 @@
+use crate::{
+    call::{ContractCall, ContractError},
+    Lazy,
+};
 use ethers_core::{
     abi::{AbiDecode, Detokenize, Function, Token},
     types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, TxHash, H160, U256},
 };
 use ethers_providers::Middleware;
-
 use std::{convert::TryFrom, sync::Arc};
 
-use crate::{
-    call::{ContractCall, ContractError},
-    Lazy,
-};
-
-mod multicall_contract;
+pub mod multicall_contract;
 use multicall_contract::multicall_3::{
     Call as Multicall1Call, Call3 as Multicall3Call, Call3Value as Multicall3CallValue,
     Result as MulticallResult,
@@ -263,11 +261,12 @@ impl TryFrom<u8> for MulticallVersion {
 #[derive(Clone)]
 #[must_use = "Multicall does nothing unless you use `call` or `send`"]
 pub struct Multicall<M> {
+    /// The Multicall contract interface.
+    pub contract: MulticallContract<M>,
     version: MulticallVersion,
     legacy: bool,
     block: Option<BlockNumber>,
     calls: Vec<Call>,
-    contract: MulticallContract<M>,
 }
 
 // Manually implement Debug due to Middleware trait bounds.
@@ -678,23 +677,21 @@ impl<M: Middleware> Multicall<M> {
                 let return_data = call.call().await?;
                 self.calls
                     .iter()
-                    .zip(&return_data)
+                    .zip(return_data.into_iter())
                     .map(|(call, res)| {
                         let bytes = &res.return_data;
-                        let res_token: Token = if res.success {
+                        let res_token: Token = if bytes.len() == 0 {
+                            Token::Bytes(Default::default())
+                        } else if res.success {
                             // Decode using call.function
-                            if bytes.len() == 0 {
-                                Token::Bytes(Default::default())
-                            } else {
-                                let mut res_tokens = call
-                                    .function
-                                    .decode_output(bytes)
-                                    .map_err(ContractError::DecodingError)?;
-                                match res_tokens.len() {
-                                    0 => Token::Tuple(vec![]),
-                                    1 => res_tokens.remove(0),
-                                    _ => Token::Tuple(res_tokens),
-                                }
+                            let mut res_tokens = call
+                                .function
+                                .decode_output(bytes)
+                                .map_err(ContractError::DecodingError)?;
+                            match res_tokens.len() {
+                                0 => Token::Tuple(vec![]),
+                                1 => res_tokens.remove(0),
+                                _ => Token::Tuple(res_tokens),
                             }
                         } else {
                             // Call reverted
@@ -714,12 +711,11 @@ impl<M: Middleware> Multicall<M> {
                                 Token::String(
                                     String::decode(&bytes[4..]).map_err(ContractError::AbiError)?,
                                 )
-                            } else if bytes.is_empty() {
-                                Token::String(String::new())
                             } else {
                                 Token::Bytes(bytes.to_vec())
                             }
                         };
+
                         // (bool, (...))
                         Ok(Token::Tuple(vec![Token::Bool(res.success), res_token]))
                     })

@@ -4,10 +4,6 @@ pub mod multicall_3 {
     #![allow(dead_code)]
     #![allow(clippy::type_complexity)]
     #![allow(unused_imports)]
-    /// Some macros may expand into using `ethers_contract` instead of `crate`.
-    mod ethers_contract {
-        pub use crate::*;
-    }
 
     // This is a hack to guarantee all ethers-derive macros can find the types.
     // See [`ethers_core::macros::determine_ethers_crates`]
@@ -22,6 +18,9 @@ pub mod multicall_3 {
         pub mod providers {
             pub use ethers_providers::*;
         }
+    }
+    mod ethers_contract {
+        pub use crate::*;
     }
 
     use self::ethers_contract::{
