@@ -98,7 +98,7 @@ pub type Result<T, M> = std::result::Result<T, MulticallError<M>>;
 /// Helper struct for managing calls to be made to the `function` in smart contract `target`
 /// with `data`.
 #[derive(Clone, Debug)]
-pub struct Call {
+pub struct GenericCall {
     target: Address,
     data: Bytes,
     value: U256,
@@ -266,7 +266,7 @@ pub struct Multicall<M> {
     version: MulticallVersion,
     legacy: bool,
     block: Option<BlockNumber>,
-    calls: Vec<Call>,
+    calls: Vec<GenericCall>,
 }
 
 // Manually implement Debug due to Middleware trait bounds.
@@ -423,7 +423,7 @@ impl<M: Middleware> Multicall<M> {
     ) -> &mut Self {
         match (call.tx.to(), call.tx.data()) {
             (Some(NameOrAddress::Address(target)), Some(data)) => {
-                let call = Call {
+                let call = GenericCall {
                     target: *target,
                     data: data.clone(),
                     value: call.tx.value().cloned().unwrap_or_default(),
@@ -782,22 +782,15 @@ impl<M: Middleware> Multicall<M> {
         // Map the calls vector into appropriate types for `aggregate` function
         let calls: Vec<Multicall1Call> = self
             .calls
-            .iter()
-            .map(|call| Multicall1Call { target: call.target, call_data: call.data.clone() })
+            .clone()
+            .into_iter()
+            .map(|call| Multicall1Call { target: call.target, call_data: call.data })
             .collect();
 
         // Construct the ContractCall for `aggregate` function to broadcast the transaction
-        let mut contract_call = self.contract.aggregate(calls);
+        let contract_call = self.contract.aggregate(calls);
 
-        if let Some(block) = self.block {
-            contract_call = contract_call.block(block)
-        };
-
-        if self.legacy {
-            contract_call = contract_call.legacy();
-        };
-
-        contract_call
+        self.set_call_flags(contract_call)
     }
 
     /// v2
@@ -806,28 +799,21 @@ impl<M: Middleware> Multicall<M> {
         // Map the calls vector into appropriate types for `try_aggregate` function
         let calls: Vec<Multicall1Call> = self
             .calls
-            .iter()
+            .clone()
+            .into_iter()
             .map(|call| {
                 // Allow entire call failure if at least one call is allowed to fail.
                 // To avoid iterating multiple times, equivalent of:
                 // self.calls.iter().any(|call| call.allow_failure)
-                allow_failure = allow_failure || call.allow_failure;
-                Multicall1Call { target: call.target, call_data: call.data.clone() }
+                allow_failure |= call.allow_failure;
+                Multicall1Call { target: call.target, call_data: call.data }
             })
             .collect();
 
         // Construct the ContractCall for `try_aggregate` function to broadcast the transaction
-        let mut contract_call = self.contract.try_aggregate(!allow_failure, calls);
+        let contract_call = self.contract.try_aggregate(!allow_failure, calls);
 
-        if let Some(block) = self.block {
-            contract_call = contract_call.block(block)
-        };
-
-        if self.legacy {
-            contract_call = contract_call.legacy();
-        };
-
-        contract_call
+        self.set_call_flags(contract_call)
     }
 
     /// v3
@@ -835,26 +821,19 @@ impl<M: Middleware> Multicall<M> {
         // Map the calls vector into appropriate types for `aggregate_3` function
         let calls: Vec<Multicall3Call> = self
             .calls
-            .iter()
+            .clone()
+            .into_iter()
             .map(|call| Multicall3Call {
                 target: call.target,
-                call_data: call.data.clone(),
+                call_data: call.data,
                 allow_failure: call.allow_failure,
             })
             .collect();
 
         // Construct the ContractCall for `aggregate_3` function to broadcast the transaction
-        let mut contract_call = self.contract.aggregate_3(calls);
+        let contract_call = self.contract.aggregate_3(calls);
 
-        if let Some(block) = self.block {
-            contract_call = contract_call.block(block)
-        };
-
-        if self.legacy {
-            contract_call = contract_call.legacy();
-        };
-
-        contract_call
+        self.set_call_flags(contract_call)
     }
 
     /// v3 + values (only .send())
@@ -863,12 +842,13 @@ impl<M: Middleware> Multicall<M> {
         let mut total_value = U256::zero();
         let calls: Vec<Multicall3CallValue> = self
             .calls
-            .iter()
+            .clone()
+            .into_iter()
             .map(|call| {
                 total_value += call.value;
                 Multicall3CallValue {
                     target: call.target,
-                    call_data: call.data.clone(),
+                    call_data: call.data,
                     allow_failure: call.allow_failure,
                     value: call.value,
                 }
@@ -881,17 +861,21 @@ impl<M: Middleware> Multicall<M> {
         } else {
             // Construct the ContractCall for `aggregate_3_value` function to broadcast the
             // transaction
-            let mut contract_call = self.contract.aggregate_3_value(calls);
+            let contract_call = self.contract.aggregate_3_value(calls);
 
-            if let Some(block) = self.block {
-                contract_call = contract_call.block(block)
-            };
-
-            if self.legacy {
-                contract_call = contract_call.legacy();
-            };
-
-            contract_call.value(total_value)
+            self.set_call_flags(contract_call).value(total_value)
         }
+    }
+
+    fn set_call_flags<D: Detokenize>(&self, mut call: ContractCall<M, D>) -> ContractCall<M, D> {
+        if let Some(block) = self.block {
+            call = call.block(block);
+        }
+
+        if self.legacy {
+            call = call.legacy();
+        }
+
+        call
     }
 }
