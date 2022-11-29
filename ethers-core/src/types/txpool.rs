@@ -65,9 +65,9 @@ impl<'de> Visitor<'de> for TxpoolInspectSummaryVisitor {
                 Some(Address::from_str(&addr.to_string().split_off(2)).map_err(de::Error::custom)?)
             }
         };
-        let value = U256::from(u64::from_str(value_split[0]).map_err(de::Error::custom)?);
-        let gas = U256::from(u64::from_str(gas_split[0]).map_err(de::Error::custom)?);
-        let gas_price = U256::from(u64::from_str(gas_price_split[0]).map_err(de::Error::custom)?);
+        let value = U256::from(u128::from_str(value_split[0]).map_err(de::Error::custom)?);
+        let gas = U256::from(u128::from_str(gas_split[0]).map_err(de::Error::custom)?);
+        let gas_price = U256::from(u128::from_str(gas_price_split[0]).map_err(de::Error::custom)?);
 
         Ok(TxpoolInspectSummary { to: addr, value, gas, gas_price })
     }
@@ -386,9 +386,9 @@ mod tests {
             "124930".to_string(),
             TxpoolInspectSummary {
                 to: Some(Address::from_str("000000000000000000000000000000000000007E").unwrap()),
-                value: U256::from(0u64),
-                gas: U256::from(100187u64),
-                gas_price: U256::from(20000000000u64),
+                value: U256::from(0u128),
+                gas: U256::from(100187u128),
+                gas_price: U256::from(20000000000u128),
             },
         );
         pending_map.insert(
@@ -400,36 +400,36 @@ mod tests {
             "252350".to_string(),
             TxpoolInspectSummary {
                 to: Some(Address::from_str("d10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF").unwrap()),
-                value: U256::from(0u64),
-                gas: U256::from(65792u64),
-                gas_price: U256::from(2000000000u64),
+                value: U256::from(0u128),
+                gas: U256::from(65792u128),
+                gas_price: U256::from(2000000000u128),
             },
         );
         pending_map_inner.insert(
             "252351".to_string(),
             TxpoolInspectSummary {
                 to: Some(Address::from_str("d10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF").unwrap()),
-                value: U256::from(0u64),
-                gas: U256::from(65792u64),
-                gas_price: U256::from(2000000000u64),
+                value: U256::from(0u128),
+                gas: U256::from(65792u128),
+                gas_price: U256::from(2000000000u128),
             },
         );
         pending_map_inner.insert(
             "252352".to_string(),
             TxpoolInspectSummary {
                 to: Some(Address::from_str("d10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF").unwrap()),
-                value: U256::from(0u64),
-                gas: U256::from(65780u64),
-                gas_price: U256::from(2000000000u64),
+                value: U256::from(0u128),
+                gas: U256::from(65780u128),
+                gas_price: U256::from(2000000000u128),
             },
         );
         pending_map_inner.insert(
             "252353".to_string(),
             TxpoolInspectSummary {
                 to: Some(Address::from_str("d10e3Be2bc8f959Bc8C41CF65F60dE721cF89ADF").unwrap()),
-                value: U256::from(0u64),
-                gas: U256::from(65780u64),
-                gas_price: U256::from(2000000000u64),
+                value: U256::from(0u128),
+                gas: U256::from(65780u128),
+                gas_price: U256::from(2000000000u128),
             },
         );
         pending_map.insert(
@@ -441,9 +441,9 @@ mod tests {
             "40".to_string(),
             TxpoolInspectSummary {
                 to: None,
-                value: U256::from(0u64),
-                gas: U256::from(612412),
-                gas_price: U256::from(6000000000u64),
+                value: U256::from(0u128),
+                gas: U256::from(612412u128),
+                gas_price: U256::from(6000000000u128),
             },
         );
         pending_map.insert(
@@ -456,18 +456,18 @@ mod tests {
             "7".to_string(),
             TxpoolInspectSummary {
                 to: Some(Address::from_str("3479BE69e07E838D9738a301Bb0c89e8EA2Bef4a").unwrap()),
-                value: U256::from(1000000000000000u64),
-                gas: U256::from(21000u64),
-                gas_price: U256::from(10000000000u64),
+                value: U256::from(1000000000000000u128),
+                gas: U256::from(21000u128),
+                gas_price: U256::from(10000000000u128),
             },
         );
         queued_map_inner.insert(
             "8".to_string(),
             TxpoolInspectSummary {
                 to: Some(Address::from_str("73Aaf691bc33fe38f86260338EF88f9897eCaa4F").unwrap()),
-                value: U256::from(1000000000000000u64),
-                gas: U256::from(21000u64),
-                gas_price: U256::from(10000000000u64),
+                value: U256::from(1000000000000000u128),
+                gas: U256::from(21000u128),
+                gas_price: U256::from(10000000000u128),
             },
         );
         queued_map.insert(
@@ -479,9 +479,9 @@ mod tests {
             "3".to_string(),
             TxpoolInspectSummary {
                 to: Some(Address::from_str("73Aaf691bc33fe38f86260338EF88f9897eCaa4F").unwrap()),
-                value: U256::from(10000000000000000u64),
-                gas: U256::from(21000u64),
-                gas_price: U256::from(10000000000u64),
+                value: U256::from(10000000000000000u128),
+                gas: U256::from(21000u128),
+                gas_price: U256::from(10000000000u128),
             },
         );
         queued_map.insert(
