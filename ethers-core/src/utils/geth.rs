@@ -90,7 +90,6 @@ impl GethInstance {
             // geth ids are trunated
             let truncated_id = hex::encode(&id.0[..8]);
             if line.contains("Adding p2p peer") && line.contains(&truncated_id) {
-                println!("Found peer in log: {}", line);
                 return Ok(())
             }
         }
