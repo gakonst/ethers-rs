@@ -1,4 +1,4 @@
-use crate::types::U256;
+use super::U256;
 use serde::Deserialize;
 use std::{
     convert::{TryFrom, TryInto},
@@ -13,12 +13,12 @@ use thiserror::Error;
 #[error("Failed to parse chain: {0}")]
 pub struct ParseChainError(String);
 
-/// Enum for all known chains
-///
-/// When adding a new chain:
-///   1. add new variant
-///   2. update Display/FromStr impl
-///   3. add etherscan_keys if supported
+// When adding a new chain:
+//   1. add new variant to the Chain enum;
+//   2. update Display/FromStr impl;
+//   3. add etherscan_keys if supported.
+
+/// Enum for all known chains.
 #[repr(u64)]
 #[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Hash, Deserialize, EnumVariantNames)]
 #[serde(rename_all = "snake_case")]
@@ -73,10 +73,197 @@ pub enum Chain {
 
 // === impl Chain ===
 
+impl fmt::Display for Chain {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let chain = match self {
+            Chain::Mainnet => "mainnet",
+            Chain::Morden => "morden",
+            Chain::Ropsten => "ropsten",
+            Chain::Rinkeby => "rinkeby",
+            Chain::Goerli => "goerli",
+            Chain::Kovan => "kovan",
+            Chain::XDai => "gnosis",
+            Chain::Chiado => "chiado",
+            Chain::Polygon => "polygon",
+            Chain::PolygonMumbai => "mumbai",
+            Chain::Avalanche => "avalanche",
+            Chain::AvalancheFuji => "fuji",
+            Chain::Sepolia => "sepolia",
+            Chain::Moonbeam => "moonbeam",
+            Chain::Moonbase => "moonbase",
+            Chain::MoonbeamDev => "moonbeam-dev",
+            Chain::Moonriver => "moonriver",
+            Chain::Optimism => "optimism",
+            Chain::OptimismGoerli => "optimism-goerli",
+            Chain::OptimismKovan => "optimism-kovan",
+            Chain::Fantom => "fantom",
+            Chain::Dev => "dev",
+            Chain::FantomTestnet => "fantom-testnet",
+            Chain::BinanceSmartChain => "bsc",
+            Chain::BinanceSmartChainTestnet => "bsc-testnet",
+            Chain::Arbitrum => "arbitrum",
+            Chain::ArbitrumTestnet => "arbitrum-testnet",
+            Chain::ArbitrumGoerli => "arbitrum-goerli",
+            Chain::Cronos => "cronos",
+            Chain::CronosTestnet => "cronos-testnet",
+            Chain::Poa => "poa",
+            Chain::Sokol => "sokol",
+            Chain::Rsk => "rsk",
+            Chain::Oasis => "oasis",
+            Chain::Emerald => "emerald",
+            Chain::EmeraldTestnet => "emerald-testnet",
+            Chain::AnvilHardhat => "anvil-hardhat",
+            Chain::Evmos => "evmos",
+            Chain::EvmosTestnet => "evmos-testnet",
+            Chain::Aurora => "aurora",
+            Chain::AuroraTestnet => "aurora-testnet",
+        };
+
+        f.pad(chain)
+    }
+}
+
+impl From<Chain> for u32 {
+    fn from(chain: Chain) -> Self {
+        chain as u32
+    }
+}
+
+impl From<Chain> for u64 {
+    fn from(chain: Chain) -> Self {
+        chain as u64
+    }
+}
+
+impl From<Chain> for U256 {
+    fn from(chain: Chain) -> Self {
+        u64::from(chain).into()
+    }
+}
+
+impl TryFrom<u32> for Chain {
+    type Error = ParseChainError;
+
+    fn try_from(chain: u32) -> Result<Chain, Self::Error> {
+        (chain as u64).try_into()
+    }
+}
+
+impl TryFrom<u64> for Chain {
+    type Error = ParseChainError;
+
+    fn try_from(chain: u64) -> Result<Chain, Self::Error> {
+        Ok(match chain {
+            1 => Chain::Mainnet,
+            2 => Chain::Morden,
+            3 => Chain::Ropsten,
+            4 => Chain::Rinkeby,
+            5 => Chain::Goerli,
+            42 => Chain::Kovan,
+            100 => Chain::XDai,
+            10200 => Chain::Chiado,
+            137 => Chain::Polygon,
+            1337 => Chain::Dev,
+            31337 => Chain::AnvilHardhat,
+            250 => Chain::Fantom,
+            4002 => Chain::FantomTestnet,
+            80001 => Chain::PolygonMumbai,
+            43114 => Chain::Avalanche,
+            43113 => Chain::AvalancheFuji,
+            11155111 => Chain::Sepolia,
+            1284 => Chain::Moonbeam,
+            1287 => Chain::Moonbase,
+            1281 => Chain::MoonbeamDev,
+            1285 => Chain::Moonriver,
+            10 => Chain::Optimism,
+            420 => Chain::OptimismGoerli,
+            69 => Chain::OptimismKovan,
+            56 => Chain::BinanceSmartChain,
+            97 => Chain::BinanceSmartChainTestnet,
+            42161 => Chain::Arbitrum,
+            421611 => Chain::ArbitrumTestnet,
+            421613 => Chain::ArbitrumGoerli,
+            25 => Chain::Cronos,
+            338 => Chain::CronosTestnet,
+            99 => Chain::Poa,
+            77 => Chain::Sokol,
+            30 => Chain::Rsk,
+            26863 => Chain::Oasis,
+            42262 => Chain::Emerald,
+            42261 => Chain::EmeraldTestnet,
+            9001 => Chain::Evmos,
+            9000 => Chain::EvmosTestnet,
+            1313161554 => Chain::Aurora,
+            1313161555 => Chain::AuroraTestnet,
+            _ => return Err(ParseChainError(chain.to_string())),
+        })
+    }
+}
+
+impl TryFrom<U256> for Chain {
+    type Error = ParseChainError;
+
+    fn try_from(chain: U256) -> Result<Chain, Self::Error> {
+        if chain.bits() > 64 {
+            return Err(ParseChainError(chain.to_string()))
+        }
+        chain.as_u64().try_into()
+    }
+}
+
+impl FromStr for Chain {
+    type Err = ParseChainError;
+
+    fn from_str(chain: &str) -> Result<Self, Self::Err> {
+        Ok(match chain {
+            "mainnet" => Chain::Mainnet,
+            "morden" => Chain::Morden,
+            "ropsten" => Chain::Ropsten,
+            "rinkeby" => Chain::Rinkeby,
+            "goerli" => Chain::Goerli,
+            "kovan" => Chain::Kovan,
+            "xdai" | "gnosis" | "gnosis-chain" => Chain::XDai,
+            "chiado" => Chain::Chiado,
+            "polygon" => Chain::Polygon,
+            "mumbai" | "polygon-mumbai" => Chain::PolygonMumbai,
+            "avalanche" => Chain::Avalanche,
+            "fuji" | "avalanche-fuji" => Chain::AvalancheFuji,
+            "sepolia" => Chain::Sepolia,
+            "moonbeam" => Chain::Moonbeam,
+            "moonbase" => Chain::Moonbase,
+            "moonbeam-dev" => Chain::MoonbeamDev,
+            "moonriver" => Chain::Moonriver,
+            "optimism" => Chain::Optimism,
+            "optimism-goerli" => Chain::OptimismGoerli,
+            "optimism-kovan" => Chain::OptimismKovan,
+            "fantom" => Chain::Fantom,
+            "fantom-testnet" => Chain::FantomTestnet,
+            "dev" => Chain::Dev,
+            "anvil" | "hardhat" | "anvil-hardhat" => Chain::AnvilHardhat,
+            "bsc" => Chain::BinanceSmartChain,
+            "bsc-testnet" => Chain::BinanceSmartChainTestnet,
+            "arbitrum" => Chain::Arbitrum,
+            "arbitrum-testnet" => Chain::ArbitrumTestnet,
+            "arbitrum-goerli" => Chain::ArbitrumGoerli,
+            "cronos" => Chain::Cronos,
+            "cronos-testnet" => Chain::CronosTestnet,
+            "poa" => Chain::Poa,
+            "sokol" => Chain::Sokol,
+            "rsk" => Chain::Rsk,
+            "oasis" => Chain::Oasis,
+            "emerald" => Chain::Emerald,
+            "emerald-testnet" => Chain::EmeraldTestnet,
+            "aurora" => Chain::Aurora,
+            "aurora-testnet" => Chain::AuroraTestnet,
+            _ => return Err(ParseChainError(chain.to_owned())),
+        })
+    }
+}
+
 impl Chain {
-    /// The blocktime varies from chain to chain
+    /// The blocktime varies from chain to chain.
     ///
-    /// It can be beneficial to know the average blocktime to adjust the polling of an Http provider
+    /// It can be beneficial to know the average blocktime to adjust the polling of an HTTP provider
     /// for example.
     ///
     /// **Note:** this will not return the accurate average depending on the time but is rather a
@@ -224,196 +411,7 @@ impl Chain {
 
         Some(urls)
     }
-}
 
-impl fmt::Display for Chain {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        let chain = match self {
-            Chain::Mainnet => "mainnet",
-            Chain::Morden => "morden",
-            Chain::Ropsten => "ropsten",
-            Chain::Rinkeby => "rinkeby",
-            Chain::Goerli => "goerli",
-            Chain::Kovan => "kovan",
-            Chain::XDai => "gnosis",
-            Chain::Chiado => "chiado",
-            Chain::Polygon => "polygon",
-            Chain::PolygonMumbai => "mumbai",
-            Chain::Avalanche => "avalanche",
-            Chain::AvalancheFuji => "fuji",
-            Chain::Sepolia => "sepolia",
-            Chain::Moonbeam => "moonbeam",
-            Chain::Moonbase => "moonbase",
-            Chain::MoonbeamDev => "moonbeam-dev",
-            Chain::Moonriver => "moonriver",
-            Chain::Optimism => "optimism",
-            Chain::OptimismGoerli => "optimism-goerli",
-            Chain::OptimismKovan => "optimism-kovan",
-            Chain::Fantom => "fantom",
-            Chain::Dev => "dev",
-            Chain::FantomTestnet => "fantom-testnet",
-            Chain::BinanceSmartChain => "bsc",
-            Chain::BinanceSmartChainTestnet => "bsc-testnet",
-            Chain::Arbitrum => "arbitrum",
-            Chain::ArbitrumTestnet => "arbitrum-testnet",
-            Chain::ArbitrumGoerli => "arbitrum-goerli",
-            Chain::Cronos => "cronos",
-            Chain::CronosTestnet => "cronos-testnet",
-            Chain::Poa => "poa",
-            Chain::Sokol => "sokol",
-            Chain::Rsk => "rsk",
-            Chain::Oasis => "oasis",
-            Chain::Emerald => "emerald",
-            Chain::EmeraldTestnet => "emerald-testnet",
-            Chain::AnvilHardhat => "anvil-hardhat",
-            Chain::Evmos => "evmos",
-            Chain::EvmosTestnet => "evmos-testnet",
-            Chain::Aurora => "aurora",
-            Chain::AuroraTestnet => "aurora-testnet",
-        };
-
-        write!(formatter, "{chain}")
-    }
-}
-
-impl From<Chain> for u32 {
-    fn from(chain: Chain) -> Self {
-        chain as u32
-    }
-}
-
-impl From<Chain> for u64 {
-    fn from(chain: Chain) -> Self {
-        chain as u64
-    }
-}
-
-impl From<Chain> for U256 {
-    fn from(chain: Chain) -> Self {
-        u64::from(chain).into()
-    }
-}
-
-impl TryFrom<u32> for Chain {
-    type Error = ParseChainError;
-
-    fn try_from(chain: u32) -> Result<Chain, Self::Error> {
-        (chain as u64).try_into()
-    }
-}
-
-impl TryFrom<u64> for Chain {
-    type Error = ParseChainError;
-
-    fn try_from(chain: u64) -> Result<Chain, Self::Error> {
-        Ok(match chain {
-            1 => Chain::Mainnet,
-            2 => Chain::Morden,
-            3 => Chain::Ropsten,
-            4 => Chain::Rinkeby,
-            5 => Chain::Goerli,
-            42 => Chain::Kovan,
-            100 => Chain::XDai,
-            10200 => Chain::Chiado,
-            137 => Chain::Polygon,
-            1337 => Chain::Dev,
-            31337 => Chain::AnvilHardhat,
-            250 => Chain::Fantom,
-            4002 => Chain::FantomTestnet,
-            80001 => Chain::PolygonMumbai,
-            43114 => Chain::Avalanche,
-            43113 => Chain::AvalancheFuji,
-            11155111 => Chain::Sepolia,
-            1284 => Chain::Moonbeam,
-            1287 => Chain::Moonbase,
-            1281 => Chain::MoonbeamDev,
-            1285 => Chain::Moonriver,
-            10 => Chain::Optimism,
-            420 => Chain::OptimismGoerli,
-            69 => Chain::OptimismKovan,
-            56 => Chain::BinanceSmartChain,
-            97 => Chain::BinanceSmartChainTestnet,
-            42161 => Chain::Arbitrum,
-            421611 => Chain::ArbitrumTestnet,
-            421613 => Chain::ArbitrumGoerli,
-            25 => Chain::Cronos,
-            338 => Chain::CronosTestnet,
-            99 => Chain::Poa,
-            77 => Chain::Sokol,
-            30 => Chain::Rsk,
-            26863 => Chain::Oasis,
-            42262 => Chain::Emerald,
-            42261 => Chain::EmeraldTestnet,
-            9001 => Chain::Evmos,
-            9000 => Chain::EvmosTestnet,
-            1313161554 => Chain::Aurora,
-            1313161555 => Chain::AuroraTestnet,
-            _ => return Err(ParseChainError(chain.to_string())),
-        })
-    }
-}
-
-impl TryFrom<U256> for Chain {
-    type Error = ParseChainError;
-
-    fn try_from(chain: U256) -> Result<Chain, Self::Error> {
-        if chain.bits() > 64 {
-            return Err(ParseChainError(chain.to_string()))
-        }
-        chain.as_u64().try_into()
-    }
-}
-
-impl FromStr for Chain {
-    type Err = ParseChainError;
-
-    fn from_str(chain: &str) -> Result<Self, Self::Err> {
-        Ok(match chain {
-            "mainnet" => Chain::Mainnet,
-            "morden" => Chain::Morden,
-            "ropsten" => Chain::Ropsten,
-            "rinkeby" => Chain::Rinkeby,
-            "goerli" => Chain::Goerli,
-            "kovan" => Chain::Kovan,
-            "xdai" | "gnosis" | "gnosis-chain" => Chain::XDai,
-            "chiado" => Chain::Chiado,
-            "polygon" => Chain::Polygon,
-            "mumbai" | "polygon-mumbai" => Chain::PolygonMumbai,
-            "avalanche" => Chain::Avalanche,
-            "fuji" | "avalanche-fuji" => Chain::AvalancheFuji,
-            "sepolia" => Chain::Sepolia,
-            "moonbeam" => Chain::Moonbeam,
-            "moonbase" => Chain::Moonbase,
-            "moonbeam-dev" => Chain::MoonbeamDev,
-            "moonriver" => Chain::Moonriver,
-            "optimism" => Chain::Optimism,
-            "optimism-goerli" => Chain::OptimismGoerli,
-            "optimism-kovan" => Chain::OptimismKovan,
-            "fantom" => Chain::Fantom,
-            "fantom-testnet" => Chain::FantomTestnet,
-            "dev" => Chain::Dev,
-            "anvil" | "hardhat" | "anvil-hardhat" => Chain::AnvilHardhat,
-            "bsc" => Chain::BinanceSmartChain,
-            "bsc-testnet" => Chain::BinanceSmartChainTestnet,
-            "arbitrum" => Chain::Arbitrum,
-            "arbitrum-testnet" => Chain::ArbitrumTestnet,
-            "arbitrum-goerli" => Chain::ArbitrumGoerli,
-            "cronos" => Chain::Cronos,
-            "cronos-testnet" => Chain::CronosTestnet,
-            "poa" => Chain::Poa,
-            "sokol" => Chain::Sokol,
-            "rsk" => Chain::Rsk,
-            "oasis" => Chain::Oasis,
-            "emerald" => Chain::Emerald,
-            "emerald-testnet" => Chain::EmeraldTestnet,
-            "aurora" => Chain::Aurora,
-            "aurora-testnet" => Chain::AuroraTestnet,
-            _ => return Err(ParseChainError(chain.to_owned())),
-        })
-    }
-}
-
-impl Chain {
     /// Helper function for checking if a chainid corresponds to a legacy chainid
     /// without eip1559
     pub fn is_legacy(&self) -> bool {
