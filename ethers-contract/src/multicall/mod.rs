@@ -4,7 +4,7 @@ use crate::{
 };
 use ethers_core::{
     abi::{AbiDecode, Detokenize, Function, Token},
-    types::{Address, BlockNumber, Bytes, Call as _, Chain, NameOrAddress, TxHash, H160, U256},
+    types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, TxHash, H160, U256},
 };
 use ethers_providers::Middleware;
 use std::{convert::TryFrom, sync::Arc};
