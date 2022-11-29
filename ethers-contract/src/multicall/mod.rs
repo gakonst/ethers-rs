@@ -4,7 +4,7 @@ use crate::{
 };
 use ethers_core::{
     abi::{AbiDecode, Detokenize, Function, Token},
-    types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, TxHash, H160, U256},
+    types::{Address, BlockNumber, Bytes, Call as _, Chain, NameOrAddress, TxHash, H160, U256},
 };
 use ethers_providers::Middleware;
 use std::{convert::TryFrom, sync::Arc};
@@ -869,6 +869,7 @@ impl<M: Middleware> Multicall<M> {
         }
     }
 
+    /// Sets the block and legacy flags on a [ContractCall] if they were set on Multicall.
     fn set_call_flags<D: Detokenize>(&self, mut call: ContractCall<M, D>) -> ContractCall<M, D> {
         if let Some(block) = self.block {
             call = call.block(block);
