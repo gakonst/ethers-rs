@@ -292,6 +292,7 @@ impl Geth {
         // geth uses stderr for its logs
         cmd.stderr(std::process::Stdio::piped());
         let port = if let Some(port) = self.port { port } else { unused_port() };
+        let authrpc_port = if let Some(port) = self.authrpc_port { port } else { unused_port() };
 
         // Open the HTTP API
         cmd.arg("--http");
@@ -304,9 +305,7 @@ impl Geth {
         cmd.arg("--ws.api").arg(API);
 
         // Set the port for authenticated APIs
-        if let Some(authrpc_port) = self.authrpc_port {
-            cmd.arg("--authrpc.port").arg(authrpc_port.to_string());
-        }
+        cmd.arg("--authrpc.port").arg(authrpc_port.to_string());
 
         // use geth init to initialize the datadir if the genesis exists
         if let Some(genesis) = self.genesis {
