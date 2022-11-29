@@ -564,7 +564,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_state_overrides() {
-        let mut geth = Geth::new().spawn();
+        let geth = Geth::new().spawn();
         let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
 
         let adr1: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap();
@@ -573,9 +573,6 @@ mod tests {
 
         // Not enough ether to pay for the transaction
         let tx = TransactionRequest::pay(adr2, pay_amt).from(adr1).into();
-
-        // dump the geth logs TODO REMOVE
-        println!("geth logs: {}", geth.dump_stderr().unwrap());
 
         // assert that overriding the sender's balance works
         let state = spoof::balance(adr1, pay_amt * 2);
