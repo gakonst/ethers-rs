@@ -101,13 +101,26 @@ pub struct PeerProtocolInfo {
     pub snap: Option<SnapPeerInfo>,
 }
 
+/// Can contain either eth protocol info or a string "handshake", which geth uses if the peer is
+/// still completing the handshake for the protocol.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum EthPeerInfo {
+    /// The `eth` sub-protocol metadata known about the host peer.
+    Info(Box<EthInfo>),
+
+    /// The string "handshake" if the peer is still completing the handshake for the protocol.
+    #[serde(deserialize_with = "deser_handshake", serialize_with = "ser_handshake")]
+    Handshake,
+}
+
 /// Represents a short summary of the `eth` sub-protocol metadata known about a connected peer
 ///
 /// See [geth's `ethPeerInfo`
 /// struct](https://github.com/ethereum/go-ethereum/blob/53d1ae096ac0515173e17f0f81a553e5f39027f7/eth/peer.go#L28)
 /// for how these fields are determined.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct EthPeerInfo {
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct EthInfo {
     /// The negotiated eth version.
     pub version: u64,
 
@@ -119,13 +132,26 @@ pub struct EthPeerInfo {
     pub head: H256,
 }
 
+/// Can contain either snap protocol info or a string "handshake", which geth uses if the peer is
+/// still completing the handshake for the protocol.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum SnapPeerInfo {
+    /// The `snap` sub-protocol metadata known about the host peer.
+    Info(SnapInfo),
+
+    /// The string "handshake" if the peer is still completing the handshake for the protocol.
+    #[serde(deserialize_with = "deser_handshake", serialize_with = "ser_handshake")]
+    Handshake,
+}
+
 /// Represents a short summary of the `snap` sub-protocol metadata known about a connected peer.
 ///
 /// See [geth's `snapPeerInfo`
 /// struct](https://github.com/ethereum/go-ethereum/blob/53d1ae096ac0515173e17f0f81a553e5f39027f7/eth/peer.go#L53)
 /// for how these fields are determined.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct SnapPeerInfo {
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct SnapInfo {
     /// The negotiated snap version.
     pub version: u64,
 }
@@ -178,6 +204,27 @@ pub struct PeerNetworkInfo {
     /// Whether or not the peer is a static peer.
     #[serde(rename = "static")]
     pub static_node: bool,
+}
+
+fn deser_handshake<'de, D>(deserializer: D) -> Result<(), D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s = String::deserialize(deserializer)?;
+    if s == "handshake" {
+        Ok(())
+    } else {
+        Err(serde::de::Error::custom(
+            "expected \"handshake\" if protocol info did not appear in the response",
+        ))
+    }
+}
+
+fn ser_handshake<S>(serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str("handshake")
 }
 
 #[cfg(test)]
@@ -326,5 +373,30 @@ mod tests {
         }"#;
 
         let _: NodeInfo = serde_json::from_str(actual_response).unwrap();
+    }
+
+    #[test]
+    fn deserialize_peer_info_handshake() {
+        let response = r#"{
+            "enode": "enode://a997fde0023537ad01e536ebf2eeeb4b4b3d5286707586727b704f32e8e2b4959e08b6db5b27eb6b7e9f6efcbb53657f4e2bd16900aa77a89426dc3382c29ce0@[::1]:60948",
+            "id": "df6f8bc331005962c2ef1f5236486a753bc6b2ddb5ef04370757999d1ca832d4",
+            "name": "Geth/v1.10.26-stable-e5eb32ac/linux-amd64/go1.18.5",
+            "caps": ["eth/66","eth/67","snap/1"],
+            "network":{
+                "localAddress":"[::1]:30304",
+                "remoteAddress":"[::1]:60948",
+                "inbound":true,
+                "trusted":false,
+                "static":false
+            },
+            "protocols":{
+                "eth":"handshake",
+                "snap":"handshake"
+            }
+        }"#;
+
+        let info: PeerInfo = serde_json::from_str(response).unwrap();
+        assert_eq!(info.protocols.eth, Some(EthPeerInfo::Handshake));
+        assert_eq!(info.protocols.snap, Some(SnapPeerInfo::Handshake));
     }
 }
