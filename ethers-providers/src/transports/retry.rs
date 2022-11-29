@@ -4,7 +4,7 @@
 use super::{common::JsonRpcError, http::ClientError};
 use crate::{provider::ProviderError, JsonRpcClient};
 use async_trait::async_trait;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     fmt::Debug,
     sync::atomic::{AtomicU32, Ordering},
@@ -347,30 +347,45 @@ pub struct HttpRateLimitRetryPolicy;
 
 impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
     fn should_retry(&self, error: &ClientError) -> bool {
+        fn should_retry_json_rpc_error(err: &JsonRpcError) -> bool {
+            let JsonRpcError { code, message, .. } = err;
+            // alchemy throws it this way
+            if *code == 429 {
+                return true
+            }
+
+            // alternative alchemy error for specific IPs
+            if *code == -32016 && message.contains("rate limit") {
+                return true
+            }
+
+            match message.as_str() {
+                // this is commonly thrown by infura and is apparently a load balancer issue, see also <https://github.com/MetaMask/metamask-extension/issues/7234>
+                "header not found" => true,
+                // also thrown by infura if out of budget for the day and ratelimited
+                "daily request count exceeded, request rate limited" => true,
+                _ => false,
+            }
+        }
+
         match error {
             ClientError::ReqwestError(err) => {
                 err.status() == Some(http::StatusCode::TOO_MANY_REQUESTS)
             }
-            ClientError::JsonRpcError(JsonRpcError { code, message, .. }) => {
-                // alchemy throws it this way
-                if *code == 429 {
-                    return true
+            ClientError::JsonRpcError(err) => should_retry_json_rpc_error(err),
+            ClientError::SerdeJson { text, .. } => {
+                // some providers send invalid JSON RPC in the error case (no `id:u64`), but the
+                // text should be a `JsonRpcError`
+                #[derive(Deserialize)]
+                struct Resp {
+                    error: JsonRpcError,
                 }
 
-                // alternative alchemy error for specific IPs
-                if *code == -32016 && message.contains("rate limit") {
-                    return true
+                if let Ok(resp) = serde_json::from_str::<Resp>(text) {
+                    return should_retry_json_rpc_error(&resp.error)
                 }
-
-                match message.as_str() {
-                    // this is commonly thrown by infura and is apparently a load balancer issue, see also <https://github.com/MetaMask/metamask-extension/issues/7234>
-                    "header not found" => true,
-                    // also thrown by infura if out of budget for the day and ratelimited
-                    "daily request count exceeded, request rate limited" => true,
-                    _ => false,
-                }
+                false
             }
-            _ => false,
         }
     }
 
@@ -522,6 +537,19 @@ mod tests {
         let s = "{\"code\":-32016,\"message\":\"Your IP has exceeded its requests per second capacity. To increase your rate limits, please sign up for a free Alchemy account at https://www.alchemy.com/optimism.\"}";
         let err: JsonRpcError = serde_json::from_str(s).unwrap();
         let err = ClientError::JsonRpcError(err);
+
+        let should_retry = HttpRateLimitRetryPolicy::default().should_retry(&err);
+        assert!(should_retry);
+    }
+
+    #[test]
+    fn test_rate_limit_omitted_id() {
+        let s = r#"{"jsonrpc":"2.0","error":{"code":-32016,"message":"Your IP has exceeded its requests per second capacity. To increase your rate limits, please sign up for a free Alchemy account at https://www.alchemy.com/optimism."},"id":null}"#;
+
+        let err = ClientError::SerdeJson {
+            err: serde::de::Error::custom("unexpected notification over HTTP transport"),
+            text: s.to_string(),
+        };
 
         let should_retry = HttpRateLimitRetryPolicy::default().should_retry(&err);
         assert!(should_retry);
