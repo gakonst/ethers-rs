@@ -282,15 +282,23 @@ impl From<Chain> for u32 {
     }
 }
 
-impl From<Chain> for U256 {
+impl From<Chain> for u64 {
     fn from(chain: Chain) -> Self {
-        u32::from(chain).into()
+        chain as u64
     }
 }
 
-impl From<Chain> for u64 {
+impl From<Chain> for U256 {
     fn from(chain: Chain) -> Self {
-        u32::from(chain).into()
+        u64::from(chain).into()
+    }
+}
+
+impl TryFrom<u32> for Chain {
+    type Error = ParseChainError;
+
+    fn try_from(chain: u32) -> Result<Chain, Self::Error> {
+        (chain as u64).try_into()
     }
 }
 
@@ -358,6 +366,7 @@ impl TryFrom<U256> for Chain {
 
 impl FromStr for Chain {
     type Err = ParseChainError;
+
     fn from_str(chain: &str) -> Result<Self, Self::Err> {
         Ok(match chain {
             "mainnet" => Chain::Mainnet,
