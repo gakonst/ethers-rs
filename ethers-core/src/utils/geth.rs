@@ -95,6 +95,20 @@ impl GethInstance {
         }
         Err(GethInstanceError::Timeout("Timed out waiting for geth to add a peer".into()))
     }
+
+    /// Dumps the unread stderr of the geth instance to a string.
+    pub fn dump_stderr(&mut self) -> Result<String, GethInstanceError> {
+        let mut stderr = self.pid.stderr.as_mut().ok_or(GethInstanceError::NoStderr)?;
+        let mut err_reader = BufReader::new(&mut stderr);
+        let mut line = String::new();
+        let mut output = String::new();
+
+        while err_reader.read_line(&mut line).map_err(GethInstanceError::ReadLineError)? > 0 {
+            output.push_str(&line);
+            line.clear();
+        }
+        Ok(output)
+    }
 }
 
 impl Drop for GethInstance {
