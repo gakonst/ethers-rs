@@ -2172,17 +2172,18 @@ mod tests {
     #[tokio::test]
     async fn geth_admin_nodeinfo() {
         // we can't use the test provider because infura does not expose admin endpoints
-        let port = 8545u16;
+        let port = 8546u16;
         let p2p_listener_port = 13337u16;
-        let authrpc_port = 8551u16;
+        let authrpc_port = 8552u16;
         let network = 1337u64;
+        let temp_dir = tempfile::tempdir().unwrap().into_path();
 
         let (geth, provider) = spawn_geth_and_create_provider(
             network,
             port,
             p2p_listener_port,
             authrpc_port,
-            None,
+            Some(temp_dir),
             None,
         );
 

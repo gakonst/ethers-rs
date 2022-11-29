@@ -2,7 +2,7 @@ use super::{unused_port, Genesis};
 use crate::types::H256;
 use std::{
     env::temp_dir,
-    fs::File,
+    fs::{create_dir, File},
     io::{BufRead, BufReader},
     path::PathBuf,
     process::{Child, Command, Stdio},
@@ -324,6 +324,11 @@ impl Geth {
 
         if let Some(ref data_dir) = self.data_dir {
             cmd.arg("--datadir").arg(data_dir);
+
+            // create the directory if it doesn't exist
+            if !data_dir.exists() {
+                create_dir(data_dir).expect("could not create data dir");
+            }
         }
 
         // Dev mode with custom block time
@@ -384,7 +389,8 @@ impl Geth {
             }
 
             // geth 1.9.23 uses "server started" while 1.9.18 uses "endpoint opened"
-            if line.contains("HTTP endpoint opened") || line.contains("HTTP server started") {
+            // the unauthenticated api is used for regular non-engine API requests
+            if line.contains("HTTP endpoint opened") || (line.contains("HTTP server started") && !line.contains("auth=true")) {
                 http_started = true;
             }
 
