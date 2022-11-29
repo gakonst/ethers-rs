@@ -694,22 +694,22 @@ mod eth_tests {
             .clear_calls()
             .add_call(empty_revert.clone(), true)
             .add_call(empty_revert.clone(), true);
-        let res: ((bool, String), (bool, String)) = multicall.call().await.unwrap();
+        let res: ((bool, Bytes), (bool, Bytes)) = multicall.call().await.unwrap();
         assert!(!res.0 .0);
-        assert_eq!(res.0 .1, "");
+        assert_eq!(res.0 .1, Bytes::default());
 
         // string revert
         let string_revert =
             reverting_contract.method::<_, H256>("stringRevert", ("String".to_string())).unwrap();
         multicall.clear_calls().add_call(string_revert, true).add_call(empty_revert.clone(), true);
-        let res: ((bool, String), (bool, String)) = multicall.call().await.unwrap();
+        let res: ((bool, String), (bool, Bytes)) = multicall.call().await.unwrap();
         assert!(!res.0 .0);
         assert_eq!(res.0 .1, "String");
 
         // custom error revert
         let custom_error = reverting_contract.method::<_, H256>("customError", ()).unwrap();
         multicall.clear_calls().add_call(custom_error, true).add_call(empty_revert.clone(), true);
-        let res: ((bool, Bytes), (bool, String)) = multicall.call().await.unwrap();
+        let res: ((bool, Bytes), (bool, Bytes)) = multicall.call().await.unwrap();
         let selector = &keccak256("CustomError()")[..4];
         assert!(!res.0 .0);
         assert_eq!(res.0 .1.len(), 4);
@@ -723,7 +723,7 @@ mod eth_tests {
             .clear_calls()
             .add_call(custom_error_with_data, true)
             .add_call(empty_revert.clone(), true);
-        let res: ((bool, Bytes), (bool, String)) = multicall.call().await.unwrap();
+        let res: ((bool, Bytes), (bool, Bytes)) = multicall.call().await.unwrap();
         let selector = &keccak256("CustomErrorWithData(string)")[..4];
         assert!(!res.0 .0);
         assert_eq!(&res.0 .1[..4], selector);
