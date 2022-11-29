@@ -20,10 +20,11 @@ pub struct ParseChainError(String);
 ///   2. update Display/FromStr impl
 ///   3. add etherscan_keys if supported
 #[repr(u64)]
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, Deserialize, EnumVariantNames)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Hash, Deserialize, EnumVariantNames)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum Chain {
+    #[default]
     Mainnet = 1,
     Morden = 2,
     Ropsten = 3,
@@ -425,12 +426,6 @@ impl Chain {
                 Chain::Emerald |
                 Chain::EmeraldTestnet,
         )
-    }
-}
-
-impl Default for Chain {
-    fn default() -> Self {
-        Chain::Mainnet
     }
 }
 
