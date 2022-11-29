@@ -90,9 +90,10 @@ impl Serialize for TxpoolInspectSummary {
     where
         S: serde::Serializer,
     {
-        let formatted_to = match self.to {
-            Some(to) => format!("{:?}", to),
-            None => "contract creation".to_string(),
+        let formatted_to = if let Some(to) = self.to {
+            format!("{:?}", to)
+        } else {
+            "contract creation".to_string()
         };
         let formatted = format!(
             "{}: {} wei + {} gas × {} wei",
