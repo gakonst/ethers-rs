@@ -247,12 +247,10 @@ where
                     break
                 }
                 match self.tick().await {
-                    Err(ClientError::UnexpectedClose) => {
-                        error!("{}", ClientError::UnexpectedClose);
-                        break
-                    }
                     Err(e) => {
-                        panic!("WS Server panic: {}", e);
+                        error!("Local Ws server error {:?}", e);
+                        self.close_all_subscriptions();
+                        break
                     }
                     _ => {}
                 }
@@ -264,6 +262,14 @@ where
 
         #[cfg(not(target_arch = "wasm32"))]
         tokio::spawn(f);
+    }
+
+    // This will close all active subscriptions. Each process listening for
+    // updates will receive a `None` value from the subscription stream.
+    fn close_all_subscriptions(&self) {
+        for (_, sub) in self.subscriptions.iter() {
+            sub.close_channel();
+        }
     }
 
     // dispatch an RPC request
