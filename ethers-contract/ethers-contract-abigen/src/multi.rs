@@ -574,7 +574,7 @@ impl MultiBindingsInner {
         let cargo_toml = std::env::current_dir()?.join("Cargo.toml");
 
         let default_dep = || {
-            "ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }}".to_string()
+            "ethers = { git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }".to_string()
         };
 
         if !cargo_toml.exists() {
