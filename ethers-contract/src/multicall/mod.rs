@@ -98,7 +98,7 @@ pub type Result<T, M> = std::result::Result<T, MulticallError<M>>;
 /// Helper struct for managing calls to be made to the `function` in smart contract `target`
 /// with `data`.
 #[derive(Clone, Debug)]
-pub struct GenericCall {
+pub struct Call {
     target: Address,
     data: Bytes,
     value: U256,
@@ -266,7 +266,7 @@ pub struct Multicall<M> {
     version: MulticallVersion,
     legacy: bool,
     block: Option<BlockNumber>,
-    calls: Vec<GenericCall>,
+    calls: Vec<Call>,
 }
 
 // Manually implement Debug due to Middleware trait bounds.
@@ -423,7 +423,7 @@ impl<M: Middleware> Multicall<M> {
     ) -> &mut Self {
         match (call.tx.to(), call.tx.data()) {
             (Some(NameOrAddress::Address(target)), Some(data)) => {
-                let call = GenericCall {
+                let call = Call {
                     target: *target,
                     data: data.clone(),
                     value: call.tx.value().cloned().unwrap_or_default(),
