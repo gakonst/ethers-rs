@@ -50,8 +50,8 @@ use ethers_signers::Signer;
 pub trait MiddlewareBuilder: Middleware + Sized + 'static {
     /// Wraps `self` inside a new [`Middleware`](ethers_providers::Middleware).
     ///
-    /// `f` Consumes `self`, must be used to return a new
-    /// [`Middleware`](ethers_providers::Middleware) around `self`.
+    /// `f` Consumes `self`. Must be used to return a new
+    /// [`Middleware`](ethers_providers::Middleware) wrapping `self`.
     fn wrap_into<F, T>(self, f: F) -> T
     where
         F: FnOnce(Self) -> T,
@@ -62,7 +62,7 @@ pub trait MiddlewareBuilder: Middleware + Sized + 'static {
 
     /// Wraps `self` inside a [`SignerMiddleware`](crate::SignerMiddleware).
     ///
-    /// [`Signer`] ethers_signers::Signer
+    /// [`Signer`](ethers_signers::Signer)
     fn with_signer<S>(self, s: S) -> SignerMiddleware<Self, S>
     where
         S: Signer,
@@ -72,14 +72,14 @@ pub trait MiddlewareBuilder: Middleware + Sized + 'static {
 
     /// Wraps `self` inside a [`NonceManagerMiddleware`](crate::NonceManagerMiddleware).
     ///
-    /// [`Address`] ethers_core::types::Address
+    /// [`Address`](ethers_core::types::Address)
     fn nonce_manager(self, address: Address) -> NonceManagerMiddleware<Self> {
         NonceManagerMiddleware::new(self, address)
     }
 
     /// Wraps `self` inside a [`GasOracleMiddleware`](crate::gas_oracle::GasOracleMiddleware).
     ///
-    /// [`Address`] ethers_core::types::Address
+    /// [`GasOracle`](crate::gas_oracle::GasOracle)
     fn gas_oracle<G>(self, gas_oracle: G) -> GasOracleMiddleware<Self, G>
     where
         G: GasOracle,
