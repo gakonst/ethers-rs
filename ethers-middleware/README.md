@@ -23,7 +23,7 @@ use ethers_providers::{Middleware, Provider, Http};
 use std::sync::Arc;
 use std::convert::TryFrom;
 use ethers_signers::{LocalWallet, Signer};
-use ethers_middleware::gas_oracle::*;
+use ethers_middleware::{*,gas_oracle::*};
 
 fn builder_example() {
     let key = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169";
@@ -46,7 +46,7 @@ use ethers_providers::{Middleware, Provider, Http};
 use std::sync::Arc;
 use std::convert::TryFrom;
 use ethers_signers::{LocalWallet, Signer};
-use ethers_middleware::gas_oracle::*;
+use ethers_middleware::{*,gas_escalator::*,gas_oracle::*};
 
 fn builder_example_wrap_into() {
     let key = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169";
