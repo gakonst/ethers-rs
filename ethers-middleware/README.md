@@ -1,6 +1,5 @@
-Ethers uses a middleware-based architecture. You start the middleware stack with
-a [`Provider`](ethers_providers::Provider), and wrap it with additional
-middleware functionalities that you need.
+Your ethers application interacts with the blockchain through a [`Provider`](ethers_providers::Provider) abstraction. [`Provider`](ethers_providers::Provider) is a special type of [`Middleware`](crate::Middleware) that can be composed with others to obtain a layered architecture. This approach promotes "Open Closed Principle", "Single Responsibility" and composable patterns. The building process happens in a wrapping fashion, and starts from a [`Provider`](ethers_providers::Provider) being the first element in the stack. This process continues having new middlewares being pushed on top of a layered data structure.
+
 
 ## Available Middleware
 
