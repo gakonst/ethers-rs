@@ -1,17 +1,15 @@
+use crate::{
+    call::{ContractCall, ContractError},
+    Lazy,
+};
 use ethers_core::{
     abi::{AbiDecode, Detokenize, Function, Token},
     types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, TxHash, H160, U256},
 };
 use ethers_providers::Middleware;
-
 use std::{convert::TryFrom, sync::Arc};
 
-use crate::{
-    call::{ContractCall, ContractError},
-    Lazy,
-};
-
-mod multicall_contract;
+pub mod multicall_contract;
 use multicall_contract::multicall_3::{
     Call as Multicall1Call, Call3 as Multicall3Call, Call3Value as Multicall3CallValue,
     Result as MulticallResult,
@@ -263,11 +261,12 @@ impl TryFrom<u8> for MulticallVersion {
 #[derive(Clone)]
 #[must_use = "Multicall does nothing unless you use `call` or `send`"]
 pub struct Multicall<M> {
+    /// The Multicall contract interface.
+    pub contract: MulticallContract<M>,
     version: MulticallVersion,
     legacy: bool,
     block: Option<BlockNumber>,
     calls: Vec<Call>,
-    contract: MulticallContract<M>,
 }
 
 // Manually implement Debug due to Middleware trait bounds.
@@ -655,15 +654,20 @@ impl<M: Middleware> Multicall<M> {
                     .iter()
                     .zip(&return_data)
                     .map(|(call, bytes)| {
-                        let mut tokens: Vec<Token> = call
-                            .function
-                            .decode_output(bytes.as_ref())
-                            .map_err(ContractError::DecodingError)?;
-                        Ok(match tokens.len() {
-                            0 => Token::Tuple(vec![]),
-                            1 => tokens.remove(0),
-                            _ => Token::Tuple(tokens),
-                        })
+                        // Always return an empty Bytes token for calls that return no data
+                        if bytes.is_empty() {
+                            Ok(Token::Bytes(Default::default()))
+                        } else {
+                            let mut tokens = call
+                                .function
+                                .decode_output(bytes)
+                                .map_err(ContractError::DecodingError)?;
+                            Ok(match tokens.len() {
+                                0 => Token::Tuple(vec![]),
+                                1 => tokens.remove(0),
+                                _ => Token::Tuple(tokens),
+                            })
+                        }
                     })
                     .collect::<Result<Vec<Token>, M>>()?
             }
@@ -674,14 +678,17 @@ impl<M: Middleware> Multicall<M> {
                 let return_data = call.call().await?;
                 self.calls
                     .iter()
-                    .zip(&return_data)
+                    .zip(return_data.into_iter())
                     .map(|(call, res)| {
-                        let ret = &res.return_data;
-                        let res_token: Token = if res.success {
+                        let bytes = &res.return_data;
+                        // Always return an empty Bytes token for calls that return no data
+                        let res_token: Token = if bytes.is_empty() {
+                            Token::Bytes(Default::default())
+                        } else if res.success {
                             // Decode using call.function
                             let mut res_tokens = call
                                 .function
-                                .decode_output(ret)
+                                .decode_output(bytes)
                                 .map_err(ContractError::DecodingError)?;
                             match res_tokens.len() {
                                 0 => Token::Tuple(vec![]),
@@ -702,16 +709,15 @@ impl<M: Middleware> Multicall<M> {
                             }
 
                             // Decode with "Error(string)" (0x08c379a0)
-                            if ret.len() >= 4 && ret[..4] == [0x08, 0xc3, 0x79, 0xa0] {
+                            if bytes.len() >= 4 && bytes[..4] == [0x08, 0xc3, 0x79, 0xa0] {
                                 Token::String(
-                                    String::decode(&ret[4..]).map_err(ContractError::AbiError)?,
+                                    String::decode(&bytes[4..]).map_err(ContractError::AbiError)?,
                                 )
-                            } else if ret.is_empty() {
-                                Token::String(String::new())
                             } else {
-                                Token::Bytes(ret.to_vec())
+                                Token::Bytes(bytes.to_vec())
                             }
                         };
+
                         // (bool, (...))
                         Ok(Token::Tuple(vec![Token::Bool(res.success), res_token]))
                     })
@@ -778,22 +784,15 @@ impl<M: Middleware> Multicall<M> {
         // Map the calls vector into appropriate types for `aggregate` function
         let calls: Vec<Multicall1Call> = self
             .calls
-            .iter()
-            .map(|call| Multicall1Call { target: call.target, call_data: call.data.clone() })
+            .clone()
+            .into_iter()
+            .map(|call| Multicall1Call { target: call.target, call_data: call.data })
             .collect();
 
         // Construct the ContractCall for `aggregate` function to broadcast the transaction
-        let mut contract_call = self.contract.aggregate(calls);
+        let contract_call = self.contract.aggregate(calls);
 
-        if let Some(block) = self.block {
-            contract_call = contract_call.block(block)
-        };
-
-        if self.legacy {
-            contract_call = contract_call.legacy();
-        };
-
-        contract_call
+        self.set_call_flags(contract_call)
     }
 
     /// v2
@@ -802,28 +801,21 @@ impl<M: Middleware> Multicall<M> {
         // Map the calls vector into appropriate types for `try_aggregate` function
         let calls: Vec<Multicall1Call> = self
             .calls
-            .iter()
+            .clone()
+            .into_iter()
             .map(|call| {
                 // Allow entire call failure if at least one call is allowed to fail.
                 // To avoid iterating multiple times, equivalent of:
                 // self.calls.iter().any(|call| call.allow_failure)
-                allow_failure = allow_failure || call.allow_failure;
-                Multicall1Call { target: call.target, call_data: call.data.clone() }
+                allow_failure |= call.allow_failure;
+                Multicall1Call { target: call.target, call_data: call.data }
             })
             .collect();
 
         // Construct the ContractCall for `try_aggregate` function to broadcast the transaction
-        let mut contract_call = self.contract.try_aggregate(!allow_failure, calls);
+        let contract_call = self.contract.try_aggregate(!allow_failure, calls);
 
-        if let Some(block) = self.block {
-            contract_call = contract_call.block(block)
-        };
-
-        if self.legacy {
-            contract_call = contract_call.legacy();
-        };
-
-        contract_call
+        self.set_call_flags(contract_call)
     }
 
     /// v3
@@ -831,26 +823,19 @@ impl<M: Middleware> Multicall<M> {
         // Map the calls vector into appropriate types for `aggregate_3` function
         let calls: Vec<Multicall3Call> = self
             .calls
-            .iter()
+            .clone()
+            .into_iter()
             .map(|call| Multicall3Call {
                 target: call.target,
-                call_data: call.data.clone(),
+                call_data: call.data,
                 allow_failure: call.allow_failure,
             })
             .collect();
 
         // Construct the ContractCall for `aggregate_3` function to broadcast the transaction
-        let mut contract_call = self.contract.aggregate_3(calls);
+        let contract_call = self.contract.aggregate_3(calls);
 
-        if let Some(block) = self.block {
-            contract_call = contract_call.block(block)
-        };
-
-        if self.legacy {
-            contract_call = contract_call.legacy();
-        };
-
-        contract_call
+        self.set_call_flags(contract_call)
     }
 
     /// v3 + values (only .send())
@@ -859,12 +844,13 @@ impl<M: Middleware> Multicall<M> {
         let mut total_value = U256::zero();
         let calls: Vec<Multicall3CallValue> = self
             .calls
-            .iter()
+            .clone()
+            .into_iter()
             .map(|call| {
                 total_value += call.value;
                 Multicall3CallValue {
                     target: call.target,
-                    call_data: call.data.clone(),
+                    call_data: call.data,
                     allow_failure: call.allow_failure,
                     value: call.value,
                 }
@@ -877,17 +863,22 @@ impl<M: Middleware> Multicall<M> {
         } else {
             // Construct the ContractCall for `aggregate_3_value` function to broadcast the
             // transaction
-            let mut contract_call = self.contract.aggregate_3_value(calls);
+            let contract_call = self.contract.aggregate_3_value(calls);
 
-            if let Some(block) = self.block {
-                contract_call = contract_call.block(block)
-            };
-
-            if self.legacy {
-                contract_call = contract_call.legacy();
-            };
-
-            contract_call.value(total_value)
+            self.set_call_flags(contract_call).value(total_value)
         }
+    }
+
+    /// Sets the block and legacy flags on a [ContractCall] if they were set on Multicall.
+    fn set_call_flags<D: Detokenize>(&self, mut call: ContractCall<M, D>) -> ContractCall<M, D> {
+        if let Some(block) = self.block {
+            call = call.block(block);
+        }
+
+        if self.legacy {
+            call = call.legacy();
+        }
+
+        call
     }
 }

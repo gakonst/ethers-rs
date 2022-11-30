@@ -31,8 +31,8 @@ mod multicall;
 #[cfg(any(test, feature = "abigen"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
 pub use multicall::{
-    Multicall, MulticallContract, MulticallError, MulticallVersion, MULTICALL_ADDRESS,
-    MULTICALL_SUPPORTED_CHAIN_IDS,
+    multicall_contract, Call, Multicall, MulticallContract, MulticallError, MulticallVersion,
+    MULTICALL_ADDRESS, MULTICALL_SUPPORTED_CHAIN_IDS,
 };
 
 /// This module exposes low lever builder structures which are only consumed by the

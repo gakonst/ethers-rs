@@ -4,24 +4,27 @@ pub mod multicall_3 {
     #![allow(dead_code)]
     #![allow(clippy::type_complexity)]
     #![allow(unused_imports)]
-    /// Some macros may expand into using `ethers_contract` instead of `crate`.
-    mod ethers_contract {
-        pub use crate::*;
-    }
 
     // This is a hack to guarantee all ethers-derive macros can find the types.
-    // See [`ethers_core::macros::determine_ethers_crates`]
+    // See [`ethers_core::macros::determine_ethers_crates`].
     #[doc(hidden)]
     mod ethers {
-        pub mod core {
-            pub use ethers_core::*;
-        }
         pub mod contract {
             pub use crate::*;
+        }
+        pub mod core {
+            pub use ethers_core::*;
         }
         pub mod providers {
             pub use ethers_providers::*;
         }
+        pub mod types {
+            pub use ethers_core::types::*;
+        }
+    }
+    #[doc(hidden)]
+    mod ethers_contract {
+        pub use crate::*;
     }
 
     use self::ethers_contract::{
@@ -30,12 +33,12 @@ pub mod multicall_3 {
     };
     use ethers_core::{
         abi::{Abi, Detokenize, InvalidOutputType, Token, Tokenizable},
-        types::*,
+        types::{Address, Bytes, U256},
     };
     use ethers_providers::Middleware;
+    use std::sync::Arc;
 
     #[doc = "Multicall3 was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs"]
-    use std::sync::Arc;
     # [rustfmt :: skip] const __ABI : & str = "[{\"type\":\"function\",\"name\":\"aggregate\",\"inputs\":[{\"internalType\":\"struct Multicall3.Call[]\",\"name\":\"calls\",\"type\":\"tuple[]\",\"components\":[{\"type\":\"address\"},{\"type\":\"bytes\"}]}],\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"blockNumber\",\"type\":\"uint256\"},{\"internalType\":\"bytes[]\",\"name\":\"returnData\",\"type\":\"bytes[]\"}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"aggregate3\",\"inputs\":[{\"internalType\":\"struct Multicall3.Call3[]\",\"name\":\"calls\",\"type\":\"tuple[]\",\"components\":[{\"type\":\"address\"},{\"type\":\"bool\"},{\"type\":\"bytes\"}]}],\"outputs\":[{\"internalType\":\"struct Multicall3.Result[]\",\"name\":\"returnData\",\"type\":\"tuple[]\",\"components\":[{\"type\":\"bool\"},{\"type\":\"bytes\"}]}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"aggregate3Value\",\"inputs\":[{\"internalType\":\"struct Multicall3.Call3Value[]\",\"name\":\"calls\",\"type\":\"tuple[]\",\"components\":[{\"type\":\"address\"},{\"type\":\"bool\"},{\"type\":\"uint256\"},{\"type\":\"bytes\"}]}],\"outputs\":[{\"internalType\":\"struct Multicall3.Result[]\",\"name\":\"returnData\",\"type\":\"tuple[]\",\"components\":[{\"type\":\"bool\"},{\"type\":\"bytes\"}]}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"blockAndAggregate\",\"inputs\":[{\"internalType\":\"struct Multicall3.Call[]\",\"name\":\"calls\",\"type\":\"tuple[]\",\"components\":[{\"type\":\"address\"},{\"type\":\"bytes\"}]}],\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"blockNumber\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"blockHash\",\"type\":\"bytes32\"},{\"internalType\":\"struct Multicall3.Result[]\",\"name\":\"returnData\",\"type\":\"tuple[]\",\"components\":[{\"type\":\"bool\"},{\"type\":\"bytes\"}]}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"getBasefee\",\"inputs\":[],\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"basefee\",\"type\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getBlockHash\",\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"blockNumber\",\"type\":\"uint256\"}],\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"blockHash\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getBlockNumber\",\"inputs\":[],\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"blockNumber\",\"type\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getChainId\",\"inputs\":[],\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"chainid\",\"type\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getCurrentBlockCoinbase\",\"inputs\":[],\"outputs\":[{\"internalType\":\"address\",\"name\":\"coinbase\",\"type\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getCurrentBlockDifficulty\",\"inputs\":[],\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"difficulty\",\"type\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getCurrentBlockGasLimit\",\"inputs\":[],\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"gaslimit\",\"type\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getCurrentBlockTimestamp\",\"inputs\":[],\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"timestamp\",\"type\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getEthBalance\",\"inputs\":[{\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"}],\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"balance\",\"type\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"getLastBlockHash\",\"inputs\":[],\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"blockHash\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"tryAggregate\",\"inputs\":[{\"internalType\":\"bool\",\"name\":\"requireSuccess\",\"type\":\"bool\"},{\"internalType\":\"struct Multicall3.Call[]\",\"name\":\"calls\",\"type\":\"tuple[]\",\"components\":[{\"type\":\"address\"},{\"type\":\"bytes\"}]}],\"outputs\":[{\"internalType\":\"struct Multicall3.Result[]\",\"name\":\"returnData\",\"type\":\"tuple[]\",\"components\":[{\"type\":\"bool\"},{\"type\":\"bytes\"}]}],\"stateMutability\":\"payable\"},{\"type\":\"function\",\"name\":\"tryBlockAndAggregate\",\"inputs\":[{\"internalType\":\"bool\",\"name\":\"requireSuccess\",\"type\":\"bool\"},{\"internalType\":\"struct Multicall3.Call[]\",\"name\":\"calls\",\"type\":\"tuple[]\",\"components\":[{\"type\":\"address\"},{\"type\":\"bytes\"}]}],\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"blockNumber\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"blockHash\",\"type\":\"bytes32\"},{\"internalType\":\"struct Multicall3.Result[]\",\"name\":\"returnData\",\"type\":\"tuple[]\",\"components\":[{\"type\":\"bool\"},{\"type\":\"bytes\"}]}],\"stateMutability\":\"payable\"}]" ;
     #[doc = r" The parsed JSON-ABI of the contract."]
     pub static MULTICALL3_ABI: ethers_contract::Lazy<ethers_core::abi::Abi> =
