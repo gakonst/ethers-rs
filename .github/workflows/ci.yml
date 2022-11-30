@@ -13,6 +13,7 @@ env:
     ETHERSCAN_API_KEY_ETHEREUM: I5BXNZYP5GEDWFINGVEZKYIVU2695NPQZB
     ETHERSCAN_API_KEY_CELO: B13XSMUT6Q3Q4WZ5DNQR8RXDBA2KNTMT4M
     GOERLI_PRIVATE_KEY: "fa4a1a79e869a96fcb42727f75e3232d6865a82ea675bb95de967a7fe6a773b2"
+    GETH_BUILD: 1.10.26-e5eb32ac
 
 jobs:
     tests:
@@ -36,9 +37,9 @@ jobs:
             - name: Install geth
               run: |
                   mkdir -p "$HOME/bin"
-                  wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-                  tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-                  mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
+                  wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-$GETH_BUILD.tar.gz
+                  tar -xvf geth-linux-amd64-$GETH_BUILD.tar.gz
+                  mv geth-linux-amd64-$GETH_BUILD/geth $HOME/bin/geth
                   chmod u+x "$HOME/bin/geth"
                   export PATH=$HOME/bin:$PATH
                   geth version
@@ -79,9 +80,9 @@ jobs:
             - name: Install geth
               run: |
                   mkdir -p "$HOME/bin"
-                  wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-                  tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-                  mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
+                  wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-$GETH_BUILD.tar.gz
+                  tar -xvf geth-linux-amd64-$GETH_BUILD.tar.gz
+                  mv geth-linux-amd64-$GETH_BUILD/geth $HOME/bin/geth
                   chmod u+x "$HOME/bin/geth"
                   export PATH=$HOME/bin:$PATH
                   geth version
@@ -201,9 +202,9 @@ jobs:
             - name: Install geth (for state overrides example)
               run: |
                   mkdir -p "$HOME/bin"
-                  wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-                  tar -xvf geth-linux-amd64-1.9.23-8c2f2715.tar.gz
-                  mv geth-linux-amd64-1.9.23-8c2f2715/geth $HOME/bin/geth
+                  wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-$GETH_BUILD.tar.gz
+                  tar -xvf geth-linux-amd64-$GETH_BUILD.tar.gz
+                  mv geth-linux-amd64-$GETH_BUILD/geth $HOME/bin/geth
                   chmod u+x "$HOME/bin/geth"
                   export PATH=$HOME/bin:$PATH
                   geth version

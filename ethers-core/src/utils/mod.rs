@@ -10,6 +10,10 @@ mod geth;
 #[cfg(not(target_arch = "wasm32"))]
 pub use geth::{Geth, GethInstance};
 
+/// Utilities for working with a `genesis.json` and other chain config structs.
+mod genesis;
+pub use genesis::{ChainConfig, Genesis};
+
 /// Utilities for launching an anvil instance
 #[cfg(not(target_arch = "wasm32"))]
 mod anvil;
@@ -23,6 +27,7 @@ mod hash;
 pub use hash::{hash_message, id, keccak256, serialize};
 
 mod units;
+use serde::{Deserialize, Deserializer};
 pub use units::Units;
 
 /// Re-export RLP
@@ -38,6 +43,7 @@ use k256::{ecdsa::SigningKey, PublicKey as K256PublicKey};
 use std::{
     convert::{TryFrom, TryInto},
     fmt,
+    str::FromStr,
 };
 use thiserror::Error;
 
@@ -450,6 +456,34 @@ pub fn eip1559_default_estimator(base_fee_per_gas: U256, rewards: Vec<Vec<U256>>
         potential_max_fee
     };
     (max_fee_per_gas, max_priority_fee_per_gas)
+}
+
+/// Deserializes the input into a U256, accepting both 0x-prefixed hex and decimal strings with
+/// arbitrary precision, defined by serde_json's [`Number`](serde_json::Number).
+pub fn from_int_or_hex<'de, D>(deserializer: D) -> Result<U256, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum IntOrHex {
+        Int(serde_json::Number),
+        Hex(String),
+    }
+
+    match IntOrHex::deserialize(deserializer)? {
+        IntOrHex::Hex(s) => U256::from_str(s.as_str()).map_err(serde::de::Error::custom),
+        IntOrHex::Int(n) => U256::from_dec_str(&n.to_string()).map_err(serde::de::Error::custom),
+    }
+}
+
+/// Deserializes the input into an `Option<U256>`, using [`from_int_or_hex`] to deserialize the
+/// inner value.
+pub fn from_int_or_hex_opt<'de, D>(deserializer: D) -> Result<Option<U256>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Some(from_int_or_hex(deserializer)?))
 }
 
 fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {

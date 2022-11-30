@@ -10,6 +10,10 @@ pub use transports::*;
 mod provider;
 pub use provider::{is_local_endpoint, FilterKind, Provider, ProviderError, ProviderExt};
 
+// types for the admin api
+pub mod admin;
+pub use admin::{NodeInfo, PeerInfo};
+
 // ENS support
 pub mod ens;
 
@@ -486,6 +490,32 @@ pub trait Middleware: Sync + Send + Debug {
         block: Option<BlockId>,
     ) -> Result<EIP1186ProofResponse, Self::Error> {
         self.inner().get_proof(from, locations, block).await.map_err(FromErr::from)
+    }
+
+    // Admin namespace
+
+    async fn add_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        self.inner().add_peer(enode_url).await.map_err(FromErr::from)
+    }
+
+    async fn add_trusted_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        self.inner().add_trusted_peer(enode_url).await.map_err(FromErr::from)
+    }
+
+    async fn node_info(&self) -> Result<NodeInfo, Self::Error> {
+        self.inner().node_info().await.map_err(FromErr::from)
+    }
+
+    async fn peers(&self) -> Result<Vec<PeerInfo>, Self::Error> {
+        self.inner().peers().await.map_err(FromErr::from)
+    }
+
+    async fn remove_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        self.inner().remove_peer(enode_url).await.map_err(FromErr::from)
+    }
+
+    async fn remove_trusted_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        self.inner().remove_trusted_peer(enode_url).await.map_err(FromErr::from)
     }
 
     // Mempool inspection for Geth's API

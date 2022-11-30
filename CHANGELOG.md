@@ -221,6 +221,8 @@
 
 ### Unreleased
 
+-   Add a subset of the `admin` namespace 
+    [1880](https://github.com/gakonst/ethers-rs/pull/1880)
 -   Return String for net version
     [1376](https://github.com/gakonst/ethers-rs/pull/1376)
 -   Stream of paginated logs that load logs in small pages

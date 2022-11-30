@@ -4,7 +4,7 @@ use crate::{
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
     FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MockProvider,
-    PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
+    NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
 };
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "ws"))]
@@ -796,6 +796,48 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
 
         self.request("eth_getProof", [from, locations, block]).await
+    }
+
+    // Admin namespace
+
+    /// Requests adding the given peer, returning a boolean representing whether or not the peer
+    /// was accepted for tracking.
+    async fn add_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        let enode_url = utils::serialize(&enode_url);
+        self.request("admin_addPeer", [enode_url]).await
+    }
+
+    /// Requests adding the given peer as a trusted peer, which the node will always connect to
+    /// even when its peer slots are full.
+    async fn add_trusted_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        let enode_url = utils::serialize(&enode_url);
+        self.request("admin_addTrustedPeer", [enode_url]).await
+    }
+
+    /// Returns general information about the node as well as information about the running p2p
+    /// protocols (e.g. `eth`, `snap`).
+    async fn node_info(&self) -> Result<NodeInfo, Self::Error> {
+        self.request("admin_nodeInfo", ()).await
+    }
+
+    /// Returns the list of peers currently connected to the node.
+    async fn peers(&self) -> Result<Vec<PeerInfo>, Self::Error> {
+        self.request("admin_peers", ()).await
+    }
+
+    /// Requests to remove the given peer, returning true if the enode was successfully parsed and
+    /// the peer was removed.
+    async fn remove_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        let enode_url = utils::serialize(&enode_url);
+        self.request("admin_removePeer", [enode_url]).await
+    }
+
+    /// Requests to remove the given peer, returning a boolean representing whether or not the
+    /// enode url passed was validated. A return value of `true` does not necessarily mean that the
+    /// peer was disconnected.
+    async fn remove_trusted_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
+        let enode_url = utils::serialize(&enode_url);
+        self.request("admin_removeTrustedPeer", [enode_url]).await
     }
 
     ////// Ethereum Naming Service
@@ -1753,13 +1795,15 @@ pub mod dev_rpc {
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
     use crate::Http;
     use ethers_core::{
         types::{
             transaction::eip2930::AccessList, Eip1559TransactionRequest, TransactionRequest, H256,
         },
-        utils::Anvil,
+        utils::{Anvil, Genesis, Geth, GethInstance},
     };
     use futures_util::StreamExt;
 
@@ -2123,5 +2167,152 @@ mod tests {
             &err.to_string(),
             "ens name not found: `ox63616e.eth` resolver (0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2) is invalid."
         );
+    }
+
+    #[tokio::test]
+    async fn geth_admin_nodeinfo() {
+        // we can't use the test provider because infura does not expose admin endpoints
+        let port = 8546u16;
+        let p2p_listener_port = 13337u16;
+        let authrpc_port = 8552u16;
+        let network = 1337u64;
+        let temp_dir = tempfile::tempdir().unwrap().into_path();
+
+        let (geth, provider) = spawn_geth_and_create_provider(
+            network,
+            port,
+            p2p_listener_port,
+            authrpc_port,
+            Some(temp_dir),
+            None,
+        );
+
+        let info = provider.node_info().await.unwrap();
+        drop(geth);
+
+        // check that the port we set works
+        assert_eq!(info.ports.listener, p2p_listener_port);
+
+        // make sure it is running eth
+        assert!(info.protocols.eth.is_some());
+
+        // check that the network id is correct
+        assert_eq!(info.protocols.eth.unwrap().network, network);
+    }
+
+    /// Spawn a new `GethInstance` without discovery and crate a `Provider` for it.
+    ///
+    /// These will all use the same genesis config.
+    fn spawn_geth_and_create_provider(
+        chain_id: u64,
+        rpc_port: u16,
+        p2p_port: u16,
+        authrpc_port: u16,
+        datadir: Option<PathBuf>,
+        genesis: Option<Genesis>,
+    ) -> (GethInstance, Provider<HttpProvider>) {
+        let geth = Geth::new()
+            .port(rpc_port)
+            .p2p_port(p2p_port)
+            .authrpc_port(authrpc_port)
+            .chain_id(chain_id)
+            .disable_discovery();
+
+        let geth = match genesis {
+            Some(genesis) => geth.genesis(genesis),
+            None => geth,
+        };
+
+        let geth = match datadir {
+            Some(dir) => geth.data_dir(dir),
+            None => geth,
+        }
+        .spawn();
+
+        let url = format!("http://127.0.0.1:{}", rpc_port);
+        let provider = Provider::try_from(url).unwrap();
+        (geth, provider)
+    }
+
+    /// Spawn a set of [`GethInstance`]s with the list of given data directories and [`Provider`]s
+    /// for those [`GethInstance`]s without discovery, setting sequential ports for their p2p, rpc,
+    /// and authrpc ports.
+    fn spawn_geth_instances(
+        datadirs: Vec<PathBuf>,
+        chain_id: u64,
+        genesis: Option<Genesis>,
+    ) -> Vec<(GethInstance, Provider<HttpProvider>)> {
+        let mut geths = Vec::new();
+        let mut p2p_port = 30303;
+        let mut rpc_port = 8545;
+        let mut authrpc_port = 8551;
+
+        for dir in datadirs {
+            let (geth, provider) = spawn_geth_and_create_provider(
+                chain_id,
+                rpc_port,
+                p2p_port,
+                authrpc_port,
+                Some(dir),
+                genesis.clone(),
+            );
+
+            geths.push((geth, provider));
+
+            p2p_port += 1;
+            rpc_port += 1;
+            authrpc_port += 1;
+        }
+
+        geths
+    }
+
+    #[tokio::test]
+    async fn add_second_geth_peer() {
+        // init each geth directory
+        let dir1 = tempfile::tempdir().unwrap().into_path();
+        let dir2 = tempfile::tempdir().unwrap().into_path();
+
+        // use the default genesis
+        let genesis = utils::Genesis::default();
+
+        // spawn the geths
+        let mut geths = spawn_geth_instances(vec![dir1.clone(), dir2.clone()], 1337, Some(genesis));
+        let (mut first_geth, first_peer) = geths.pop().unwrap();
+        let (second_geth, second_peer) = geths.pop().unwrap();
+
+        // get nodeinfo for each geth instance
+        let first_info = first_peer.node_info().await.unwrap();
+        let second_info = second_peer.node_info().await.unwrap();
+        let first_port = first_info.ports.listener;
+
+        // replace the ip in the enode by putting
+        let first_prefix = first_info.enode.split('@').collect::<Vec<&str>>();
+
+        // create enodes for each geth instance using each id and port
+        let first_enode = format!("{}@localhost:{}", first_prefix.first().unwrap(), first_port);
+
+        // add the first geth as a peer for the second
+        let res = second_peer.add_peer(first_enode).await.unwrap();
+        assert!(res);
+
+        // wait on the listening peer for an incoming connection
+        first_geth.wait_to_add_peer(second_info.id).unwrap();
+
+        // check that second_geth exists in the first_geth peer list
+        let peers = first_peer.peers().await.unwrap();
+
+        drop(first_geth);
+        drop(second_geth);
+
+        // check that the second peer is in the list (it uses an enr so the enr should be Some)
+        assert_eq!(peers.len(), 1);
+
+        let peer = peers.get(0).unwrap();
+        assert_eq!(H256::from_str(&peer.id).unwrap(), second_info.id);
+
+        // remove directories
+        std::fs::remove_dir_all(dir1).unwrap();
+        std::fs::remove_dir_all(dir2).unwrap();
     }
 }
