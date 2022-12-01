@@ -3,9 +3,10 @@
 ## ethers-core
 
 ### Unreleased
+-   Graceful handling of WebSocket transport errors [#1889](https://github.com/gakonst/ethers-rs/issues/1889) [#1815](https://github.com/gakonst/ethers-rs/issues/1815)
 -   `MiddlewareBuilder` trait to instantiate a `Provider` as `Middleware` layers.
 -   An `Event` builder can be instantiated specifying the event filter type, without the need to instantiate a contract.
--   Add 'ethers_core::types::OpCode' and use in 'ethers_core::types::VMOperation' [1857](https://github.com/gakonst/ethers-rs/issues/1857)
+-   Add 'ethers_core::types::OpCode' and use in 'ethers_core::types::VMOperation' [#1857](https://github.com/gakonst/ethers-rs/issues/1857)
 -   Remove rust_decimals dependency for ethers-core
 -   Add support for numbers greater than 2^96 for `ethers_core::utils::parse_units` [#1822](https://github.com/gakonst/ethers-rs/issues/1822)
 -   Add comment about safety of u8 -> u64 cast in `ethers_core::types::Signature`
@@ -26,38 +27,38 @@
 -   Add `as_*_mut` methods on `TypedTransaction`
     [#1310](https://github.com/gakonst/ethers-rs/pull/1310)
 -   AWS EIP712 data signing no longer signs with EIP155
--   Added Cronos testnet to etherscan options [1276](https://github.com/gakonst/ethers-rs/pull/1276)
+-   Added Cronos testnet to etherscan options [#1276](https://github.com/gakonst/ethers-rs/pull/1276)
 -   Fix parsing of a pending block
-    [1272](https://github.com/gakonst/ethers-rs/pull/1272)
+    [#1272](https://github.com/gakonst/ethers-rs/pull/1272)
 -   Removed Cronos mainnet beta from `is_legacy` [1246](https://github.com/gakonst/ethers-rs/pull/1246)
 -   Fix RLP decoding of `from` field for `Eip1559TransactionRequest` and
     `Eip2930TransactionRequest`, remove `Eip1559TransactionRequest` `sighash`
-    method [1180](https://github.com/gakonst/ethers-rs/pull/1180)
+    method [#1180](https://github.com/gakonst/ethers-rs/pull/1180)
 -   Fix RLP encoding of absent access list in `Transaction` [1137](https://github.com/gakonst/ethers-rs/pull/1137)
--   Pass compilation time as additional argument to `Reporter::on_solc_success` [1098](https://github.com/gakonst/ethers-rs/pull/1098)
+-   Pass compilation time as additional argument to `Reporter::on_solc_success` [#1098](https://github.com/gakonst/ethers-rs/pull/1098)
 -   Fix aws signer bug which maps un-normalized signature to error if no normalization occurs (in `aws::utils::decode_signature`)
 -   Implement signed transaction RLP decoding [#1096](https://github.com/gakonst/ethers-rs/pull/1096)
 -   `Transaction::from` will default to `Address::zero()`. Add `recover_from` and
     `recover_from_mut` methods for recovering the sender from signature, and also
-    setting the same on tx [1075](https://github.com/gakonst/ethers-rs/pull/1075).
--   Add Etherscan account API endpoints [939](https://github.com/gakonst/ethers-rs/pull/939)
+    setting the same on tx [#1075](https://github.com/gakonst/ethers-rs/pull/1075).
+-   Add Etherscan account API endpoints [#939](https://github.com/gakonst/ethers-rs/pull/939)
 -   Add FTM Mainet and testnet to parse method "try_from" from Chain.rs and add cronos mainet and testnet to "from_str"
--   Add FTM mainnet and testnet Multicall addresses [927](https://github.com/gakonst/ethers-rs/pull/927)
+-   Add FTM mainnet and testnet Multicall addresses [#927](https://github.com/gakonst/ethers-rs/pull/927)
 -   Add Cronos mainnet beta and testnet to the list of known chains
-    [926](https://github.com/gakonst/ethers-rs/pull/926)
+    [#926](https://github.com/gakonst/ethers-rs/pull/926)
 -   `Chain::to_string` will return the same chain name as `Chain::from_str`
--   Add `eth_syncing` [848](https://github.com/gakonst/ethers-rs/pull/848)
+-   Add `eth_syncing` [#848](https://github.com/gakonst/ethers-rs/pull/848)
 -   Fix overflow and possible divide-by-zero in `estimate_priority_fee`
 -   Add BSC mainnet and testnet to the list of known chains
-    [831](https://github.com/gakonst/ethers-rs/pull/831)
+    [#831](https://github.com/gakonst/ethers-rs/pull/831)
 -   Returns error on invalid type conversion instead of panicking
-    [691](https://github.com/gakonst/ethers-rs/pull/691/files)
+    [#691](https://github.com/gakonst/ethers-rs/pull/691/files)
 -   Change types mapping for solidity `bytes` to rust `ethers::core::Bytes` and
     solidity `uint8[]` to rust `Vec<u8>`.
-    [613](https://github.com/gakonst/ethers-rs/pull/613)
+    [#613](https://github.com/gakonst/ethers-rs/pull/613)
 -   Fix `format_units` to return a `String` of representing a decimal point float
     such that the decimal places don't get truncated.
-    [597](https://github.com/gakonst/ethers-rs/pull/597)
+    [#597](https://github.com/gakonst/ethers-rs/pull/597)
 -   Implement hex display format for `ethers::core::Bytes`
     [#624](https://github.com/gakonst/ethers-rs/pull/624).
 -   Fix `fee_history` to first try with `block_count` encoded as a hex `QUANTITY`.
@@ -83,7 +84,7 @@
 -   Add a getter to `ProjectCompileOutput` that returns a mapping of compiler
     versions to a vector of name + contract struct tuples
     [#908](https://github.com/gakonst/ethers-rs/pull/908)
--   Add Yul compilation [994](https://github.com/gakonst/ethers-rs/pull/994)
+-   Add Yul compilation [#994](https://github.com/gakonst/ethers-rs/pull/994)
 -   Enforce commutativity of ENS reverse resolution
     [#996](https://github.com/gakonst/ethers-rs/pull/996)
 -   Add `TransactionReceipt::to` and `TransactionReceipt::from`
