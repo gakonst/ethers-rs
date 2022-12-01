@@ -60,7 +60,7 @@ async fn handle_conn(stream: TcpStream) -> Result<(), Error> {
                 .into();
 
         // Answer with a valid RPC response to keep the connection alive
-        ws_stream.send(Message::Text(res.clone())).await?;
+        ws_stream.send(Message::Text(res)).await?;
 
         // Wait for a while
         let timeout = Duration::from_secs(2);
