@@ -1,5 +1,5 @@
 use super::U256;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize, Serializer};
 use std::{
     convert::{TryFrom, TryInto},
     fmt,
@@ -261,11 +261,11 @@ impl FromStr for Chain {
 }
 
 impl Serialize for Chain {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        s.serialize_str(chain.to_string().as_ref())
+        s.serialize_str(self.to_string().as_ref())
     }
 }
 
@@ -447,5 +447,5 @@ impl Chain {
 
 #[test]
 fn test_default_chain() {
-    assert_eq!(Chain::default(), Chain::Mainnet);
+    assert_eq!(serde_json::to_string(&Chain::Mainnet).unwrap(), "\"mainnet\"");
 }
