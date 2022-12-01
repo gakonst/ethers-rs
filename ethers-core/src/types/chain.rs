@@ -260,6 +260,15 @@ impl FromStr for Chain {
     }
 }
 
+impl Serialize for Chain {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        s.serialize_str(chain.to_string().as_ref())
+    }
+}
+
 impl Chain {
     /// The blocktime varies from chain to chain.
     ///
