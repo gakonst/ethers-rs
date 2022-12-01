@@ -265,7 +265,7 @@ where
     }
 
     // This will close all active subscriptions. Each process listening for
-    // updates will receive a `None` value from the subscription stream.
+    // updates will observe the end of their subscription streams.
     fn close_all_subscriptions(&self) {
         for (_, sub) in self.subscriptions.iter() {
             sub.close_channel();
