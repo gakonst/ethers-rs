@@ -246,13 +246,11 @@ where
                     debug!("work complete");
                     break
                 }
-                match self.tick().await {
-                    Err(e) => {
-                        error!("Local Ws server error {:?}", e);
-                        self.close_all_subscriptions();
-                        break
-                    }
-                    _ => {}
+
+                if let Err(e) = self.tick().await {
+                    error!("Received a WebSocket error: {:?}", e);
+                    self.close_all_subscriptions();
+                    break
                 }
             }
         };
@@ -267,6 +265,7 @@ where
     // This will close all active subscriptions. Each process listening for
     // updates will observe the end of their subscription streams.
     fn close_all_subscriptions(&self) {
+        error!("Tearing down subscriptions");
         for (_, sub) in self.subscriptions.iter() {
             sub.close_channel();
         }
