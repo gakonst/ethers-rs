@@ -3,7 +3,7 @@ Your ethers application interacts with the blockchain through a [`Provider`](eth
 
 ## Available Middleware
 
-- [`Signer`](./signer/struct.SignerMiddleware.html): Signs transactions locally, with a private key or a hardware wallet. This middleware is compatible with any implementer of the [`Signer`](ethers_signers::Signer) trait.
+- [`Signer`](./signer/struct.SignerMiddleware.html): Signs transactions locally, with a private key or a hardware wallet.
 - [`Nonce Manager`](./nonce_manager/struct.NonceManagerMiddleware.html): Manages nonces locally. Allows to sign multiple consecutive transactions without waiting for them to hit the mempool.
 - [`Gas Escalator`](./gas_escalator/struct.GasEscalatorMiddleware.html): Bumps transactions gas price in the background to avoid getting them stuck in the memory pool. A [`GasEscalatorMiddleware`](crate::gas_escalator::GasEscalatorMiddleware) supports different escalation strategies (see [GasEscalator](crate::gas_escalator::GasEscalator)) and bump frequencies (see [Frequency](crate::gas_escalator::Frequency)).
 - [`Gas Oracle`](./gas_oracle/struct.GasOracleMiddleware.html): Allows getting
@@ -16,7 +16,7 @@ Your ethers application interacts with the blockchain through a [`Provider`](eth
 
 Each [`Middleware`](ethers_providers::Middleware) implements the trait [MiddlewareBuilder](crate::MiddlewareBuilder). This trait helps a developer to compose a custom [`Middleware`](ethers_providers::Middleware) stack.
 
-The following example shows how to build a [`Middleware`](ethers_providers::Middleware) starting from a [`Provider`](ethers_providers::Provider):
+The following example shows how to build a composed [`Middleware`](ethers_providers::Middleware) starting from a [`Provider`](ethers_providers::Provider):
 
 ```rust
 use ethers_providers::{Middleware, Provider, Http};
