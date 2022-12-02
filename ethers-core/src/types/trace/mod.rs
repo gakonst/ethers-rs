@@ -136,7 +136,7 @@ pub struct VMOperation {
     pub sub: Option<VMTrace>,
     /// The opcode of the executed instruction
     #[serde(rename = "op")]
-    pub op: ExectuedInstruction,
+    pub op: ExecutedInstruction,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize, Serialize)]
@@ -180,14 +180,14 @@ pub struct StorageDiff {
 #[serde(untagged)]
 #[allow(clippy::upper_case_acronyms)]
 /// Helper to classify the executed instruction
-pub enum ExectuedInstruction {
+pub enum ExecutedInstruction {
     /// The instruction is recognized
     Known(Opcode),
     /// The instruction is not recognized
     Unknown(String),
 }
 
-impl Default for ExectuedInstruction {
+impl Default for ExecutedInstruction {
     fn default() -> Self {
         Self::Known(Opcode::INVALID)
     }
@@ -229,13 +229,13 @@ mod tests {
     #[test]
     fn test_deserialize_unknown_opcode() {
         let example_opcodes = r#"["GAS", "CREATE2", "CUSTOMOP"]"#;
-        let parsed_opcodes: Vec<ExectuedInstruction> =
+        let parsed_opcodes: Vec<ExecutedInstruction> =
             serde_json::from_str(example_opcodes).unwrap();
         assert_eq!(
             vec![
                 ExecutedInstruction::Known(Opcode::GAS),
-                ExectuedInstruction::Known(Opcode::CREATE2),
-                ExectuedInstruction::Unknown("CUSTOMOP".to_string())
+                ExecutedInstruction::Known(Opcode::CREATE2),
+                ExecutedInstruction::Unknown("CUSTOMOP".to_string())
             ],
             parsed_opcodes
         )
