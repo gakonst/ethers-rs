@@ -354,6 +354,11 @@ impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
                 return true
             }
 
+            // This is an infura error code for `exceeded project rate limit`
+            if *code == -32005 {
+                return true
+            }
+
             // alternative alchemy error for specific IPs
             if *code == -32016 && message.contains("rate limit") {
                 return true
