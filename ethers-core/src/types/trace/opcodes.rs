@@ -2,9 +2,9 @@ use serde::{Deserialize, Serialize};
 
 // opcode descriptions taken from evm.codes https://github.com/comitylabs/evm.codes/blob/bc7f102808055d88365559d40c190c5bd6d164c3/opcodes.json
 // https://github.com/ethereum/go-ethereum/blob/2b1299b1c006077c56ecbad32e79fc16febe3dd6/core/vm/opcodes.go
-#[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 /// Name of executed EVM opcode
-pub enum OpCode {
+pub enum Opcode {
     // 0x0 range - arithmetic ops.
     /// Opcode 0x0 - Halts execution
     STOP,
@@ -67,7 +67,7 @@ pub enum OpCode {
 
     // 0x20 range - crypto.
     /// Opcode 0x20 - Compute Keccak-256 hash
-    SHA3,
+    KECCAK256,
 
     // 0x21 - 0x2F are invalid
 
@@ -335,7 +335,6 @@ pub enum OpCode {
     // 0xfd range - closures
     /// Opcode 0xFD - Halt execution reverting state changes but returning data and remaining gas
     REVERT,
-    #[default]
     /// Opcode 0xFE - Designated invalid instruction
     INVALID,
     /// Opcode 0xFF - Halt execution and register account for later deletion
