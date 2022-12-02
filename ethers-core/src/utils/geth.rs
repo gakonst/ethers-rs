@@ -339,9 +339,9 @@ impl Geth {
                 }
             }
             GethMode::NonDev(PrivateNetOptions { p2p_port, discovery }) => {
-                if let Some(p2p_port) = p2p_port {
-                    cmd.arg("--port").arg(p2p_port.to_string());
-                }
+                // automatically enable and set the p2p port if we are in non-dev mode
+                let port = if let Some(port) = p2p_port { port } else { unused_port() };
+                cmd.arg("--port").arg(port.to_string());
 
                 // disable discovery if the flag is set
                 if !discovery {
