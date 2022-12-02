@@ -11,6 +11,9 @@ pub use filter::*;
 mod geth;
 pub use geth::*;
 
+mod opcodes;
+pub use opcodes::*;
+
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 /// Description of the type of trace to make
 pub enum TraceType {
@@ -131,9 +134,9 @@ pub struct VMOperation {
     /// Subordinate trace of the CALL/CREATE if applicable.
     // #[serde(bound="VMTrace: Deserialize")]
     pub sub: Option<VMTrace>,
-    /// The executed opcode name
+    /// The opcode of the executed instruction
     #[serde(rename = "op")]
-    pub op: String,
+    pub op: ExectuedInstruction,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Deserialize, Serialize)]
@@ -173,6 +176,23 @@ pub struct StorageDiff {
     pub val: U256,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+#[allow(clippy::upper_case_acronyms)]
+/// Helper to classify the executed instruction
+pub enum ExectuedInstruction {
+    /// The instruction is recognized
+    Known(Opcode),
+    /// The instruction is not recognized
+    Unknown(String),
+}
+
+impl Default for ExectuedInstruction {
+    fn default() -> Self {
+        Self::Known(Opcode::INVALID)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -204,5 +224,20 @@ mod tests {
     #[test]
     fn test_deserialize_blocktraces() {
         let _traces: Vec<BlockTrace> = serde_json::from_str(EXAMPLE_TRACES).unwrap();
+    }
+
+    #[test]
+    fn test_deserialize_unknown_opcode() {
+        let example_opcodes = r#"["GAS", "CREATE2", "CUSTOMOP"]"#;
+        let parsed_opcodes: Vec<ExectuedInstruction> =
+            serde_json::from_str(example_opcodes).unwrap();
+        assert_eq!(
+            vec![
+                ExectuedInstruction::Known(Opcode::GAS),
+                ExectuedInstruction::Known(Opcode::CREATE2),
+                ExectuedInstruction::Unknown("CUSTOMOP".to_string())
+            ],
+            parsed_opcodes
+        )
     }
 }
