@@ -304,6 +304,11 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self
     }
 
+    fn convert_err(p: ProviderError) -> Self::Error {
+        // no conversion necessary
+        p
+    }
+
     fn default_sender(&self) -> Option<Address> {
         self.from
     }

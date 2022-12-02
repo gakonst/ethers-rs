@@ -159,6 +159,13 @@ pub trait Middleware: Sync + Send + Debug {
     /// The next middleware in the stack
     fn inner(&self) -> &Self::Inner;
 
+    /// Convert a provider error into the associated error type by successively
+    /// converting it to every intermediate middleware error
+    fn convert_err(p: ProviderError) -> Self::Error {
+        let e = <Self as Middleware>::Inner::convert_err(p);
+        FromErr::from(e)
+    }
+
     /// The HTTP or Websocket provider.
     fn provider(&self) -> &Provider<Self::Provider> {
         self.inner().provider()
