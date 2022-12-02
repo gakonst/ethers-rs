@@ -233,7 +233,7 @@ mod tests {
             serde_json::from_str(example_opcodes).unwrap();
         assert_eq!(
             vec![
-                ExectuedInstruction::Known(Opcode::GAS),
+                ExecutedInstruction::Known(Opcode::GAS),
                 ExectuedInstruction::Known(Opcode::CREATE2),
                 ExectuedInstruction::Unknown("CUSTOMOP".to_string())
             ],
