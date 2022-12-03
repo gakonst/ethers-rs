@@ -22,7 +22,7 @@ use utils::{apply_eip155, rsig_to_ethsig, verifying_key_to_address};
 /// The AWS Signer passes signing requests to the cloud service. AWS KMS keys
 /// are identified by a UUID, the `key_id`.
 ///
-/// Because the public key is unknwon, we retrieve it on instantiation of the
+/// Because the public key is unknown, we retrieve it on instantiation of the
 /// signer. This means that the new function is `async` and must be called
 /// within some runtime.
 ///
@@ -44,15 +44,15 @@ use utils::{apply_eip155, rsig_to_ethsig, verifying_key_to_address};
 /// let sig = signer.sign_message(H256::zero()).await?;
 /// ```
 #[derive(Clone)]
-pub struct AwsSigner<'a> {
-    kms: &'a rusoto_kms::KmsClient,
+pub struct AwsSigner {
+    kms: KmsClient,
     chain_id: u64,
     key_id: String,
     pubkey: VerifyingKey,
     address: Address,
 }
 
-impl<'a> std::fmt::Debug for AwsSigner<'a> {
+impl std::fmt::Debug for AwsSigner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AwsSigner")
             .field("key_id", &self.key_id)
@@ -63,7 +63,7 @@ impl<'a> std::fmt::Debug for AwsSigner<'a> {
     }
 }
 
-impl<'a> std::fmt::Display for AwsSigner<'a> {
+impl std::fmt::Display for AwsSigner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -146,21 +146,21 @@ where
     resp
 }
 
-impl<'a> AwsSigner<'a> {
+impl AwsSigner {
     /// Instantiate a new signer from an existing `KmsClient` and Key ID.
     ///
     /// This function retrieves the public key from AWS and calculates the
     /// Etheruem address. It is therefore `async`.
     #[instrument(err, skip(kms, key_id, chain_id), fields(key_id = %key_id.as_ref()))]
     pub async fn new<T>(
-        kms: &'a KmsClient,
+        kms: KmsClient,
         key_id: T,
         chain_id: u64,
-    ) -> Result<AwsSigner<'a>, AwsSignerError>
+    ) -> Result<AwsSigner, AwsSignerError>
     where
         T: AsRef<str>,
     {
-        let pubkey = request_get_pubkey(kms, &key_id).await.map(utils::decode_pubkey)??;
+        let pubkey = request_get_pubkey(&kms, &key_id).await.map(utils::decode_pubkey)??;
         let address = verifying_key_to_address(&pubkey);
 
         debug!(
@@ -177,7 +177,7 @@ impl<'a> AwsSigner<'a> {
     where
         T: AsRef<str>,
     {
-        request_get_pubkey(self.kms, key_id).await.map(utils::decode_pubkey)?
+        request_get_pubkey(&self.kms, key_id).await.map(utils::decode_pubkey)?
     }
 
     /// Fetch the pubkey associated with this signer's key ID
@@ -194,7 +194,7 @@ impl<'a> AwsSigner<'a> {
     where
         T: AsRef<str>,
     {
-        request_sign_digest(self.kms, key_id, digest).await.map(utils::decode_signature)?
+        request_sign_digest(&self.kms, key_id, digest).await.map(utils::decode_signature)?
     }
 
     /// Sign a digest with this signer's key
@@ -221,7 +221,7 @@ impl<'a> AwsSigner<'a> {
 }
 
 #[async_trait::async_trait]
-impl<'a> super::Signer for AwsSigner<'a> {
+impl super::Signer for AwsSigner {
     type Error = AwsSignerError;
 
     #[instrument(err, skip(message))]
@@ -320,7 +320,7 @@ mod tests {
         };
         setup_tracing();
         let client = env_client();
-        let signer = AwsSigner::new(&client, key_id, chain_id).await.unwrap();
+        let signer = AwsSigner::new(client, key_id, chain_id).await.unwrap();
 
         let message = vec![0, 1, 2, 3];
 
