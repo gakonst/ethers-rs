@@ -1303,8 +1303,7 @@ impl<P: JsonRpcClient> Provider<P> {
 
         if data.is_empty() {
             return Err(ProviderError::EnsError(format!(
-                "`{}` resolver ({:?}) is invalid.",
-                ens_name, resolver_address
+                "`{ens_name}` resolver ({resolver_address:?}) is invalid."
             )))
         }
 
@@ -2234,7 +2233,7 @@ mod tests {
         }
         .spawn();
 
-        let url = format!("http://127.0.0.1:{}", rpc_port);
+        let url = format!("http://127.0.0.1:{rpc_port}");
         let provider = Provider::try_from(url).unwrap();
         (geth, provider)
     }

@@ -464,8 +464,7 @@ fn parse_event_attributes(
                                                         return Err(Error::new(
                                                             meta.span(),
                                                             format!(
-                                                                "Expected hex signature: {:?}",
-                                                                err
+                                                                "Expected hex signature: {err:?}"
                                                             ),
                                                         )
                                                         .to_compile_error())

@@ -1709,10 +1709,9 @@ async fn can_install_solc_and_compile_version() {
             "Contract",
             format!(
                 r#"
-pragma solidity {};
+pragma solidity {version};
 contract Contract {{ }}
-"#,
-                version
+"#
             ),
         )
         .unwrap();

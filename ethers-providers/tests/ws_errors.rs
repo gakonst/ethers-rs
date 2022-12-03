@@ -1,5 +1,5 @@
-#![cfg(not(target_arch = "wasm32"))]
-use ethers_providers::{Middleware, Provider, StreamExt};
+#![allow(unused)]
+use ethers_providers::{Middleware, Provider, StreamExt, Ws};
 use futures_util::SinkExt;
 use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
@@ -17,11 +17,9 @@ const WS_ENDPOINT: &str = "127.0.0.1:9002";
 
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
-    use ethers_core::types::Filter;
-    use ethers_providers::{StreamExt, Ws};
-    use tokio_tungstenite::connect_async;
-
     use super::*;
+    use ethers_core::types::Filter;
+    use tokio_tungstenite::connect_async;
 
     #[tokio::test]
     async fn graceful_disconnect_on_ws_errors() {

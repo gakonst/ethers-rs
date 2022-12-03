@@ -586,7 +586,7 @@ impl MultiBindingsInner {
         writeln!(toml, "# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html")?;
         writeln!(toml)?;
         writeln!(toml, "[dependencies]")?;
-        writeln!(toml, r#"{}"#, crate_version)?;
+        writeln!(toml, r#"{crate_version}"#)?;
         Ok(toml)
     }
 
@@ -619,11 +619,10 @@ impl MultiBindingsInner {
             .ok_or_else(|| eyre::eyre!("couldn't find ethers or ethers-contract dependency"))?;
 
         if let Some(rev) = ethers.get("rev") {
-            Ok(format!("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", rev = {}, default-features = false, features = [\"abigen\"] }}", rev))
+            Ok(format!("ethers = {{ git = \"https://github.com/gakonst/ethers-rs\", rev = {rev}, default-features = false, features = [\"abigen\"] }}"))
         } else if let Some(version) = ethers.get("version") {
             Ok(format!(
-                "ethers = {{ version = {}, default-features = false, features = [\"abigen\"] }}",
-                version
+                "ethers = {{ version = {version}, default-features = false, features = [\"abigen\"] }}"
             ))
         } else {
             Ok(DEFAULT_ETHERS_DEP.to_string())

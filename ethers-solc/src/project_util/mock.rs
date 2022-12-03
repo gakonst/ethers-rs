@@ -475,10 +475,9 @@ contract {} {{}}
             format!(
                 r#"
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity {};
-{}
+pragma solidity {version};
+{imports}
             "#,
-                version, imports,
             )
         }
     }
