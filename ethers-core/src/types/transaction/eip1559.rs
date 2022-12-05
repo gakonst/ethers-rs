@@ -56,7 +56,8 @@ pub struct Eip1559TransactionRequest {
     /// Represents the maximum tx fee that will go to the miner as part of the user's
     /// fee payment. It serves 3 purposes:
     /// 1. Compensates miners for the uncle/ommer risk + fixed costs of including transaction in a
-    /// block; 2. Allows users with high opportunity costs to pay a premium to miners;
+    /// block;
+    /// 2. Allows users with high opportunity costs to pay a premium to miners;
     /// 3. In times where demand exceeds the available block space (i.e. 100% full, 30mm gas),
     /// this component allows first price auctions (i.e. the pre-1559 fee model) to happen on the
     /// priority fee.
