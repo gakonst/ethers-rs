@@ -1324,7 +1324,7 @@ contract Enum {
         name = "ethers-contract"
         version = "1.0.0"
         edition = "2018"
-        rust-version = "1.62"
+        rust-version = "1.64"
         authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
         license = "MIT OR Apache-2.0"
         description = "Smart contract bindings for the ethers-rs crate"
@@ -1370,7 +1370,7 @@ contract Enum {
         name = "ethers-contract"
         version = "1.0.0"
         edition = "2018"
-        rust-version = "1.62"
+        rust-version = "1.64"
         authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
         license = "MIT OR Apache-2.0"
         description = "Smart contract bindings for the ethers-rs crate"
@@ -1417,7 +1417,7 @@ contract Enum {
         name = "ethers-contract"
         version = "1.0.0"
         edition = "2018"
-        rust-version = "1.62"
+        rust-version = "1.64"
         authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
         license = "MIT OR Apache-2.0"
         description = "Smart contract bindings for the ethers-rs crate"
@@ -1464,7 +1464,7 @@ contract Enum {
         name = "ethers-contract"
         version = "1.0.0"
         edition = "2018"
-        rust-version = "1.62"
+        rust-version = "1.64"
         authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
         license = "MIT OR Apache-2.0"
         description = "Smart contract bindings for the ethers-rs crate"

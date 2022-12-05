@@ -2,7 +2,7 @@
 name = "ethers-addressbook"
 version = "1.0.2"
 edition = "2021"
-rust-version = "1.62"
+rust-version = "1.64"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
 description = "Common Ethereum name to address mappings"
