@@ -59,8 +59,7 @@ impl Serialize for NameOrAddress {
         match self {
             Self::Address(addr) => addr.serialize(serializer),
             Self::Name(name) => Err(SerializationError::custom(format!(
-                "cannot serialize ENS name {}, must be address",
-                name
+                "cannot serialize ENS name {name}, must be address"
             ))),
         }
     }

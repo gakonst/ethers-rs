@@ -587,8 +587,7 @@ impl Graph {
                 let mut msg = String::new();
                 self.format_imports_list(idx, &mut msg).unwrap();
                 errors.push(format!(
-                    "Discovered incompatible solidity versions in following\n: {}",
-                    msg
+                    "Discovered incompatible solidity versions in following\n: {msg}"
                 ));
                 erroneous_nodes.insert(idx);
             } else {
@@ -777,8 +776,7 @@ impl VersionedSources {
             let solc = if !version.is_installed() {
                 if self.offline {
                     return Err(SolcError::msg(format!(
-                        "missing solc \"{}\" installation in offline mode",
-                        version
+                        "missing solc \"{version}\" installation in offline mode"
                     )))
                 } else {
                     // install missing solc

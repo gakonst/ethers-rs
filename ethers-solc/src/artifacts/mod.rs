@@ -532,8 +532,7 @@ impl Libraries {
                 .ok_or_else(|| SolcError::msg(format!("failed to parse library address: {lib}")))?;
             if items.next().is_some() {
                 return Err(SolcError::msg(format!(
-                    "failed to parse, too many arguments passed: {}",
-                    lib
+                    "failed to parse, too many arguments passed: {lib}"
                 )))
             }
             libraries

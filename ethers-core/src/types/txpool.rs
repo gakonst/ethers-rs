@@ -91,7 +91,7 @@ impl Serialize for TxpoolInspectSummary {
         S: serde::Serializer,
     {
         let formatted_to = if let Some(to) = self.to {
-            format!("{:?}", to)
+            format!("{to:?}")
         } else {
             "contract creation".to_string()
         };
