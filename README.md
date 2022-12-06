@@ -36,7 +36,7 @@ Tests require the following installed:
 3. [`geth`](https://github.com/ethereum/go-ethereum)
 
 In addition, it is recommended that you set the `ETHERSCAN_API_KEY` environment variable
-for [the abigen via Etherscan](https://github.com/gakonst/ethers-rs/blob/master/ethers-contract/tests/abigen.rs) tests.
+for [the abigen via Etherscan](https://github.com/gakonst/ethers-rs/blob/master/ethers-contract/tests/it/abigen.rs) tests.
 You can get one [here](https://etherscan.io/apis).
 
 ### EVM-compatible chains support
