@@ -60,10 +60,10 @@ impl Context {
         };
 
         let doc = format!(
-            "Custom Error type `{}` with signature `{}` and selector `{:?}`",
+            "Custom Error type `{}` with signature `{}` and selector `0x{}`",
             error.name,
             abi_signature,
-            error.selector()
+            hex::encode(&error.selector()[..])
         );
         let abi_signature_doc = util::expand_doc(&doc);
         let ethers_contract = ethers_contract_crate();

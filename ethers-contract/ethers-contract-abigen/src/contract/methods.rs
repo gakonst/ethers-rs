@@ -125,10 +125,10 @@ impl Context {
         let function_name = &function.name;
         let abi_signature = function.abi_signature();
         let doc = format!(
-            "Container type for all input parameters for the `{}` function with signature `{}` and selector `{:?}`",
+            "Container type for all input parameters for the `{}` function with signature `{}` and selector `0x{}`",
             function.name,
             abi_signature,
-            function.selector()
+            hex::encode(&function.selector()[..])
         );
         let abi_signature_doc = util::expand_doc(&doc);
         let ethers_contract = ethers_contract_crate();
@@ -177,10 +177,10 @@ impl Context {
         };
         let abi_signature = function.abi_signature();
         let doc = format!(
-            "Container type for all return fields from the `{}` function with signature `{}` and selector `{:?}`",
+            "Container type for all return fields from the `{}` function with signature `{}` and selector `0x{}`",
             function.name,
             abi_signature,
-            function.selector()
+            hex::encode(&function.selector()[..])
         );
         let abi_signature_doc = util::expand_doc(&doc);
         let ethers_contract = ethers_contract_crate();
