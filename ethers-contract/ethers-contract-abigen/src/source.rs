@@ -349,8 +349,7 @@ mod tests {
         assert_eq!(parsed, Source::String(src.to_owned()));
 
         let hardhat_src = format!(
-            r#"{{"_format": "hh-sol-artifact-1", "contractName": "Verifier", "sourceName": "contracts/verifier.sol", "abi": {}, "bytecode": "0x", "deployedBytecode": "0x", "linkReferences": {{}}, "deployedLinkReferences": {{}}}}"#,
-            src,
+            r#"{{"_format": "hh-sol-artifact-1", "contractName": "Verifier", "sourceName": "contracts/verifier.sol", "abi": {src}, "bytecode": "0x", "deployedBytecode": "0x", "linkReferences": {{}}, "deployedLinkReferences": {{}}}}"#,
         );
         let hardhat_parsed = Source::parse(&hardhat_src).unwrap();
         assert_eq!(hardhat_parsed, Source::String(hardhat_src));

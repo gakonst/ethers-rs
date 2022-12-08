@@ -39,10 +39,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
         r#"
         Gas price
         ---------------
-        {:>10.2} gwei
-        {:>10.8} usd
-        "#,
-        gwei, usd_per_gas
+        {gwei:>10.2} gwei
+        {usd_per_gas:>10.8} usd
+        "#
     );
     Ok(())
 }
