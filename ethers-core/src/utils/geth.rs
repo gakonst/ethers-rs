@@ -430,11 +430,4 @@ mod tests {
         let geth = Geth::new().spawn();
         assert!(geth.p2p_port().is_none());
     }
-
-    #[test]
-    fn test_rpc_port_exists() {
-        // if a rpc port is explicitly set, it should be available
-        let geth = Geth::new().port(1234u16).spawn();
-        assert_eq!(geth.port(), 1234);
-    }
 }
