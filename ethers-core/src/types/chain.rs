@@ -69,6 +69,9 @@ pub enum Chain {
     Sepolia = 11155111,
     Aurora = 1313161554,
     AuroraTestnet = 1313161555,
+    Celo = 42220,
+    CeloAlfajores = 44787,
+    CeloBaklava = 62320,
 }
 
 // === impl Chain ===
@@ -117,6 +120,9 @@ impl fmt::Display for Chain {
             Chain::EvmosTestnet => "evmos-testnet",
             Chain::Aurora => "aurora",
             Chain::AuroraTestnet => "aurora-testnet",
+            Chain::Celo => "celo",
+            Chain::CeloAlfajores => "celo-alfajores",
+            Chain::CeloBaklava => "celo-baklava",
         };
 
         f.pad(chain)
@@ -195,6 +201,9 @@ impl TryFrom<u64> for Chain {
             9000 => Chain::EvmosTestnet,
             1313161554 => Chain::Aurora,
             1313161555 => Chain::AuroraTestnet,
+            42220 => Chain::Celo,
+            44787 => Chain::CeloAlfajores,
+            62320 => Chain::CeloBaklava,
             _ => return Err(ParseChainError(chain.to_string())),
         })
     }
@@ -255,6 +264,9 @@ impl FromStr for Chain {
             "emerald-testnet" => Chain::EmeraldTestnet,
             "aurora" => Chain::Aurora,
             "aurora-testnet" => Chain::AuroraTestnet,
+            "celo" => Chain::Celo,
+            "celo-alfajores" => Chain::CeloAlfajores,
+            "celo-baklava" => Chain::CeloBaklava,
             _ => return Err(ParseChainError(chain.to_owned())),
         })
     }
@@ -293,6 +305,7 @@ impl Chain {
             Chain::Oasis => 5_500,
             Chain::Emerald => 6_000,
             Chain::Dev | Chain::AnvilHardhat => 200,
+            Chain::Celo | Chain::CeloAlfajores | Chain::CeloBaklava => 5_000,
             // Explictly handle all network to make it easier not to forget this match when new
             // networks are added.
             Chain::Morden |
@@ -411,6 +424,15 @@ impl Chain {
             }
             Chain::Evmos => ("https://evm.evmos.org/api", "https://evm.evmos.org/"),
             Chain::EvmosTestnet => ("https://evm.evmos.dev/api", "https://evm.evmos.dev/"),
+            Chain::Celo => {
+                ("https://explorer.celo.org/mainnet", "https://explorer.celo.org/mainnet/api")
+            }
+            Chain::CeloAlfajores => {
+                ("https://explorer.celo.org/alfajores", "https://explorer.celo.org/alfajores/api")
+            }
+            Chain::CeloBaklava => {
+                ("https://explorer.celo.org/baklava", "https://explorer.celo.org/baklava/api")
+            }
             Chain::AnvilHardhat | Chain::Dev | Chain::Morden | Chain::MoonbeamDev => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
@@ -440,7 +462,10 @@ impl Chain {
                 Chain::Rsk |
                 Chain::Oasis |
                 Chain::Emerald |
-                Chain::EmeraldTestnet,
+                Chain::EmeraldTestnet |
+                Chain::Celo |
+                Chain::CeloAlfajores |
+                Chain::CeloBaklava,
         )
     }
 }

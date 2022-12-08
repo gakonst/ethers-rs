@@ -1,4 +1,4 @@
-use ethers::{abi::AbiDecode, prelude::*, utils::keccak256};
+use ethers::{abi::AbiDecode, prelude::*};
 use eyre::Result;
 use std::sync::Arc;
 

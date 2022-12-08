@@ -37,8 +37,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Note that `log` has type AnswerUpdatedFilter
     while let Some(Ok((log, meta))) = stream.next().await {
-        println!("{:?}", log);
-        println!("{:?}", meta)
+        println!("{log:?}");
+        println!("{meta:?}")
     }
 
     Ok(())

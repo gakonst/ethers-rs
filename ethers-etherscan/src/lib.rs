@@ -98,7 +98,10 @@ impl Client {
             Chain::Cronos |
             Chain::CronosTestnet |
             Chain::Aurora |
-            Chain::AuroraTestnet => std::env::var("ETHERSCAN_API_KEY")?,
+            Chain::AuroraTestnet |
+            Chain::Celo |
+            Chain::CeloAlfajores |
+            Chain::CeloBaklava => std::env::var("ETHERSCAN_API_KEY")?,
             Chain::Fantom | Chain::FantomTestnet => {
                 std::env::var("FTMSCAN_API_KEY").or_else(|_| std::env::var("FANTOMSCAN_API_KEY"))?
             }
