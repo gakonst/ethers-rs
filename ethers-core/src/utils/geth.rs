@@ -105,7 +105,7 @@ impl GethInstance {
 impl Drop for GethInstance {
     fn drop(&mut self) {
         let pid = Pid::from_raw(self.pid.id() as i32);
-        kill(pid, Signal::SIGTERM).expect("could not kill geth");
+        kill(pid, Signal::SIGINT).expect("could not kill geth");
     }
 }
 
