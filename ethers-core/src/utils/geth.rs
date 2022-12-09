@@ -1,8 +1,3 @@
-use nix::{
-    sys::signal::{kill, Signal},
-    unistd::Pid,
-};
-
 use super::{unused_port, Genesis};
 use crate::types::H256;
 use std::{
@@ -104,8 +99,7 @@ impl GethInstance {
 
 impl Drop for GethInstance {
     fn drop(&mut self) {
-        let pid = Pid::from_raw(self.pid.id() as i32);
-        kill(pid, Signal::SIGINT).expect("could not kill geth");
+        self.pid.kill().expect("could not kill geth");
     }
 }
 
