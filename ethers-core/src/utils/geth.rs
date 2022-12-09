@@ -411,29 +411,54 @@ impl Geth {
     }
 }
 
+// These tests should use a different datadir for each `Geth` spawned
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn p2p_port() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir_path = temp_dir.path().to_path_buf();
+
         // disabling discovery should put the geth instance into non-dev mode, and it should have a
         // p2p port.
-        let geth = Geth::new().disable_discovery().spawn();
-        assert!(geth.p2p_port().is_some());
+        let geth = Geth::new().disable_discovery().data_dir(temp_dir_path).spawn();
+        let p2p_port = geth.p2p_port();
+
+        drop(geth);
+        temp_dir.close().unwrap();
+
+        assert!(p2p_port.is_some());
     }
 
     #[test]
     fn explicit_p2p_port() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir_path = temp_dir.path().to_path_buf();
+
         // if a p2p port is explicitly set, it should be used
-        let geth = Geth::new().p2p_port(1234).spawn();
-        assert_eq!(geth.p2p_port(), Some(1234));
+        let geth = Geth::new().p2p_port(1234).data_dir(temp_dir_path).spawn();
+        let p2p_port = geth.p2p_port();
+
+        drop(geth);
+        temp_dir.close().unwrap();
+
+        assert_eq!(p2p_port, Some(1234));
     }
 
     #[test]
     fn dev_mode() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir_path = temp_dir.path().to_path_buf();
+
         // dev mode should not have a p2p port, and dev should be the default
-        let geth = Geth::new().spawn();
-        assert!(geth.p2p_port().is_none());
+        let geth = Geth::new().data_dir(temp_dir_path).spawn();
+        let p2p_port = geth.p2p_port();
+
+        drop(geth);
+        temp_dir.close().unwrap();
+
+        assert!(p2p_port.is_none());
     }
 }
