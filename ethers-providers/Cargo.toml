@@ -26,7 +26,7 @@ thiserror = { version = "1.0", default-features = false }
 url = { version = "2.3.1", default-features = false }
 auto_impl = { version = "1.0.1", default-features = false }
 http = { version = "0.2" }
-base64 = "0.13"
+base64 = "0.20"
 
 # required for implementing stream on the filters
 futures-core = { version = "0.3.16", default-features = false }
