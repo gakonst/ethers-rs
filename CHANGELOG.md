@@ -103,6 +103,7 @@
 - [#842](https://github.com/gakonst/ethers-rs/issues/842) Add support for I256 types in `parse_units` and `format_units`.
   Added `twos_complement` function for I256.
 - [#1934](https://github.com/gakonst/ethers-rs/pull/1934) Allow 16 calls in multicall.
+- [#1941](https://github.com/gakonst/ethers-rs/pull/1941) Add `add_calls` and `call_array` for `Multicall`.
 
 ## ethers-contract-abigen
 
