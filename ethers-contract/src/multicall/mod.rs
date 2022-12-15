@@ -608,7 +608,7 @@ impl<M: Middleware> Multicall<M> {
     /// # }
     /// ```
     pub async fn call<D: Detokenize>(&self) -> Result<D, M> {
-        assert!(self.calls.len() < 16, "Cannot decode more than 16 calls");
+        assert!(self.calls.len() <= 16, "Cannot decode more than 16 calls");
         let tokens = self.call_raw().await?;
         let tokens = vec![Token::Tuple(tokens)];
         let data = D::from_tokens(tokens).map_err(ContractError::DetokenizationError)?;
