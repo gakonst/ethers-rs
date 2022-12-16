@@ -1,12 +1,13 @@
+use std::collections::HashMap;
+
 use super::{from_gwei_f64, GasCategory, GasOracle, GasOracleError, Result, GWEI_TO_WEI_U256};
 use async_trait::async_trait;
 use ethers_core::types::U256;
 use reqwest::{header::AUTHORIZATION, Client};
 use serde::Deserialize;
-use std::collections::HashMap;
 use url::Url;
 
-const URL: &str = "https://api.blocknative.com/gasestimate/blockestimate";
+const URL: &str = "https://api.blocknative.com/gasprices/blockprices";
 
 /// A client over HTTP for the [BlockNative](https://www.blocknative.com/gas-estimator) gas tracker API
 /// that implements the `GasOracle` trait.
@@ -22,37 +23,37 @@ pub struct BlockNative {
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Response {
-    system: Option<String>,
-    network: Option<String>,
-    unit: Option<String>,
-    max_price: Option<u64>,
-    block_estimate: Vec<BlockPrice>,
-    estimated_base_fees: Vec<HashMap<String, Vec<BaseFeeEstimate>>>,
+    pub system: String,
+    pub network: String,
+    pub unit: String,
+    pub max_price: u64,
+    pub block_prices: Vec<BlockPrice>,
+    pub estimated_base_fees: Option<Vec<HashMap<String, Vec<BaseFeeEstimate>>>>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct BlockPrice {
-    block_number: u64,
-    estimated_transaction_count: u64,
-    base_fee_per_gas: f64,
-    estimated_estimate: Vec<GasEstimate>,
+    pub block_number: u64,
+    pub estimated_transaction_count: u64,
+    pub base_fee_per_gas: f64,
+    pub estimated_prices: Vec<GasEstimate>,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GasEstimate {
-    confidence: u64,
-    price: u64,
-    max_priority_fee_per_gas: f64,
-    max_fee_per_gas: f64,
+    pub confidence: u64,
+    pub price: u64,
+    pub max_priority_fee_per_gas: f64,
+    pub max_fee_per_gas: f64,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct BaseFeeEstimate {
-    confidence: u64,
-    base_fee: f64,
+    pub confidence: u64,
+    pub base_fee: f64,
 }
 
 impl Response {
@@ -60,15 +61,21 @@ impl Response {
     pub fn estimate_from_category(&self, gas_category: &GasCategory) -> Result<GasEstimate> {
         let confidence = gas_category_to_confidence(gas_category);
         let price = self
-            .block_estimate
+            .block_prices
             .first()
             .ok_or(GasOracleError::InvalidResponse)?
-            .estimated_estimate
+            .estimated_prices
             .iter()
             .find(|p| p.confidence == confidence)
             .ok_or(GasOracleError::GasCategoryNotSupported)?
             .clone();
         Ok(price)
+    }
+}
+
+impl Default for BlockNative {
+    fn default() -> Self {
+        Self::new(None)
     }
 }
 

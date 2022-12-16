@@ -3,8 +3,8 @@
 use async_trait::async_trait;
 use ethers_core::{types::*, utils::Anvil};
 use ethers_middleware::gas_oracle::{
-    Etherchain, Etherscan, GasCategory, GasNow, GasOracle, GasOracleError, GasOracleMiddleware,
-    Polygon, ProviderOracle, Result,
+    BlockNative, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, GasOracleError,
+    GasOracleMiddleware, Polygon, ProviderOracle, Result,
 };
 use ethers_providers::{Http, Middleware, Provider};
 use serial_test::serial;
@@ -65,6 +65,13 @@ async fn provider_oracle() {
     let provider_oracle = ProviderOracle::new(provider);
     let gas = provider_oracle.fetch().await.unwrap();
     assert_eq!(gas, expected_gas_price);
+}
+
+#[tokio::test]
+async fn blocknative() {
+    let gas_now_oracle = BlockNative::default();
+    let gas_price = gas_now_oracle.fetch().await.unwrap();
+    assert!(gas_price > U256::zero());
 }
 
 #[tokio::test]
