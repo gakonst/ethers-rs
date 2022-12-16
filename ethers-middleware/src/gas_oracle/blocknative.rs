@@ -66,9 +66,8 @@ impl Response {
             .estimated_prices
             .iter()
             .find(|p| p.confidence == confidence)
-            .ok_or(GasOracleError::GasCategoryNotSupported)?
-            .clone();
-        Ok(price)
+            .ok_or(GasOracleError::GasCategoryNotSupported)?;
+        Ok(*price)
     }
 }
 
