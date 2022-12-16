@@ -24,17 +24,17 @@ pub struct Polygon {
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Response {
-    estimated_base_fee: f64,
-    safe_low: GasEstimate,
-    standard: GasEstimate,
-    fast: GasEstimate,
+    pub estimated_base_fee: f64,
+    pub safe_low: GasEstimate,
+    pub standard: GasEstimate,
+    pub fast: GasEstimate,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GasEstimate {
-    max_priority_fee: f64,
-    max_fee: f64,
+    pub max_priority_fee: f64,
+    pub max_fee: f64,
 }
 
 impl Response {
