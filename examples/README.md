@@ -4,12 +4,12 @@
     - [ ] Boot anvil
     - [ ] Deploy contracts
     - [ ] Testing
-- [ ] Big numbers
-    - [ ] Comparison and equivalence
-    - [ ] Conversion
-    - [ ] Creating Instances
-    - [ ] Math operations
-    - [ ] Two's complement ???
+- [x] Big numbers
+    - [x] Comparison and equivalence
+    - [x] Conversion
+    - [x] Creating Instances
+    - [x] Math operations
+    - [x] Utilities
 - [ ] Contracts
     - [ ] Abigen
     - [ ] Creating Instances

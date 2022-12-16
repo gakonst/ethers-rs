@@ -184,3 +184,23 @@ required-features = ["rustls", "ws"]
 name = "subscribe_contract_events_with_meta"
 path = "examples/subscribe_contract_events_with_meta.rs"
 required-features = ["rustls", "ws"]
+
+[[example]]
+name = "bn_comparison_equivalence"
+path = "examples/big-numbers/bn_comparison_equivalence.rs"
+
+[[example]]
+name = "bn_conversion"
+path = "examples/big-numbers/bn_conversion.rs"
+
+[[example]]
+name = "bn_create_instances"
+path = "examples/big-numbers/bn_create_instances.rs"
+
+[[example]]
+name = "bn_math_operations"
+path = "examples/big-numbers/bn_math_operations.rs"
+
+[[example]]
+name = "bn_utilities"
+path = "examples/big-numbers/bn_utilities.rs"
