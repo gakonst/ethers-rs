@@ -23,13 +23,13 @@ use ethers_providers::{Middleware, Provider, Http};
 use std::sync::Arc;
 use std::convert::TryFrom;
 use ethers_signers::{LocalWallet, Signer};
-use ethers_middleware::{*,gas_oracle::*};
+use ethers_middleware::{gas_oracle::{GasOracle, GasNow}, MiddlewareBuilder};
 
 fn builder_example() {
     let key = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169";
     let signer = key.parse::<LocalWallet>().unwrap();
     let address = signer.address();
-    let gas_oracle = EthGasStation::new(None);
+    let gas_oracle = GasNow::new();
 
     let provider = Provider::<Http>::try_from("http://localhost:8545")
         .unwrap()
@@ -58,7 +58,7 @@ fn builder_example_wrap_into() {
         .unwrap()
         .wrap_into(|p| GasEscalatorMiddleware::new(p, escalator, Frequency::PerBlock))
         .wrap_into(|p| SignerMiddleware::new(p, signer))
-        .wrap_into(|p| GasOracleMiddleware::new(p, EthGasStation::new(None)))
+        .wrap_into(|p| GasOracleMiddleware::new(p, GasNow::new()))
         .wrap_into(|p| NonceManagerMiddleware::new(p, address)); // Outermost layer
 }
 ```
@@ -72,7 +72,7 @@ use ethers_providers::{Provider, Http};
 use ethers_signers::{LocalWallet, Signer};
 use ethers_middleware::{
     gas_escalator::{GasEscalatorMiddleware, GeometricGasPrice, Frequency},
-    gas_oracle::{GasOracleMiddleware, EthGasStation, GasCategory},
+    gas_oracle::{GasOracleMiddleware, GasCategory, GasNow},
     signer::SignerMiddleware,
     nonce_manager::NonceManagerMiddleware,
 };
@@ -91,8 +91,8 @@ let signer = LocalWallet::new(&mut rand::thread_rng());
 let address = signer.address();
 let provider = SignerMiddleware::new(provider, signer);
 
-// Use EthGasStation as the gas oracle
-let gas_oracle = EthGasStation::new(None);
+// Use GasNow as the gas oracle
+let gas_oracle = GasNow::new();
 let provider = GasOracleMiddleware::new(provider, gas_oracle);
 
 // Manage nonces locally

@@ -16,14 +16,14 @@ use ethers_signers::Signer;
 /// use std::sync::Arc;
 /// use std::convert::TryFrom;
 /// use ethers_signers::{LocalWallet, Signer};
-/// use ethers_middleware::{*,gas_escalator::*,gas_oracle::*};
+/// use ethers_middleware::{*, gas_escalator::*, gas_oracle::*};
 ///
 /// fn builder_example() {
 ///     let key = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169";
 ///     let signer = key.parse::<LocalWallet>().unwrap();
 ///     let address = signer.address();
 ///     let escalator = GeometricGasPrice::new(1.125, 60_u64, None::<u64>);
-///     let gas_oracle = EthGasStation::new(None);
+///     let gas_oracle = GasNow::new();
 ///
 ///     let provider = Provider::<Http>::try_from("http://localhost:8545")
 ///         .unwrap()
@@ -43,7 +43,7 @@ use ethers_signers::Signer;
 ///         .unwrap()
 ///         .wrap_into(|p| GasEscalatorMiddleware::new(p, escalator, Frequency::PerBlock))
 ///         .wrap_into(|p| SignerMiddleware::new(p, signer))
-///         .wrap_into(|p| GasOracleMiddleware::new(p, EthGasStation::new(None)))
+///         .wrap_into(|p| GasOracleMiddleware::new(p, GasNow::new()))
 ///         .wrap_into(|p| NonceManagerMiddleware::new(p, address)); // Outermost layer
 /// }
 /// ```

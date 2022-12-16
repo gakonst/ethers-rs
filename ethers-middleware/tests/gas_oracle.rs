@@ -1,16 +1,14 @@
 #![cfg(not(target_arch = "wasm32"))]
 
-use std::convert::TryFrom;
-
 use async_trait::async_trait;
-
 use ethers_core::{types::*, utils::Anvil};
 use ethers_middleware::gas_oracle::{
-    EthGasStation, Etherchain, Etherscan, GasCategory, GasOracle, GasOracleError,
-    GasOracleMiddleware,
+    Etherchain, Etherscan, GasCategory, GasNow, GasOracle, GasOracleError, GasOracleMiddleware,
+    Polygon, ProviderOracle, Result,
 };
 use ethers_providers::{Http, Middleware, Provider};
 use serial_test::serial;
+use std::convert::TryFrom;
 
 #[derive(Debug)]
 struct FakeGasOracle {
@@ -20,17 +18,18 @@ struct FakeGasOracle {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl GasOracle for FakeGasOracle {
-    async fn fetch(&self) -> Result<U256, GasOracleError> {
+    async fn fetch(&self) -> Result<U256> {
         Ok(self.gas_price)
     }
 
-    async fn estimate_eip1559_fees(&self) -> Result<(U256, U256), GasOracleError> {
+    async fn estimate_eip1559_fees(&self) -> Result<(U256, U256)> {
         Err(GasOracleError::Eip1559EstimationNotSupported)
     }
 }
 
 #[tokio::test]
-async fn using_gas_oracle() {
+#[serial]
+async fn provider_using_gas_oracle() {
     let anvil = Anvil::new().spawn();
 
     let from = anvil.addresses()[0];
@@ -38,11 +37,11 @@ async fn using_gas_oracle() {
     // connect to the network
     let provider = Provider::<Http>::try_from(anvil.endpoint()).unwrap();
 
-    // initial base fee
-    let base_fee = 1_000_000_000u64;
     // assign a gas oracle to use
-    let gas_oracle = FakeGasOracle { gas_price: (base_fee + 1337).into() };
-    let expected_gas_price = gas_oracle.fetch().await.unwrap();
+    let expected_gas_price = U256::from(1234567890_u64);
+    let gas_oracle = FakeGasOracle { gas_price: expected_gas_price };
+    let gas_price = gas_oracle.fetch().await.unwrap();
+    assert_eq!(gas_price, expected_gas_price);
 
     let provider = GasOracleMiddleware::new(provider, gas_oracle);
 
@@ -55,35 +54,63 @@ async fn using_gas_oracle() {
 }
 
 #[tokio::test]
-async fn eth_gas_station() {
-    // initialize and fetch gas estimates from EthGasStation
-    let eth_gas_station_oracle = EthGasStation::default();
-    let data = eth_gas_station_oracle.fetch().await;
-    data.unwrap();
+#[serial]
+async fn provider_oracle() {
+    // spawn anvil and connect to it
+    let anvil = Anvil::new().spawn();
+    let provider = Provider::<Http>::try_from(anvil.endpoint()).unwrap();
+
+    // assert that provider.get_gas_price() and oracle.fetch() return the same value
+    let expected_gas_price = provider.get_gas_price().await.unwrap();
+    let provider_oracle = ProviderOracle::new(provider);
+    let gas = provider_oracle.fetch().await.unwrap();
+    assert_eq!(gas, expected_gas_price);
 }
 
 #[tokio::test]
-#[serial]
+#[ignore = "ETHGasStation is shutting down: https://twitter.com/ETHGasStation/status/1597341610777317376"]
+#[allow(deprecated)]
+async fn eth_gas_station() {
+    let eth_gas_station_oracle = ethers_middleware::gas_oracle::EthGasStation::default();
+    let gas_price = eth_gas_station_oracle.fetch().await.unwrap();
+    assert!(gas_price > U256::zero());
+}
+
+#[tokio::test]
+#[ignore = "Etherchain / beaconcha.in's `gasPriceOracle` API currently returns 404: https://www.etherchain.org/api/gasPriceOracle"]
+async fn etherchain() {
+    let etherchain_oracle = Etherchain::default();
+    let gas_price = etherchain_oracle.fetch().await.unwrap();
+    assert!(gas_price > U256::zero());
+}
+
+#[tokio::test]
 async fn etherscan() {
     let etherscan_client = ethers_etherscan::Client::new_from_env(Chain::Mainnet).unwrap();
 
     // initialize and fetch gas estimates from Etherscan
     // since etherscan does not support `fastest` category, we expect an error
     let etherscan_oracle = Etherscan::new(etherscan_client.clone()).category(GasCategory::Fastest);
-    let data = etherscan_oracle.fetch().await;
-    data.unwrap_err();
+    let error = etherscan_oracle.fetch().await.unwrap_err();
+    assert!(matches!(error, GasOracleError::GasCategoryNotSupported));
 
     // but fetching the `standard` gas price should work fine
     let etherscan_oracle = Etherscan::new(etherscan_client).category(GasCategory::SafeLow);
 
-    let data = etherscan_oracle.fetch().await;
-    data.unwrap();
+    let gas_price = etherscan_oracle.fetch().await.unwrap();
+    assert!(gas_price > U256::zero());
 }
 
 #[tokio::test]
-async fn etherchain() {
-    // initialize and fetch gas estimates from Etherchain
-    let etherchain_oracle = Etherchain::default().category(GasCategory::Fast);
-    let data = etherchain_oracle.fetch().await;
-    data.unwrap();
+async fn gas_now() {
+    let gas_now_oracle = GasNow::default();
+    let gas_price = gas_now_oracle.fetch().await.unwrap();
+    assert!(gas_price > U256::zero());
+}
+
+#[tokio::test]
+async fn polygon() {
+    let polygon_oracle = Polygon::default();
+    let gas_price = polygon_oracle.fetch().await.unwrap();
+    assert!(gas_price > U256::zero());
 }
