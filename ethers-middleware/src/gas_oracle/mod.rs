@@ -100,9 +100,8 @@ pub enum GasOracleError {
 /// use ethers_middleware::gas_oracle::{GasCategory, GasNow, GasOracle};
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// let etherscan_oracle = GasNow::default().category(GasCategory::SafeLow);
-///
-/// let gas_price = etherscan_oracle.fetch().await?;
+/// let oracle = GasNow::default().category(GasCategory::SafeLow);
+/// let gas_price = oracle.fetch().await?;
 /// assert!(gas_price > U256::zero());
 /// # Ok(())
 /// # }
@@ -111,23 +110,41 @@ pub enum GasOracleError {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 #[auto_impl(&, Box, Arc)]
 pub trait GasOracle: Send + Sync + Debug {
-    /// Makes an asynchronous HTTP query to the underlying `GasOracle`
+    /// Makes an asynchronous HTTP query to the underlying [`GasOracle`] to fetch the current gas
+    /// price estimate.
     ///
     /// # Example
     ///
-    /// ```
-    /// use ethers_middleware::{
-    ///     gas_oracle::{Etherchain, GasCategory, GasOracle},
-    /// };
+    /// ```no_run
+    /// use ethers_core::types::U256;
+    /// use ethers_middleware::gas_oracle::{GasCategory, GasNow, GasOracle};
     ///
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// let etherchain_oracle = Etherchain::new().category(GasCategory::Fastest);
-    /// let data = etherchain_oracle.fetch().await?;
+    /// let oracle = GasNow::default().category(GasCategory::SafeLow);
+    /// let gas_price = oracle.fetch().await?;
+    /// assert!(gas_price > U256::zero());
     /// # Ok(())
     /// # }
     /// ```
     async fn fetch(&self) -> Result<U256>;
 
+    /// Makes an asynchronous HTTP query to the underlying [`GasOracle`] to fetch the current max
+    /// gas fee and priority gas fee estimates.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use ethers_core::types::U256;
+    /// use ethers_middleware::gas_oracle::{GasCategory, GasNow, GasOracle};
+    ///
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+    /// let oracle = GasNow::default().category(GasCategory::SafeLow);
+    /// let (max_fee, priority_fee) = oracle.fetch().await?;
+    /// assert!(max_fee > U256::zero());
+    /// assert!(priority_fee > U256::zero());
+    /// # Ok(())
+    /// # }
+    /// ```
     async fn estimate_eip1559_fees(&self) -> Result<(U256, U256)>;
 }
 
