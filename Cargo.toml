@@ -204,3 +204,35 @@ path = "examples/big-numbers/bn_math_operations.rs"
 [[example]]
 name = "bn_utilities"
 path = "examples/big-numbers/bn_utilities.rs"
+
+[[example]]
+name = "builder"
+path = "examples/middleware/builder.rs"
+
+[[example]]
+name = "gas_escalator"
+path = "examples/middleware/gas_escalator.rs"
+
+[[example]]
+name = "gas_oracle"
+path = "examples/middleware/gas_oracle.rs"
+
+[[example]]
+name = "nonce_manager"
+path = "examples/middleware/nonce_manager.rs"
+
+[[example]]
+name = "policy"
+path = "examples/middleware/policy.rs"
+
+[[example]]
+name = "signer"
+path = "examples/middleware/signer.rs"
+
+[[example]]
+name = "timelag"
+path = "examples/middleware/timelag.rs"
+
+[[example]]
+name = "transformer"
+path = "examples/middleware/transformer.rs"
