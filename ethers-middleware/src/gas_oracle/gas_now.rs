@@ -35,7 +35,8 @@ pub struct ResponseData {
 }
 
 impl Response {
-    fn gas_from_category(&self, gas_category: GasCategory) -> u64 {
+    #[inline]
+    pub fn gas_from_category(&self, gas_category: GasCategory) -> u64 {
         self.data.gas_from_category(gas_category)
     }
 }

@@ -41,7 +41,7 @@ pub(crate) const GWEI_TO_WEI_U256: U256 = U256([0, 0, 0, GWEI_TO_WEI]);
 
 pub type Result<T, E = GasOracleError> = std::result::Result<T, E>;
 
-/// Generic gas price categories received from a [`GasOracle`].
+/// Generic [`GasOracle`] gas price categories.
 #[derive(Clone, Copy, Default, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GasCategory {
     SafeLow,

@@ -66,7 +66,7 @@ pub struct Response {
 
 impl Response {
     #[inline]
-    fn gas_from_category(&self, gas_category: GasCategory) -> u64 {
+    pub fn gas_from_category(&self, gas_category: GasCategory) -> u64 {
         match gas_category {
             GasCategory::SafeLow => self.safe_low,
             GasCategory::Standard => self.average,

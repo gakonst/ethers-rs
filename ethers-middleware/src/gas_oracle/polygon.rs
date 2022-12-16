@@ -38,7 +38,8 @@ pub struct GasEstimate {
 }
 
 impl Response {
-    fn estimate_from_category(&self, gas_category: GasCategory) -> GasEstimate {
+    #[inline]
+    pub fn estimate_from_category(&self, gas_category: GasCategory) -> GasEstimate {
         match gas_category {
             GasCategory::SafeLow => self.safe_low,
             GasCategory::Standard => self.standard,
