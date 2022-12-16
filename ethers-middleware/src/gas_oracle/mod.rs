@@ -139,7 +139,7 @@ pub trait GasOracle: Send + Sync + Debug {
     ///
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// let oracle = GasNow::default().category(GasCategory::SafeLow);
-    /// let (max_fee, priority_fee) = oracle.fetch().await?;
+    /// let (max_fee, priority_fee) = oracle.estimate_eip1559_fees().await?;
     /// assert!(max_fee > U256::zero());
     /// assert!(priority_fee > U256::zero());
     /// # Ok(())

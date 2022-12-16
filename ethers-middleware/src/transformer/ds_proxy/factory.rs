@@ -1,22 +1,21 @@
 use ethers_contract::Lazy;
 use ethers_core::types::*;
-use std::{collections::HashMap, str::FromStr};
+use std::collections::HashMap;
 
 /// A lazily computed hash map with the Ethereum network IDs as keys and the corresponding
 /// DsProxyFactory contract addresses as values
 pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
-    let mut m = HashMap::new();
+    let mut m = HashMap::with_capacity(1);
 
     // mainnet
-    let addr =
-        Address::from_str("eefba1e63905ef1d7acba5a8513c70307c1ce441").expect("Decoding failed");
-    m.insert(U256::from(1u8), addr);
+    let addr = "eefba1e63905ef1d7acba5a8513c70307c1ce441".parse().unwrap();
+    m.insert(U256::from(1_u64), addr);
 
     m
 });
 
+/// Generated with abigen:
 ///
-/// Generated with
 /// ```ignore
 /// # use ethers_contract::abigen;
 /// abigen!(DsProxyFactory,
@@ -26,7 +25,6 @@ pub static ADDRESS_BOOK: Lazy<HashMap<U256, Address>> = Lazy::new(|| {
 ///         }
 ///     );
 /// ```
-// Auto-generated type-safe bindings
 pub use dsproxyfactory_mod::*;
 #[allow(clippy::too_many_arguments)]
 mod dsproxyfactory_mod {
