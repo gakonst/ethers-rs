@@ -1595,7 +1595,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_path_to_error",
- "sha2 0.10.2",
+ "sha2 0.10.6",
  "solang-parser",
  "svm-rs",
  "svm-rs-builds",
