@@ -1,6 +1,6 @@
-use super::{GasCategory, GasOracle, GasOracleError, Result, GWEI_TO_WEI_U256};
+use super::{from_gwei_f64, GasCategory, GasOracle, GasOracleError, Result};
 use async_trait::async_trait;
-use ethers_core::types::{u256_from_f64_saturating, U256};
+use ethers_core::types::U256;
 use reqwest::Client;
 use serde::Deserialize;
 use url::Url;
@@ -52,7 +52,7 @@ impl GasOracle for Etherchain {
     async fn fetch(&self) -> Result<U256> {
         let res = self.query().await?;
         let gas_price = res.gas_from_category(self.gas_category);
-        Ok(u256_from_f64_saturating(gas_price) * GWEI_TO_WEI_U256)
+        Ok(from_gwei_f64(gas_price))
     }
 
     async fn estimate_eip1559_fees(&self) -> Result<(U256, U256)> {
