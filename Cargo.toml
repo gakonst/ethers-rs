@@ -2,7 +2,7 @@
 name = "ethers"
 version = "1.0.2"
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.64" # must also be changed in **/Cargo.toml and .clippy.toml
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
