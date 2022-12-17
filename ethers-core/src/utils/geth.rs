@@ -164,6 +164,7 @@ impl Default for PrivateNetOptions {
 /// ```
 #[derive(Clone, Default)]
 pub struct Geth {
+    program: Option<PathBuf>,
     port: Option<u16>,
     authrpc_port: Option<u16>,
     ipc_path: Option<PathBuf>,
@@ -178,6 +179,32 @@ impl Geth {
     /// The default port is 8545. The mnemonic is chosen randomly.
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Creates an Geth builder which will execute `geth` at the given path.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use ethers_core::utils::Geth;
+    /// # fn a() {
+    ///  let geth = Geth::at("../go-ethereum/build/bin/geth").spawn();
+    ///
+    ///  println!("Geth running at `{}`", geth.endpoint());
+    /// # }
+    /// ```
+    pub fn at(path: impl Into<PathBuf>) -> Self {
+        Self::new().path(path)
+    }
+
+    /// Sets the `path` to the `geth` cli
+    ///
+    /// By default, it's expected that `geth` is in `$PATH`, see also
+    /// [`std::process::Command::new()`]
+    #[must_use]
+    pub fn path<T: Into<PathBuf>>(mut self, path: T) -> Self {
+        self.program = Some(path.into());
+        self
     }
 
     /// Sets the port which will be used when the `geth-cli` instance is launched.
@@ -274,9 +301,10 @@ impl Geth {
     /// Consumes the builder and spawns `geth` with stdout redirected
     /// to /dev/null.
     pub fn spawn(self) -> GethInstance {
-        let mut cmd = Command::new(GETH);
+        let mut cmd =
+            if let Some(ref prg) = self.program { Command::new(prg) } else { Command::new(GETH) };
         // geth uses stderr for its logs
-        cmd.stderr(std::process::Stdio::piped());
+        cmd.stderr(Stdio::piped());
         let port = if let Some(port) = self.port { port } else { unused_port() };
         let authrpc_port = if let Some(port) = self.authrpc_port { port } else { unused_port() };
 
