@@ -8,29 +8,29 @@ fn main() {
 
     // a + b
     let sum = a.add(b);
-    assert!(sum.eq(&U256::from(110)));
+    assert!(sum == U256::from(110));
 
     // a - b
     let diff = a.sub(b);
-    assert!(diff.eq(&U256::from(90)));
+    assert!(diff == U256::from(90));
 
     // a / b
     let div = a.div(b);
-    assert!(div.eq(&U256::from(10)));
+    assert!(div == U256::from(10));
 
     // a * b
     let mul = a.mul(b);
-    assert!(mul.eq(&U256::from(1000)));
+    assert!(mul == U256::from(1000));
 
     // a % b
     let module = a.div_mod(b).1;
-    assert!(module.eq(&U256::zero()));
+    assert!(module == U256::zero());
 
     // a ^ b
     let base = U256::from(10);
     let expon = U256::from(2);
     let pow = base.pow(expon);
-    assert!(pow.eq(&U256::from(100)));
+    assert!(pow == U256::from(100));
 
     // Multiply two 'ether' numbers:
     // Big numbers are integers, that can represent fixed point numbers.
@@ -45,5 +45,5 @@ fn main() {
     let base = U256::from(10).pow(18.into());
     let mul = eth1.mul(eth2).div(base); // We also divide by 10^18
     let s: String = format_units(mul, "ether").unwrap();
-    assert_eq!(&*s, "200.000000000000000000"); // 200
+    assert_eq!(s, "200.000000000000000000"); // 200
 }

@@ -4,27 +4,27 @@ fn main() {
     // a == b
     let a = U256::from(100_u32);
     let b = U256::from(100_u32);
-    assert!(a.eq(&b));
+    assert!(a == b);
 
     // a < b
     let a = U256::from(1_u32);
     let b = U256::from(100_u32);
-    assert!(a.lt(&b));
+    assert!(a < b);
 
     // a <= b
     let a = U256::from(100_u32);
     let b = U256::from(100_u32);
-    assert!(a.le(&b));
+    assert!(a <= b);
 
     // a > b
     let a = U256::from(100_u32);
     let b = U256::from(1_u32);
-    assert!(a.gt(&b));
+    assert!(a > b);
 
     // a >= b
     let a = U256::from(100_u32);
     let b = U256::from(100_u32);
-    assert!(a.ge(&b));
+    assert!(a >= b);
 
     // a == 0
     let a = U256::zero();

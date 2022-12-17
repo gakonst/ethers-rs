@@ -16,8 +16,8 @@ fn main() {
     assert_eq!(d, 42);
 
     let e: String = num.to_string();
-    assert_eq!(e, "42".to_string());
+    assert_eq!(e, "42");
 
     let f: String = format_units(num, 4).unwrap();
-    assert_eq!(f, "0.0042".to_string());
+    assert_eq!(f, "0.0042");
 }
