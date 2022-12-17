@@ -197,7 +197,7 @@ impl Geth {
         Self::new().path(path)
     }
 
-    /// Sets the `path` to the `geth` cli
+    /// Sets the `path` to the `geth` executable
     ///
     /// By default, it's expected that `geth` is in `$PATH`, see also
     /// [`std::process::Command::new()`]
