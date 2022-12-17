@@ -12,7 +12,7 @@ fn main() {
     let units = 4;
     let pu: ParseUnits = parse_units(amount, units).unwrap();
     let b = U256::from(pu);
-    assert_eq!(format!("{b:?}").as_str(), "420000");
+    assert_eq!(format!("{b:?}"), "420000");
 
     // From numbers
     let c = U256::from(42_u8);
