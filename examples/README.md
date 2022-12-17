@@ -19,12 +19,12 @@
   - [ ] Logs and filtering
   - [ ] Solidity topics
 - [ ] Middleware
-  - [ ] Builder
-  - [ ] Gas escalator
-  - [ ] Gas oracle
-  - [ ] Nonce manager
+  - [x] Builder
+  - [x] Gas escalator
+  - [x] Gas oracle
+  - [x] Nonce manager
   - [ ] Policy
-  - [ ] Signer
+  - [x] Signer
   - [ ] Time lag
   - [ ] Transformer
 - [ ] Provider
