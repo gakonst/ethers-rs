@@ -181,7 +181,7 @@ impl Geth {
         Self::default()
     }
 
-    /// Creates an Geth builder which will execute `geth` at the given path.
+    /// Creates a Geth builder which will execute `geth` at the given path.
     ///
     /// # Example
     ///
