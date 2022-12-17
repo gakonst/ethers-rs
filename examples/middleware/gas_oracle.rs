@@ -1,9 +1,10 @@
 use ethers::types::Chain;
 use ethers_etherscan::Client;
 use ethers_middleware::gas_oracle::{
-    BlockNative, EthGasStation, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, Polygon, ProviderOracle,
+    BlockNative, EthGasStation, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, Polygon,
+    ProviderOracle,
 };
-use ethers_providers::{Provider, Http};
+use ethers_providers::{Http, Provider};
 
 #[tokio::main]
 async fn main() {

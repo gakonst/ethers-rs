@@ -19,9 +19,9 @@ async fn main() {
     send_escalating_transaction(linear_escalator).await;
 
     // Geometrically increase gas price:
-    // Start with `initial_price`, then increase it every 'every_secs' seconds by a fixed coefficient.
-    // Coefficient defaults to 1.125 (12.5%), the minimum increase for Parity to replace a transaction.
-    // Coefficient can be adjusted, and there is an optional upper limit.
+    // Start with `initial_price`, then increase it every 'every_secs' seconds by a fixed
+    // coefficient. Coefficient defaults to 1.125 (12.5%), the minimum increase for Parity to
+    // replace a transaction. Coefficient can be adjusted, and there is an optional upper limit.
     let coefficient: f64 = 1.125;
     let geometric_escalator = GeometricGasPrice::new(coefficient, every_secs, max_price);
     send_escalating_transaction(geometric_escalator).await;
