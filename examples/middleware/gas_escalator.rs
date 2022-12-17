@@ -3,8 +3,10 @@ use ethers_middleware::gas_escalator::*;
 use ethers_providers::{Http, Middleware, Provider};
 use eyre::Result;
 
-/// A Gas escalator allows bumping transactions' gas price to avoid getting them
-/// stuck in the memory pool.
+/// The gas escalator middleware in ethers-rs is designed to automatically increase the gas cost of
+/// transactions if they get stuck in the mempool. This can be useful if you want to
+/// ensure that transactions are processed in a timely manner without having to manually adjust the
+/// gas cost yourself.
 #[tokio::main]
 #[allow(unused_must_use)]
 async fn main() {

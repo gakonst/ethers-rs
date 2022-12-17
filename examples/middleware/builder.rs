@@ -7,6 +7,11 @@ use std::convert::TryFrom;
 const RPC_URL: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
 const SIGNING_KEY: &str = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169";
 
+/// In ethers-rs, middleware is a way to customize the behavior of certain aspects of the library by
+/// injecting custom logic into the process of sending transactions and interacting with contracts
+/// on the Ethereum blockchain. The MiddlewareBuilder trait provides a way to define a chain of
+/// middleware that will be called at different points in this process, allowing you to customize
+/// the behavior of the Provider based on your needs.
 #[tokio::main]
 async fn main() {
     builder_example().await;

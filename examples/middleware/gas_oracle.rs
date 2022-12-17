@@ -6,6 +6,17 @@ use ethers_middleware::gas_oracle::{
 };
 use ethers_providers::{Http, Provider};
 
+/// In Ethereum, the "gas" of a transaction refers to the amount of computation required to execute
+/// the transaction on the blockchain. Gas is typically measured in units of "gas," and the cost of
+/// a transaction is determined by the amount of gas it consumes.
+///
+/// A "gas oracle" is a tool or service that provides information about the current price of gas on
+/// the Ethereum network. Gas oracles are often used to help determine the appropriate amount of gas
+/// to include in a transaction, in order to ensure that it will be processed in a timely manner
+/// without running out of gas.
+///
+/// Ethers-rs includes a feature called a "gas oracle middleware" that allows you to customize the
+/// behavior of the library when it comes to determining the gas cost of transactions.
 #[tokio::main]
 async fn main() {
     blocknative().await;
