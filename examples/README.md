@@ -23,7 +23,7 @@
   - [x] Gas escalator
   - [x] Gas oracle
   - [x] Nonce manager
-  - [ ] Policy
+  - [x] Policy
   - [x] Signer
   - [ ] Time lag
   - [ ] Transformer
