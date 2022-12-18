@@ -4,22 +4,36 @@ use ethers_providers::{Http, Provider};
 use eyre::Result;
 use std::sync::Arc;
 
-/// `abigen` is used to generate Rust code for interacting with smart contracts on the blockchain.
+/// Abigen is used to generate Rust code to interact with smart contracts on the blockchain.
 /// It provides a way to encode and decode data that is passed to and from smart contracts.
+/// The output of abigen is Rust code, that is bound to the contract's interface, allowing
+/// developers to call its methods to read/write on-chain state and subscribe to realtime events.
 ///
-/// The abigen tool can be used in two ways:
-/// 1. From ABI: takes a smart contract's Application Binary Interface (ABI) and generates Rust
-/// code to interact with it.
-/// 2. Human readable: takes a smart contract's solidity definition and generates inline Rust
-/// code to interact with it.
+/// The abigen tool can be used in two ways, addressing different use-cases scenarios and developer taste:
+/// 1. **Rust file generation:** takes a smart contract's Application Binary Interface (ABI) file
+/// and generates a Rust file to interact with it. This is useful if the smart contract is
+/// referenced in different places in a project. File generation from ABI can also be easily
+/// included as a build step of your application.
+/// 2. **Rust inline generation:** takes a smart contract's solidity definition and generates inline
+/// Rust code to interact with it. This is useful for fast prototyping and for tight scoped use-cases
+/// of your contracts. 
+/// 
 #[tokio::main]
 async fn main() -> Result<()> {
-    human_readable().await?;
-    from_abi()?;
+    rust_file_generation()?;
+    rust_inline_generation().await?;
     Ok(())
 }
 
-async fn human_readable() -> Result<()> {
+fn rust_file_generation() -> Result<()> {
+    let base_dir = "./examples/contracts";
+    Abigen::new("IERC20", format!("{base_dir}/IERC20.json"))?
+        .generate()?
+        .write_to_file(format!("{base_dir}/ierc20.rs"))?;
+    Ok(())
+}
+
+async fn rust_inline_generation() -> Result<()> {
     // The abigen! macro expands the contract's code in the current scope
     // so that you can interface your Rust program with the blockchain
     // counterpart of the contract.
@@ -52,13 +66,3 @@ async fn human_readable() -> Result<()> {
     Ok(())
 }
 
-fn from_abi() -> Result<()> {
-    // Abigen allows to generate a Rust file with contract bindings directly from an ABI json file.
-    // This is useful if you need to use the contract in different places of your project.
-    // You can include abigen generation as a build step of your application.
-    let base_dir = "./examples/contracts";
-    Abigen::new("IERC20", format!("{base_dir}/IERC20.json"))?
-        .generate()?
-        .write_to_file(format!("{base_dir}/ierc20.rs"))?;
-    Ok(())
-}

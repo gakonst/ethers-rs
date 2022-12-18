@@ -242,7 +242,7 @@ name = "contract_abigen"
 path = "examples/contracts/contract_abigen.rs"
 
 [[example]]
-name = "contract_events.rs"
+name = "contract_events"
 path = "examples/contracts/contract_events.rs"
 
 [[example]]
