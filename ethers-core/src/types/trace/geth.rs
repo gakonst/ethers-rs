@@ -1,4 +1,7 @@
-use crate::types::{Bytes, H256, U256};
+use crate::{
+    types::{Bytes, H256, U256},
+    utils::from_int_or_hex,
+};
 use serde::{Deserialize, Serialize, Serializer};
 use std::collections::BTreeMap;
 
@@ -6,7 +9,8 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GethTrace {
     pub failed: bool,
-    pub gas: u64,
+    #[serde(deserialize_with = "from_int_or_hex")]
+    pub gas: U256,
     #[serde(serialize_with = "serialize_bytes", rename = "returnValue")]
     pub return_value: Bytes,
     #[serde(rename = "structLogs")]
@@ -53,6 +57,17 @@ pub struct GethDebugTracingOptions {
     pub tracer: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout: Option<String>,
+}
+
+/// Bindings for additional `debug_traceCall` options
+///
+/// See <https://geth.ethereum.org/docs/rpc/ns-debug#debug_tracecall>
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GethDebugTracingCallOptions {
+    #[serde(flatten)]
+    pub tracing_options: GethDebugTracingOptions,
+    // TODO: Add stateoverrides and blockoverrides options
 }
 
 fn serialize_bytes<S, T>(x: T, s: S) -> Result<S::Ok, S::Error>

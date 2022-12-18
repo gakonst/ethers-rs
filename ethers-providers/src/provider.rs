@@ -22,9 +22,10 @@ use ethers_core::{
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, FeeHistory,
-        Filter, FilterBlockOption, GethDebugTracingOptions, GethTrace, Log, NameOrAddress,
-        Selector, Signature, Trace, TraceFilter, TraceType, Transaction, TransactionReceipt,
-        TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
+        Filter, FilterBlockOption, GethDebugTracingCallOptions, GethDebugTracingOptions, GethTrace,
+        Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction,
+        TransactionReceipt, TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus,
+        H256, U256, U64,
     },
     utils,
 };
@@ -1046,6 +1047,20 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let tx_hash = utils::serialize(&tx_hash);
         let trace_options = utils::serialize(&trace_options);
         self.request("debug_traceTransaction", [tx_hash, trace_options]).await
+    }
+
+    /// Executes the given call and returns a number of possible traces for it
+    async fn debug_trace_call<T: Into<TypedTransaction> + Send + Sync>(
+        &self,
+        req: T,
+        block: Option<BlockId>,
+        trace_options: GethDebugTracingCallOptions,
+    ) -> Result<GethTrace, ProviderError> {
+        let req = req.into();
+        let req = utils::serialize(&req);
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+        let trace_options = utils::serialize(&trace_options);
+        self.request("debug_traceCall", [req, block, trace_options]).await
     }
 
     /// Executes the given call and returns a number of possible traces for it
