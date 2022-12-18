@@ -236,3 +236,19 @@ path = "examples/middleware/timelag.rs"
 [[example]]
 name = "transformer"
 path = "examples/middleware/transformer.rs"
+
+[[example]]
+name = "contract_abigen"
+path = "examples/contracts/contract_abigen.rs"
+
+[[example]]
+name = "contract_events.rs"
+path = "examples/contracts/contract_events.rs"
+
+[[example]]
+name = "contract_instances.rs"
+path = "examples/contracts/contract_instances.rs"
+
+[[example]]
+name = "contract_methods.rs"
+path = "examples/contracts/contract_methods.rs"

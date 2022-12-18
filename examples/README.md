@@ -11,7 +11,7 @@
     - [x] Math operations
     - [x] Utilities
 - [ ] Contracts
-    - [ ] Abigen
+    - [x] Abigen
     - [ ] Creating Instances
     - [ ] Events
     - [ ] Methods
