@@ -1,7 +1,7 @@
 //! Transaction types
 use super::{
-    decode_signature, eip2718::TypedTransaction, eip2930::AccessList, normalize_v, rlp_opt,
-    rlp_opt_list,
+    decode_signature, decode_to, eip2718::TypedTransaction, eip2930::AccessList, normalize_v,
+    rlp_opt, rlp_opt_list,
 };
 use crate::{
     types::{
@@ -248,8 +248,7 @@ impl Transaction {
         *offset += 1;
         self.gas = rlp.val_at(*offset)?;
         *offset += 1;
-        self.to = Some(rlp.val_at(*offset)?);
-        *offset += 1;
+        self.to = decode_to(rlp, offset)?;
         self.value = rlp.val_at(*offset)?;
         *offset += 1;
         let input = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
@@ -279,8 +278,7 @@ impl Transaction {
         #[cfg(feature = "celo")]
         self.decode_celo_metadata(rlp, offset)?;
 
-        self.to = Some(rlp.val_at(*offset)?);
-        *offset += 1;
+        self.to = decode_to(rlp, offset)?;
         self.value = rlp.val_at(*offset)?;
         *offset += 1;
         let input = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
@@ -310,8 +308,7 @@ impl Transaction {
         #[cfg(feature = "celo")]
         self.decode_celo_metadata(rlp, offset)?;
 
-        self.to = Some(rlp.val_at(*offset)?);
-        *offset += 1;
+        self.to = decode_to(rlp, offset)?;
         self.value = rlp.val_at(*offset)?;
         *offset += 1;
         let input = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
@@ -473,7 +470,7 @@ impl PartialOrd<Self> for TransactionReceipt {
 #[cfg(test)]
 #[cfg(not(feature = "celo"))]
 mod tests {
-    use rlp::Encodable;
+    use rlp::{Encodable, Rlp};
 
     use crate::types::transaction::eip2930::AccessListItem;
 
@@ -1092,5 +1089,25 @@ mod tests {
         let b = hex::decode(s).unwrap();
         let r = rlp::Rlp::new(b.as_slice());
         Transaction::decode(&r).unwrap();
+    }
+
+    #[test]
+    fn test_rlp_decoding_create_roundtrip() {
+        let tx = Transaction {
+            block_hash: None,
+            block_number: None,
+            from: Address::from_str("c26ad91f4e7a0cad84c4b9315f420ca9217e315d").unwrap(),
+            gas: U256::from_str_radix("0x10e2b", 16).unwrap(),
+            gas_price: Some(U256::from_str_radix("0x12ec276caf", 16).unwrap()),
+            hash: H256::from_str("929ff27a5c7833953df23103c4eb55ebdfb698678139d751c51932163877fada").unwrap(),
+            input: Bytes::from(
+                hex::decode("a9059cbb000000000000000000000000fdae129ecc2c27d166a3131098bc05d143fa258e0000000000000000000000000000000000000000000000000000000002faf080").unwrap()
+            ),
+            nonce: U256::zero(),
+            transaction_index: None,
+            value: U256::zero(),
+            ..Default::default()
+        };
+        Transaction::decode(&Rlp::new(&tx.rlp())).unwrap();
     }
 }
