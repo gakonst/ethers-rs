@@ -1,4 +1,4 @@
-use crate::gas_oracle::{GasOracle, GasOracleError};
+use super::{GasOracle, Result};
 use async_trait::async_trait;
 use ethers_core::types::U256;
 use futures_locks::RwLock;
@@ -18,6 +18,24 @@ pub struct Cache<T: GasOracle> {
 
 #[derive(Default, Debug)]
 struct Cached<T: Clone>(RwLock<Option<(Instant, T)>>);
+
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+impl<T: GasOracle> GasOracle for Cache<T> {
+    async fn fetch(&self) -> Result<U256> {
+        self.fee.get(self.validity, || self.inner.fetch()).await
+    }
+
+    async fn estimate_eip1559_fees(&self) -> Result<(U256, U256)> {
+        self.eip1559.get(self.validity, || self.inner.estimate_eip1559_fees()).await
+    }
+}
+
+impl<T: GasOracle> Cache<T> {
+    pub fn new(validity: Duration, inner: T) -> Self {
+        Self { inner, validity, fee: Cached::default(), eip1559: Cached::default() }
+    }
+}
 
 impl<T: Clone> Cached<T> {
     async fn get<F, E, Fut>(&self, validity: Duration, fetch: F) -> Result<T, E>
@@ -48,23 +66,5 @@ impl<T: Clone> Cached<T> {
             *lock = Some((Instant::now(), value.clone()));
             Ok(value)
         }
-    }
-}
-
-impl<T: GasOracle> Cache<T> {
-    pub fn new(validity: Duration, inner: T) -> Self {
-        Self { inner, validity, fee: Cached::default(), eip1559: Cached::default() }
-    }
-}
-
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl<T: GasOracle> GasOracle for Cache<T> {
-    async fn fetch(&self) -> Result<U256, GasOracleError> {
-        self.fee.get(self.validity, || self.inner.fetch()).await
-    }
-
-    async fn estimate_eip1559_fees(&self) -> Result<(U256, U256), GasOracleError> {
-        self.eip1559.get(self.validity, || self.inner.estimate_eip1559_fees()).await
     }
 }

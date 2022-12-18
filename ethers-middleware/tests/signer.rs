@@ -1,14 +1,22 @@
 #![allow(unused)]
-use ethers_providers::{Http, JsonRpcClient, Middleware, Provider, GOERLI};
 
+use ethers_contract::ContractFactory;
 use ethers_core::{
-    types::{BlockNumber, TransactionRequest},
-    utils::parse_units,
+    abi::Abi,
+    types::*,
+    utils::{parse_ether, parse_units, Anvil},
 };
 use ethers_middleware::signer::SignerMiddleware;
+use ethers_providers::{Http, JsonRpcClient, Middleware, Provider, GOERLI};
 use ethers_signers::{coins_bip39::English, LocalWallet, MnemonicBuilder, Signer};
+use ethers_solc::Solc;
 use once_cell::sync::Lazy;
-use std::{convert::TryFrom, iter::Cycle, sync::atomic::AtomicU8, time::Duration};
+use std::{
+    convert::TryFrom,
+    iter::Cycle,
+    sync::{atomic::AtomicU8, Arc},
+    time::Duration,
+};
 
 static WALLETS: Lazy<TestWallets> = Lazy::new(|| {
     TestWallets {
@@ -22,8 +30,6 @@ static WALLETS: Lazy<TestWallets> = Lazy::new(|| {
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn send_eth() {
-    use ethers_core::utils::Anvil;
-
     let anvil = Anvil::new().spawn();
 
     // this private key belongs to the above mnemonic
@@ -94,10 +100,6 @@ async fn pending_txs_with_confirmations_testnet() {
     let provider = SignerMiddleware::new(provider, wallet);
     generic_pending_txs_test(provider, address).await;
 }
-
-#[cfg(not(feature = "celo"))]
-use ethers_core::types::{Address, Eip1559TransactionRequest};
-use ethers_core::utils::parse_ether;
 
 // different keys to avoid nonce errors
 #[tokio::test]
@@ -195,8 +197,6 @@ async fn test_send_transaction() {
 #[tokio::test]
 #[cfg(not(feature = "celo"))]
 async fn send_transaction_handles_tx_from_field() {
-    use ethers_core::utils::Anvil;
-
     // launch anvil
     let anvil = Anvil::new().spawn();
 
@@ -240,14 +240,6 @@ async fn send_transaction_handles_tx_from_field() {
 #[tokio::test]
 #[cfg(feature = "celo")]
 async fn deploy_and_call_contract() {
-    use ethers_contract::ContractFactory;
-    use ethers_core::{
-        abi::Abi,
-        types::{BlockNumber, Bytes, H256, U256},
-    };
-    use ethers_solc::Solc;
-    use std::sync::Arc;
-
     // compiles the given contract and returns the ABI and Bytecode
     fn compile_contract(path: &str, name: &str) -> (Abi, Bytes) {
         let path = format!("./tests/solidity-contracts/{path}");
