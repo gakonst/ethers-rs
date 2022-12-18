@@ -4,8 +4,8 @@
 
 ### Unreleased
 
--
 - Fix typo in `RwClient` docs for `write_client` method.
+- Add support for Geth `debug_traceCall` [#1949](https://github.com/gakonst/ethers-rs/pull/1949)
 - Graceful handling of WebSocket transport errors [#1889](https://github.com/gakonst/ethers-rs/issues/1889) [#1815](https://github.com/gakonst/ethers-rs/issues/1815)
 - `MiddlewareBuilder` trait to instantiate a `Provider` as `Middleware` layers.
 - An `Event` builder can be instantiated specifying the event filter type, without the need to instantiate a contract.
