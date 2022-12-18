@@ -9,15 +9,16 @@ use std::sync::Arc;
 /// The output of abigen is Rust code, that is bound to the contract's interface, allowing
 /// developers to call its methods to read/write on-chain state and subscribe to realtime events.
 ///
-/// The abigen tool can be used in two ways, addressing different use-cases scenarios and developer taste:
-/// 1. **Rust file generation:** takes a smart contract's Application Binary Interface (ABI) file
-/// and generates a Rust file to interact with it. This is useful if the smart contract is
+/// The abigen tool can be used in two ways, addressing different use-cases scenarios and developer
+/// taste:
+///
+/// 1. **Rust file generation:** takes a smart contract's Application Binary Interface (ABI)
+/// file and generates a Rust file to interact with it. This is useful if the smart contract is
 /// referenced in different places in a project. File generation from ABI can also be easily
 /// included as a build step of your application.
 /// 2. **Rust inline generation:** takes a smart contract's solidity definition and generates inline
-/// Rust code to interact with it. This is useful for fast prototyping and for tight scoped use-cases
-/// of your contracts. 
-/// 
+/// Rust code to interact with it. This is useful for fast prototyping and for tight scoped
+/// use-cases of your contracts.
 #[tokio::main]
 async fn main() -> Result<()> {
     rust_file_generation()?;
@@ -65,4 +66,3 @@ async fn rust_inline_generation() -> Result<()> {
 
     Ok(())
 }
-
