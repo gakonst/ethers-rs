@@ -59,10 +59,10 @@ impl Source {
     ///   verified contract on Etherscan.
     /// - `bscscan:0xXX..XX` or `https://bscscan.io/address/0xXX..XX`: a address or URL of a
     ///   verified contract on Bscscan.
+    /// - `polygonscan:0xXX..XX` or `https://polygonscan.io/address/0xXX..XX`: a address or URL of a
+    ///   verified contract on Polygonscan.
     /// - `snowtrace:0xXX..XX` or `https://snowtrace.io/address/0xXX..XX`: a address or URL of a
     ///   verified contract on Snowtrace.
-    /// - `polygonscan:0xXX..XX` or `https://polygonscan.come/address/0xXX..XX`: a address or URL of a
-    ///   verified contract on Polygonscan.
     /// - `npm:@org/package@1.0.0/path/to/contract.json` an npmjs package with an optional version
     ///   and path (defaulting to the latest version and `index.js`). The contract ABI will be
     ///   retrieved through `unpkg.io`.
@@ -155,14 +155,13 @@ impl Source {
         Ok(Source::Http(Url::parse(url.as_ref())?))
     }
 
-
     /// Creates an Bscscan source from an address string.
     pub fn bscscan<S>(address: S) -> Result<Self>
     where
         S: AsRef<str>,
     {
         let address =
-            util::parse_address(address).context("failed to parse address for Etherscan source")?;
+            util::parse_address(address).context("failed to parse address for Bscscan source")?;
         Ok(Source::Bscscan(address))
     }
 
