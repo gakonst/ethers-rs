@@ -3,7 +3,7 @@
 ## ethers-core
 
 ### Unreleased
-
+-
 - Graceful handling of WebSocket transport errors [#1889](https://github.com/gakonst/ethers-rs/issues/1889) [#1815](https://github.com/gakonst/ethers-rs/issues/1815)
 - `MiddlewareBuilder` trait to instantiate a `Provider` as `Middleware` layers.
 - An `Event` builder can be instantiated specifying the event filter type, without the need to instantiate a contract.
