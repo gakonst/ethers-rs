@@ -3,3 +3,6 @@
 /.envrc
 .idea
 .nlsp-settings
+.devenv*
+devenv.local.nix
+.direnv
