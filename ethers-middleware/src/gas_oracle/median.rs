@@ -1,4 +1,4 @@
-use crate::gas_oracle::{GasOracle, GasOracleError};
+use super::{GasOracle, GasOracleError, Result};
 use async_trait::async_trait;
 use ethers_core::types::U256;
 use futures_util::future::join_all;
@@ -28,13 +28,10 @@ impl Median {
         self.oracles.push((weight, Box::new(oracle)));
     }
 
-    pub async fn query_all<'a, Fn, Fut, O>(
-        &'a self,
-        mut f: Fn,
-    ) -> Result<Vec<(f32, O)>, GasOracleError>
+    pub async fn query_all<'a, Fn, Fut, O>(&'a self, mut f: Fn) -> Result<Vec<(f32, O)>>
     where
         Fn: FnMut(&'a dyn GasOracle) -> Fut,
-        Fut: Future<Output = Result<O, GasOracleError>>,
+        Fut: Future<Output = Result<O>>,
     {
         // Process the oracles in parallel
         let futures = self.oracles.iter().map(|(_, oracle)| f(oracle.as_ref()));
@@ -62,13 +59,13 @@ impl Median {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl GasOracle for Median {
-    async fn fetch(&self) -> Result<U256, GasOracleError> {
+    async fn fetch(&self) -> Result<U256> {
         let mut values = self.query_all(|oracle| oracle.fetch()).await?;
         // `query_all` guarantees `values` is not empty
         Ok(*weighted_fractile_by_key(0.5, &mut values, |fee| fee).unwrap())
     }
 
-    async fn estimate_eip1559_fees(&self) -> Result<(U256, U256), GasOracleError> {
+    async fn estimate_eip1559_fees(&self) -> Result<(U256, U256)> {
         let mut values = self.query_all(|oracle| oracle.estimate_eip1559_fees()).await?;
         // `query_all` guarantees `values` is not empty
         Ok((

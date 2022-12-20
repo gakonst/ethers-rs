@@ -437,6 +437,27 @@ impl<M: Middleware> Multicall<M> {
         }
     }
 
+    /// Appends multiple `call`s to the list of calls of the Multicall instance.
+    ///
+    /// Version specific details:
+    /// - 1: `allow_failure` is ignored.
+    /// - >=2: `allow_failure` specifies whether or not this call is allowed to revert in the
+    ///   multicall.
+    /// - 3: Transaction values are used when broadcasting transactions with [`send`], otherwise
+    ///   they are always ignored.
+    ///
+    /// [`send`]: #method.send
+    pub fn add_calls<D: Detokenize>(
+        &mut self,
+        allow_failure: bool,
+        calls: impl IntoIterator<Item = ContractCall<M, D>>,
+    ) -> &mut Self {
+        for call in calls {
+            self.add_call(call, allow_failure);
+        }
+        self
+    }
+
     /// Appends a `call` to the list of calls of the Multicall instance for querying the block hash
     /// of a given block number.
     ///
@@ -613,6 +634,45 @@ impl<M: Middleware> Multicall<M> {
         let tokens = vec![Token::Tuple(tokens)];
         let data = D::from_tokens(tokens).map_err(ContractError::DetokenizationError)?;
         Ok(data)
+    }
+
+    /// Queries the Ethereum blockchain using `eth_call`, but via the Multicall contract, assuming
+    /// that every call returns same data type.
+    ///
+    /// Note: this method _does not_ send a transaction from your account.
+    ///
+    /// # Errors
+    ///
+    /// Returns a [`MulticallError`] if there are any errors in the RPC call or while detokenizing
+    /// the tokens back to the expected return type.
+    ///
+    /// # Examples
+    ///
+    /// The return type must be annotated while calling this method:
+    ///
+    /// ```no_run
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use ethers_core::types::{U256, Address};
+    /// # use ethers_providers::{Provider, Http};
+    /// # use ethers_contract::Multicall;
+    /// # use std::convert::TryFrom;
+    /// #
+    /// # let client = Provider::<Http>::try_from("http://localhost:8545")?;
+    /// #
+    /// # let multicall = Multicall::new(client, None).await?;
+    /// // If the all Solidity function calls `returns (uint256)`:
+    /// let result: Vec<U256> = multicall.call().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn call_array<D: Detokenize>(&self) -> Result<Vec<D>, M> {
+        let tokens = self.call_raw().await?;
+        let res: std::result::Result<Vec<D>, ContractError<M>> = tokens
+            .into_iter()
+            .map(|token| D::from_tokens(vec![token]).map_err(ContractError::DetokenizationError))
+            .collect();
+
+        Ok(res?)
     }
 
     /// Queries the Ethereum blockchain using `eth_call`, but via the Multicall contract and

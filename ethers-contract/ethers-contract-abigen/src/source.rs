@@ -20,6 +20,9 @@ pub enum Source {
     /// An ABI to be retrieved over HTTP(S).
     Http(Url),
 
+    /// An address of a mainnet contract that has been verified on Bscscan.com.
+    Bscscan(Address),
+
     /// An address of a mainnet contract that has been verified on Etherscan.io.
     Etherscan(Address),
 
@@ -54,7 +57,12 @@ impl Source {
     ///
     /// - `etherscan:0xXX..XX` or `https://etherscan.io/address/0xXX..XX`: a address or URL of a
     ///   verified contract on Etherscan.
-    ///
+    /// - `bscscan:0xXX..XX` or `https://bscscan.io/address/0xXX..XX`: a address or URL of a
+    ///   verified contract on Bscscan.
+    /// - `polygonscan:0xXX..XX` or `https://polygonscan.io/address/0xXX..XX`: a address or URL of a
+    ///   verified contract on Polygonscan.
+    /// - `snowtrace:0xXX..XX` or `https://snowtrace.io/address/0xXX..XX`: a address or URL of a
+    ///   verified contract on Snowtrace.
     /// - `npm:@org/package@1.0.0/path/to/contract.json` an npmjs package with an optional version
     ///   and path (defaulting to the latest version and `index.js`). The contract ABI will be
     ///   retrieved through `unpkg.io`.
@@ -99,6 +107,12 @@ impl Source {
         match url.scheme() {
             "file" => Ok(Source::local(source)),
             "http" | "https" => match url.host_str() {
+                Some("bscscan.com") => Source::etherscan(
+                    url.path()
+                        .rsplit('/')
+                        .next()
+                        .ok_or_else(|| eyre!("HTTP URL does not have a path"))?,
+                ),
                 Some("etherscan.io") => Source::etherscan(
                     url.path()
                         .rsplit('/')
@@ -119,6 +133,7 @@ impl Source {
                 ),
                 _ => Ok(Source::Http(url)),
             },
+            "bscscan" => Source::bscscan(url.path()),
             "etherscan" => Source::etherscan(url.path()),
             "polygonscan" => Source::polygonscan(url.path()),
             "snowtrace" => Source::snowtrace(url.path()),
@@ -138,6 +153,16 @@ impl Source {
         S: AsRef<str>,
     {
         Ok(Source::Http(Url::parse(url.as_ref())?))
+    }
+
+    /// Creates an Bscscan source from an address string.
+    pub fn bscscan<S>(address: S) -> Result<Self>
+    where
+        S: AsRef<str>,
+    {
+        let address =
+            util::parse_address(address).context("failed to parse address for Bscscan source")?;
+        Ok(Source::Bscscan(address))
     }
 
     /// Creates an Etherscan source from an address string.
@@ -187,6 +212,7 @@ impl Source {
                 match self {
                     Source::Local(path) => get_local_contract(path),
                     Source::Http(_) =>   panic!("Http abi location are not supported for wasm"),
+                    Source::Bscscan(_) => panic!("Bscscan abi location are not supported for wasm"),
                     Source::Etherscan(_) => panic!("Etherscan abi location are not supported for wasm"),
                     Source::Polygonscan(_) => panic!("Polygonscan abi location are not supported for wasm"),
                     Source::Snowtrace(_) => panic!("Snowtrace abi location are not supported for wasm"),
@@ -197,6 +223,7 @@ impl Source {
                 match self {
                     Source::Local(path) => get_local_contract(path),
                     Source::Http(url) => get_http_contract(url),
+                    Source::Bscscan(address) => get_etherscan_contract(*address, "bscscan.com"),
                     Source::Etherscan(address) => get_etherscan_contract(*address, "etherscan.io"),
                     Source::Polygonscan(address) => get_etherscan_contract(*address, "polygonscan.com"),
                     Source::Snowtrace(address) => get_etherscan_contract(*address, "snowtrace.io"),
@@ -261,6 +288,7 @@ fn get_etherscan_contract(address: Address, domain: &str) -> Result<String> {
     //   probably don't reference anything when deploying on other networks.
     let api_key = {
         let key_res = match domain {
+            "bscscan.com" => env::var("BSCSCAN_API_KEY").ok(),
             "etherscan.io" => env::var("ETHERSCAN_API_KEY").ok(),
             "polygonscan.com" => env::var("POLYGONSCAN_API_KEY").ok(),
             "snowtrace.io" => env::var("SNOWTRACE_API_KEY").ok(),
@@ -312,6 +340,10 @@ mod tests {
                 Source::http("https://my.domain.eth/path/to/Contract.json").unwrap(),
             ),
             (
+                "bscscan:0x0001020304050607080910111213141516171819",
+                Source::bscscan("0x0001020304050607080910111213141516171819").unwrap(),
+            ),
+            (
                 "etherscan:0x0001020304050607080910111213141516171819",
                 Source::etherscan("0x0001020304050607080910111213141516171819").unwrap(),
             ),
@@ -322,6 +354,10 @@ mod tests {
             (
                 "snowtrace:0x0001020304050607080910111213141516171819",
                 Source::snowtrace("0x0001020304050607080910111213141516171819").unwrap(),
+            ),
+            (
+                "https://bscscan.io/address/0x0001020304050607080910111213141516171819",
+                Source::bscscan("0x0001020304050607080910111213141516171819").unwrap(),
             ),
             (
                 "https://etherscan.io/address/0x0001020304050607080910111213141516171819",
