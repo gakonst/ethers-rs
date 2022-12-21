@@ -200,6 +200,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e1b586273c5702936fe7b7d6896644d8be71e6314cfe09d3167c95f712589e8"
 
 [[package]]
+name = "base64"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ea22880d78093b0cbe17c89f64a7d457941e65759157ec6cb31a31d652b05e5"
+
+[[package]]
 name = "base64ct"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -666,7 +672,7 @@ dependencies = [
  "libc",
  "log",
  "matches",
- "nix 0.13.1",
+ "nix",
  "serde",
  "thiserror",
  "wasm-bindgen",
@@ -834,7 +840,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "crossbeam-utils",
  "lazy_static",
- "memoffset 0.6.5",
+ "memoffset",
  "scopeguard",
 ]
 
@@ -1414,7 +1420,6 @@ dependencies = [
  "hex",
  "hex-literal",
  "k256",
- "nix 0.26.1",
  "once_cell",
  "open-fastrlp",
  "proc-macro2",
@@ -1498,7 +1503,7 @@ version = "1.0.2"
 dependencies = [
  "async-trait",
  "auto_impl 1.0.1",
- "base64 0.13.1",
+ "base64 0.20.0",
  "bytes",
  "enr",
  "ethers-core",
@@ -1618,6 +1623,146 @@ dependencies = [
  "wasm-bindgen-test",
  "web-sys",
  "wee_alloc",
+]
+
+[[package]]
+name = "examples-anvil"
+version = "1.0.2"
+dependencies = [
+ "ethers-core",
+ "eyre",
+ "tokio",
+]
+
+[[package]]
+name = "examples-big-numbers"
+version = "1.0.2"
+dependencies = [
+ "ethers-core",
+]
+
+[[package]]
+name = "examples-contracts"
+version = "1.0.2"
+dependencies = [
+ "ethers-contract",
+ "ethers-core",
+ "ethers-middleware",
+ "ethers-providers",
+ "ethers-signers",
+ "ethers-solc",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-events"
+version = "1.0.2"
+dependencies = [
+ "ethers-contract",
+ "ethers-core",
+ "ethers-middleware",
+ "ethers-providers",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-middleware"
+version = "1.0.2"
+dependencies = [
+ "ethers-core",
+ "ethers-etherscan",
+ "ethers-middleware",
+ "ethers-providers",
+ "ethers-signers",
+ "eyre",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-providers"
+version = "1.0.2"
+dependencies = [
+ "ethers-contract",
+ "ethers-core",
+ "ethers-middleware",
+ "ethers-providers",
+ "ethers-signers",
+ "ethers-solc",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-queries"
+version = "1.0.2"
+dependencies = [
+ "ethers-contract",
+ "ethers-core",
+ "ethers-middleware",
+ "ethers-providers",
+ "ethers-signers",
+ "ethers-solc",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-subscriptions"
+version = "1.0.2"
+dependencies = [
+ "ethers-contract",
+ "ethers-core",
+ "ethers-middleware",
+ "ethers-providers",
+ "ethers-signers",
+ "ethers-solc",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-transactions"
+version = "1.0.2"
+dependencies = [
+ "ethers-contract",
+ "ethers-core",
+ "ethers-middleware",
+ "ethers-providers",
+ "ethers-signers",
+ "ethers-solc",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-wallets"
+version = "1.0.2"
+dependencies = [
+ "ethers-contract",
+ "ethers-core",
+ "ethers-middleware",
+ "ethers-providers",
+ "ethers-signers",
+ "ethers-solc",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -2463,15 +2608,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "memoffset"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5de893c32cde5f383baa4c04c5d6dbdd735cfd4a794b0debdb2bb1b421da5ff4"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
 name = "memory_units"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2539,20 +2675,6 @@ dependencies = [
  "cfg-if 0.1.10",
  "libc",
  "void",
-]
-
-[[package]]
-name = "nix"
-version = "0.26.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46a58d1d356c6597d08cde02c2f09d785b09e28711837b1ed667dc652c08a694"
-dependencies = [
- "bitflags",
- "cfg-if 1.0.0",
- "libc",
- "memoffset 0.7.1",
- "pin-utils",
- "static_assertions",
 ]
 
 [[package]]
@@ -3211,11 +3333,10 @@ dependencies = [
 
 [[package]]
 name = "rayon"
-version = "1.6.0"
+version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e060280438193c554f654141c9ea9417886713b7acd75974c85b18a69a88e0b"
+checksum = "6db3a213adf02b3bcfd2d3846bb41cb22857d131789e01df434fb7e7bc0759b7"
 dependencies = [
- "crossbeam-deque",
  "either",
  "rayon-core",
 ]
