@@ -690,11 +690,10 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     /// If there is already an entry available for the file the given version is added to the set
     fn insert_new_cache_entry(&mut self, file: &Path, source: &Source, version: Version) {
         if let Some((_, versions)) = self.dirty_source_files.get_mut(file) {
-            versions.insert(version.clone());
+            versions.insert(version);
         } else {
             let entry = self.create_cache_entry(file, source, version.clone());
-            self.dirty_source_files
-                .insert(file.to_path_buf(), (entry.clone(), HashSet::from([version.clone()])));
+            self.dirty_source_files.insert(file.to_path_buf(), (entry, HashSet::from([version])));
         }
     }
 
