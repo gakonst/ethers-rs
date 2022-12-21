@@ -1,0 +1,9 @@
+[package]
+name = "examples-big-numbers"
+version = "1.0.2"
+authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
+edition = "2021"
+
+[dev-dependencies]
+ethers-core = { version = "^1.0.0", path = "../../ethers-core", default-features = false }
+

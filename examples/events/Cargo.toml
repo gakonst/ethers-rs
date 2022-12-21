@@ -1,0 +1,16 @@
+[package]
+name = "examples-events"
+version = "1.0.2"
+authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
+edition = "2021"
+
+[dev-dependencies]
+ethers-core = { version = "^1.0.0", path = "../../ethers-core" }
+ethers-contract = { version = "^1.0.0", path = "../../ethers-contract", features = ["abigen"]}
+ethers-middleware = { version = "^1.0.0", path = "../../ethers-middleware"}
+ethers-providers = { version = "^1.0.0", path = "../../ethers-providers" }
+
+eyre = "0.6"
+serde = { version = "1.0.144", features = ["derive"] }
+serde_json = "1.0.64"
+tokio = { version = "1.18", features = ["macros"] }

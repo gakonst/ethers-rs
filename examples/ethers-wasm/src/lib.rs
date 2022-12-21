@@ -24,7 +24,7 @@ macro_rules! log {
 
 abigen!(
     SimpleContract,
-    "./../contract_abi.json",
+    "./abi/contract_abi.json",
     event_derives(serde::Deserialize, serde::Serialize)
 );
 

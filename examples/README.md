@@ -3,6 +3,7 @@
 - [ ] Anvil
     - [ ] Boot anvil
     - [ ] Deploy contracts
+    - [ ] Fork
     - [ ] Testing
 - [x] Big numbers
     - [x] Comparison and equivalence
@@ -13,7 +14,11 @@
 - [ ] Contracts
     - [x] Abigen
     - [ ] Creating Instances
+    - [ ] Compile
+    - [ ] Deploy Anvil
+    - [ ] Deploy Moonbeam
     - [ ] Events
+    - [ ] Events with meta
     - [ ] Methods
 - [ ] Events
   - [ ] Logs and filtering
@@ -27,7 +32,7 @@
   - [x] Signer
   - [ ] Time lag
   - [ ] Transformer
-- [ ] Provider
+- [ ] Providers
   - [ ] Http
   - [ ] IPC
   - [ ] Mock 
@@ -35,27 +40,38 @@
   - [ ] Retry
   - [ ] RW
   - [ ] WS
-- [ ] Query
+- [ ] Queries
   - [ ] Blocks
   - [ ] Contracts
   - [ ] Events
+  - [ ] Paginated logs
+  - [ ] UniswapV2 pair
   - [ ] Transactions
-- [ ] Solc
 - [ ] Subscriptions
-  - [ ] Blocks
-  - [ ] Event logs
-- [ ] Transaction
+  - [ ] Watch blocks
+  - [ ] Subscribe logs
+- [ ] Transactions
   - [ ] Create raw transaction
   - [ ] Create typed transaction
+  - [ ] Decode input
   - [ ] EIP-1559
+  - [ ] ENS
   - [ ] Estimate gas
   - [ ] Get gas price
+  - [ ] Get gas price USD
+  - [ ] Remove liquidity
   - [ ] Set gas for a transaction
   - [ ] Send raw transaction
   - [ ] Send typed transaction
+  - [ ] Trace
   - [ ] Transaction receipt
   - [ ] Transaction status
+  - [ ] Transfer ETH
 - [ ] Wallets
+  - [ ] Mnemonic
   - [ ] Ledger
   - [ ] Local 
-- [ ] Wasm
+  - [ ] Permit hash
+  - [ ] Sign message
+  - [ ] Trezor
+  - [ ] Yubi
