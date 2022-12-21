@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
             // Given the RejectEverything policy, we expect to execute this branch
             assert!(matches!(e, PolicyMiddlewareError::PolicyError(())))
         }
-        _ => (),
+        _ => panic!("We don't expect this to happen!"),
     }
 
     Ok(())
