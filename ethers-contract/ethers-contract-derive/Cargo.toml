@@ -17,7 +17,7 @@ proc-macro = true
 
 [dependencies]
 ethers-core = { version = "^1.0.0", path = "../../ethers-core" }
-ethers-contract-abigen = { version = "^1.0.0", path = "../ethers-contract-abigen" }
+ethers-contract-abigen = { version = "^1.0.0", path = "../ethers-contract-abigen", default-features = false }
 
 serde_json = "1.0.53"
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
