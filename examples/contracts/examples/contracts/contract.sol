@@ -7,7 +7,7 @@ contract SimpleStorage {
 
     string _value;
 
-    constructor(string memory value) {
+    constructor(string memory value) public {
         emit ValueChanged(msg.sender, _value, value);
         _value = value;
     }
