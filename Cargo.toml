@@ -126,33 +126,3 @@ bytes = "1.3.0"
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
 
-# [[example]]
-# name = "abigen"
-# path = "examples/abigen.rs"
-# required-features = ["ethers-solc"]
-# 
-# [[example]]
-# name = "contract_human_readable"
-# path = "examples/contract_human_readable.rs"
-# required-features = ["ethers-solc"]
-# 
-# [[example]]
-# name = "contract_with_abi"
-# path = "examples/contract_with_abi.rs"
-# required-features = ["ethers-solc"]
-# 
-# [[example]]
-# name = "contract_with_abi_and_bytecode"
-# path = "examples/contract_with_abi_and_bytecode.rs"
-# required-features = ["ethers-solc"]
-# 
-# [[example]]
-# name = "ipc"
-# path = "examples/ipc.rs"
-# required-features = ["ipc"]
-# 
-# [[example]]
-# name = "ledger"
-# path = "examples/ledger.rs"
-# required-features = ["ledger"]
-
