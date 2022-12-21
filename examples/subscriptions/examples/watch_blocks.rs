@@ -1,6 +1,6 @@
-use std::time::Duration;
 use ethers_providers::{Middleware, Provider, StreamExt, Ws};
 use eyre::Result;
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<()> {

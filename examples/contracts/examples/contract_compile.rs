@@ -7,7 +7,9 @@ fn main() -> Result<()> {
     args.next().unwrap(); // skip program name
 
     let contract_name = args.next().unwrap_or_else(|| "SimpleStorage".to_owned());
-    let contract: String = args.next().unwrap_or_else(||"examples/contracts/examples/contracts/contract.sol".to_owned());
+    let contract: String = args
+        .next()
+        .unwrap_or_else(|| "examples/contracts/examples/contracts/contract.sol".to_owned());
 
     println!("Generating bindings for {contract}\n");
 
