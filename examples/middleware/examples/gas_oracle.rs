@@ -1,8 +1,7 @@
 use ethers_core::types::Chain;
 use ethers_etherscan::Client;
 use ethers_middleware::gas_oracle::{
-    BlockNative, EthGasStation, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, Polygon,
-    ProviderOracle,
+    BlockNative, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, Polygon, ProviderOracle,
 };
 use ethers_providers::{Http, Provider};
 
@@ -21,7 +20,6 @@ use ethers_providers::{Http, Provider};
 async fn main() {
     blocknative().await;
     etherchain().await;
-    eth_gas_station().await;
     etherscan().await;
     gas_now().await;
     polygon().await;
@@ -39,15 +37,6 @@ async fn blocknative() {
 
 async fn etherchain() {
     let oracle = Etherchain::new().category(GasCategory::Standard);
-    match oracle.fetch().await {
-        Ok(gas_price) => println!("Gas price is {gas_price:?}"),
-        Err(e) => println!("Cannot estimate gas: {e:?}"),
-    }
-}
-
-async fn eth_gas_station() {
-    let api_key: Option<&str> = Some("YOUR-API-KEY");
-    let oracle = EthGasStation::new(api_key).category(GasCategory::Fast);
     match oracle.fetch().await {
         Ok(gas_price) => println!("Gas price is {gas_price:?}"),
         Err(e) => println!("Cannot estimate gas: {e:?}"),
