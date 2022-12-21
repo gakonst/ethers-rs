@@ -6,8 +6,6 @@ use ethers_providers::{Middleware, Provider, StreamExt, Ws};
 use eyre::Result;
 use std::sync::Arc;
 
-// In order to run this example you need to include Ws and TLS features
-// Run this example with `cargo run -p ethers --example subscribe_logs --features="ws","rustls"`
 #[tokio::main]
 async fn main() -> Result<()> {
     let client =

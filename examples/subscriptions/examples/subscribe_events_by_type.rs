@@ -17,10 +17,6 @@ const PRICE_FEED_3: &str = "0xebf67ab8cff336d3f609127e8bbf8bd6dd93cd81";
 /// Subscribe to a typed event stream without requiring a `Contract` instance.
 /// In this example we subscribe Chainlink price feeds and filter out them
 /// by address.
-/// -------------------------------------------------------------------------------
-/// In order to run this example you need to include Ws and TLS features
-/// Run this example with
-/// `cargo run -p ethers --example subscribe_events_by_type --features="ws","rustls"`
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let client = get_client().await;
