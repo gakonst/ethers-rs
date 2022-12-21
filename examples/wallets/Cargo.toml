@@ -6,7 +6,7 @@ edition = "2021"
 
 [dev-dependencies]
 ethers-core = { version = "^1.0.0", path = "../../ethers-core" }
-ethers-contract = { version = "^1.0.0", path = "../../ethers-contract", features = ["abigen"]}
+ethers-contract = { version = "^1.0.0", path = "../../ethers-contract", features = ["abigen", "eip712"]}
 ethers-middleware = { version = "^1.0.0", path = "../../ethers-middleware"}
 ethers-providers = { version = "^1.0.0", path = "../../ethers-providers" }
 ethers-signers = { version = "^1.0.0", path = "../../ethers-signers" }

@@ -14,7 +14,6 @@ abigen!(
 
 const WSS_URL: &str = "wss://mainnet.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27";
 const WETH_ADDRESS: &str = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
-const BLOCK: i32 = 16211360;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -37,7 +36,7 @@ async fn main() -> Result<()> {
 /// by abigen. Feel free to investigate the abigen expanded code to
 /// better understand types and functionalities.
 async fn listen_all_events(contract: &IERC20<Provider<Ws>>) -> Result<()> {
-    let events = contract.events().from_block(BLOCK);
+    let events = contract.events().from_block(16232696);
     let mut stream = events.stream().await?.take(1);
 
     while let Some(Ok(evt)) = stream.next().await {
@@ -56,7 +55,7 @@ async fn listen_all_events(contract: &IERC20<Provider<Ws>>) -> Result<()> {
 /// by abigen. Feel free to investigate the abigen expanded code to
 /// better understand types and functionalities.
 async fn listen_specific_events(contract: &IERC20<Provider<Ws>>) -> Result<()> {
-    let events = contract.event::<ApprovalFilter>().from_block(BLOCK);
+    let events = contract.event::<ApprovalFilter>().from_block(16232696);
     let mut stream = events.stream().await?.take(1);
 
     while let Some(Ok(f)) = stream.next().await {

@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     let erc20_transfer_filter =
         Filter::new().from_block(last_block - 10000).event("Transfer(address,address,uint256)");
 
-    let mut stream = client.get_logs_paginated(&erc20_transfer_filter, 10);
+    let mut stream = client.get_logs_paginated(&erc20_transfer_filter, 10).take(5);
 
     while let Some(res) = stream.next().await {
         let log = res?;

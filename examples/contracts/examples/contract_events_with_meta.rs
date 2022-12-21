@@ -29,8 +29,8 @@ async fn main() -> Result<()> {
     let weth = ERC20::new(address, Arc::clone(&client));
 
     // Subscribe Transfer events
-    let events = weth.events();
-    let mut stream = events.stream().await?.with_meta();
+    let events = weth.events().from_block(16232698);
+    let mut stream = events.stream().await?.with_meta().take(1);
     while let Some(Ok((event, meta))) = stream.next().await {
         println!("src: {:?}, dst: {:?}, wad: {:?}", event.src, event.dst, event.wad);
 

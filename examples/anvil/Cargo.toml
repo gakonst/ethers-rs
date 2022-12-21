@@ -5,7 +5,6 @@ authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
 edition = "2021"
 
 [dev-dependencies]
-
-ethers-core = { version = "^1.0.0", path = "../../ethers-core", default-features = false }
+ethers-core = { version = "^1.0.0", path = "../../ethers-core"}
 eyre = "0.6"
-tokio = { version = "1.18", features = ["macros"] }
+tokio = { version = "1.18", features = ["full"] }
