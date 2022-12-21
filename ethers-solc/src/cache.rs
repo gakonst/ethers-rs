@@ -51,7 +51,7 @@ impl CompilationUnitId {
 pub struct CompilationUnit {
     pub solc_config: SolcConfig,
     pub version: Version,
-    pub source_units: Vec<PathBuf>,
+    pub source_units: HashSet<PathBuf>,
 }
 
 /// A multi version cache file
@@ -672,11 +672,15 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         if let Some(CompilationUnit { source_units, .. }) =
             self.cache.compilation_units.get_mut(&id)
         {
-            source_units.push(file);
+            source_units.insert(file);
         } else {
             self.cache.compilation_units.insert(
                 id,
-                CompilationUnit { solc_config, version, source_units: vec![file.to_path_buf()] },
+                CompilationUnit {
+                    solc_config,
+                    version,
+                    source_units: HashSet::from([file.to_path_buf()]),
+                },
             );
         }
     }
@@ -689,10 +693,8 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
             versions.insert(version.clone());
         } else {
             let entry = self.create_cache_entry(file, source, version.clone());
-            let path = file.to_path_buf();
             self.dirty_source_files
-                .insert(path.clone(), (entry.clone(), HashSet::from([version.clone()])));
-            self.insert_compilation_unit(path, self.project.solc_config.clone(), version);
+                .insert(file.to_path_buf(), (entry.clone(), HashSet::from([version.clone()])));
         }
     }
 
@@ -749,7 +751,12 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
 
         // track new cache entries for dirty files
         for (file, filtered) in filtered_sources.iter() {
-            self.insert_new_cache_entry(file, filtered.source(), version.clone());
+            self.insert_new_cache_entry(&file.clone(), filtered.source(), version.clone());
+            self.insert_compilation_unit(
+                file.clone(),
+                self.project.solc_config.clone(),
+                version.clone(),
+            );
         }
 
         for clean_source in clean_sources {
