@@ -789,10 +789,8 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
                     tracing::trace!("changed content hash for source file \"{}\"", file.display());
                     return true
                 }
-                if let Some(compilation_unit) = self
-                    .cache
-                    .compilation_units
-                    .get(&CompilationUnitId::new(version.clone(), self.project.solc_config.clone()))
+                if let Some(compilation_unit) =
+                    self.cache.compilation_units.get(&entry.compilation_unit)
                 {
                     if self.project.solc_config != compilation_unit.solc_config {
                         tracing::trace!(
