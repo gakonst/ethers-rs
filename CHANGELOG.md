@@ -341,6 +341,8 @@
 
 ### Unreleased
 
+- Added `openssl` and `rustls` feature flags
+  [#1961](https://github.com/gakonst/ethers-rs/pull/1961)
 - Relax Clone requirements when Arc<Middleware> is used
   [#1183](https://github.com/gakonst/ethers-rs/pull/1183)
 - Ensure a consistent chain ID between a Signer and Provider in SignerMiddleware
