@@ -233,7 +233,7 @@ impl TransactionRequest {
             *offset += 1;
         }
 
-        txn.to = decode_to(rlp, offset)?;
+        txn.to = decode_to(rlp, offset)?.map(NameOrAddress::Address);
         txn.value = Some(rlp.at(*offset)?.as_val()?);
         *offset += 1;
 

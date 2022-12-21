@@ -30,7 +30,7 @@ async fn main() {
 
 async fn blocknative() {
     let api_key: String = "YOUR-API-KEY".into();
-    let oracle = BlockNative::new(api_key).category(GasCategory::Fastest);
+    let oracle = BlockNative::new(Some(api_key)).category(GasCategory::Fastest);
     match oracle.fetch().await {
         Ok(gas_price) => println!("Gas price is {gas_price:?}"),
         Err(e) => println!("Cannot estimate gas: {e:?}"),

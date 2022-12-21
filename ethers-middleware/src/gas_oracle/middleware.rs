@@ -4,8 +4,8 @@ use ethers_core::types::{transaction::eip2718::TypedTransaction, *};
 use ethers_providers::{FromErr, Middleware, PendingTransaction};
 use thiserror::Error;
 
+/// Middleware used for fetching gas prices over an API instead of `eth_gasPrice`.
 #[derive(Debug)]
-/// Middleware used for fetching gas prices over an API instead of `eth_gasPrice`
 pub struct GasOracleMiddleware<M, G> {
     inner: M,
     gas_oracle: G,
@@ -21,7 +21,7 @@ where
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Debug, Error)]
 pub enum MiddlewareError<M: Middleware> {
     #[error(transparent)]
     GasOracleError(#[from] GasOracleError),

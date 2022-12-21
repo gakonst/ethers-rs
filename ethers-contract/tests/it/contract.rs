@@ -15,7 +15,7 @@ mod eth_tests {
     use ethers_derive_eip712::*;
     use ethers_providers::{Http, Middleware, PendingTransaction, Provider, StreamExt};
     use ethers_signers::{LocalWallet, Signer};
-    use std::{convert::TryFrom, sync::Arc, time::Duration};
+    use std::{convert::TryFrom, iter::FromIterator, sync::Arc, time::Duration};
 
     #[tokio::test]
     async fn deploy_and_call_contract() {
@@ -517,10 +517,26 @@ mod eth_tests {
             .add_get_eth_balance(addrs[5], false)
             .add_get_eth_balance(addrs[6], false);
 
+        let valid_balances = [
+            U256::from(10_000_000_000_000_000_000_000u128),
+            U256::from(10_000_000_000_000_000_000_000u128),
+            U256::from(10_000_000_000_000_000_000_000u128),
+        ];
+
         let balances: (U256, U256, U256) = multicall.call().await.unwrap();
-        assert_eq!(balances.0, U256::from(10_000_000_000_000_000_000_000u128));
-        assert_eq!(balances.1, U256::from(10_000_000_000_000_000_000_000u128));
-        assert_eq!(balances.2, U256::from(10_000_000_000_000_000_000_000u128));
+        assert_eq!(balances.0, valid_balances[0]);
+        assert_eq!(balances.1, valid_balances[1]);
+        assert_eq!(balances.2, valid_balances[2]);
+
+        // call_array
+        multicall
+            .clear_calls()
+            .add_get_eth_balance(addrs[4], false)
+            .add_get_eth_balance(addrs[5], false)
+            .add_get_eth_balance(addrs[6], false);
+
+        let balances: Vec<U256> = multicall.call_array().await.unwrap();
+        assert_eq!(balances, Vec::from_iter(valid_balances.iter().copied()));
 
         // clear multicall so we can test `call_raw` w/ >16 calls
         multicall.clear_calls();
@@ -536,10 +552,11 @@ mod eth_tests {
             .unwrap();
 
         // build up a list of calls greater than the 16 max restriction
-        for i in 0..=16 {
-            let call = simple_contract.method::<_, String>("getValue", ()).unwrap();
-            multicall.add_call(call, false);
-        }
+        multicall.add_calls(
+            false,
+            std::iter::repeat(simple_contract.method::<_, String>("getValue", ()).unwrap())
+                .take(17), // .collect(),
+        );
 
         // must use `call_raw` as `.calls` > 16
         let tokens = multicall.call_raw().await.unwrap();

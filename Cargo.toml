@@ -2,7 +2,7 @@
 name = "ethers"
 version = "1.0.2"
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.64" # must also be changed in **/Cargo.toml and .clippy.toml
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
@@ -64,12 +64,14 @@ eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
 ws = ["ethers-providers/ws"]
 ipc = ["ethers-providers/ipc"]
 rustls = [
+    "ethers-middleware/rustls",
     "ethers-providers/rustls",
     "ethers-etherscan/rustls",
     "ethers-contract/rustls",
     "ethers-solc/rustls",
 ]
 openssl = [
+    "ethers-middleware/openssl",
     "ethers-providers/openssl",
     "ethers-etherscan/openssl",
     "ethers-contract/openssl",

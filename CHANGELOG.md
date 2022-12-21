@@ -3,7 +3,7 @@
 ## ethers-core
 
 ### Unreleased
-
+-
 - Graceful handling of WebSocket transport errors [#1889](https://github.com/gakonst/ethers-rs/issues/1889) [#1815](https://github.com/gakonst/ethers-rs/issues/1815)
 - `MiddlewareBuilder` trait to instantiate a `Provider` as `Middleware` layers.
 - An `Event` builder can be instantiated specifying the event filter type, without the need to instantiate a contract.
@@ -102,6 +102,8 @@
   between its right shift operator and standard library numeric types.
 - [#842](https://github.com/gakonst/ethers-rs/issues/842) Add support for I256 types in `parse_units` and `format_units`.
   Added `twos_complement` function for I256.
+- [#1934](https://github.com/gakonst/ethers-rs/pull/1934) Allow 16 calls in multicall.
+- [#1941](https://github.com/gakonst/ethers-rs/pull/1941) Add `add_calls` and `call_array` for `Multicall`.
 
 ## ethers-contract-abigen
 
@@ -339,6 +341,8 @@
 
 ### Unreleased
 
+- Added `openssl` and `rustls` feature flags
+  [#1961](https://github.com/gakonst/ethers-rs/pull/1961)
 - Relax Clone requirements when Arc<Middleware> is used
   [#1183](https://github.com/gakonst/ethers-rs/pull/1183)
 - Ensure a consistent chain ID between a Signer and Provider in SignerMiddleware

@@ -1,18 +1,18 @@
-#![cfg(not(target_arch = "wasm32"))]
-#[tokio::test]
-#[cfg(not(feature = "celo"))]
-async fn nonce_manager() {
-    use ethers_core::types::*;
-    use ethers_middleware::{nonce_manager::NonceManagerMiddleware, signer::SignerMiddleware};
-    use ethers_providers::Middleware;
-    use ethers_signers::{LocalWallet, Signer};
-    use std::time::Duration;
+#![cfg(all(not(target_arch = "wasm32"), not(feature = "celo")))]
 
+use ethers_core::types::*;
+use ethers_middleware::{nonce_manager::NonceManagerMiddleware, signer::SignerMiddleware};
+use ethers_providers::Middleware;
+use ethers_signers::{LocalWallet, Signer};
+use std::time::Duration;
+
+#[tokio::test]
+async fn nonce_manager() {
     let provider = ethers_providers::GOERLI.provider().interval(Duration::from_millis(2000u64));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
 
     let wallet = std::env::var("GOERLI_PRIVATE_KEY")
-        .unwrap()
+        .expect("GOERLI_PRIVATE_KEY is not defined")
         .parse::<LocalWallet>()
         .unwrap()
         .with_chain_id(chain_id);
