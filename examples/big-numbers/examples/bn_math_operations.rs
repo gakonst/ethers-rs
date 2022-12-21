@@ -1,24 +1,24 @@
 use ethers_core::{types::U256, utils::format_units};
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Div, Mul};
 
 fn main() {
     let a = U256::from(100);
     let b = U256::from(10);
 
     // a + b
-    let sum = a.add(b);
+    let sum = a + b;
     assert!(sum == U256::from(110));
 
     // a - b
-    let diff = a.sub(b);
+    let diff = a - b;
     assert!(diff == U256::from(90));
 
     // a / b
-    let div = a.div(b);
+    let div = a / b;
     assert!(div == U256::from(10));
 
     // a * b
-    let mul = a.mul(b);
+    let mul = a * b;
     assert!(mul == U256::from(1000));
 
     // a % b
