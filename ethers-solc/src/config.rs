@@ -11,6 +11,7 @@ use std::{
     collections::{BTreeSet, HashSet},
     fmt::{self, Formatter},
     fs,
+    hash::{Hash, Hasher},
     ops::{Deref, DerefMut},
     path::{Component, Path, PathBuf},
 };
@@ -742,6 +743,12 @@ impl SolcConfig {
 impl From<SolcConfig> for Settings {
     fn from(config: SolcConfig) -> Self {
         config.settings
+    }
+}
+
+impl Hash for SolcConfig {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.settings.hash(state);
     }
 }
 

@@ -9,6 +9,7 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{BTreeMap, HashSet},
     fmt, fs,
+    hash::{Hash, Hasher},
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -494,6 +495,24 @@ impl Default for Settings {
             model_checker: None,
         }
         .with_ast()
+    }
+}
+
+impl Hash for Settings {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.optimizer.enabled.hash(state);
+        self.optimizer.runs.hash(state);
+        if let Some(SettingsMetadata { bytecode_hash, cbor_metadata, .. }) = self.metadata {
+            (bytecode_hash.unwrap_or_default() as u8).hash(state);
+            cbor_metadata.hash(state);
+        }
+        self.output_selection.0.keys().cloned().collect::<String>().hash(state);
+        (self.evm_version.unwrap_or_default() as u8).hash(state);
+        self.via_ir.hash(state);
+        if let Some(DebuggingSettings { revert_strings, debug_info, .. }) = &self.debug {
+            (revert_strings.unwrap_or_default() as u8).hash(state);
+            debug_info.hash(state);
+        }
     }
 }
 

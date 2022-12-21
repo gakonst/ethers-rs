@@ -16,6 +16,7 @@ use std::{
         hash_map, BTreeSet, HashMap, HashSet,
     },
     fs::{self},
+    hash::{Hash, Hasher},
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
 };
@@ -25,10 +26,33 @@ use std::{
 /// `ethers-solc` uses a different format version id, but the actual format is consistent with
 /// hardhat This allows ethers-solc to detect if the cache file was written by hardhat or
 /// `ethers-solc`
-const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-3";
+const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-4";
 
 /// The file name of the default cache file
 pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Hash)]
+pub struct CompilationUnitId(String);
+
+impl CompilationUnitId {
+    /// Create a unique id for each compilation unit based on compiler version and settings
+    pub fn new(version: Version, solc_config: SolcConfig) -> Self {
+        let mut hasher = hash_map::DefaultHasher::new();
+        version.hash(&mut hasher);
+        solc_config.hash(&mut hasher);
+        let result = hasher.finish();
+        Self(format!("{:x}", result))
+    }
+}
+
+/// A unit of source files that are compiled together with the same compiler version and settings
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompilationUnit {
+    pub solc_config: SolcConfig,
+    pub version: Version,
+    pub source_units: Vec<PathBuf>,
+}
 
 /// A multi version cache file
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
@@ -38,12 +62,18 @@ pub struct SolFilesCache {
     /// contains all directories used for the project
     pub paths: ProjectPaths,
     pub files: BTreeMap<PathBuf, CacheEntry>,
+    #[serde(rename = "compilationUnits")]
+    pub compilation_units: HashMap<CompilationUnitId, CompilationUnit>,
 }
 
 impl SolFilesCache {
     /// Create a new cache instance with the given files
-    pub fn new(files: BTreeMap<PathBuf, CacheEntry>, paths: ProjectPaths) -> Self {
-        Self { format: ETHERS_FORMAT_VERSION.to_string(), files, paths }
+    pub fn new(
+        files: BTreeMap<PathBuf, CacheEntry>,
+        paths: ProjectPaths,
+        compilation_units: HashMap<CompilationUnitId, CompilationUnit>,
+    ) -> Self {
+        Self { format: ETHERS_FORMAT_VERSION.to_string(), files, paths, compilation_units }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -386,6 +416,7 @@ impl Default for SolFilesCache {
             format: ETHERS_FORMAT_VERSION.to_string(),
             files: Default::default(),
             paths: Default::default(),
+            compilation_units: Default::default(),
         }
     }
 }
@@ -393,7 +424,7 @@ impl Default for SolFilesCache {
 impl<'a> From<&'a ProjectPathsConfig> for SolFilesCache {
     fn from(config: &'a ProjectPathsConfig) -> Self {
         let paths = config.paths_relative();
-        SolFilesCache::new(Default::default(), paths)
+        SolFilesCache::new(Default::default(), paths, Default::default())
     }
 }
 
@@ -411,8 +442,8 @@ pub struct CacheEntry {
     pub content_hash: String,
     /// identifier name see [`crate::utils::source_name()`]
     pub source_name: PathBuf,
-    /// what config was set when compiling this file
-    pub solc_config: SolcConfig,
+    /// what compilation unit this file was a part of
+    pub compilation_unit: CompilationUnitId,
     /// fully resolved imports of the file
     ///
     /// all paths start relative from the project's root: `src/importedFile.sol`
@@ -605,20 +636,19 @@ pub(crate) struct ArtifactsCacheInner<'a, T: ArtifactOutput> {
 
 impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     /// Creates a new cache entry for the file
-    fn create_cache_entry(&self, file: &Path, source: &Source) -> CacheEntry {
+    fn create_cache_entry(&self, file: &Path, source: &Source, version: Version) -> CacheEntry {
         let imports = self
             .edges
             .imports(file)
             .into_iter()
             .map(|import| utils::source_name(import, self.project.root()).to_path_buf())
             .collect();
-
         let entry = CacheEntry {
             last_modification_date: CacheEntry::read_last_modification_date(file)
                 .unwrap_or_default(),
             content_hash: source.content_hash(),
             source_name: utils::source_name(file, self.project.root()).into(),
-            solc_config: self.project.solc_config.clone(),
+            compilation_unit: CompilationUnitId::new(version, self.project.solc_config.clone()),
             imports,
             version_requirement: self.edges.version_requirement(file).map(|v| v.to_string()),
             // artifacts remain empty until we received the compiler output
@@ -628,15 +658,41 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         entry
     }
 
+    /// insert a new compilation unit into the cache
+    ///
+    /// If there is already a compilation unit for a given version and solc config, the file is
+    /// added to the unit
+    fn insert_compilation_unit(
+        &mut self,
+        file: PathBuf,
+        solc_config: SolcConfig,
+        version: Version,
+    ) {
+        let id = CompilationUnitId::new(version.clone(), solc_config.clone());
+        if let Some(CompilationUnit { source_units, .. }) =
+            self.cache.compilation_units.get_mut(&id)
+        {
+            source_units.push(file);
+        } else {
+            self.cache.compilation_units.insert(
+                id,
+                CompilationUnit { solc_config, version, source_units: vec![file.to_path_buf()] },
+            );
+        }
+    }
+
     /// inserts a new cache entry for the given file
     ///
     /// If there is already an entry available for the file the given version is added to the set
     fn insert_new_cache_entry(&mut self, file: &Path, source: &Source, version: Version) {
         if let Some((_, versions)) = self.dirty_source_files.get_mut(file) {
-            versions.insert(version);
+            versions.insert(version.clone());
         } else {
-            let entry = self.create_cache_entry(file, source);
-            self.dirty_source_files.insert(file.to_path_buf(), (entry, HashSet::from([version])));
+            let entry = self.create_cache_entry(file, source, version.clone());
+            let path = file.to_path_buf();
+            self.dirty_source_files
+                .insert(path.clone(), (entry.clone(), HashSet::from([version.clone()])));
+            self.insert_compilation_unit(path, self.project.solc_config.clone(), version);
         }
     }
 
@@ -733,9 +789,18 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
                     tracing::trace!("changed content hash for source file \"{}\"", file.display());
                     return true
                 }
-                if self.project.solc_config != entry.solc_config {
-                    tracing::trace!("changed solc config for source file \"{}\"", file.display());
-                    return true
+                if let Some(compilation_unit) = self
+                    .cache
+                    .compilation_units
+                    .get(&CompilationUnitId::new(version.clone(), self.project.solc_config.clone()))
+                {
+                    if self.project.solc_config != compilation_unit.solc_config {
+                        tracing::trace!(
+                            "changed solc config for source file \"{}\"",
+                            file.display()
+                        );
+                        return true
+                    }
                 }
 
                 // only check artifact's existence if the file generated artifacts.
@@ -813,7 +878,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
             }
 
             // new empty cache
-            SolFilesCache::new(Default::default(), paths)
+            SolFilesCache::new(Default::default(), paths, Default::default())
         }
 
         let cache = if project.cached {
