@@ -16,7 +16,7 @@ wasm_bindgen_test_configure!(run_in_browser);
 // definition in human readable format
 abigen!(
     SimpleContract,
-    "../contract_abi.json",
+    "../contracts/examples/abi/contract_abi.json",
     event_derives(serde::Deserialize, serde::Serialize)
 );
 
