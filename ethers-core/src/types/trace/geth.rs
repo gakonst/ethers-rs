@@ -39,6 +39,16 @@ pub struct StructLog {
     pub storage: Option<BTreeMap<H256, H256>>,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+/// Available built-in tracers
+///
+/// See <https://geth.ethereum.org/docs/developers/evm-tracing/built-in-tracers>
+pub enum GethDebugTracerType {
+    /// callTracer (native)
+    #[serde(rename = "callTracer")]
+    CallTracer,
+}
+
 /// Bindings for additional `debug_traceTransaction` options
 ///
 /// See <https://geth.ethereum.org/docs/rpc/ns-debug#debug_tracetransaction>
@@ -54,7 +64,7 @@ pub struct GethDebugTracingOptions {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enable_return_data: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tracer: Option<String>,
+    pub tracer: Option<GethDebugTracerType>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout: Option<String>,
 }

@@ -14,7 +14,7 @@ async fn main() -> Result<()> {
             tracing_options: GethDebugTracingOptions {
                 disable_storage: Some(true),
                 enable_memory: Some(false),
-                tracer: Some("callTracer".to_string()),
+                tracer: Some(GethDebugTracerType::CallTracer),
                 ..Default::default()
             },
         };
