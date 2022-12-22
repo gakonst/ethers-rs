@@ -284,7 +284,7 @@ impl From<CompilerInput> for StandardJsonCompilerInput {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
     /// Stop compilation after the given stage.
@@ -513,6 +513,17 @@ impl Hash for Settings {
             (revert_strings.unwrap_or_default() as u8).hash(state);
             debug_info.hash(state);
         }
+    }
+}
+
+impl PartialEq for Settings {
+    fn eq(&self, other: &Self) -> bool {
+        self.optimizer == other.optimizer &&
+            self.metadata == other.metadata &&
+            self.output_selection == other.output_selection &&
+            self.evm_version == other.evm_version &&
+            self.via_ir == other.via_ir &&
+            self.debug == other.debug
     }
 }
 

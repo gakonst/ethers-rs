@@ -720,7 +720,7 @@ impl ProjectPathsConfigBuilder {
 }
 
 /// The config to use when compiling the contracts
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize)]
 pub struct SolcConfig {
     /// How the file was compiled
     pub settings: Settings,
@@ -749,6 +749,12 @@ impl From<SolcConfig> for Settings {
 impl Hash for SolcConfig {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.settings.hash(state);
+    }
+}
+
+impl PartialEq for SolcConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.settings == other.settings
     }
 }
 

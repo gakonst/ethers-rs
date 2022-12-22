@@ -41,7 +41,7 @@ impl CompilationUnitId {
         version.hash(&mut hasher);
         solc_config.hash(&mut hasher);
         let result = hasher.finish();
-        Self(format!("{:x}", result))
+        Self(format!("{result:x}"))
     }
 }
 
@@ -676,11 +676,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         } else {
             self.cache.compilation_units.insert(
                 id,
-                CompilationUnit {
-                    solc_config,
-                    version,
-                    source_units: HashSet::from([file.to_path_buf()]),
-                },
+                CompilationUnit { solc_config, version, source_units: HashSet::from([file]) },
             );
         }
     }
