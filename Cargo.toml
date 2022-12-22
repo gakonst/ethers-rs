@@ -86,6 +86,7 @@ abigen = ["ethers-contract/abigen"]
 ### abigen without reqwest
 abigen-offline = ["ethers-contract/abigen-offline"]
 ## solc
+ethers-solc = ["dep:ethers-solc", "ethers-etherscan/ethers-solc"]
 solc-full = ["ethers-solc", "ethers-solc/full"]
 solc-tests = ["ethers-solc", "ethers-solc/tests"]
 solc-sha2-asm = ["ethers-solc", "ethers-solc/asm"]
