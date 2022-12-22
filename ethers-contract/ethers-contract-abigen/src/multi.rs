@@ -31,6 +31,12 @@ impl std::ops::Deref for MultiAbigen {
     }
 }
 
+impl std::ops::DerefMut for MultiAbigen {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.abigens
+    }
+}
+
 impl From<Vec<Abigen>> for MultiAbigen {
     fn from(abigens: Vec<Abigen>) -> Self {
         Self { abigens }
@@ -370,6 +376,16 @@ impl MultiBindings {
     /// Returns whether there are any bindings to be generated
     pub fn is_empty(&self) -> bool {
         self.expansion.contracts.is_empty()
+    }
+
+    /// Specify whether or not to format the code using a locally installed copy
+    /// of `rustfmt`.
+    ///
+    /// Note that in case `rustfmt` does not exist or produces an error, the
+    /// unformatted code will be used.
+    pub fn rustfmt(mut self, rustfmt: bool) -> Self {
+        self.rustfmt = rustfmt;
+        self
     }
 
     fn into_inner(self, single_file: bool) -> MultiBindingsInner {
