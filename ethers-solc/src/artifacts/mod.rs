@@ -22,7 +22,10 @@ pub mod contract;
 pub mod output_selection;
 pub mod serde_helpers;
 use crate::{
-    artifacts::output_selection::{ContractOutputSelection, OutputSelection},
+    artifacts::{
+        lowfidelity::NodeType,
+        output_selection::{ContractOutputSelection, OutputSelection},
+    },
     filter::FilteredSources,
 };
 pub use bytecode::*;
@@ -1835,7 +1838,7 @@ pub struct SecondarySourceLocation {
 pub struct SourceFile {
     pub id: u32,
     #[serde(default, with = "serde_helpers::empty_json_object_opt")]
-    pub ast: Option<SourceUnit>,
+    pub ast: Option<Ast>,
 }
 
 // === impl SourceFile ===
@@ -1846,10 +1849,7 @@ impl SourceFile {
     pub fn contains_contract_definition(&self) -> bool {
         if let Some(ref ast) = self.ast {
             // contract definitions are only allowed at the source-unit level <https://docs.soliditylang.org/en/latest/grammar.html>
-            return ast
-                .nodes
-                .iter()
-                .any(|node| matches!(node, SourceUnitPart::ContractDefinition(_)))
+            return ast.nodes.iter().any(|node| node.node_type == NodeType::ContractDefinition)
             // abstract contract, interfaces: ContractDefinition
         }
 
