@@ -24,6 +24,20 @@ use std::{
 use thiserror::Error;
 use tracing::trace;
 
+macro_rules! if_wasm {
+    ($($item:item)*) => {$(
+        #[cfg(target_arch = "wasm32")]
+        $item
+    )*}
+}
+
+macro_rules! if_not_wasm {
+    ($($item:item)*) => {$(
+        #[cfg(not(target_arch = "wasm32"))]
+        $item
+    )*}
+}
+
 if_wasm! {
     use wasm_bindgen::prelude::*;
     use wasm_bindgen_futures::spawn_local;

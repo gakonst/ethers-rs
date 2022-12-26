@@ -1,21 +1,3 @@
-// only used with WS
-#[cfg(feature = "ws")]
-macro_rules! if_wasm {
-    ($($item:item)*) => {$(
-        #[cfg(target_arch = "wasm32")]
-        $item
-    )*}
-}
-
-// only used with WS
-#[cfg(feature = "ws")]
-macro_rules! if_not_wasm {
-    ($($item:item)*) => {$(
-        #[cfg(not(target_arch = "wasm32"))]
-        $item
-    )*}
-}
-
 mod common;
 pub use common::Authorization;
 
