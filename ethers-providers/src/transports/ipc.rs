@@ -320,10 +320,7 @@ impl From<IpcError> for ProviderError {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ethers_core::{
-        types::{Block, TxHash, U256},
-        utils::Geth,
-    };
+    use ethers_core::utils::Geth;
     use tempfile::NamedTempFile;
 
     #[tokio::test]
@@ -342,6 +339,8 @@ mod test {
     #[tokio::test]
     #[cfg(not(feature = "celo"))]
     async fn subscription() {
+        use ethers_core::types::{Block, TxHash};
+
         let temp_file = NamedTempFile::new().unwrap();
         let path = temp_file.into_temp_path().to_path_buf();
         let _geth = Geth::new().block_time(1u64).ipc_path(&path).spawn();

@@ -4,9 +4,9 @@ pub use common::Authorization;
 mod http;
 pub use self::http::{ClientError as HttpClientError, Provider as Http};
 
-#[cfg(feature = "ipc")]
+#[cfg(all(feature = "ipc", target_family = "unix"))]
 mod ipc;
-#[cfg(feature = "ipc")]
+#[cfg(all(feature = "ipc", target_family = "unix"))]
 pub use ipc::{Ipc, IpcError};
 
 #[cfg(feature = "ws")]
