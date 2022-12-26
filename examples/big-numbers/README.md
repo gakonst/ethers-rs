@@ -1,5 +1,5 @@
 # Big numbers
-Ethereum uses big numbers (also known as "bignums" or "arbitrary-precision integers") to represent certain values in its codebase and in blockchain transactions. This is necessary because Ethereum ([the EVM](https://ethereum.org/en/developers/docs/evm/)) operates on a 256-bit word size, which is different from the usual 32-bit or 64-bit of modern machines (this has nothing to do with base-2 or base-10 which is how we choose to represent numbers). This was chosen for the ease of use with 256-bit cryptography (such as Keccak-256 hashes or secp256k1 signatures). (taken from [here](https://ethereum.org/en/developers/docs/evm/#evm-instructions))
+Ethereum uses big numbers (also known as "bignums" or "arbitrary-precision integers") to represent certain values in its codebase and in blockchain transactions. This is necessary because [the EVM](https://ethereum.org/en/developers/docs/evm) operates on a 256-bit word size, which is different from the usual 32-bit or 64-bit of modern machines. This was chosen for the ease of use with 256-bit cryptography (such as Keccak-256 hashes or secp256k1 signatures).
 
 It is worth noting that Ethereum is not the only blockchain or cryptocurrency that uses big numbers. Many other blockchains and cryptocurrencies also use big numbers to represent values in their respective systems.
 
