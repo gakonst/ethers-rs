@@ -14,35 +14,35 @@ fn main() {
 fn parse_units_example() {
     let pu: ParseUnits = parse_units("1.0", "wei").unwrap();
     let num = U256::from(pu);
-    assert!(num == U256::one());
+    assert_eq!(num, U256::one());
 
     let pu: ParseUnits = parse_units("1.0", "kwei").unwrap();
     let num = U256::from(pu);
-    assert!(num == U256::from(1000));
+    assert_eq!(num, U256::from(1000));
 
     let pu: ParseUnits = parse_units("1.0", "mwei").unwrap();
     let num = U256::from(pu);
-    assert!(num == U256::from(1000000));
+    assert_eq!(num, U256::from(1000000));
 
     let pu: ParseUnits = parse_units("1.0", "gwei").unwrap();
     let num = U256::from(pu);
-    assert!(num == U256::from(1000000000));
+    assert_eq!(num, U256::from(1000000000));
 
     let pu: ParseUnits = parse_units("1.0", "szabo").unwrap();
     let num = U256::from(pu);
-    assert!(num == U256::from(1000000000000_u128));
+    assert_eq!(num, U256::from(1000000000000_u128));
 
     let pu: ParseUnits = parse_units("1.0", "finney").unwrap();
     let num = U256::from(pu);
-    assert!(num == U256::from(1000000000000000_u128));
+    assert_eq!(num, U256::from(1000000000000000_u128));
 
     let pu: ParseUnits = parse_units("1.0", "ether").unwrap();
     let num = U256::from(pu);
-    assert!(num == U256::from(1000000000000000000_u128));
+    assert_eq!(num, U256::from(1000000000000000000_u128));
 
     let pu: ParseUnits = parse_units("1.0", 18).unwrap();
     let num = U256::from(pu);
-    assert!(num == U256::from(1000000000000000000_u128));
+    assert_eq!(num, U256::from(1000000000000000000_u128));
 }
 
 /// DApps business logics handles big numbers in 'wei' units (i.e. sending transactions, on-chain
