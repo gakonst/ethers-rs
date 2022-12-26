@@ -1675,6 +1675,7 @@ dependencies = [
 name = "examples-middleware"
 version = "1.0.2"
 dependencies = [
+ "async-trait",
  "ethers-core",
  "ethers-etherscan",
  "ethers-middleware",
@@ -1682,6 +1683,7 @@ dependencies = [
  "ethers-signers",
  "eyre",
  "serde_json",
+ "thiserror",
  "tokio",
 ]
 
