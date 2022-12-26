@@ -44,7 +44,7 @@ const JS_LIB_DIR: &str = "node_modules";
 /// contracts-ethereum-package ./MyContract.sol
 ///
 /// [Source](https://ethereum.stackexchange.com/questions/74448/what-are-remappings-and-how-do-they-work-in-solidity)
-#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct Remapping {
     pub name: String,
     pub path: String,

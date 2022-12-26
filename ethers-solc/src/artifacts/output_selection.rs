@@ -68,7 +68,7 @@ pub type FileOutputSelection = BTreeMap<String, Vec<String>>;
 ///    }
 ///  }
 /// ```
-#[derive(Debug, Clone, Eq, PartialEq, Default, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Default, Deserialize, Hash)]
 #[serde(transparent)]
 pub struct OutputSelection(pub BTreeMap<String, FileOutputSelection>);
 

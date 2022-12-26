@@ -11,7 +11,6 @@ use std::{
     collections::{BTreeSet, HashSet},
     fmt::{self, Formatter},
     fs,
-    hash::{Hash, Hasher},
     ops::{Deref, DerefMut},
     path::{Component, Path, PathBuf},
 };
@@ -720,7 +719,7 @@ impl ProjectPathsConfigBuilder {
 }
 
 /// The config to use when compiling the contracts
-#[derive(Clone, Debug, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct SolcConfig {
     /// How the file was compiled
     pub settings: Settings,
@@ -743,18 +742,6 @@ impl SolcConfig {
 impl From<SolcConfig> for Settings {
     fn from(config: SolcConfig) -> Self {
         config.settings
-    }
-}
-
-impl Hash for SolcConfig {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.settings.hash(state);
-    }
-}
-
-impl PartialEq for SolcConfig {
-    fn eq(&self, other: &Self) -> bool {
-        self.settings == other.settings
     }
 }
 
