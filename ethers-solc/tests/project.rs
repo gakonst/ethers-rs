@@ -339,13 +339,15 @@ fn can_compile_dapp_only_recompile_dirty_sources() {
         .unwrap();
 
     let compiled = project.compile().unwrap();
-
     assert!(!compiled.has_compiler_errors());
+
     let cache = SolFilesCache::read(project.cache_path()).unwrap();
     // A.sol and B.sol are compatible and should be compiled into one unit
     assert_eq!(cache.compilation_units.len(), 1);
-    let original_a = cache.entry(Path::new("src/A.sol")).unwrap();
-    let original_b = cache.entry(Path::new("src/B.sol")).unwrap();
+    let path_a = Path::new("src/A.sol");
+    let path_b = Path::new("src/B.sol");
+    let original_a = cache.entry(path_a).unwrap();
+    let original_b = cache.entry(path_b).unwrap();
 
     // modify B.sol
     project
@@ -365,11 +367,11 @@ fn can_compile_dapp_only_recompile_dirty_sources() {
     let updated_cache = SolFilesCache::read(project.cache_path()).unwrap();
     assert_eq!(updated_cache.compilation_units.len(), 1);
 
-    let cahced_a = updated_cache.entry(Path::new("src/A.sol")).unwrap();
+    let cached_a = updated_cache.entry(path_a).unwrap();
     // A.sol should not be recompiled
-    assert_eq!(original_a.last_modification_date, cahced_a.last_modification_date);
+    assert_eq!(original_a.last_modification_date, cached_a.last_modification_date);
 
-    let updated_b = updated_cache.entry(Path::new("src/B.sol")).unwrap();
+    let updated_b = updated_cache.entry(path_b).unwrap();
     // Changing source content should not invalidate compilation unit id
     assert_eq!(updated_b.compilation_unit, original_b.compilation_unit);
     // B.sol should be recompiled
