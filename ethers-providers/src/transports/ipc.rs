@@ -5,10 +5,10 @@ use crate::{
     JsonRpcClient, PubsubClient,
 };
 use async_trait::async_trait;
-use bytes::{Buf as _, BytesMut};
+use bytes::{Buf, BytesMut};
 use ethers_core::types::U256;
 use futures_channel::mpsc;
-use futures_util::stream::StreamExt as _;
+use futures_util::stream::StreamExt;
 use hashers::fx_hash::FxHasher64;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{value::RawValue, Deserializer};
@@ -316,8 +316,8 @@ impl From<IpcError> for ProviderError {
         ProviderError::JsonRpcClientError(Box::new(src))
     }
 }
-#[cfg(all(test, target_family = "unix"))]
-#[cfg(not(feature = "celo"))]
+
+#[cfg(test)]
 mod test {
     use super::*;
     use ethers_core::{
@@ -340,10 +340,11 @@ mod test {
     }
 
     #[tokio::test]
+    #[cfg(not(feature = "celo"))]
     async fn subscription() {
         let temp_file = NamedTempFile::new().unwrap();
         let path = temp_file.into_temp_path().to_path_buf();
-        let _geth = Geth::new().block_time(2u64).ipc_path(&path).spawn();
+        let _geth = Geth::new().block_time(1u64).ipc_path(&path).spawn();
         let ipc = Ipc::connect(path).await.unwrap();
 
         let sub_id: U256 = ipc.request("eth_subscribe", ["newHeads"]).await.unwrap();
