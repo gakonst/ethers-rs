@@ -1,8 +1,10 @@
-use ethers_contract::abigen;
-use ethers_core::utils::Anvil;
-use ethers_middleware::SignerMiddleware;
-use ethers_providers::{Http, Provider};
-use ethers_signers::{LocalWallet, Signer};
+use ethers::{
+    contract::abigen,
+    core::utils::Anvil,
+    middleware::SignerMiddleware,
+    providers::{Http, Provider},
+    signers::{LocalWallet, Signer},
+};
 use eyre::Result;
 use std::{convert::TryFrom, sync::Arc, time::Duration};
 

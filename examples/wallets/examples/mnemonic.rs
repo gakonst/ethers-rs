@@ -1,5 +1,5 @@
-use ethers_core::rand;
-use ethers_signers::{coins_bip39::English, MnemonicBuilder};
+use ethers::core::rand;
+use ethers::signers::{coins_bip39::English, MnemonicBuilder};
 use eyre::Result;
 
 fn main() -> Result<()> {

@@ -1629,7 +1629,7 @@ dependencies = [
 name = "examples-anvil"
 version = "1.0.2"
 dependencies = [
- "ethers-core",
+ "ethers",
  "eyre",
  "tokio",
 ]
@@ -1638,19 +1638,14 @@ dependencies = [
 name = "examples-big-numbers"
 version = "1.0.2"
 dependencies = [
- "ethers-core",
+ "ethers",
 ]
 
 [[package]]
 name = "examples-contracts"
 version = "1.0.2"
 dependencies = [
- "ethers-contract",
- "ethers-core",
- "ethers-middleware",
- "ethers-providers",
- "ethers-signers",
- "ethers-solc",
+ "ethers",
  "eyre",
  "serde",
  "serde_json",
@@ -1661,10 +1656,7 @@ dependencies = [
 name = "examples-events"
 version = "1.0.2"
 dependencies = [
- "ethers-contract",
- "ethers-core",
- "ethers-middleware",
- "ethers-providers",
+ "ethers",
  "eyre",
  "serde",
  "serde_json",
@@ -1676,11 +1668,7 @@ name = "examples-middleware"
 version = "1.0.2"
 dependencies = [
  "async-trait",
- "ethers-core",
- "ethers-etherscan",
- "ethers-middleware",
- "ethers-providers",
- "ethers-signers",
+ "ethers",
  "eyre",
  "serde_json",
  "thiserror",
@@ -1691,12 +1679,7 @@ dependencies = [
 name = "examples-providers"
 version = "1.0.2"
 dependencies = [
- "ethers-contract",
- "ethers-core",
- "ethers-middleware",
- "ethers-providers",
- "ethers-signers",
- "ethers-solc",
+ "ethers",
  "eyre",
  "serde",
  "serde_json",
@@ -1707,12 +1690,7 @@ dependencies = [
 name = "examples-queries"
 version = "1.0.2"
 dependencies = [
- "ethers-contract",
- "ethers-core",
- "ethers-middleware",
- "ethers-providers",
- "ethers-signers",
- "ethers-solc",
+ "ethers",
  "eyre",
  "serde",
  "serde_json",
@@ -1723,12 +1701,7 @@ dependencies = [
 name = "examples-subscriptions"
 version = "1.0.2"
 dependencies = [
- "ethers-contract",
- "ethers-core",
- "ethers-middleware",
- "ethers-providers",
- "ethers-signers",
- "ethers-solc",
+ "ethers",
  "eyre",
  "serde",
  "serde_json",
@@ -1739,12 +1712,7 @@ dependencies = [
 name = "examples-transactions"
 version = "1.0.2"
 dependencies = [
- "ethers-contract",
- "ethers-core",
- "ethers-middleware",
- "ethers-providers",
- "ethers-signers",
- "ethers-solc",
+ "ethers",
  "eyre",
  "serde",
  "serde_json",
@@ -1755,12 +1723,7 @@ dependencies = [
 name = "examples-wallets"
 version = "1.0.2"
 dependencies = [
- "ethers-contract",
- "ethers-core",
- "ethers-middleware",
- "ethers-providers",
- "ethers-signers",
- "ethers-solc",
+ "ethers",
  "eyre",
  "serde",
  "serde_json",

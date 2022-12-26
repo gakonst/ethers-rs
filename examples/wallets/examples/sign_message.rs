@@ -1,9 +1,9 @@
 // use the eyre crate for easy idiomatic error handling
 use eyre::Result;
 // use the ethers_core rand for rng
-use ethers_core::rand::thread_rng;
+use ethers::core::rand::thread_rng;
 // use the ethers_signers crate to manage LocalWallet and Signer
-use ethers_signers::{LocalWallet, Signer};
+use ethers::signers::{LocalWallet, Signer};
 
 // Use the `tokio::main` macro for using async on the main function
 #[tokio::main]

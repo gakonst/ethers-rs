@@ -1,9 +1,9 @@
-use ethers_contract::abigen;
-use ethers_core::{
+use ethers::contract::abigen;
+use ethers::core::{
     types::{Address, TransactionRequest, H256},
     utils::{parse_ether, Geth},
 };
-use ethers_providers::{
+use ethers::providers::{
     call_raw::{self, RawCall},
     Http, Provider,
 };

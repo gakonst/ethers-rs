@@ -1,9 +1,11 @@
-use ethers_contract::{abigen, ContractFactory};
-use ethers_core::utils::Anvil;
-use ethers_middleware::SignerMiddleware;
-use ethers_providers::{Http, Provider};
-use ethers_signers::{LocalWallet, Signer};
-use ethers_solc::{Artifact, Project, ProjectPathsConfig};
+use ethers::{
+    contract::{abigen, ContractFactory},
+    core::utils::Anvil,
+    middleware::SignerMiddleware,
+    providers::{Http, Provider},
+    signers::{LocalWallet, Signer},
+    solc::{Artifact, Project, ProjectPathsConfig},
+};
 use eyre::Result;
 use std::{path::PathBuf, sync::Arc, time::Duration};
 

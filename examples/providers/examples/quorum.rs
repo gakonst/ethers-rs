@@ -1,8 +1,8 @@
 //! Example usage for the `QuorumProvider` that requests multiple backends and only returns
 //! a value if the configured `Quorum` was reached.
 
-use ethers_core::utils::Anvil;
-use ethers_providers::{Http, Middleware, Provider, Quorum, QuorumProvider, WeightedProvider, Ws};
+use ethers::core::utils::Anvil;
+use ethers::providers::{Http, Middleware, Provider, Quorum, QuorumProvider, WeightedProvider, Ws};
 use eyre::Result;
 use std::{str::FromStr, time::Duration};
 

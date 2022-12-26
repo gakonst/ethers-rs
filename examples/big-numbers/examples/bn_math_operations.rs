@@ -1,4 +1,4 @@
-use ethers_core::{types::U256, utils::format_units};
+use ethers::{types::U256, utils::format_units};
 use std::ops::{Div, Mul};
 
 fn main() {

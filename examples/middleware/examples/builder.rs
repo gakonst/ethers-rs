@@ -1,7 +1,7 @@
-use ethers_core::types::BlockNumber;
-use ethers_middleware::{gas_escalator::*, gas_oracle::*, *};
-use ethers_providers::{Http, Middleware, Provider};
-use ethers_signers::{LocalWallet, Signer};
+use ethers::core::types::BlockNumber;
+use ethers::middleware::{gas_escalator::*, gas_oracle::*, *};
+use ethers::providers::{Http, Middleware, Provider};
+use ethers::signers::{LocalWallet, Signer};
 use std::convert::TryFrom;
 
 const RPC_URL: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";

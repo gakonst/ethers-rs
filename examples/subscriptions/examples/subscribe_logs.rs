@@ -1,8 +1,8 @@
-use ethers_core::{
+use ethers::core::{
     abi::AbiDecode,
     types::{Address, BlockNumber, Filter, U256},
 };
-use ethers_providers::{Middleware, Provider, StreamExt, Ws};
+use ethers::providers::{Middleware, Provider, StreamExt, Ws};
 use eyre::Result;
 use std::sync::Arc;
 

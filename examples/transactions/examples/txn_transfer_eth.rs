@@ -1,5 +1,5 @@
-use ethers_core::{types::TransactionRequest, utils::Anvil};
-use ethers_providers::{Http, Middleware, Provider};
+use ethers::core::{types::TransactionRequest, utils::Anvil};
+use ethers::providers::{Http, Middleware, Provider};
 use eyre::Result;
 use std::convert::TryFrom;
 

@@ -1,6 +1,8 @@
-use ethers_contract::{abigen, Abigen};
-use ethers_core::types::Address;
-use ethers_providers::{Http, Provider};
+use ethers::{
+    prelude::{abigen, Abigen},
+    providers::{Http, Provider},
+    types::Address,
+};
 use eyre::Result;
 use std::sync::Arc;
 

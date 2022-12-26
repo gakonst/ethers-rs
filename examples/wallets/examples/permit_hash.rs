@@ -1,5 +1,5 @@
-use ethers_contract::{Eip712, EthAbiType};
-use ethers_core::{
+use ethers::contract::{Eip712, EthAbiType};
+use ethers::core::{
     types::{transaction::eip712::Eip712, Address, U256},
     utils::hex,
 };

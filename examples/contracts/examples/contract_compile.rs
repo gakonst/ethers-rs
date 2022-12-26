@@ -1,5 +1,4 @@
-use ethers_contract::Abigen;
-use ethers_solc::Solc;
+use ethers::{prelude::Abigen, solc::Solc};
 use eyre::Result;
 
 fn main() -> Result<()> {

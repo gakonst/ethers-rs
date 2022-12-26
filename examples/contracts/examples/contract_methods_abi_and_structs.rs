@@ -2,14 +2,16 @@
 
 use std::{sync::Arc, time::Duration};
 
-use ethers_contract::abigen;
-use ethers_core::{
-    types::{Address, U256},
-    utils::Anvil,
+use ethers::{
+    contract::abigen,
+    core::{
+        types::{Address, U256},
+        utils::Anvil,
+    },
+    middleware::SignerMiddleware,
+    providers::{Http, Provider},
+    signers::LocalWallet,
 };
-use ethers_middleware::SignerMiddleware;
-use ethers_providers::{Http, Provider};
-use ethers_signers::LocalWallet;
 
 abigen!(VerifierContract, "ethers-contract/tests/solidity-contracts/verifier_abi.json");
 

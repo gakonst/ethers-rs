@@ -1,6 +1,6 @@
-use ethers_core::{types::TransactionRequest, utils::Anvil};
-use ethers_middleware::gas_escalator::*;
-use ethers_providers::{Http, Middleware, Provider};
+use ethers::core::{types::TransactionRequest, utils::Anvil};
+use ethers::middleware::gas_escalator::*;
+use ethers::providers::{Http, Middleware, Provider};
 use eyre::Result;
 
 /// The gas escalator middleware in ethers-rs is designed to automatically increase the gas cost of

@@ -1,4 +1,4 @@
-use ethers_contract::abigen;
+use ethers::contract::abigen;
 
 abigen!(
     SimpleContract,

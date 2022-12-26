@@ -1,4 +1,4 @@
-use ethers_core::{
+use ethers::{
     types::U256,
     utils::{format_units, parse_units, ParseUnits},
 };

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use ethers_contract::abigen;
-use ethers_core::types::{Address, U256};
-use ethers_middleware::SignerMiddleware;
-use ethers_providers::{Http, Middleware, Provider};
-use ethers_signers::{LocalWallet, Signer};
+use ethers::contract::abigen;
+use ethers::core::types::{Address, U256};
+use ethers::middleware::SignerMiddleware;
+use ethers::providers::{Http, Middleware, Provider};
+use ethers::signers::{LocalWallet, Signer};
 use eyre::Result;
 
 abigen!(
