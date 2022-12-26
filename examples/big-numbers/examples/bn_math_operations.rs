@@ -2,34 +2,35 @@ use ethers_core::{types::U256, utils::format_units};
 use std::ops::{Div, Mul};
 
 fn main() {
-    let a = U256::from(100);
-    let b = U256::from(10);
+    let a = U256::from(10);
+    let b = U256::from(2);
 
-    // a + b
+    // addition
     let sum = a + b;
-    assert!(sum == U256::from(110));
+    assert_eq!(sum, U256::from(12));
 
-    // a - b
-    let diff = a - b;
-    assert!(diff == U256::from(90));
+    // subtraction
+    let difference = a - b;
+    assert_eq!(difference, U256::from(8));
 
-    // a / b
-    let div = a / b;
-    assert!(div == U256::from(10));
+    // multiplication
+    let product = a * b;
+    assert_eq!(product, U256::from(20));
 
-    // a * b
-    let mul = a * b;
-    assert!(mul == U256::from(1000));
+    // division
+    let quotient = a / b;
+    assert_eq!(quotient, U256::from(5));
 
-    // a % b
-    let module = a.div_mod(b).1;
-    assert!(module == U256::zero());
+    // modulo
+    let remainder = a % b;
+    assert_eq!(remainder, U256::zero()); // equivalent to `U256::from(0)`
 
-    // a ^ b
-    let base = U256::from(10);
-    let expon = U256::from(2);
-    let pow = base.pow(expon);
-    assert!(pow == U256::from(100));
+    // exponentiation
+    let power = a.pow(b);
+    assert_eq!(power, U256::from(100));
+    // powers of 10 can also be expressed like this:
+    let power_of_10 = U256::exp10(2);
+    assert_eq!(power_of_10, U256::from(100));
 
     // Multiply two 'ether' numbers:
     // Big numbers are integers, that can represent fixed point numbers.
