@@ -32,7 +32,7 @@ const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-4";
 pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Hash)]
-pub struct CompilationUnitId(String);
+pub struct CompilationUnitId(u64);
 
 impl CompilationUnitId {
     /// Create a unique id for each compilation unit based on compiler version and settings
@@ -40,8 +40,13 @@ impl CompilationUnitId {
         let mut hasher = hash_map::DefaultHasher::new();
         version.hash(&mut hasher);
         solc_config.hash(&mut hasher);
-        let result = hasher.finish();
-        Self(format!("{result:x}"))
+        Self(hasher.finish())
+    }
+}
+
+impl std::fmt::Display for CompilationUnitId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:x}", self.0)
     }
 }
 
