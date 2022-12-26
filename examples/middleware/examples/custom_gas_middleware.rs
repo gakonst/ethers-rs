@@ -15,10 +15,8 @@ use thiserror::Error;
 ///
 /// This custom middleware increases the gas value of transactions sent through an ethers-rs
 /// provider by a specified percentage and will be called for each transaction before it is sent.
-/// The middleware modifies the gas value in the transaction request by multiplying it by a
-/// specified percentage and adding it to the original gas value. This can be useful if you want to
-/// ensure that transactions have a higher gas value than the estimated, in order to improve the
-/// chances of them not to run out of gas when landing on-chain.
+/// This can be useful if you want to ensure that transactions have a higher gas value than the
+/// estimated, in order to improve the chances of them not to run out of gas when landing on-chain.
 #[derive(Debug)]
 struct GasMiddleware<M> {
     inner: M,
@@ -41,8 +39,8 @@ where
     /// `ìnner` the inner Middleware
     /// `perc` This is an unsigned integer representing the percentage increase in the amount of gas
     /// to be used for the transaction. The percentage is relative to the gas value specified in the
-    /// transaction. Valid contingency values are in range 1..=50. Otherwise a custom middleware error
-    /// is raised.
+    /// transaction. Valid contingency values are in range 1..=50. Otherwise a custom middleware
+    /// error is raised.
     pub fn new(inner: M, perc: u32) -> Result<Self, GasMiddlewareError<M>> {
         let contingency = match perc {
             0 => Err(GasMiddlewareError::TooLowContingency(perc))?,
@@ -61,7 +59,7 @@ where
 }
 
 /// Let's implement the `Middleware` trait for our custom middleware.
-/// All trait functions are derived automatically, so we just need to 
+/// All trait functions are derived automatically, so we just need to
 /// override the needed functions.
 #[async_trait]
 impl<M> Middleware for GasMiddleware<M>
@@ -111,7 +109,7 @@ pub enum GasMiddlewareError<M: Middleware> {
     /// Thrown when the internal middleware errors
     #[error("{0}")]
     MiddlewareError(M::Error),
-    /// Specific errors of this GasMiddleware. 
+    /// Specific errors of this GasMiddleware.
     /// Please refer to the `thiserror` crate for
     /// further docs.
     #[error("{0}")]
