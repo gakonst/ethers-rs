@@ -74,6 +74,7 @@ celo = ["ethers-core/celo"]
 
 ws = ["tokio", "tokio-tungstenite", "futures-channel"]
 ipc = ["tokio", "tokio/io-util", "bytes", "futures-channel"]
+named-pipe = ["tokio", "tokio/time"]
 
 openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
 # we use the webpki roots so we can build static binaries w/o any root cert dependencies
