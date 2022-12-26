@@ -1,10 +1,3 @@
-use std::{
-    fmt::Debug,
-    future::Future,
-    pin::Pin,
-    task::{Context, Poll},
-};
-
 use crate::{provider::ProviderError, JsonRpcClient, PubsubClient};
 use async_trait::async_trait;
 use ethers_core::types::{U256, U64};
@@ -12,6 +5,12 @@ use futures_core::Stream;
 use futures_util::{future::join_all, FutureExt, StreamExt};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::{value::RawValue, Value};
+use std::{
+    fmt::Debug,
+    future::Future,
+    pin::Pin,
+    task::{Context, Poll},
+};
 use thiserror::Error;
 
 /// A provider that bundles multiple providers and only returns a value to the

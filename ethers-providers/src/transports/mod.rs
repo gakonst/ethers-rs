@@ -1,6 +1,3 @@
-mod common;
-pub use common::Authorization;
-
 // only used with WS
 #[cfg(feature = "ws")]
 macro_rules! if_wasm {
@@ -19,13 +16,16 @@ macro_rules! if_not_wasm {
     )*}
 }
 
-#[cfg(all(target_family = "unix", feature = "ipc"))]
-mod ipc;
-#[cfg(all(target_family = "unix", feature = "ipc"))]
-pub use ipc::{Ipc, IpcError};
+mod common;
+pub use common::Authorization;
 
 mod http;
 pub use self::http::{ClientError as HttpClientError, Provider as Http};
+
+#[cfg(feature = "ipc")]
+mod ipc;
+#[cfg(feature = "ipc")]
+pub use ipc::{Ipc, IpcError};
 
 #[cfg(feature = "ws")]
 mod ws;

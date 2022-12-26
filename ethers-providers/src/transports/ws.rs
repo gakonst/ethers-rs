@@ -1,11 +1,11 @@
+use super::common::{Params, Response};
 use crate::{
     provider::ProviderError,
     transports::common::{JsonRpcError, Request},
     JsonRpcClient, PubsubClient,
 };
-use ethers_core::types::U256;
-
 use async_trait::async_trait;
+use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
 use futures_util::{
     sink::{Sink, SinkExt},
@@ -23,8 +23,6 @@ use std::{
 };
 use thiserror::Error;
 use tracing::trace;
-
-use super::common::{Params, Response};
 
 if_wasm! {
     use wasm_bindgen::prelude::*;

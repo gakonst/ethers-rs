@@ -2,11 +2,8 @@
 //! and uses a dedicated client for read and the other for write operations
 
 use crate::{provider::ProviderError, JsonRpcClient};
-
 use async_trait::async_trait;
-
 use serde::{de::DeserializeOwned, Serialize};
-
 use thiserror::Error;
 
 /// A client containing two clients.

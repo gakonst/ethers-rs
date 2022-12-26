@@ -1,6 +1,7 @@
-// Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
-use crate::{provider::ProviderError, JsonRpcClient};
+//! Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
+use super::common::{Authorization, JsonRpcError, Request, Response};
+use crate::{provider::ProviderError, JsonRpcClient};
 use async_trait::async_trait;
 use reqwest::{header::HeaderValue, Client, Error as ReqwestError};
 use serde::{de::DeserializeOwned, Serialize};
@@ -10,8 +11,6 @@ use std::{
 };
 use thiserror::Error;
 use url::Url;
-
-use super::common::{Authorization, JsonRpcError, Request, Response};
 
 /// A low-level JSON-RPC Client over HTTP.
 ///

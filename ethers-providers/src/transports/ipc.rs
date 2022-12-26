@@ -1,3 +1,17 @@
+use super::common::Params;
+use crate::{
+    provider::ProviderError,
+    transports::common::{JsonRpcError, Request, Response},
+    JsonRpcClient, PubsubClient,
+};
+use async_trait::async_trait;
+use bytes::{Buf as _, BytesMut};
+use ethers_core::types::U256;
+use futures_channel::mpsc;
+use futures_util::stream::StreamExt as _;
+use hashers::fx_hash::FxHasher64;
+use serde::{de::DeserializeOwned, Serialize};
+use serde_json::{value::RawValue, Deserializer};
 use std::{
     cell::RefCell,
     convert::Infallible,
@@ -9,18 +23,9 @@ use std::{
     },
     thread,
 };
-
-use async_trait::async_trait;
-use bytes::{Buf as _, BytesMut};
-use ethers_core::types::U256;
-use futures_channel::mpsc;
-use futures_util::stream::StreamExt as _;
-use hashers::fx_hash::FxHasher64;
-use serde::{de::DeserializeOwned, Serialize};
-use serde_json::{value::RawValue, Deserializer};
 use thiserror::Error;
 use tokio::{
-    io::{AsyncReadExt as _, AsyncWriteExt as _, BufReader},
+    io::{AsyncReadExt, AsyncWriteExt, BufReader},
     net::{
         unix::{ReadHalf, WriteHalf},
         UnixStream,
@@ -28,14 +33,6 @@ use tokio::{
     runtime,
     sync::oneshot::{self, error::RecvError},
 };
-
-use crate::{
-    provider::ProviderError,
-    transports::common::{JsonRpcError, Request, Response},
-    JsonRpcClient, PubsubClient,
-};
-
-use super::common::Params;
 
 type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHasher64>>;
 
