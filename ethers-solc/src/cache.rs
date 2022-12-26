@@ -37,7 +37,7 @@ pub struct CompilationUnitId(u64);
 
 impl CompilationUnitId {
     /// Create a unique id for each compilation unit based on compiler version and settings
-    pub fn new(version: Version, solc_config: SolcConfig) -> Self {
+    pub fn new(version: &Version, solc_config: &SolcConfig) -> Self {
         let mut hasher = hash_map::DefaultHasher::new();
         version.hash(&mut hasher);
         solc_config.hash(&mut hasher);
@@ -654,7 +654,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
                 .unwrap_or_default(),
             content_hash: source.content_hash(),
             source_name: utils::source_name(file, self.project.root()).into(),
-            compilation_unit: CompilationUnitId::new(version, self.project.solc_config.clone()),
+            compilation_unit: CompilationUnitId::new(&version, &self.project.solc_config),
             imports,
             version_requirement: self.edges.version_requirement(file).map(|v| v.to_string()),
             // artifacts remain empty until we received the compiler output
@@ -674,7 +674,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         solc_config: SolcConfig,
         version: Version,
     ) {
-        let id = CompilationUnitId::new(version.clone(), solc_config.clone());
+        let id = CompilationUnitId::new(&version, &solc_config);
         if let Some(CompilationUnit { source_units, .. }) =
             self.cache.compilation_units.get_mut(&id)
         {
