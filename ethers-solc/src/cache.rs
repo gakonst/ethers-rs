@@ -31,6 +31,7 @@ const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-4";
 /// The file name of the default cache file
 pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
 
+/// A unique identifier for source files that were compiled together
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Hash)]
 pub struct CompilationUnitId(u64);
 
