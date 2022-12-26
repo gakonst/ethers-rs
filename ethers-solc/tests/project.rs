@@ -315,6 +315,70 @@ fn can_compile_dapp_detect_changes_in_sources() {
 }
 
 #[test]
+fn can_compile_dapp_only_recompile_dirty_sources() {
+    let project = TempProject::dapptools().unwrap();
+    project
+        .add_source(
+            "A",
+            r#"
+    pragma solidity ^0.8.10;
+    import "./B.sol";
+    contract A { }
+    "#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "B",
+            r#"
+    pragma solidity ^0.8.10;
+    contract B { }
+    "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+
+    assert!(!compiled.has_compiler_errors());
+    let cache = SolFilesCache::read(project.cache_path()).unwrap();
+    // A.sol and B.sol are compatible and should be compiled into one unit
+    assert_eq!(cache.compilation_units.len(), 1);
+    let original_a = cache.entry(Path::new("src/A.sol")).unwrap();
+    let original_b = cache.entry(Path::new("src/B.sol")).unwrap();
+
+    // modify B.sol
+    project
+        .add_source(
+            "B",
+            r#"
+    pragma solidity ^0.8.10;
+    contract B { 
+        function testExample() public {}
+    }
+    "#,
+        )
+        .unwrap();
+
+    let compiled = project.compile().unwrap();
+    assert!(!compiled.has_compiler_errors());
+    let updated_cache = SolFilesCache::read(project.cache_path()).unwrap();
+    assert_eq!(updated_cache.compilation_units.len(), 1);
+
+    let cahced_a = updated_cache.entry(Path::new("src/A.sol")).unwrap();
+    // A.sol should not be recompiled
+    assert_eq!(original_a.last_modification_date, cahced_a.last_modification_date);
+
+    let updated_b = updated_cache.entry(Path::new("src/B.sol")).unwrap();
+    // Changing source content should not invalidate compilation unit id
+    assert_eq!(updated_b.compilation_unit, original_b.compilation_unit);
+    // B.sol should be recompiled
+    assert_ne!(updated_b.last_modification_date, original_b.last_modification_date);
+
+    project.artifacts_snapshot().unwrap().assert_artifacts_essentials_present();
+}
+
+#[test]
 fn can_emit_build_info() {
     let mut project = TempProject::dapptools().unwrap();
     project.project_mut().build_info = true;
