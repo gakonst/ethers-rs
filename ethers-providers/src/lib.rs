@@ -3,8 +3,8 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![allow(clippy::type_complexity)]
 #![doc = include_str!("../README.md")]
+
 mod transports;
-use futures_util::future::join_all;
 pub use transports::*;
 
 mod provider;
@@ -40,7 +40,11 @@ pub mod erc;
 
 use async_trait::async_trait;
 use auto_impl::auto_impl;
-use ethers_core::types::transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed};
+use ethers_core::types::{
+    transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
+    *,
+};
+use futures_util::future::join_all;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{error::Error, fmt::Debug, future::Future, pin::Pin};
 use url::Url;
@@ -75,7 +79,6 @@ pub trait JsonRpcClient: Debug + Send + Sync {
         R: DeserializeOwned;
 }
 
-use ethers_core::types::*;
 pub trait FromErr<T> {
     fn from(src: T) -> Self;
 }
