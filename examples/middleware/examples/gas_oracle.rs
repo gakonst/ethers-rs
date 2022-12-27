@@ -29,30 +29,30 @@ async fn main() {
 }
 
 async fn blocknative() {
-    let api_key: String = "YOUR-API-KEY".into();
-    let oracle = BlockNative::new(Some(api_key)).category(GasCategory::Fastest);
+    let api_key: Option<String> = std::env::var("BLOCK_NATIVE_API_KEY").ok();
+    let oracle = BlockNative::new(api_key).category(GasCategory::Fastest);
     match oracle.fetch().await {
-        Ok(gas_price) => println!("Gas price is {gas_price:?}"),
-        Err(e) => println!("Cannot estimate gas: {e:?}"),
+        Ok(gas_price) => println!("[Blocknative]: Gas price is {gas_price:?}"),
+        Err(e) => println!("[Blocknative]: Cannot estimate gas: {e:?}"),
     }
 }
 
 async fn etherchain() {
     let oracle = Etherchain::new().category(GasCategory::Standard);
     match oracle.fetch().await {
-        Ok(gas_price) => println!("Gas price is {gas_price:?}"),
-        Err(e) => println!("Cannot estimate gas: {e:?}"),
+        Ok(gas_price) => println!("[Etherchain]: Gas price is {gas_price:?}"),
+        Err(e) => println!("[Etherchain]: Cannot estimate gas: {e:?}"),
     }
 }
 
 async fn etherscan() {
     let chain = Chain::Mainnet;
-    let api_key = "YOUR-API-KEY";
+    let api_key: String = std::env::var("ETHERSCAN_API_KEY_ETHEREUM").unwrap();
     if let Ok(client) = Client::new(chain, api_key) {
         let oracle = Etherscan::new(client).category(GasCategory::Fast);
         match oracle.fetch().await {
-            Ok(gas_price) => println!("Gas price is {gas_price:?}"),
-            Err(e) => println!("Cannot estimate gas: {e:?}"),
+            Ok(gas_price) => println!("[Etherscan]: Gas price is {gas_price:?}"),
+            Err(e) => println!("[Etherscan]: Cannot estimate gas: {e:?}"),
         }
     }
 }
@@ -60,8 +60,8 @@ async fn etherscan() {
 async fn gas_now() {
     let oracle = GasNow::new().category(GasCategory::Fast);
     match oracle.fetch().await {
-        Ok(gas_price) => println!("Gas price is {gas_price:?}"),
-        Err(e) => println!("Cannot estimate gas: {e:?}"),
+        Ok(gas_price) => println!("[GasNow]: Gas price is {gas_price:?}"),
+        Err(e) => println!("[GasNow]: Cannot estimate gas: {e:?}"),
     }
 }
 
@@ -69,8 +69,8 @@ async fn polygon() {
     let chain = Chain::Polygon;
     if let Ok(oracle) = Polygon::new(chain) {
         match oracle.category(GasCategory::SafeLow).fetch().await {
-            Ok(gas_price) => println!("Gas price is {gas_price:?}"),
-            Err(e) => println!("Cannot estimate gas: {e:?}"),
+            Ok(gas_price) => println!("[Polygon]: Gas price is {gas_price:?}"),
+            Err(e) => println!("[Polygon]: Cannot estimate gas: {e:?}"),
         }
     }
 }
@@ -80,7 +80,7 @@ async fn provider_oracle() {
     let provider = Provider::<Http>::try_from(RPC_URL).unwrap();
     let oracle = ProviderOracle::new(provider);
     match oracle.fetch().await {
-        Ok(gas_price) => println!("Gas price is {gas_price:?}"),
-        Err(e) => println!("Cannot estimate gas: {e:?}"),
+        Ok(gas_price) => println!("[Provider oracle]: Gas price is {gas_price:?}"),
+        Err(e) => println!("[Provider oracle]: Cannot estimate gas: {e:?}"),
     }
 }

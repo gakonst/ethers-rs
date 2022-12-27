@@ -5,7 +5,7 @@ authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
 edition = "2021"
 
 [dev-dependencies]
-ethers = { path = "../..", version = "1.0.0" }
+ethers = { path = "../..", version = "1.0.0", features = ["rustls", "ws"] }
 
 async-trait = { version = "0.1.50", default-features = false }
 eyre = "0.6"
