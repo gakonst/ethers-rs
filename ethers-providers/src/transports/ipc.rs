@@ -97,7 +97,7 @@ mod imp {
         }
 
         #[allow(unsafe_code)]
-        pub fn split<'a>(&'a mut self) -> (ReadHalf<'a>, WriteHalf<'a>) {
+        pub fn split(&mut self) -> (ReadHalf, WriteHalf) {
             // SAFETY: ReadHalf cannot write but still needs a mutable reference for polling.
             // NamedPipeClient calls its `io` using immutable references, but it's private.
             let self1 = unsafe { &mut *(self as *mut Self) };
@@ -473,7 +473,6 @@ impl From<IpcError> for ProviderError {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
 
     use super::*;
     use ethers_core::utils::{Geth, GethInstance};
@@ -481,7 +480,7 @@ mod tests {
 
     async fn connect() -> (Ipc, GethInstance) {
         let temp_file = NamedTempFile::new().unwrap();
-        let mut path = temp_file.into_temp_path().to_path_buf();
+        let path = temp_file.into_temp_path().to_path_buf();
         let geth = Geth::new().block_time(1u64).ipc_path(&path).spawn();
 
         // [Windows named pipes](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipes)
