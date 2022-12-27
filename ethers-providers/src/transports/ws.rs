@@ -96,11 +96,13 @@ enum Instruction {
 
 /// A JSON-RPC Client over Websockets.
 ///
+/// # Example
+///
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// use ethers_providers::Ws;
 ///
-/// let ws = Ws::connect("wss://localhost:8545").await?;
+/// let ws = Ws::connect("ws://localhost:8545").await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -439,8 +441,8 @@ fn to_client_error<T: Debug>(err: T) -> ClientError {
     ClientError::ChannelError(format!("{err:?}"))
 }
 
-#[derive(Error, Debug)]
 /// Error thrown when sending a WS message
+#[derive(Debug, Error)]
 pub enum ClientError {
     /// Thrown if deserialization failed
     #[error(transparent)]

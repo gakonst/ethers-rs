@@ -1404,7 +1404,12 @@ impl Provider<crate::Ws> {
 
 #[cfg(all(feature = "ipc", any(unix, windows)))]
 impl Provider<crate::Ipc> {
-    /// Direct connection to an IPC socket.
+    #[cfg_attr(unix, doc = "Connects to the Unix socket at the provided path.")]
+    #[cfg_attr(windows, doc = "Connects to the named pipe at the provided path.\n")]
+    #[cfg_attr(
+        windows,
+        doc = r"Note: the path must be the fully qualified, like: `\\.\pipe\<name>`."
+    )]
     pub async fn connect_ipc(path: impl AsRef<std::path::Path>) -> Result<Self, ProviderError> {
         let ipc = crate::Ipc::connect(path).await?;
         Ok(Self::new(ipc))

@@ -196,7 +196,22 @@ mod imp {
 
 use self::imp::*;
 
-/// IPC transport.
+#[cfg_attr(unix, doc = "A JSON-RPC Client over Unix IPC.")]
+#[cfg_attr(windows, doc = "A JSON-RPC Client over named pipes.")]
+///
+/// # Example
+///
+/// ```no_run
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+/// use ethers_providers::Ws;
+///
+/// // the ipc's path
+#[cfg_attr(unix, doc = r#"let path = "/home/user/.local/share/reth/reth.ipc""#)]
+#[cfg_attr(windows, doc = r#"let path = r"\\.\pipe\reth.ipc""#)]
+/// let ipc = Ipc::connect(path).await?;
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct Ipc {
     id: Arc<AtomicU64>,
@@ -211,7 +226,12 @@ enum TransportMessage {
 }
 
 impl Ipc {
-    /// Creates a new IPC transport from a given path using Unix sockets.
+    #[cfg_attr(unix, doc = "Connects to the Unix socket at the provided path.")]
+    #[cfg_attr(windows, doc = "Connects to the named pipe at the provided path.\n")]
+    #[cfg_attr(
+        windows,
+        doc = r"Note: the path must be the fully qualified, like: `\\.\pipe\<name>`."
+    )]
     pub async fn connect(path: impl AsRef<Path>) -> Result<Self, IpcError> {
         let id = Arc::new(AtomicU64::new(1));
         let (request_tx, request_rx) = mpsc::unbounded();
