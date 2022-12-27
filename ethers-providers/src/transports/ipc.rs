@@ -36,7 +36,7 @@ type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHash
 type Pending = oneshot::Sender<Result<Box<RawValue>, JsonRpcError>>;
 type Subscription = mpsc::UnboundedSender<Box<RawValue>>;
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 #[doc(hidden)]
 mod imp {
     pub(super) use tokio::net::{
@@ -45,7 +45,7 @@ mod imp {
     };
 }
 
-#[cfg(target_family = "windows")]
+#[cfg(windows)]
 #[doc(hidden)]
 mod imp {
     use super::*;
