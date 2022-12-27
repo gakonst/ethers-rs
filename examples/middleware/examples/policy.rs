@@ -1,9 +1,11 @@
-use ethers::core::{types::TransactionRequest, utils::Anvil};
-use ethers::middleware::{
-    policy::{PolicyMiddlewareError, RejectEverything},
-    MiddlewareBuilder, PolicyMiddleware,
+use ethers::{
+    core::{types::TransactionRequest, utils::Anvil},
+    middleware::{
+        policy::{PolicyMiddlewareError, RejectEverything},
+        MiddlewareBuilder, PolicyMiddleware,
+    },
+    providers::{Http, Middleware, Provider},
 };
-use ethers::providers::{Http, Middleware, Provider};
 use eyre::Result;
 
 /// Policy middleware is a way to inject custom logic into the process of sending transactions and

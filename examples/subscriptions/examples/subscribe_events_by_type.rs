@@ -1,6 +1,8 @@
-use ethers::contract::{abigen, Contract};
-use ethers::core::types::ValueOrArray;
-use ethers::providers::{Provider, StreamExt, Ws};
+use ethers::{
+    contract::{abigen, Contract},
+    core::types::ValueOrArray,
+    providers::{Provider, StreamExt, Ws},
+};
 use std::{error::Error, sync::Arc};
 
 abigen!(

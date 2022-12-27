@@ -1,8 +1,10 @@
-use ethers::core::{
-    abi::AbiDecode,
-    types::{BlockNumber, Filter, U256},
+use ethers::{
+    core::{
+        abi::AbiDecode,
+        types::{BlockNumber, Filter, U256},
+    },
+    providers::{Middleware, Provider, StreamExt, Ws},
 };
-use ethers::providers::{Middleware, Provider, StreamExt, Ws};
 use eyre::Result;
 use std::sync::Arc;
 

@@ -1,9 +1,11 @@
-use ethers::core::types::Chain;
-use ethers::etherscan::Client;
-use ethers::middleware::gas_oracle::{
-    BlockNative, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, Polygon, ProviderOracle,
+use ethers::{
+    core::types::Chain,
+    etherscan::Client,
+    middleware::gas_oracle::{
+        BlockNative, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, Polygon, ProviderOracle,
+    },
+    providers::{Http, Provider},
 };
-use ethers::providers::{Http, Provider};
 
 /// In Ethereum, the "gas" of a transaction refers to the amount of computation required to execute
 /// the transaction on the blockchain. Gas is typically measured in units of "gas," and the cost of

@@ -1,7 +1,9 @@
-use ethers::core::{types::TransactionRequest, utils::Anvil};
-use ethers::middleware::SignerMiddleware;
-use ethers::providers::{Http, Middleware, Provider};
-use ethers::signers::{LocalWallet, Signer};
+use ethers::{
+    core::{types::TransactionRequest, utils::Anvil},
+    middleware::SignerMiddleware,
+    providers::{Http, Middleware, Provider},
+    signers::{LocalWallet, Signer},
+};
 use eyre::Result;
 use std::convert::TryFrom;
 

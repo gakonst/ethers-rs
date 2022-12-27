@@ -1,11 +1,13 @@
-use ethers::contract::abigen;
-use ethers::core::{
-    types::{Address, TransactionRequest, H256},
-    utils::{parse_ether, Geth},
-};
-use ethers::providers::{
-    call_raw::{self, RawCall},
-    Http, Provider,
+use ethers::{
+    contract::abigen,
+    core::{
+        types::{Address, TransactionRequest, H256},
+        utils::{parse_ether, Geth},
+    },
+    providers::{
+        call_raw::{self, RawCall},
+        Http, Provider,
+    },
 };
 use eyre::Result;
 use std::sync::Arc;

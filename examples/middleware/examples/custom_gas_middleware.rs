@@ -1,11 +1,13 @@
 use async_trait::async_trait;
-use ethers::core::{
-    types::{transaction::eip2718::TypedTransaction, BlockId, TransactionRequest, U256},
-    utils::{parse_units, Anvil},
+use ethers::{
+    core::{
+        types::{transaction::eip2718::TypedTransaction, BlockId, TransactionRequest, U256},
+        utils::{parse_units, Anvil},
+    },
+    middleware::MiddlewareBuilder,
+    providers::{FromErr, Http, Middleware, PendingTransaction, Provider},
+    signers::{LocalWallet, Signer},
 };
-use ethers::middleware::MiddlewareBuilder;
-use ethers::providers::{FromErr, Http, Middleware, PendingTransaction, Provider};
-use ethers::signers::{LocalWallet, Signer};
 use thiserror::Error;
 
 /// This example demonstrates the mechanisms for creating custom middlewares in ethers-rs.

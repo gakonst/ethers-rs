@@ -4,12 +4,14 @@ use std::{
     sync::Arc,
 };
 
-use ethers::contract::abigen;
-use ethers::core::{
-    types::{Address, I256, U256},
-    utils::format_units,
+use ethers::{
+    contract::abigen,
+    core::{
+        types::{Address, I256, U256},
+        utils::format_units,
+    },
+    providers::{Http, Middleware, Provider},
 };
-use ethers::providers::{Http, Middleware, Provider};
 
 abigen!(
     AggregatorInterface,

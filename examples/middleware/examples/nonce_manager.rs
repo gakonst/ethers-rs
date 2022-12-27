@@ -1,9 +1,11 @@
-use ethers::core::{
-    types::{BlockNumber, TransactionRequest},
-    utils::Anvil,
+use ethers::{
+    core::{
+        types::{BlockNumber, TransactionRequest},
+        utils::Anvil,
+    },
+    middleware::MiddlewareBuilder,
+    providers::{Http, Middleware, Provider},
 };
-use ethers::middleware::MiddlewareBuilder;
-use ethers::providers::{Http, Middleware, Provider};
 use eyre::Result;
 
 /// In Ethereum, the nonce of a transaction is a number that represents the number of transactions

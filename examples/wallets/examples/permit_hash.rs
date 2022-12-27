@@ -1,7 +1,9 @@
-use ethers::contract::{Eip712, EthAbiType};
-use ethers::core::{
-    types::{transaction::eip712::Eip712, Address, U256},
-    utils::hex,
+use ethers::{
+    contract::{Eip712, EthAbiType},
+    core::{
+        types::{transaction::eip712::Eip712, Address, U256},
+        utils::hex,
+    },
 };
 
 // Generate the EIP712 permit hash to sign for a Uniswap V2 pair.

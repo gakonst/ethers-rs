@@ -1,8 +1,10 @@
 //! Example usage for the `RwClient` that uses a didicated client to send transaction and nother one
 //! for read ops
 
-use ethers::core::utils::Anvil;
-use ethers::providers::{Http, Middleware, Provider, Ws};
+use ethers::{
+    core::utils::Anvil,
+    providers::{Http, Middleware, Provider, Ws},
+};
 use eyre::Result;
 use std::{str::FromStr, time::Duration};
 
