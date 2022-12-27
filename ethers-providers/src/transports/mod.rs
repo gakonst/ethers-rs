@@ -4,13 +4,9 @@ pub use common::Authorization;
 mod http;
 pub use self::http::{ClientError as HttpClientError, Provider as Http};
 
-#[cfg(all(feature = "named-pipe"))]
-mod named_pipe;
-// use named_pipe;
-
-#[cfg(all(feature = "ipc", target_family = "unix"))]
+#[cfg(all(feature = "ipc", any(unix, windows)))]
 mod ipc;
-#[cfg(all(feature = "ipc", target_family = "unix"))]
+#[cfg(all(feature = "ipc", any(unix, windows)))]
 pub use ipc::{Ipc, IpcError};
 
 #[cfg(feature = "ws")]

@@ -15,8 +15,9 @@ use serde_json::{value::RawValue, Deserializer};
 use std::{
     cell::RefCell,
     convert::Infallible,
+    ffi::OsStr,
     hash::BuildHasherDefault,
-    path::Path,
+    io,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
@@ -26,10 +27,6 @@ use std::{
 use thiserror::Error;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader},
-    net::{
-        unix::{ReadHalf, WriteHalf},
-        UnixStream,
-    },
     runtime,
     sync::oneshot::{self, error::RecvError},
 };
@@ -39,7 +36,167 @@ type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHash
 type Pending = oneshot::Sender<Result<Box<RawValue>, JsonRpcError>>;
 type Subscription = mpsc::UnboundedSender<Box<RawValue>>;
 
-/// Unix Domain Sockets (IPC) transport.
+#[cfg(target_family = "unix")]
+#[doc(hidden)]
+mod imp {
+    pub(super) use tokio::net::{
+        unix::{ReadHalf, WriteHalf},
+        UnixStream as Stream,
+    };
+}
+
+#[cfg(target_family = "windows")]
+#[doc(hidden)]
+mod imp {
+    use super::*;
+    use std::{
+        ops::{Deref, DerefMut},
+        pin::Pin,
+        task::{Context, Poll},
+        time::Duration,
+    };
+    use tokio::{
+        io::{AsyncRead, AsyncWrite, ReadBuf},
+        net::windows::named_pipe::{ClientOptions, NamedPipeClient},
+        time::sleep,
+    };
+    use winapi::shared::winerror;
+
+    /// Wrapper around [NamedPipeClient] to have the same methods as a UnixStream.
+    ///
+    /// Should not be exported.
+    #[repr(transparent)]
+    pub(super) struct Stream(pub NamedPipeClient);
+
+    impl Deref for Stream {
+        type Target = NamedPipeClient;
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl DerefMut for Stream {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
+    }
+
+    impl Stream {
+        pub async fn connect(addr: impl AsRef<OsStr>) -> Result<Self, std::io::Error> {
+            let addr = addr.as_ref();
+            loop {
+                match ClientOptions::new().open(addr) {
+                    Ok(client) => break Ok(Self(client)),
+                    Err(e) if e.raw_os_error() == Some(winerror::ERROR_PIPE_BUSY as i32) => (),
+                    Err(e) => break Err(e),
+                }
+
+                sleep(Duration::from_millis(50)).await;
+            }
+        }
+
+        #[allow(unsafe_code)]
+        pub fn split<'a>(&'a mut self) -> (ReadHalf<'a>, WriteHalf<'a>) {
+            // SAFETY: ReadHalf cannot write but still needs a mutable reference for polling.
+            // NamedPipeClient calls its `io` using immutable references, but it's private.
+            let self1 = unsafe { &mut *(self as *mut Self) };
+            let self2 = self;
+            (ReadHalf(self1), WriteHalf(self2))
+        }
+    }
+
+    impl AsyncRead for Stream {
+        fn poll_read(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            buf: &mut ReadBuf<'_>,
+        ) -> Poll<io::Result<()>> {
+            let this = Pin::new(&mut self.get_mut().0);
+            this.poll_read(cx, buf)
+        }
+    }
+
+    impl AsyncWrite for Stream {
+        fn poll_write(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            buf: &[u8],
+        ) -> Poll<io::Result<usize>> {
+            let this = Pin::new(&mut self.get_mut().0);
+            this.poll_write(cx, buf)
+        }
+
+        fn poll_write_vectored(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            bufs: &[io::IoSlice<'_>],
+        ) -> Poll<io::Result<usize>> {
+            let this = Pin::new(&mut self.get_mut().0);
+            this.poll_write_vectored(cx, bufs)
+        }
+
+        fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+            self.poll_flush(cx)
+        }
+    }
+
+    pub(super) struct ReadHalf<'a>(pub &'a mut Stream);
+
+    pub(super) struct WriteHalf<'a>(pub &'a mut Stream);
+
+    impl AsyncRead for ReadHalf<'_> {
+        fn poll_read(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            buf: &mut ReadBuf<'_>,
+        ) -> Poll<io::Result<()>> {
+            let this = Pin::new(&mut self.get_mut().0 .0);
+            this.poll_read(cx, buf)
+        }
+    }
+
+    impl AsyncWrite for WriteHalf<'_> {
+        fn poll_write(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            buf: &[u8],
+        ) -> Poll<io::Result<usize>> {
+            let this = Pin::new(&mut self.get_mut().0 .0);
+            this.poll_write(cx, buf)
+        }
+
+        fn poll_write_vectored(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            bufs: &[io::IoSlice<'_>],
+        ) -> Poll<io::Result<usize>> {
+            let this = Pin::new(&mut self.get_mut().0 .0);
+            this.poll_write_vectored(cx, bufs)
+        }
+
+        fn is_write_vectored(&self) -> bool {
+            self.0.is_write_vectored()
+        }
+
+        fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+            let this = Pin::new(&mut self.get_mut().0 .0);
+            this.poll_flush(cx)
+        }
+
+        fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+            self.poll_flush(cx)
+        }
+    }
+}
+
+use self::imp::*;
+
+/// IPC transport.
 #[derive(Debug, Clone)]
 pub struct Ipc {
     id: Arc<AtomicU64>,
@@ -55,11 +212,11 @@ enum TransportMessage {
 
 impl Ipc {
     /// Creates a new IPC transport from a given path using Unix sockets.
-    pub async fn connect(path: impl AsRef<Path>) -> Result<Self, IpcError> {
+    pub async fn connect(path: impl AsRef<OsStr>) -> Result<Self, IpcError> {
         let id = Arc::new(AtomicU64::new(1));
         let (request_tx, request_rx) = mpsc::unbounded();
 
-        let stream = UnixStream::connect(path).await?;
+        let stream = Stream::connect(path).await?;
         spawn_ipc_server(stream, request_rx);
 
         Ok(Self { id, request_tx })
@@ -118,11 +275,11 @@ impl PubsubClient for Ipc {
     }
 }
 
-fn spawn_ipc_server(stream: UnixStream, request_rx: mpsc::UnboundedReceiver<TransportMessage>) {
-    // 65 KiB should be more than enough for this thread, as all unbounded data
+fn spawn_ipc_server(stream: Stream, request_rx: mpsc::UnboundedReceiver<TransportMessage>) {
+    // 256 Kb should be more than enough for this thread, as all unbounded data
     // growth occurs on heap-allocated data structures and buffers and the call
     // stack is not going to do anything crazy either
-    const STACK_SIZE: usize = 1 << 16;
+    const STACK_SIZE: usize = 1 << 18;
     // spawn a light-weight thread with a thread-local async runtime just for
     // sending and receiving data over the IPC socket
     let _ = thread::Builder::new()
@@ -139,10 +296,7 @@ fn spawn_ipc_server(stream: UnixStream, request_rx: mpsc::UnboundedReceiver<Tran
         .expect("failed to spawn ipc server thread");
 }
 
-async fn run_ipc_server(
-    mut stream: UnixStream,
-    request_rx: mpsc::UnboundedReceiver<TransportMessage>,
-) {
+async fn run_ipc_server(mut stream: Stream, request_rx: mpsc::UnboundedReceiver<TransportMessage>) {
     // the shared state for both reads & writes
     let shared = Shared {
         pending: FxHashMap::with_capacity_and_hasher(64, BuildHasherDefault::default()).into(),
@@ -318,17 +472,30 @@ impl From<IpcError> for ProviderError {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
+    use std::path::PathBuf;
+
     use super::*;
-    use ethers_core::utils::Geth;
+    use ethers_core::utils::{Geth, GethInstance};
     use tempfile::NamedTempFile;
+
+    async fn connect() -> (Ipc, GethInstance) {
+        let temp_file = NamedTempFile::new().unwrap();
+        let mut path = temp_file.into_temp_path().to_path_buf();
+        let geth = Geth::new().block_time(1u64).ipc_path(&path).spawn();
+
+        // [Windows named pipes](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipes)
+        // are located at `\\<machine_address>\pipe\<pipe_name>`.
+        #[cfg(windows)]
+        let path = format!(r"\\.\pipe\{}", path.display());
+        let ipc = Ipc::connect(path).await.unwrap();
+
+        (ipc, geth)
+    }
 
     #[tokio::test]
     async fn request() {
-        let temp_file = NamedTempFile::new().unwrap();
-        let path = temp_file.into_temp_path().to_path_buf();
-        let _geth = Geth::new().block_time(1u64).ipc_path(&path).spawn();
-        let ipc = Ipc::connect(path).await.unwrap();
+        let (ipc, _geth) = connect().await;
 
         let block_num: U256 = ipc.request("eth_blockNumber", ()).await.unwrap();
         std::thread::sleep(std::time::Duration::new(3, 0));
@@ -341,10 +508,7 @@ mod test {
     async fn subscription() {
         use ethers_core::types::{Block, TxHash};
 
-        let temp_file = NamedTempFile::new().unwrap();
-        let path = temp_file.into_temp_path().to_path_buf();
-        let _geth = Geth::new().block_time(1u64).ipc_path(&path).spawn();
-        let ipc = Ipc::connect(path).await.unwrap();
+        let (ipc, _geth) = connect().await;
 
         let sub_id: U256 = ipc.request("eth_subscribe", ["newHeads"]).await.unwrap();
         let mut stream = ipc.subscribe(sub_id).unwrap();

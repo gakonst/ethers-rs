@@ -46,6 +46,9 @@ bytes = { version = "1.3.0", default-features = false, optional = true }
 once_cell = "1.16.0"
 hashers = "1.0.1"
 
+[target.'cfg(target_family = "windows")'.dependencies]
+winapi = "0.3"
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # tokio
 tokio = { version = "1.18", default-features = false, optional = true }
@@ -73,8 +76,7 @@ default = ["ws", "rustls"]
 celo = ["ethers-core/celo"]
 
 ws = ["tokio", "tokio-tungstenite", "futures-channel"]
-ipc = ["tokio", "tokio/io-util", "bytes", "futures-channel"]
-named-pipe = ["tokio", "tokio/time"]
+ipc = ["tokio", "tokio/io-util", "tokio/time", "bytes", "futures-channel"]
 
 openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
 # we use the webpki roots so we can build static binaries w/o any root cert dependencies
