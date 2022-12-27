@@ -1,4 +1,4 @@
-//! Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
+// Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
 use ethers_core::types::U256;
 use serde::{

@@ -1,4 +1,4 @@
-//! Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
+// Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
 use super::common::{Authorization, JsonRpcError, Request, Response};
 use crate::{provider::ProviderError, JsonRpcClient};
