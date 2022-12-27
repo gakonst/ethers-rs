@@ -20,6 +20,8 @@ abigen!(
 #[cfg(feature = "legacy")]
 async fn main() -> eyre::Result<()> {
     use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
+    use ethers::prelude::*;
+
     const MOONBEAM_DEV_ENDPOINT: &str = "http://localhost:9933";
 
     // set the path to the contract, `CARGO_MANIFEST_DIR` points to the directory containing the
