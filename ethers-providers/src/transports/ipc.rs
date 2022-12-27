@@ -203,11 +203,11 @@ use self::imp::*;
 ///
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// use ethers_providers::Ws;
+/// use ethers_providers::Ipc;
 ///
 /// // the ipc's path
-#[cfg_attr(unix, doc = r#"let path = "/home/user/.local/share/reth/reth.ipc""#)]
-#[cfg_attr(windows, doc = r#"let path = r"\\.\pipe\reth.ipc""#)]
+#[cfg_attr(unix, doc = r#"let path = "/home/user/.local/share/reth/reth.ipc";"#)]
+#[cfg_attr(windows, doc = r#"let path = r"\\.\pipe\reth.ipc";"#)]
 /// let ipc = Ipc::connect(path).await?;
 /// # Ok(())
 /// # }
