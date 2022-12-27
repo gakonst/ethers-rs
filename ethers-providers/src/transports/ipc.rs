@@ -15,9 +15,9 @@ use serde_json::{value::RawValue, Deserializer};
 use std::{
     cell::RefCell,
     convert::Infallible,
-    ffi::OsStr,
     hash::BuildHasherDefault,
     io,
+    path::Path,
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc,
@@ -83,8 +83,8 @@ mod imp {
     }
 
     impl Stream {
-        pub async fn connect(addr: impl AsRef<OsStr>) -> Result<Self, std::io::Error> {
-            let addr = addr.as_ref();
+        pub async fn connect(addr: impl AsRef<Path>) -> Result<Self, std::io::Error> {
+            let addr = addr.as_ref().as_os_str();
             loop {
                 match ClientOptions::new().open(addr) {
                     Ok(client) => break Ok(Self(client)),
@@ -212,7 +212,7 @@ enum TransportMessage {
 
 impl Ipc {
     /// Creates a new IPC transport from a given path using Unix sockets.
-    pub async fn connect(path: impl AsRef<OsStr>) -> Result<Self, IpcError> {
+    pub async fn connect(path: impl AsRef<Path>) -> Result<Self, IpcError> {
         let id = Arc::new(AtomicU64::new(1));
         let (request_tx, request_rx) = mpsc::unbounded();
 
@@ -473,7 +473,6 @@ impl From<IpcError> for ProviderError {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use ethers_core::utils::{Geth, GethInstance};
     use tempfile::NamedTempFile;

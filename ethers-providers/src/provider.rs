@@ -1405,7 +1405,7 @@ impl Provider<crate::Ws> {
 #[cfg(all(feature = "ipc", any(unix, windows)))]
 impl Provider<crate::Ipc> {
     /// Direct connection to an IPC socket.
-    pub async fn connect_ipc(path: impl AsRef<std::ffi::OsStr>) -> Result<Self, ProviderError> {
+    pub async fn connect_ipc(path: impl AsRef<std::path::Path>) -> Result<Self, ProviderError> {
         let ipc = crate::Ipc::connect(path).await?;
         Ok(Self::new(ipc))
     }
