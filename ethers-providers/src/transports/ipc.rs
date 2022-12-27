@@ -440,8 +440,8 @@ impl Shared {
     }
 }
 
-#[derive(Error, Debug)]
 /// Error thrown when sending or receiving an IPC message.
+#[derive(Debug, Error)]
 pub enum IpcError {
     /// Thrown if deserialization failed
     #[error(transparent)]
@@ -508,19 +508,19 @@ mod tests {
 
         let (ipc, _geth) = connect().await;
 
-        let sub_id: U256 = ipc.request("eth_subscribe", ["newHeads"]).await.unwrap();
-        let mut stream = ipc.subscribe(sub_id).unwrap();
-
         // Subscribing requires sending the sub request and then subscribing to
         // the returned sub_id
-        let block_num: u64 = ipc.request::<_, U256>("eth_blockNumber", ()).await.unwrap().as_u64();
-        let mut blocks = Vec::new();
-        for _ in 0..3 {
-            let item = stream.next().await.unwrap();
-            let block: Block<TxHash> = serde_json::from_str(item.get()).unwrap();
-            blocks.push(block.number.unwrap_or_default().as_u64());
-        }
-        let offset = blocks[0] - block_num;
-        assert_eq!(blocks, &[block_num + offset, block_num + offset + 1, block_num + offset + 2])
+        let sub_id: U256 = ipc.request("eth_subscribe", ["newHeads"]).await.unwrap();
+        let stream = ipc.subscribe(sub_id).unwrap();
+
+        let blocks: Vec<u64> = stream
+            .take(3)
+            .map(|item| {
+                let block: Block<TxHash> = serde_json::from_str(item.get()).unwrap();
+                block.number.unwrap_or_default().as_u64()
+            })
+            .collect()
+            .await;
+        assert_eq!(blocks, vec![1, 2, 3]);
     }
 }
