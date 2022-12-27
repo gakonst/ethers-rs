@@ -10,8 +10,7 @@ use eyre::Result;
 /// ensure that transactions are processed in a timely manner without having to manually adjust the
 /// gas cost yourself.
 #[tokio::main]
-#[allow(unused_must_use)]
-async fn main() {
+async fn main() -> Result<()> {
     let every_secs: u64 = 60;
     let max_price: Option<i32> = None;
 
@@ -20,7 +19,7 @@ async fn main() {
     // seconds until the transaction gets confirmed. There is an optional upper limit.
     let increase_by: i32 = 100;
     let linear_escalator = LinearGasPrice::new(increase_by, every_secs, max_price);
-    send_escalating_transaction(linear_escalator).await;
+    send_escalating_transaction(linear_escalator).await?;
 
     // Geometrically increase gas price:
     // Start with `initial_price`, then increase it every 'every_secs' seconds by a fixed
@@ -28,7 +27,9 @@ async fn main() {
     // replace a transaction. Coefficient can be adjusted, and there is an optional upper limit.
     let coefficient: f64 = 1.125;
     let geometric_escalator = GeometricGasPrice::new(coefficient, every_secs, max_price);
-    send_escalating_transaction(geometric_escalator).await;
+    send_escalating_transaction(geometric_escalator).await?;
+
+    Ok(())
 }
 
 async fn send_escalating_transaction<E>(escalator: E) -> Result<()>
