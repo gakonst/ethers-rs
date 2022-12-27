@@ -1,13 +1,13 @@
 [package]
 name = "ethers-etherscan"
 version = "1.0.2"
+edition = "2021"
 rust-version = "1.64"
 authors = [
     "Matthias Seitz <matthias.seitz@outlook.de>",
     "Georgios Konstantopoulos <me@gakonst.com>",
 ]
 license = "MIT OR Apache-2.0"
-edition = "2018"
 readme = "../README.md"
 documentation = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"

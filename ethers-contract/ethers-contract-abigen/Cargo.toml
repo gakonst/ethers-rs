@@ -1,11 +1,12 @@
 [package]
 name = "ethers-contract-abigen"
 version = "1.0.2"
+edition = "2021"
+rust-version = "1.64"
 authors = [
     "Nicholas Rodrigues Lordello <nlordell@gmail.com>",
     "Georgios Konstantopoulos <me@gakonst.com>",
 ]
-edition = "2018"
 license = "MIT OR Apache-2.0"
 description = "Code generation for type-safe bindings to Ethereum smart contracts"
 homepage = "https://docs.rs/ethers"

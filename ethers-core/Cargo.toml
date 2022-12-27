@@ -1,10 +1,10 @@
 [package]
 name = "ethers-core"
-license = "MIT OR Apache-2.0"
 version = "1.0.2"
+edition = "2021"
 rust-version = "1.64"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
-edition = "2018"
+license = "MIT OR Apache-2.0"
 description = "Core structures for the ethers-rs crate"
 homepage = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
