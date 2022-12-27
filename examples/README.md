@@ -1,9 +1,9 @@
-# ToC
+# Examples
 - [ ] Address book
 - [ ] Anvil
     - [ ] Boot anvil
     - [ ] Deploy contracts
-    - [ ] Fork
+    - [x] Fork
     - [ ] Testing
 - [x] Big numbers
     - [x] Comparison and equivalence
@@ -13,18 +13,20 @@
     - [x] Utilities
 - [ ] Contracts
     - [x] Abigen
+    - [x] Compile
     - [ ] Creating Instances
-    - [ ] Compile
-    - [ ] Deploy Anvil
-    - [ ] Deploy Moonbeam
-    - [ ] Events
-    - [ ] Events with meta
+    - [x] Deploy Anvil
+    - [x] Deploy from ABI and bytecode
+    - [x] Deploy Moonbeam
+    - [x] Events
+    - [x] Events with meta
     - [ ] Methods
 - [ ] Events
   - [ ] Logs and filtering
   - [ ] Solidity topics
 - [ ] Middleware
   - [x] Builder
+  - [x] Create custom middleware
   - [x] Gas escalator
   - [x] Gas oracle
   - [x] Nonce manager
@@ -34,44 +36,46 @@
   - [ ] Transformer
 - [ ] Providers
   - [ ] Http
-  - [ ] IPC
+  - [x] IPC
   - [ ] Mock 
-  - [ ] Quorum
+  - [x] Quorum
   - [ ] Retry
-  - [ ] RW
+  - [x] RW
   - [ ] WS
 - [ ] Queries
   - [ ] Blocks
-  - [ ] Contracts
+  - [x] Contracts
   - [ ] Events
-  - [ ] Paginated logs
-  - [ ] UniswapV2 pair
+  - [x] Paginated logs
+  - [x] UniswapV2 pair
   - [ ] Transactions
-- [ ] Subscriptions
-  - [ ] Watch blocks
-  - [ ] Subscribe logs
+- [x] Subscriptions
+  - [x] Watch blocks
+  - [x] Subscribe events by type
+  - [x] Subscribe logs
 - [ ] Transactions
+  - [x] Call override
   - [ ] Create raw transaction
   - [ ] Create typed transaction
-  - [ ] Decode input
+  - [x] Decode input
   - [ ] EIP-1559
-  - [ ] ENS
+  - [x] ENS
   - [ ] Estimate gas
   - [ ] Get gas price
-  - [ ] Get gas price USD
-  - [ ] Remove liquidity
+  - [x] Get gas price USD
+  - [x] Remove liquidity
   - [ ] Set gas for a transaction
   - [ ] Send raw transaction
   - [ ] Send typed transaction
-  - [ ] Trace
+  - [x] Trace
   - [ ] Transaction receipt
   - [ ] Transaction status
-  - [ ] Transfer ETH
-- [ ] Wallets
-  - [ ] Mnemonic
-  - [ ] Ledger
-  - [ ] Local 
-  - [ ] Permit hash
-  - [ ] Sign message
-  - [ ] Trezor
-  - [ ] Yubi
+  - [x] Transfer ETH
+- [x] Wallets
+  - [x] Mnemonic
+  - [x] Ledger
+  - [x] Local
+  - [x] Permit hash
+  - [x] Sign message
+  - [x] Trezor
+  - [x] Yubi
