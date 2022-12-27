@@ -83,7 +83,7 @@ mod imp {
     }
 
     impl Stream {
-        pub async fn connect(addr: impl AsRef<Path>) -> Result<Self, std::io::Error> {
+        pub async fn connect(addr: impl AsRef<Path>) -> Result<Self, io::Error> {
             let addr = addr.as_ref().as_os_str();
             loop {
                 match ClientOptions::new().open(addr) {
@@ -449,7 +449,7 @@ pub enum IpcError {
 
     /// std IO error forwarding.
     #[error(transparent)]
-    IoError(#[from] std::io::Error),
+    IoError(#[from] io::Error),
 
     #[error(transparent)]
     /// Thrown if the response could not be parsed
