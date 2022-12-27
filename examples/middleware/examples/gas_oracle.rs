@@ -47,7 +47,7 @@ async fn etherchain() {
 
 async fn etherscan() {
     let chain = Chain::Mainnet;
-    let api_key: String = std::env::var("ETHERSCAN_API_KEY_ETHEREUM").unwrap();
+    let api_key: String = std::env::var("ETHERSCAN_API_KEY_ETHEREUM").expect("Provide an API key");
     if let Ok(client) = Client::new(chain, api_key) {
         let oracle = Etherscan::new(client).category(GasCategory::Fast);
         match oracle.fetch().await {
