@@ -19,8 +19,8 @@ abigen!(
 #[tokio::main]
 #[cfg(feature = "legacy")]
 async fn main() -> eyre::Result<()> {
-    use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
     use ethers::prelude::*;
+    use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
 
     const MOONBEAM_DEV_ENDPOINT: &str = "http://localhost:9933";
 
