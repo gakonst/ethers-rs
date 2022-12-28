@@ -352,8 +352,8 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                 if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
                     let (max_fee_per_gas, max_priority_fee_per_gas) =
                         self.estimate_eip1559_fees(None).await?;
-                    inner.max_fee_per_gas = Some(max_fee_per_gas);
-                    inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+                    inner.max_fee_per_gas.get_or_insert(max_fee_per_gas);
+                    inner.max_priority_fee_per_gas.get_or_insert(max_priority_fee_per_gas);
                 };
             }
         }
