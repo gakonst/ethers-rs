@@ -375,7 +375,7 @@ fn can_compile_dapp_only_recompile_dirty_sources() {
     // Changing source content should not invalidate compilation unit id
     assert_eq!(updated_b.compilation_unit, original_b.compilation_unit);
     // B.sol should be recompiled
-    assert_ne!(updated_b.last_modification_date, original_b.last_modification_date);
+    assert!(updated_b.last_modification_date > original_b.last_modification_date);
 
     project.artifacts_snapshot().unwrap().assert_artifacts_essentials_present();
 }
