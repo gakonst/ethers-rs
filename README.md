@@ -15,7 +15,12 @@ Extensive documentation and examples are available [here](https://docs.rs/ethers
 
 Alternatively, you may clone the repository and run `cd ethers/ && cargo doc --open`
 
-You can also run any of the examples by executing: `cargo run -p ethers --example <name>`
+Examples are organized into individual crates under the `/examples` folder.
+You can run any of the examples by executing: 
+```bash
+# cargo run -p <example-crate-name> --example <name>
+cargo run -p examples-big-numbers --example math_operations
+```
 
 ## Add ethers-rs to your repository
 

@@ -1628,6 +1628,111 @@ dependencies = [
 ]
 
 [[package]]
+name = "examples-anvil"
+version = "1.0.2"
+dependencies = [
+ "ethers",
+ "eyre",
+ "tokio",
+]
+
+[[package]]
+name = "examples-big-numbers"
+version = "1.0.2"
+dependencies = [
+ "ethers",
+]
+
+[[package]]
+name = "examples-contracts"
+version = "1.0.2"
+dependencies = [
+ "ethers",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-events"
+version = "1.0.2"
+dependencies = [
+ "ethers",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-middleware"
+version = "1.0.2"
+dependencies = [
+ "async-trait",
+ "ethers",
+ "eyre",
+ "serde_json",
+ "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "examples-providers"
+version = "1.0.2"
+dependencies = [
+ "ethers",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-queries"
+version = "1.0.2"
+dependencies = [
+ "ethers",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-subscriptions"
+version = "1.0.2"
+dependencies = [
+ "ethers",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-transactions"
+version = "1.0.2"
+dependencies = [
+ "ethers",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
+name = "examples-wallets"
+version = "1.0.2"
+dependencies = [
+ "ethers",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "eyre"
 version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
