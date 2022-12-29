@@ -101,9 +101,9 @@ impl Wallet<SigningKey> {
 
 impl PartialEq for Wallet<SigningKey> {
     fn eq(&self, other: &Self) -> bool {
-        self.signer.to_bytes().eq(&other.signer.to_bytes())
-            && self.address == other.address
-            && self.chain_id == other.chain_id
+        self.signer.to_bytes().eq(&other.signer.to_bytes()) &&
+            self.address == other.address &&
+            self.chain_id == other.chain_id
     }
 }
 
@@ -311,5 +311,18 @@ mod tests {
             wallet.address,
             Address::from_str("6813Eb9362372EEF6200f3b1dbC3f819671cBA69").expect("Decoding failed")
         );
+    }
+
+    #[test]
+    fn key_from_bytes() {
+        let wallet: Wallet<SigningKey> =
+            "0000000000000000000000000000000000000000000000000000000000000001".parse().unwrap();
+
+        let key_as_bytes = wallet.signer.to_bytes();
+        let wallet_from_bytes = Wallet::from_bytes(&key_as_bytes).unwrap();
+
+        assert_eq!(wallet.address, wallet_from_bytes.address);
+        assert_eq!(wallet.chain_id, wallet_from_bytes.chain_id);
+        assert_eq!(wallet.signer, wallet_from_bytes.signer);
     }
 }
