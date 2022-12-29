@@ -22,7 +22,9 @@ pub mod contract;
 pub mod output_selection;
 pub mod serde_helpers;
 use crate::{
-    artifacts::output_selection::{ContractOutputSelection, OutputSelection},
+    artifacts::{
+        output_selection::{ContractOutputSelection, OutputSelection},
+    },
     filter::FilteredSources,
 };
 pub use bytecode::*;
@@ -1835,7 +1837,7 @@ pub struct SecondarySourceLocation {
 pub struct SourceFile {
     pub id: u32,
     #[serde(default, with = "serde_helpers::empty_json_object_opt")]
-    pub ast: Option<SourceUnit>,
+    pub ast: Option<Ast>,
 }
 
 // === impl SourceFile ===
@@ -1849,7 +1851,7 @@ impl SourceFile {
             return ast
                 .nodes
                 .iter()
-                .any(|node| matches!(node, SourceUnitPart::ContractDefinition(_)))
+                .any(|node| matches!(node.node_type, NodeType::ContractDefinition))
             // abstract contract, interfaces: ContractDefinition
         }
 
