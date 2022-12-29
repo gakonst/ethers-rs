@@ -16,8 +16,9 @@ use crate::{
             BytecodeOutputSelection, ContractOutputSelection, EvmOutputSelection,
             EwasmOutputSelection,
         },
-        CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
-        GeneratedSource, LosslessAbi, LosslessMetadata, Metadata, Offsets, Settings, SourceUnit,
+        Ast, CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
+        GeneratedSource, LosslessAbi, LosslessMetadata, Metadata, Offsets,
+        Settings, /*SourceUnit,*/
         StorageLayout, UserDoc,
     },
     sources::VersionedSourceFile,
@@ -68,7 +69,7 @@ pub struct ConfigurableContractArtifact {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ewasm: Option<Ewasm>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ast: Option<SourceUnit>,
+    pub ast: Option<Ast>,
     /// The identifier of the source file
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<u32>,
@@ -152,7 +153,7 @@ pub struct ConfigurableArtifacts {
     /// _always_ be done using a public constructor or update syntax:
     ///
     /// ```rust
-    /// 
+    ///
     /// use ethers_solc::{ExtraOutputFiles, ConfigurableArtifacts};
     /// let config = ConfigurableArtifacts {
     ///     additional_files: ExtraOutputFiles { metadata: true, ..Default::default() },
@@ -395,7 +396,7 @@ pub struct ExtraOutputValues {
     /// _always_ be done using a public constructor or update syntax:
     ///
     /// ```rust
-    /// 
+    ///
     /// use ethers_solc::ExtraOutputValues;
     /// let config = ExtraOutputValues {
     ///     ir: true,
@@ -513,7 +514,7 @@ pub struct ExtraOutputFiles {
     /// _always_ be done using a public constructor or update syntax:
     ///
     /// ```rust
-    /// 
+    ///
     /// use ethers_solc::ExtraOutputFiles;
     /// let config = ExtraOutputFiles {
     ///     metadata: true,
