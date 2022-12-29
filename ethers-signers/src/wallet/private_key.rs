@@ -90,13 +90,20 @@ impl Wallet<SigningKey> {
         let address = secret_key_to_address(&signer);
         Self { signer, address, chain_id: 1 }
     }
+
+    /// Creates a new Wallet instance from a raw scalar value (big endian).
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, WalletError> {
+        let signer = SigningKey::from_bytes(bytes)?;
+        let address = secret_key_to_address(&signer);
+        Ok(Self { signer, address, chain_id: 1 })
+    }
 }
 
 impl PartialEq for Wallet<SigningKey> {
     fn eq(&self, other: &Self) -> bool {
-        self.signer.to_bytes().eq(&other.signer.to_bytes()) &&
-            self.address == other.address &&
-            self.chain_id == other.chain_id
+        self.signer.to_bytes().eq(&other.signer.to_bytes())
+            && self.address == other.address
+            && self.chain_id == other.chain_id
     }
 }
 
