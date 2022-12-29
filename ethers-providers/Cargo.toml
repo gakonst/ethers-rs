@@ -51,7 +51,7 @@ winapi = { version = "0.3", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # tokio
-tokio = { version = "1.18", default-features = false, optional = true }
+tokio = { version = "1.18", default-features = false, features = ["time"] }
 tokio-tungstenite = { version = "0.18.0", default-features = false, features = [
     "connect",
 ], optional = true }
@@ -75,8 +75,8 @@ tempfile = "3.3.0"
 default = ["ws", "rustls"]
 celo = ["ethers-core/celo"]
 
-ws = ["tokio", "tokio-tungstenite", "futures-channel"]
-ipc = ["tokio", "tokio/io-util", "tokio/time", "bytes", "futures-channel", "winapi"]
+ws = ["tokio-tungstenite", "futures-channel"]
+ipc = ["tokio/io-util", "bytes", "futures-channel", "winapi"]
 
 openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
 # we use the webpki roots so we can build static binaries w/o any root cert dependencies
