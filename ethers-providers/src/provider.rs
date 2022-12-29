@@ -352,8 +352,19 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                 if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
                     let (max_fee_per_gas, max_priority_fee_per_gas) =
                         self.estimate_eip1559_fees(None).await?;
-                    inner.max_fee_per_gas = Some(max_fee_per_gas);
-                    inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+                    // we want to avoid overriding the user if either of these
+                    // are set. In order to do this, we refuse to override the
+                    // `max_fee_per_gas` if already set.
+                    // However, we must preserve the constraint that the tip
+                    // cannot be higher than max fee, so we override user
+                    // intent if that is so. We override by
+                    //   - first: if set, set to the min(current value, MFPG)
+                    //   - second, if still unset, use the RPC estimated amount
+                    let mfpg = inner.max_fee_per_gas.get_or_insert(max_fee_per_gas);
+                    inner
+                        .max_priority_fee_per_gas
+                        .map(|tip| std::cmp::min(tip, *mfpg))
+                        .get_or_insert(max_priority_fee_per_gas);
                 };
             }
         }
