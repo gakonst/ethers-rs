@@ -63,21 +63,7 @@ fn determine_ethers_crates() -> CrateNames {
     let lock_file = manifest_dir.join("Cargo.lock");
     let lock_file_existed = lock_file.exists();
 
-    let mut cmd = std::process::Command::new("node");
-    cmd.arg("-e").arg(
-        r#"
-const process = require("process");
-for (const [k, v] of Object.entries(process.env)) {
-    if (k.startsWith("CARGO_")) {
-        console.log(k, "=", v);
-    }
-}
-    "#,
-    );
-    eprintln!("{}", String::from_utf8(cmd.output().unwrap().stdout).unwrap());
-    eprintln!("{}", manifest_dir.display());
     let names = crate_names_from_metadata(manifest_dir);
-    eprintln!("{:#?}", names);
 
     // remove the lock file created from running the command
     if !lock_file_existed && lock_file.exists() {
