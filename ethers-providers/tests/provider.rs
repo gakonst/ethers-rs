@@ -9,11 +9,11 @@ mod eth_tests {
         types::{Address, BlockId, TransactionRequest, H256},
         utils::Anvil,
     };
-    use ethers_providers::GOERLI;
+    use ethers_providers::SEPOLIA;
 
     #[tokio::test]
     async fn non_existing_data_works() {
-        let provider = GOERLI.provider();
+        let provider = SEPOLIA.provider();
 
         assert!(provider.get_transaction(H256::zero()).await.unwrap().is_none());
         assert!(provider.get_transaction_receipt(H256::zero()).await.unwrap().is_none());
@@ -23,7 +23,7 @@ mod eth_tests {
 
     #[tokio::test]
     async fn client_version() {
-        let provider = GOERLI.provider();
+        let provider = SEPOLIA.provider();
 
         // e.g., Geth/v1.10.6-omnibus-1af33248/linux-amd64/go1.16.6
         assert!(provider
@@ -36,7 +36,7 @@ mod eth_tests {
     // Without TLS this would error with "TLS Support not compiled in"
     #[tokio::test]
     async fn ssl_websocket() {
-        let provider = GOERLI.ws().await;
+        let provider = SEPOLIA.ws().await;
         let _number = provider.get_block_number().await.unwrap();
     }
 
