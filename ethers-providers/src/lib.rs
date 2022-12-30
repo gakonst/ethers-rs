@@ -744,12 +744,15 @@ pub mod test_provider {
         "5c812e02193c4ba793f8c214317582bd",
     ];
 
-    pub static MAINNET: Lazy<TestProvider> = Lazy::new(|| TestProvider::new("mainnet"));
-    pub static GOERLI: Lazy<TestProvider> = Lazy::new(|| TestProvider::new("goerli"));
-    pub static SEPOLIA: Lazy<TestProvider> = Lazy::new(|| TestProvider::new("sepolia"));
+    pub static MAINNET: Lazy<TestProvider> =
+        Lazy::new(|| TestProvider::new(INFURA_KEYS, "mainnet"));
+    pub static GOERLI: Lazy<TestProvider> = Lazy::new(|| TestProvider::new(INFURA_KEYS, "goerli"));
+    pub static SEPOLIA: Lazy<TestProvider> =
+        Lazy::new(|| TestProvider::new(INFURA_KEYS, "sepolia"));
 
     #[deprecated = "Ropsten testnet has been deprecated in favor of Goerli or Sepolia."]
-    pub static ROPSTEN: Lazy<TestProvider> = Lazy::new(|| TestProvider::new("ropsten"));
+    pub static ROPSTEN: Lazy<TestProvider> =
+        Lazy::new(|| TestProvider::new(INFURA_KEYS, "ropsten"));
 
     #[derive(Debug)]
     pub struct TestProvider {
@@ -758,8 +761,8 @@ pub mod test_provider {
     }
 
     impl TestProvider {
-        pub fn new(network: impl Into<String>) -> Self {
-            Self { keys: INFURA_KEYS.iter().cycle().into(), network: network.into() }
+        pub fn new(keys: &'static [&'static str], network: impl Into<String>) -> Self {
+            Self { keys: keys.iter().cycle().into(), network: network.into() }
         }
 
         pub fn url(&self) -> String {
