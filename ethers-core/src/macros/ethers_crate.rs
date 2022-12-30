@@ -85,7 +85,7 @@ fn crate_names_from_metadata(manifest_dir: PathBuf) -> Option<CrateNames> {
     let pkg = metadata.root_package()?;
 
     // return ethers_* if the root package is an EthersCrate (called in `ethers-rs/**/*`)
-    if let Ok(current_pkg) = pkg.name.replace('_', "-").parse::<EthersCrate>() {
+    if let Ok(current_pkg) = pkg.name.parse::<EthersCrate>() {
         // replace `current_pkg`'s name with "crate"
         let names = EthersCrate::path_names()
             .map(
