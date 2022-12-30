@@ -1,8 +1,8 @@
 on:
-  push:
-    branches:
-      - master
-  pull_request:
+    push:
+        branches:
+            - master
+    pull_request:
 
 name: Tests
 
@@ -10,274 +10,279 @@ name: Tests
 # so that we do not get rate limited by Etherscan (and it's free to generate as
 # many as you want)
 env:
-  ETHERSCAN_API_KEY_ETHEREUM: I5BXNZYP5GEDWFINGVEZKYIVU2695NPQZB
-  ETHERSCAN_API_KEY_CELO: B13XSMUT6Q3Q4WZ5DNQR8RXDBA2KNTMT4M
-  GOERLI_PRIVATE_KEY: "fa4a1a79e869a96fcb42727f75e3232d6865a82ea675bb95de967a7fe6a773b2"
-  GETH_BUILD: 1.10.26-e5eb32ac
+    ETHERSCAN_API_KEY_ETHEREUM: I5BXNZYP5GEDWFINGVEZKYIVU2695NPQZB
+    ETHERSCAN_API_KEY_CELO: B13XSMUT6Q3Q4WZ5DNQR8RXDBA2KNTMT4M
+    GOERLI_PRIVATE_KEY: "fa4a1a79e869a96fcb42727f75e3232d6865a82ea675bb95de967a7fe6a773b2"
+    GETH_BUILD: 1.10.26-e5eb32ac
 
 jobs:
-  tests:
-    name: ethereum tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-      - name: Install Anvil
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-      - name: Install Solc
-        run: |
-          mkdir -p "$HOME/bin"
-          wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
-          chmod u+x "$HOME/bin/solc"
-          export PATH=$HOME/bin:$PATH
-          solc --version
+    tests:
+        name: ethereum tests
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout sources
+              uses: actions/checkout@v3
+            - name: Install Anvil
+              uses: foundry-rs/foundry-toolchain@v1
+              with:
+                  version: nightly
+            - name: Install Solc
+              run: |
+                  mkdir -p "$HOME/bin"
+                  wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
+                  chmod u+x "$HOME/bin/solc"
+                  export PATH=$HOME/bin:$PATH
+                  solc --version
 
-      - name: Install geth
-        run: |
-          mkdir -p "$HOME/bin"
-          wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-$GETH_BUILD.tar.gz
-          tar -xvf geth-linux-amd64-$GETH_BUILD.tar.gz
-          mv geth-linux-amd64-$GETH_BUILD/geth $HOME/bin/geth
-          chmod u+x "$HOME/bin/geth"
-          export PATH=$HOME/bin:$PATH
-          geth version
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
-      - name: cargo test
-        run: |
-          export PATH=$HOME/bin:$PATH
-          export ETHERSCAN_API_KEY=$ETHERSCAN_API_KEY_ETHEREUM
-          cargo test
+            - name: Install geth
+              run: |
+                  mkdir -p "$HOME/bin"
+                  wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-$GETH_BUILD.tar.gz
+                  tar -xvf geth-linux-amd64-$GETH_BUILD.tar.gz
+                  mv geth-linux-amd64-$GETH_BUILD/geth $HOME/bin/geth
+                  chmod u+x "$HOME/bin/geth"
+                  export PATH=$HOME/bin:$PATH
+                  geth version
+            - name: Install stable toolchain
+              uses: actions-rs/toolchain@v1
+              with:
+                  profile: minimal
+                  toolchain: stable
+                  override: true
+                  components: rustfmt, clippy
+            - uses: Swatinem/rust-cache@v1
+              with:
+                  cache-on-failure: true
+            - name: cargo test
+              run: |
+                  export PATH=$HOME/bin:$PATH
+                  export ETHERSCAN_API_KEY=$ETHERSCAN_API_KEY_ETHEREUM
+                  cargo test
 
-  feature-tests:
-    name: celo tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-      # TODO: can we combine these shared steps in github actions?
-      - name: Install Anvil
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-      - name: Install Solc
-        run: |
-          mkdir -p "$HOME/bin"
-          wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
-          chmod u+x "$HOME/bin/solc"
-          export PATH=$HOME/bin:$PATH
-          solc --version
-      - name: Install geth
-        run: |
-          mkdir -p "$HOME/bin"
-          wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-$GETH_BUILD.tar.gz
-          tar -xvf geth-linux-amd64-$GETH_BUILD.tar.gz
-          mv geth-linux-amd64-$GETH_BUILD/geth $HOME/bin/geth
-          chmod u+x "$HOME/bin/geth"
-          export PATH=$HOME/bin:$PATH
-          geth version
+    feature-tests:
+        name: celo tests
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout sources
+              uses: actions/checkout@v3
+            # TODO: can we combine these shared steps in github actions?
+            - name: Install Anvil
+              uses: foundry-rs/foundry-toolchain@v1
+              with:
+                  version: nightly
+            - name: Install Solc
+              run: |
+                  mkdir -p "$HOME/bin"
+                  wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
+                  chmod u+x "$HOME/bin/solc"
+                  export PATH=$HOME/bin:$PATH
+                  solc --version
+            - name: Install geth
+              run: |
+                  mkdir -p "$HOME/bin"
+                  wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-$GETH_BUILD.tar.gz
+                  tar -xvf geth-linux-amd64-$GETH_BUILD.tar.gz
+                  mv geth-linux-amd64-$GETH_BUILD/geth $HOME/bin/geth
+                  chmod u+x "$HOME/bin/geth"
+                  export PATH=$HOME/bin:$PATH
+                  geth version
 
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
-      - name: cargo test (Celo)
-        run: |
-          export PATH=$HOME/bin:$PATH
-          export ETHERSCAN_API_KEY=$ETHERSCAN_API_KEY_CELO
-          cargo test --all-features
+            - name: Install stable toolchain
+              uses: actions-rs/toolchain@v1
+              with:
+                  profile: minimal
+                  toolchain: stable
+                  override: true
+                  components: rustfmt, clippy
+            - uses: Swatinem/rust-cache@v1
+              with:
+                  cache-on-failure: true
+            - name: cargo test (Celo)
+              run: |
+                  export PATH=$HOME/bin:$PATH
+                  export ETHERSCAN_API_KEY=$ETHERSCAN_API_KEY_CELO
+                  cargo test --all-features
 
-  lint:
-    name: lints
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          components: rustfmt, clippy
-          override: true
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
-      - name: cargo fmt
-        run: cargo +nightly fmt --all -- --check
-      - name: cargo clippy
-        run: cargo +nightly clippy --all-features -- -D warnings
+    lint:
+        name: lints
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout sources
+              uses: actions/checkout@v3
+            - name: Install toolchain
+              uses: actions-rs/toolchain@v1
+              with:
+                  toolchain: nightly
+                  profile: minimal
+                  components: rustfmt, clippy
+                  override: true
+            - uses: Swatinem/rust-cache@v1
+              with:
+                  cache-on-failure: true
+            - name: cargo fmt
+              run: cargo +nightly fmt --all -- --check
+            - name: cargo clippy
+              run: cargo +nightly clippy --all-features -- -D warnings
 
-  docs:
-    name: docs
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
-      - name: cargo doc
-        run: cargo +nightly doc --lib --all-features
+    docs:
+        name: docs
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout sources
+              uses: actions/checkout@v3
+            - name: Install toolchain
+              uses: actions-rs/toolchain@v1
+              with:
+                  toolchain: nightly
+                  override: true
+            - uses: Swatinem/rust-cache@v1
+              with:
+                  cache-on-failure: true
+            - name: cargo doc
+              run: cargo +nightly doc --lib --all-features
+              env:
+                  RUSTFLAGS: --cfg docsrs
+                  RUSTDOCFLAGS: --cfg docsrs -Dwarnings
+
+    wasm:
+        name: WASM
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout sources
+              uses: actions/checkout@v3
+            - name: Install rust
+              uses: actions-rs/toolchain@v1
+              with:
+                  toolchain: stable
+                  target: wasm32-unknown-unknown
+                  profile: minimal
+                  override: true
+
+            - name: Install Anvil
+              uses: foundry-rs/foundry-toolchain@v1
+              with:
+                  version: nightly
+
+            - uses: Swatinem/rust-cache@v1
+              with:
+                  cache-on-failure: true
+
+            - name: Check
+              uses: actions-rs/cargo@v1
+              with:
+                  command: check
+                  args: --target wasm32-unknown-unknown
+
+            - name: Launch Anvil
+              run:
+                  anvil --block-time 2 -m "stuff inherit faith park genre spread huge knee ecology
+                  private marble supreme" &
+
+            - name: Install wasm-pack
+              run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+            - name: Wasm-pack test firefox
+              run: |
+                  cd examples/ethers-wasm
+                  wasm-pack test --headless --firefox
+
+            - name: Wasm-pack test chrome
+              run: |
+                  cd examples/ethers-wasm
+                  wasm-pack test --headless --chrome
+
+    examples:
+        name: Examples
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout sources
+              uses: actions/checkout@v3
+
+            - name: Install geth (for state overrides example)
+              run: |
+                  mkdir -p "$HOME/bin"
+                  wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-$GETH_BUILD.tar.gz
+                  tar -xvf geth-linux-amd64-$GETH_BUILD.tar.gz
+                  mv geth-linux-amd64-$GETH_BUILD/geth $HOME/bin/geth
+                  chmod u+x "$HOME/bin/geth"
+                  export PATH=$HOME/bin:$PATH
+                  geth version
+
+            - name: Install Anvil
+              uses: foundry-rs/foundry-toolchain@v1
+              with:
+                  version: nightly
+
+            - name: Install Solc
+              run: |
+                  mkdir -p "$HOME/bin"
+                  wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
+                  chmod u+x "$HOME/bin/solc"
+                  export PATH=$HOME/bin:$PATH
+                  solc --version
+
+            - name: Install stable toolchain
+              uses: actions-rs/toolchain@v1
+              with:
+                  profile: minimal
+                  toolchain: stable
+                  override: true
+                  components: rustfmt, clippy
+            - uses: Swatinem/rust-cache@v1
+              with:
+                  cache-on-failure: true
+            - name: Build and run all examples
+              run: |
+                  export PATH=$HOME/bin:$PATH
+                  chmod +x ./scripts/examples.sh
+                  ./scripts/examples.sh
+
+    windows-build:
+        runs-on: windows-latest
+        name: (${{ matrix.target }}, ${{ matrix.cfg_release_channel }})
         env:
-          RUSTFLAGS: --cfg docsrs
-          RUSTDOCFLAGS: --cfg docsrs -Dwarnings
+            CFG_RELEASE_CHANNEL: ${{ matrix.cfg_release_channel }}
+        strategy:
+            fail-fast: false
+            matrix:
+                target:
+                    [
+                        i686-pc-windows-gnu,
+                        i686-pc-windows-msvc,
+                        x86_64-pc-windows-gnu,
+                        x86_64-pc-windows-msvc,
+                    ]
+                cfg_release_channel: [nightly]
 
-  wasm:
-    name: WASM
-    runs-on: ubuntu-latest
+        steps:
+            - name: checkout
+              uses: actions/checkout@v3
 
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-      - name: Install rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: wasm32-unknown-unknown
-          profile: minimal
-          override: true
+              # Run build
+            - name: Update Rustup
+              run: |
+                  # disable download progress bar
+                  $ProgressPreference = "SilentlyContinue"
+                  rustup update
+                  rustup target add ${{ matrix.target }}
+              shell: powershell
 
-      - name: Install Anvil
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
+            - name: Add mingw32 to path for i686-gnu
+              run: |
+                  echo "C:\msys64\mingw32\bin" >> $GITHUB_PATH
+              if: matrix.target == 'i686-pc-windows-gnu' && matrix.channel == 'nightly'
+              shell: bash
 
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
+            - name: Add mingw64 to path for x86_64-gnu
+              run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
+              if: matrix.target == 'x86_64-pc-windows-gnu' && matrix.channel == 'nightly'
+              shell: bash
 
-      - name: Check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --target wasm32-unknown-unknown
-
-      - name: Launch Anvil
-        run:
-          anvil --block-time 2 -m "stuff inherit faith park genre spread huge knee ecology private
-          marble supreme" &
-
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-
-      - name: Wasm-pack test firefox
-        run: |
-          cd examples/ethers-wasm
-          wasm-pack test --headless --firefox
-
-      - name: Wasm-pack test chrome
-        run: |
-          cd examples/ethers-wasm
-          wasm-pack test --headless --chrome
-
-  examples:
-    name: Examples
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install geth (for state overrides example)
-        run: |
-          mkdir -p "$HOME/bin"
-          wget -q https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-$GETH_BUILD.tar.gz
-          tar -xvf geth-linux-amd64-$GETH_BUILD.tar.gz
-          mv geth-linux-amd64-$GETH_BUILD/geth $HOME/bin/geth
-          chmod u+x "$HOME/bin/geth"
-          export PATH=$HOME/bin:$PATH
-          geth version
-
-      - name: Install Anvil
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: nightly
-
-      - name: Install Solc
-        run: |
-          mkdir -p "$HOME/bin"
-          wget -q https://github.com/ethereum/solidity/releases/download/v0.8.10/solc-static-linux -O $HOME/bin/solc
-          chmod u+x "$HOME/bin/solc"
-          export PATH=$HOME/bin:$PATH
-          solc --version
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v1
-        with:
-          cache-on-failure: true
-      - name: Build and run all examples
-        run: |
-          export PATH=$HOME/bin:$PATH
-          chmod +x ./scripts/examples.sh
-          ./scripts/examples.sh
-
-  windows-build:
-    runs-on: windows-latest
-    name: (${{ matrix.target }}, ${{ matrix.cfg_release_channel }})
-    env:
-      CFG_RELEASE_CHANNEL: ${{ matrix.cfg_release_channel }}
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          [i686-pc-windows-gnu, i686-pc-windows-msvc, x86_64-pc-windows-gnu, x86_64-pc-windows-msvc]
-        cfg_release_channel: [nightly]
-
-    steps:
-      - name: checkout
-        uses: actions/checkout@v3
-
-        # Run build
-      - name: Update Rustup
-        run: |
-          # disable download progress bar
-          $ProgressPreference = "SilentlyContinue"
-          rustup update
-          rustup target add ${{ matrix.target }}
-        shell: powershell
-
-      - name: Add mingw32 to path for i686-gnu
-        run: |
-          echo "C:\msys64\mingw32\bin" >> $GITHUB_PATH
-        if: matrix.target == 'i686-pc-windows-gnu' && matrix.channel == 'nightly'
-        shell: bash
-
-      - name: Add mingw64 to path for x86_64-gnu
-        run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
-        if: matrix.target == 'x86_64-pc-windows-gnu' && matrix.channel == 'nightly'
-        shell: bash
-
-      - name: build
-        run: |
-          rustc -Vv
-          cargo -V
-          # we test without --all-features on Windows so that sha2-asm is not activated.
-          cargo check
-        shell: cmd
+            - name: build
+              run: |
+                  rustc -Vv
+                  cargo -V
+                  # we test without --all-features on Windows so that sha2-asm is not activated.
+                  cargo check
+              shell: cmd
