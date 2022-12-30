@@ -63,7 +63,21 @@ fn determine_ethers_crates() -> CrateNames {
     let lock_file = manifest_dir.join("Cargo.lock");
     let lock_file_existed = lock_file.exists();
 
+    let mut cmd = std::process::Command::new("node");
+    cmd.arg("-e").arg(
+        r#"
+const process = require("process");
+for (const [k, v] of Object.entries(process.env)) {
+    if (k.startsWith("CARGO_")) {
+        console.log(k, "=", v);
+    }
+}
+    "#,
+    );
+    eprintln!("{}", String::from_utf8(cmd.output().unwrap().stdout).unwrap());
+    eprintln!("{}", manifest_dir.display());
     let names = crate_names_from_metadata(manifest_dir);
+    eprintln!("{:#?}", names);
 
     // remove the lock file created from running the command
     if !lock_file_existed && lock_file.exists() {
@@ -85,18 +99,19 @@ fn crate_names_from_metadata(manifest_dir: PathBuf) -> Option<CrateNames> {
     let pkg = metadata.root_package()?;
 
     // return ethers_* if the root package is an EthersCrate (called in `ethers-rs/**/*`)
-    if let Ok(current_pkg) = pkg.name.parse::<EthersCrate>() {
+    if let Ok(current_pkg) = pkg.name.replace('_', "-").parse::<EthersCrate>() {
         // replace `current_pkg`'s name with "crate"
-        let names =
-            EthersCrate::path_names()
-                .map(|(pkg, name)| {
-                    if !crate_is_root && pkg == current_pkg {
+        let names = EthersCrate::path_names()
+            .map(
+                |(pkg, name)| {
+                    if crate_is_root && pkg == current_pkg {
                         (pkg, "crate")
                     } else {
                         (pkg, name)
                     }
-                })
-                .collect();
+                },
+            )
+            .collect();
         return Some(names)
     } // else if pkg.name == "ethers" {} // should not happen: called in `ethers-rs/src/**/*`
 
@@ -224,12 +239,19 @@ impl EthersCrate {
 ///
 /// We can find this using some [environment variables set by Cargo during compilation][ref]:
 /// - `CARGO_TARGET_TMPDIR` is only set when building integration test or benchmark code;
+/// - When `CARGO_MANIFEST_DIR` contains `/benches/` or `/examples/`
 /// - `CARGO_CRATE_NAME`, see [`is_crate_name_in_dirs`].
 ///
 /// [ref]: https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates
 #[inline]
 fn is_crate_root(manifest_dir: impl AsRef<Path>) -> bool {
     let manifest_dir = manifest_dir.as_ref();
+    env::var_os("CARGO_TARGET_TMPDIR").is_none() &&
+        manifest_dir.components().all(|c| {
+            let s = c.as_os_str();
+            s != "examples" && s != "benches"
+        }) &&
+        !is_crate_name_in_dirs(manifest_dir)
 }
 
 /// Returns whether `CARGO_CRATE_NAME` is the name of a file or directory in the first level of
