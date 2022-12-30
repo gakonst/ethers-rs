@@ -92,7 +92,7 @@ where
         };
 
         println!("Original transaction gas: {curr_gas:?} wei");
-        let units: U256 = U256::exp10(CONTINGENCY_UNITS.into());
+        let units: U256 = U256::exp10(CONTINGENCY_UNITS);
         let raised_gas: U256 = (curr_gas * self.contingency) / units;
         tx.set_gas(raised_gas);
         println!("Raised transaction gas: {raised_gas:?} wei");
