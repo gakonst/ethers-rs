@@ -457,7 +457,7 @@ impl Solc {
 
         use sha2::Digest;
         let mut hasher = sha2::Sha256::new();
-        hasher.update(content);
+        hasher.update(&content);
         let checksum_calc = &hasher.finalize()[..];
 
         let checksum_found = &RELEASES.0.get_checksum(&version).expect("checksum not found");
