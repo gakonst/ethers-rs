@@ -649,7 +649,7 @@ impl Graph {
                 return Vec::new()
             }
 
-            let mut result = sets.pop().cloned().expect("not empty; qed.").clone();
+            let mut result = sets.pop().cloned().expect("not empty; qed.");
             if !sets.is_empty() {
                 result.retain(|item| sets.iter().all(|set| set.contains(item)));
             }

@@ -36,7 +36,6 @@ fn load_compiler_inputs() -> Vec<CompilerInput> {
     let mut inputs = Vec::new();
     for file in std::fs::read_dir(Path::new(&env!("CARGO_MANIFEST_DIR")).join("test-data/in"))
         .unwrap()
-        .into_iter()
         .take(5)
     {
         let file = file.unwrap();
