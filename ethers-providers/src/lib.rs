@@ -723,6 +723,7 @@ pub trait CeloMiddleware: Middleware {
     }
 }
 
+#[allow(deprecated)]
 pub use test_provider::{GOERLI, MAINNET, ROPSTEN, SEPOLIA};
 
 /// Pre-instantiated Infura HTTP clients which rotate through multiple API keys
@@ -746,6 +747,8 @@ pub mod test_provider {
     pub static MAINNET: Lazy<TestProvider> = Lazy::new(|| TestProvider::new("mainnet"));
     pub static GOERLI: Lazy<TestProvider> = Lazy::new(|| TestProvider::new("goerli"));
     pub static SEPOLIA: Lazy<TestProvider> = Lazy::new(|| TestProvider::new("sepolia"));
+
+    #[deprecated = "Ropsten has been deprecated in favor of Goerli or Sepolia."]
     pub static ROPSTEN: Lazy<TestProvider> = Lazy::new(|| TestProvider::new("ropsten"));
 
     #[derive(Debug)]

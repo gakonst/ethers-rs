@@ -13,6 +13,7 @@ use std::time::Duration;
 #[ignore]
 async fn gas_escalator_live() {
     // connect to ropsten for getting bad block times
+    #[allow(deprecated)]
     let provider = ethers_providers::ROPSTEN.ws().await;
     let provider = provider.interval(Duration::from_millis(2000u64));
     let wallet = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169"
