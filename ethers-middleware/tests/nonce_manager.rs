@@ -43,7 +43,8 @@ async fn nonce_manager() {
         tx_hashes.push(*tx);
     }
 
-    tokio::time::sleep(Duration::from_secs(15)).await;
+    // sleep a bit to ensure there's no flakiness in the test
+    tokio::time::sleep(Duration::from_secs(10)).await;
 
     let mut nonces = Vec::with_capacity(num_tx);
     for tx_hash in tx_hashes {
