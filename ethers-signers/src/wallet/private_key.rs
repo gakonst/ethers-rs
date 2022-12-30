@@ -90,6 +90,13 @@ impl Wallet<SigningKey> {
         let address = secret_key_to_address(&signer);
         Self { signer, address, chain_id: 1 }
     }
+
+    /// Creates a new Wallet instance from a raw scalar value (big endian).
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, WalletError> {
+        let signer = SigningKey::from_bytes(bytes)?;
+        let address = secret_key_to_address(&signer);
+        Ok(Self { signer, address, chain_id: 1 })
+    }
 }
 
 impl PartialEq for Wallet<SigningKey> {
@@ -304,5 +311,18 @@ mod tests {
             wallet.address,
             Address::from_str("6813Eb9362372EEF6200f3b1dbC3f819671cBA69").expect("Decoding failed")
         );
+    }
+
+    #[test]
+    fn key_from_bytes() {
+        let wallet: Wallet<SigningKey> =
+            "0000000000000000000000000000000000000000000000000000000000000001".parse().unwrap();
+
+        let key_as_bytes = wallet.signer.to_bytes();
+        let wallet_from_bytes = Wallet::from_bytes(&key_as_bytes).unwrap();
+
+        assert_eq!(wallet.address, wallet_from_bytes.address);
+        assert_eq!(wallet.chain_id, wallet_from_bytes.chain_id);
+        assert_eq!(wallet.signer, wallet_from_bytes.signer);
     }
 }
