@@ -229,7 +229,7 @@ impl EthersCrate {
 /// [ref]: https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates
 #[inline]
 fn is_crate_root(manifest_dir: impl AsRef<Path>) -> bool {
-    env::var_os("CARGO_TARGET_TMPDIR").is_some() || is_crate_name_in_dirs(manifest_dir)
+    let manifest_dir = manifest_dir.as_ref();
 }
 
 /// Returns whether `CARGO_CRATE_NAME` is the name of a file or directory in the first level of
@@ -265,7 +265,7 @@ fn is_crate_root(manifest_dir: impl AsRef<Path>) -> bool {
 /// The resulting `CARGO_CRATE_NAME` values will be:
 ///
 /// |                  Path                  |          Value         |
-/// |:---------------------------------------|-----------------------:|
+/// |:-------------------------------------- | ----------------------:|
 /// | benches/large-input.rs                 |            large-input |
 /// | benches/multi-file-bench/\*\*/\*.rs    |       multi-file-bench |
 /// | examples/simple.rs                     |                 simple |
@@ -273,31 +273,30 @@ fn is_crate_root(manifest_dir: impl AsRef<Path>) -> bool {
 /// | tests/some-integration-tests.rs        | some-integration-tests |
 /// | tests/multi-file-test/\*\*/\*.rs       |        multi-file-test |
 #[inline]
-fn is_crate_name_in_dirs(manifest_dir: impl AsRef<Path>) -> bool {
+fn is_crate_name_in_dirs(manifest_dir: &Path) -> bool {
     let crate_name = match env::var("CARGO_CRATE_NAME") {
         Ok(name) => name,
         Err(_) => return false,
     };
 
-    let manifest_dir = manifest_dir.as_ref();
     let dirs =
         [manifest_dir.join("tests"), manifest_dir.join("examples"), manifest_dir.join("benches")];
     dirs.iter().any(|dir| {
         fs::read_dir(dir)
             .ok()
             .and_then(|entries| {
-                entries
-                    .filter_map(Result::ok)
-                    .find(|entry| file_name_contains(entry.path(), &crate_name))
+                entries.filter_map(Result::ok).find(|entry| file_stem_eq(entry.path(), &crate_name))
             })
             .is_some()
     })
 }
 
 #[inline]
-fn file_name_contains<T: AsRef<Path>, U: AsRef<str>>(path: T, s: U) -> bool {
-    match path.as_ref().file_name() {
-        Some(name) => name.to_string_lossy().contains(s.as_ref()),
-        None => false,
+fn file_stem_eq<T: AsRef<Path>, U: AsRef<str>>(path: T, s: U) -> bool {
+    if let Some(stem) = path.as_ref().file_stem() {
+        if let Some(stem) = stem.to_str() {
+            return stem == s.as_ref()
+        }
     }
+    false
 }
