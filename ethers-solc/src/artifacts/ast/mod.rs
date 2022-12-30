@@ -1089,11 +1089,11 @@ mod tests {
                 let result: Result<SourceUnit, _> = serde_path_to_error::deserialize(deserializer);
                 match result {
                     Err(e) => {
-                        println!("... {path_str} fail: {e}");
+                        println!("... {} fail: {e}", path_str);
                         panic!();
                     }
                     Ok(_) => {
-                        println!("... {path_str} ok");
+                        println!("... {} ok", path_str);
                     }
                 }
             })
