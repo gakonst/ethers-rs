@@ -8,11 +8,11 @@ use std::time::Duration;
 
 #[tokio::test]
 async fn nonce_manager() {
-    let provider = ethers_providers::SEPOLIA.provider().interval(Duration::from_millis(2000));
+    let provider = ethers_providers::GOERLI.provider().interval(Duration::from_millis(2000));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
 
-    let wallet = std::env::var("SEPOLIA_PRIVATE_KEY")
-        .expect("SEPOLIA_PRIVATE_KEY is not defined")
+    let wallet = std::env::var("GOERLI_PRIVATE_KEY")
+        .expect("GOERLI_PRIVATE_KEY is not defined")
         .parse::<LocalWallet>()
         .unwrap()
         .with_chain_id(chain_id);

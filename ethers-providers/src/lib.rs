@@ -748,7 +748,7 @@ pub mod test_provider {
     pub static GOERLI: Lazy<TestProvider> = Lazy::new(|| TestProvider::new("goerli"));
     pub static SEPOLIA: Lazy<TestProvider> = Lazy::new(|| TestProvider::new("sepolia"));
 
-    #[deprecated = "Ropsten has been deprecated in favor of Goerli or Sepolia."]
+    #[deprecated = "Ropsten testnet has been deprecated in favor of Goerli or Sepolia."]
     pub static ROPSTEN: Lazy<TestProvider> = Lazy::new(|| TestProvider::new("ropsten"));
 
     #[derive(Debug)]
