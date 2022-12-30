@@ -661,7 +661,7 @@ impl<M: Middleware> Multicall<M> {
     /// #
     /// # let multicall = Multicall::new(client, None).await?;
     /// // If the all Solidity function calls `returns (uint256)`:
-    /// let result: Vec<U256> = multicall.call().await?;
+    /// let result: Vec<U256> = multicall.call_array().await?;
     /// # Ok(())
     /// # }
     /// ```
