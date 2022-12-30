@@ -12,7 +12,7 @@ pub use geth::{Geth, GethInstance};
 
 /// Utilities for working with a `genesis.json` and other chain config structs.
 mod genesis;
-pub use genesis::{ChainConfig, Genesis};
+pub use genesis::{ChainConfig, CliqueConfig, EthashConfig, Genesis, GenesisAccount};
 
 /// Utilities for launching an anvil instance
 #[cfg(not(target_arch = "wasm32"))]
