@@ -8,21 +8,6 @@ pub mod multicall_3 {
     // This is a hack to guarantee all ethers-derive macros can find the types.
     // See [`ethers_core::macros::determine_ethers_crates`].
     #[doc(hidden)]
-    mod ethers {
-        pub mod contract {
-            pub use crate::*;
-        }
-        pub mod core {
-            pub use ethers_core::*;
-        }
-        pub mod providers {
-            pub use ethers_providers::*;
-        }
-        pub mod types {
-            pub use ethers_core::types::*;
-        }
-    }
-    #[doc(hidden)]
     mod ethers_contract {
         pub use crate::*;
     }
