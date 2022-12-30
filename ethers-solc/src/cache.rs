@@ -32,7 +32,7 @@ const ETHERS_FORMAT_VERSION: &str = "ethers-rs-sol-cache-4";
 pub const SOLIDITY_FILES_CACHE_FILENAME: &str = "solidity-files-cache.json";
 
 /// A unique identifier for source files that were compiled together
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Hash)]
 pub struct CompilationUnitId(u64);
 
 impl CompilationUnitId {
@@ -57,7 +57,7 @@ impl std::fmt::Display for CompilationUnitId {
 pub struct CompilationUnit {
     pub solc_config: SolcConfig,
     pub version: Version,
-    pub source_units: HashSet<PathBuf>,
+    pub source_units: BTreeSet<PathBuf>,
 }
 
 /// A multi version cache file
@@ -69,7 +69,7 @@ pub struct SolFilesCache {
     pub paths: ProjectPaths,
     pub files: BTreeMap<PathBuf, CacheEntry>,
     #[serde(rename = "compilationUnits")]
-    pub compilation_units: HashMap<CompilationUnitId, CompilationUnit>,
+    pub compilation_units: BTreeMap<CompilationUnitId, CompilationUnit>,
 }
 
 impl SolFilesCache {
@@ -77,7 +77,7 @@ impl SolFilesCache {
     pub fn new(
         files: BTreeMap<PathBuf, CacheEntry>,
         paths: ProjectPaths,
-        compilation_units: HashMap<CompilationUnitId, CompilationUnit>,
+        compilation_units: BTreeMap<CompilationUnitId, CompilationUnit>,
     ) -> Self {
         Self { format: ETHERS_FORMAT_VERSION.to_string(), files, paths, compilation_units }
     }
@@ -682,7 +682,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         } else {
             self.cache.compilation_units.insert(
                 id,
-                CompilationUnit { solc_config, version, source_units: HashSet::from([file]) },
+                CompilationUnit { solc_config, version, source_units: BTreeSet::from([file]) },
             );
         }
     }
