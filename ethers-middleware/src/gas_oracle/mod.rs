@@ -37,7 +37,7 @@ use std::{error::Error, fmt::Debug};
 use thiserror::Error;
 
 pub(crate) const GWEI_TO_WEI: u64 = 1_000_000_000;
-pub(crate) const GWEI_TO_WEI_U256: U256 = U256([0, 0, 0, GWEI_TO_WEI]);
+pub(crate) const GWEI_TO_WEI_U256: U256 = U256([GWEI_TO_WEI, 0, 0, 0]);
 
 pub type Result<T, E = GasOracleError> = std::result::Result<T, E>;
 
@@ -152,4 +152,16 @@ pub trait GasOracle: Send + Sync + Debug {
 #[doc(hidden)]
 pub(crate) fn from_gwei_f64(gwei: f64) -> U256 {
     ethers_core::types::u256_from_f64_saturating(gwei) * GWEI_TO_WEI_U256
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_gwei_wei_constants() {
+        let as_u256: U256 = GWEI_TO_WEI.into();
+        assert_eq!(as_u256, GWEI_TO_WEI_U256);
+        assert_eq!(GWEI_TO_WEI_U256.as_u64(), GWEI_TO_WEI);
+    }
 }
