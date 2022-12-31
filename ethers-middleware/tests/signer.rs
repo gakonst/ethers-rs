@@ -294,7 +294,7 @@ impl TestWallets {
     #[allow(unused)]
     pub async fn fund<T: JsonRpcClient, U: Into<u32>>(&self, provider: &Provider<T>, n: U) {
         let addrs = (0..n.into()).map(|i| self.get(i).address()).collect::<Vec<_>>();
-        // hardcoded funder address private key, goerli
+        // hardcoded funder address private key, GOERLI
         let signer = "39aa18eeb5d12c071e5f19d8e9375a872e90cb1f2fa640384ffd8800a2f3e8f1"
             .parse::<LocalWallet>()
             .unwrap()

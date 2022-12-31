@@ -723,7 +723,8 @@ pub trait CeloMiddleware: Middleware {
     }
 }
 
-pub use test_provider::{GOERLI, MAINNET, ROPSTEN};
+#[allow(deprecated)]
+pub use test_provider::{GOERLI, MAINNET, ROPSTEN, SEPOLIA};
 
 /// Pre-instantiated Infura HTTP clients which rotate through multiple API keys
 /// to prevent rate limits
@@ -743,9 +744,13 @@ pub mod test_provider {
         "5c812e02193c4ba793f8c214317582bd",
     ];
 
-    pub static GOERLI: Lazy<TestProvider> = Lazy::new(|| TestProvider::new(INFURA_KEYS, "goerli"));
     pub static MAINNET: Lazy<TestProvider> =
         Lazy::new(|| TestProvider::new(INFURA_KEYS, "mainnet"));
+    pub static GOERLI: Lazy<TestProvider> = Lazy::new(|| TestProvider::new(INFURA_KEYS, "goerli"));
+    pub static SEPOLIA: Lazy<TestProvider> =
+        Lazy::new(|| TestProvider::new(INFURA_KEYS, "sepolia"));
+
+    #[deprecated = "Ropsten testnet has been deprecated in favor of Goerli or Sepolia."]
     pub static ROPSTEN: Lazy<TestProvider> =
         Lazy::new(|| TestProvider::new(INFURA_KEYS, "ropsten"));
 
@@ -756,16 +761,14 @@ pub mod test_provider {
     }
 
     impl TestProvider {
-        pub fn new(keys: &'static [&'static str], network: &str) -> Self {
-            Self { keys: Mutex::new(keys.iter().cycle()), network: network.to_owned() }
+        pub fn new(keys: &'static [&'static str], network: impl Into<String>) -> Self {
+            Self { keys: keys.iter().cycle().into(), network: network.into() }
         }
 
         pub fn url(&self) -> String {
-            format!(
-                "https://{}.infura.io/v3/{}",
-                self.network,
-                self.keys.lock().unwrap().next().unwrap()
-            )
+            let Self { network, keys } = self;
+            let key = keys.lock().unwrap().next().unwrap();
+            format!("https://{network}.infura.io/v3/{key}")
         }
 
         pub fn provider(&self) -> Provider<Http> {
