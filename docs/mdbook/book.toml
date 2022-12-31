@@ -1,0 +1,6 @@
+[book]
+authors = ["Andrea Simeoni"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Ethers.rs: The Ethereum Library for Rust"
