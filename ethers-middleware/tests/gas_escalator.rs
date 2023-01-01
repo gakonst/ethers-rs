@@ -13,6 +13,7 @@ use std::time::Duration;
 #[ignore]
 async fn gas_escalator_live() {
     // connect to ropsten for getting bad block times
+    #[allow(deprecated)]
     let provider = ethers_providers::ROPSTEN.ws().await;
     let provider = provider.interval(Duration::from_millis(2000u64));
     let wallet = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169"
@@ -34,7 +35,7 @@ async fn gas_escalator_live() {
     provider.send_transaction(tx.clone().nonce(nonce + 2), None).await.unwrap();
 
     // Wait a bunch of seconds and refresh etherscan to see the transactions get bumped
-    tokio::time::sleep(std::time::Duration::from_secs(100)).await;
+    tokio::time::sleep(Duration::from_secs(100)).await;
 
     // TODO: Figure out how to test this behavior properly in a local network. If the gas price was
     // bumped then the tx hash will be different

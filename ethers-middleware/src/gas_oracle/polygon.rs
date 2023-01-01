@@ -20,7 +20,7 @@ pub struct Polygon {
 
 /// The response from the Polygon gas station API.
 ///
-/// Gas prices are in Gwei.
+/// Gas prices are in __Gwei__.
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Response {
@@ -101,5 +101,16 @@ impl Polygon {
         let response =
             self.client.get(self.url.clone()).send().await?.error_for_status()?.json().await?;
         Ok(response)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_polygon_gas_station_response() {
+        let s = r#"{"safeLow":{"maxPriorityFee":2.1267086610666666,"maxFee":2.1267086760666665},"standard":{"maxPriorityFee":2.3482958369333335,"maxFee":2.3482958519333335},"fast":{"maxPriorityFee":2.793454819,"maxFee":2.793454834},"estimatedBaseFee":1.5e-8,"blockTime":2,"blockNumber":30328888}"#;
+        let _resp: Response = serde_json::from_str(s).unwrap();
     }
 }
