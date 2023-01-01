@@ -7,12 +7,6 @@ use std::{
 };
 use strum::{EnumCount, EnumIter, EnumString, EnumVariantNames, IntoEnumIterator};
 
-#[cfg(test)]
-use rand::{
-    distributions::{Distribution, Standard},
-    Rng,
-};
-
 /// `ethers_crate => name`
 type CrateNames = HashMap<EthersCrate, &'static str>;
 
@@ -257,15 +251,6 @@ impl fmt::Display for EthersCrate {
     }
 }
 
-#[cfg(test)]
-impl Distribution<EthersCrate> for Standard {
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> EthersCrate {
-        const RANGE: std::ops::Range<u8> = 0..EthersCrate::COUNT as u8;
-        // SAFETY: generates in the safe range
-        unsafe { std::mem::transmute(rng.gen_range(RANGE)) }
-    }
-}
-
 impl EthersCrate {
     /// "`<self as kebab-case>`"
     #[inline]
@@ -368,12 +353,23 @@ fn file_stem_eq<T: AsRef<Path>, U: AsRef<str>>(path: T, s: U) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::{thread_rng, Rng};
+    use rand::{
+        distributions::{Distribution, Standard},
+        thread_rng, Rng,
+    };
     use std::{
         collections::{BTreeMap, HashSet},
         env, fs,
     };
     use tempfile::TempDir;
+
+    impl Distribution<EthersCrate> for Standard {
+        fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> EthersCrate {
+            const RANGE: std::ops::Range<u8> = 0..EthersCrate::COUNT as u8;
+            // SAFETY: generates in the safe range
+            unsafe { std::mem::transmute(rng.gen_range(RANGE)) }
+        }
+    }
 
     #[test]
     fn test_names() {
