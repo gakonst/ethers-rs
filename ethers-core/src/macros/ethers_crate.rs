@@ -285,39 +285,41 @@ impl EthersCrate {
         }
     }
 
-    /// "`<self as snake_case>`"
+    /// "`::<self as snake_case>`"
     #[inline]
     pub const fn path_name(self) -> &'static str {
         match self {
-            Self::EthersAddressbook => "ethers_addressbook",
-            Self::EthersContract => "ethers_contract",
-            Self::EthersContractAbigen => "ethers_contract_abigen",
-            Self::EthersContractDerive => "ethers_contract_derive",
-            Self::EthersCore => "ethers_core",
-            Self::EthersDeriveEip712 => "ethers_derive_eip712",
-            Self::EthersEtherscan => "ethers_etherscan",
-            Self::EthersMiddleware => "ethers_middleware",
-            Self::EthersProviders => "ethers_providers",
-            Self::EthersSigners => "ethers_signers",
-            Self::EthersSolc => "ethers_solc",
+            Self::EthersAddressbook => "::ethers_addressbook",
+            Self::EthersContract => "::ethers_contract",
+            Self::EthersContractAbigen => "::ethers_contract_abigen",
+            Self::EthersContractDerive => "::ethers_contract_derive",
+            Self::EthersCore => "::ethers_core",
+            Self::EthersDeriveEip712 => "::ethers_derive_eip712",
+            Self::EthersEtherscan => "::ethers_etherscan",
+            Self::EthersMiddleware => "::ethers_middleware",
+            Self::EthersProviders => "::ethers_providers",
+            Self::EthersSigners => "::ethers_signers",
+            Self::EthersSolc => "::ethers_solc",
         }
     }
 
-    /// "ethers::`<self in ethers>`"
+    /// "::ethers::`<self in ethers>`"
     #[inline]
     pub const fn ethers_path_name(self) -> &'static str {
         match self {
-            Self::EthersAddressbook => "ethers::addressbook",
-            Self::EthersContract => "ethers::contract",
-            Self::EthersContractAbigen => "ethers::contract", // re-exported in ethers::contract
-            Self::EthersContractDerive => "ethers::contract", // re-exported in ethers::contract
-            Self::EthersCore => "ethers::core",
-            Self::EthersDeriveEip712 => "ethers::contract", // re-exported in ethers::contract
-            Self::EthersEtherscan => "ethers::etherscan",
-            Self::EthersMiddleware => "ethers::middleware",
-            Self::EthersProviders => "ethers::providers",
-            Self::EthersSigners => "ethers::signers",
-            Self::EthersSolc => "ethers::solc",
+            // re-exported in ethers::contract
+            Self::EthersContractAbigen => "::ethers::contract", // partly
+            Self::EthersContractDerive => "::ethers::contract",
+            Self::EthersDeriveEip712 => "::ethers::contract",
+
+            Self::EthersAddressbook => "::ethers::addressbook",
+            Self::EthersContract => "::ethers::contract",
+            Self::EthersCore => "::ethers::core",
+            Self::EthersEtherscan => "::ethers::etherscan",
+            Self::EthersMiddleware => "::ethers::middleware",
+            Self::EthersProviders => "::ethers::providers",
+            Self::EthersSigners => "::ethers::signers",
+            Self::EthersSolc => "::ethers::solc",
         }
     }
 
