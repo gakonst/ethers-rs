@@ -14,6 +14,7 @@
 mod macros;
 mod misc;
 pub use misc::*;
+pub mod lowfidelity;
 pub mod util;
 pub mod visitor;
 

@@ -12,11 +12,12 @@ use crate::{
     artifacts::{
         bytecode::{CompactBytecode, CompactDeployedBytecode},
         contract::{CompactContract, CompactContractBytecode, Contract},
+        lowfidelity::Ast,
         output_selection::{
             BytecodeOutputSelection, ContractOutputSelection, EvmOutputSelection,
             EwasmOutputSelection,
         },
-        Ast, CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
+        CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
         GeneratedSource, LosslessAbi, LosslessMetadata, Metadata, Offsets,
         Settings, /*SourceUnit,*/
         StorageLayout, UserDoc,

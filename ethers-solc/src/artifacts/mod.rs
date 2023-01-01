@@ -1,6 +1,10 @@
 //! Solc artifact types
 use crate::{
-    compile::*, error::SolcIoError, remappings::Remapping, utils, ProjectPathsConfig, SolcError,
+    artifacts::lowfidelity::{Ast, NodeType},
+    compile::*,
+    error::SolcIoError,
+    remappings::Remapping,
+    utils, ProjectPathsConfig, SolcError,
 };
 use ethers_core::abi::Abi;
 use md5::Digest;
@@ -22,9 +26,7 @@ pub mod contract;
 pub mod output_selection;
 pub mod serde_helpers;
 use crate::{
-    artifacts::{
-        output_selection::{ContractOutputSelection, OutputSelection},
-    },
+    artifacts::output_selection::{ContractOutputSelection, OutputSelection},
     filter::FilteredSources,
 };
 pub use bytecode::*;
@@ -535,7 +537,7 @@ impl Libraries {
             if items.next().is_some() {
                 return Err(SolcError::msg(format!(
                     "failed to parse, too many arguments passed: {lib}"
-                )))
+                )));
             }
             libraries
                 .entry(file.into())
@@ -1851,7 +1853,7 @@ impl SourceFile {
             return ast
                 .nodes
                 .iter()
-                .any(|node| matches!(node.node_type, NodeType::ContractDefinition))
+                .any(|node| matches!(node.node_type, NodeType::ContractDefinition));
             // abstract contract, interfaces: ContractDefinition
         }
 
