@@ -23,10 +23,16 @@ use rand::{
 /// `ethers_crate => name`
 type CrateNames = HashMap<EthersCrate, &'static str>;
 
+const DIRS: [&str; 3] = ["benches", "examples", "tests"];
+
 /// Maps an [`EthersCrate`] to its name in the compilation environment.
 ///
-/// See [`determine_ethers_crates`] for more information.
-static ETHERS_CRATE_NAMES: Lazy<CrateNames> = Lazy::new(determine_ethers_crates);
+/// See [`ProjectEnvironment`] for more information.
+static ETHERS_CRATE_NAMES: Lazy<CrateNames> = Lazy::new(|| {
+    EthersProjectEnvironment::new_from_env()
+        .and_then(|x| x.determine_ethers_crates())
+        .unwrap_or_else(|| EthersCrate::ethers_path_names().collect())
+});
 
 /// Returns the `core` crate's [`Path`][syn::Path].
 #[inline]
@@ -52,76 +58,164 @@ pub fn get_crate_path(krate: EthersCrate) -> syn::Path {
     krate.get_path()
 }
 
-/// Determines the crate paths to use by looking at the [metadata][cargo_metadata] of the project.
-///
-/// The names will be:
-/// - `ethers::*` if `ethers` is a dependency for all crates;
-/// - for each `crate`:
-///   - `ethers_<crate>` if it is a dependency, otherwise `ethers::<crate>`.
-fn determine_ethers_crates() -> CrateNames {
-    let default = || EthersCrate::ethers_path_names().collect();
-
-    let manifest_dir: PathBuf = match env::var_os("CARGO_MANIFEST_DIR") {
-        Some(s) => s.into(),
-        None => return default(),
-    };
-
-    let lock_file = manifest_dir.join("Cargo.lock");
-    let lock_file_existed = lock_file.exists();
-
-    let names = crate_names_from_metadata(manifest_dir);
-
-    // remove the lock file created from running the command
-    if !lock_file_existed && lock_file.exists() {
-        let _ = std::fs::remove_file(lock_file);
-    }
-
-    names.unwrap_or_else(default)
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EthersProjectEnvironment {
+    manifest_dir: PathBuf,
+    crate_name: Option<String>,
 }
 
-/// Runs [`cargo metadata`][MetadataCommand] from `manifest_dir` and determines the crate paths to
-/// use.
-///
-/// Returns `None` on any error or if no dependencies are found.
-#[inline]
-fn crate_names_from_metadata(manifest_dir: PathBuf) -> Option<CrateNames> {
-    let crate_is_root = is_crate_root(&manifest_dir);
+impl EthersProjectEnvironment {
+    pub fn new<T: Into<PathBuf>, U: Into<String>>(manifest_dir: T, crate_name: U) -> Self {
+        Self { manifest_dir: manifest_dir.into(), crate_name: Some(crate_name.into()) }
+    }
 
-    let metadata = MetadataCommand::new().current_dir(manifest_dir).exec().ok()?;
-    let pkg = metadata.root_package()?;
+    pub fn new_from_env() -> Option<Self> {
+        Some(Self {
+            manifest_dir: env::var_os("CARGO_MANIFEST_DIR")?.into(),
+            crate_name: env::var("CARGO_CRATE_NAME").ok(),
+        })
+    }
 
-    // return ethers_* if the root package is an internal ethers crate since `ethers` is not
-    // available
-    if let Ok(current_pkg) = pkg.name.parse::<EthersCrate>() {
-        // replace `current_pkg`'s name with "crate"
-        let names = EthersCrate::path_names()
-            .map(
-                |(pkg, name)| {
-                    if crate_is_root && pkg == current_pkg {
-                        (pkg, "crate")
-                    } else {
-                        (pkg, name)
-                    }
-                },
-            )
-            .collect();
-        return Some(names)
-    } /* else if pkg.name == "ethers" {
-          // should not happen (the root package the `ethers` workspace package itself)
-      } */
+    /// Determines the crate paths to use by looking at the [metadata][cargo_metadata] of the
+    /// project.
+    ///
+    /// The names will be:
+    /// - `ethers::*` if `ethers` is a dependency for all crates;
+    /// - for each `crate`:
+    ///   - `ethers_<crate>` if it is a dependency, otherwise `ethers::<crate>`.
+    #[inline]
+    pub fn determine_ethers_crates(&self) -> Option<CrateNames> {
+        let lock_file = self.manifest_dir.join("Cargo.lock");
+        let lock_file_existed = lock_file.exists();
 
-    let mut names: CrateNames = EthersCrate::ethers_path_names().collect();
-    for dep in pkg.dependencies.iter() {
-        let name = dep.name.as_str();
-        if name.starts_with("ethers") {
-            if name == "ethers" {
-                return None
-            } else if let Ok(dep) = name.parse::<EthersCrate>() {
-                names.insert(dep, dep.path_name());
+        let names = self.crate_names_from_metadata();
+
+        // remove the lock file created from running the command
+        if !lock_file_existed && lock_file.exists() {
+            let _ = std::fs::remove_file(lock_file);
+        }
+
+        names
+    }
+
+    #[inline]
+    pub fn crate_names_from_metadata(&self) -> Option<CrateNames> {
+        let metadata = MetadataCommand::new().current_dir(&self.manifest_dir).exec().ok()?;
+        let pkg = metadata.root_package()?;
+
+        // return ethers_* if the root package is an internal ethers crate since `ethers` is not
+        // available
+        let crate_is_root = self.is_crate_root();
+        if let Ok(current_pkg) = pkg.name.parse::<EthersCrate>() {
+            // replace `current_pkg`'s name with "crate"
+            let names =
+                EthersCrate::path_names()
+                    .map(|(pkg, name)| {
+                        if crate_is_root && pkg == current_pkg {
+                            (pkg, "crate")
+                        } else {
+                            (pkg, name)
+                        }
+                    })
+                    .collect();
+            return Some(names)
+        } /* else if pkg.name == "ethers" {
+              // should not happen (the root package the `ethers` workspace package itself)
+          } */
+
+        let mut names: CrateNames = EthersCrate::ethers_path_names().collect();
+        for dep in pkg.dependencies.iter() {
+            let name = dep.name.as_str();
+            if name.starts_with("ethers") {
+                if name == "ethers" {
+                    return None
+                } else if let Ok(dep) = name.parse::<EthersCrate>() {
+                    names.insert(dep, dep.path_name());
+                }
             }
         }
+        Some(names)
     }
-    Some(names)
+
+    /// Returns whether the `crate` path identifier refers to the root package.
+    ///
+    /// This is false for integration tests, benches, and examples, as the `crate` keyword will not
+    /// refer to the root package.
+    ///
+    /// We can find this using some [environment variables set by Cargo during compilation][ref]:
+    /// - `CARGO_TARGET_TMPDIR` is only set when building integration test or benchmark code;
+    /// - When `CARGO_MANIFEST_DIR` contains `/benches/` or `/examples/`
+    /// - `CARGO_CRATE_NAME`, see [`is_crate_name_in_dirs`].
+    ///
+    /// [ref]: https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates
+    #[inline]
+    pub fn is_crate_root(&self) -> bool {
+        env::var_os("CARGO_TARGET_TMPDIR").is_none() &&
+            self.manifest_dir.components().all(|c| {
+                let s = c.as_os_str();
+                s != "examples" && s != "benches"
+            }) &&
+            !self.is_crate_name_in_dirs()
+    }
+
+    /// Returns whether `crate_name` is the name of a file or directory in the first level of
+    /// `manifest_dir/{benches,examples,tests}/`.
+    ///
+    /// # Example
+    ///
+    /// With this project structure:
+    ///
+    /// ```text
+    /// .
+    /// ├── Cargo.lock
+    /// ├── Cargo.toml
+    /// ├── src/
+    /// │   ...
+    /// ├── benches/
+    /// │   ├── large-input.rs
+    /// │   └── multi-file-bench/
+    /// │       ├── main.rs
+    /// │       └── bench_module.rs
+    /// ├── examples/
+    /// │   ├── simple.rs
+    /// │   └── multi-file-example/
+    /// │       ├── main.rs
+    /// │       └── ex_module.rs
+    /// └── tests/
+    ///     ├── some-integration-tests.rs
+    ///     └── multi-file-test/
+    ///         ├── main.rs
+    ///         └── test_module.rs
+    /// ```
+    ///
+    /// The resulting `CARGO_CRATE_NAME` values will be:
+    ///
+    /// |                  Path                  |          Value         |
+    /// |:-------------------------------------- | ----------------------:|
+    /// | benches/large-input.rs                 |            large-input |
+    /// | benches/multi-file-bench/\*\*/\*.rs    |       multi-file-bench |
+    /// | examples/simple.rs                     |                 simple |
+    /// | examples/multi-file-example/\*\*/\*.rs |     multi-file-example |
+    /// | tests/some-integration-tests.rs        | some-integration-tests |
+    /// | tests/multi-file-test/\*\*/\*.rs       |        multi-file-test |
+    #[inline]
+    pub fn is_crate_name_in_dirs(&self) -> bool {
+        let crate_name = match self.crate_name.as_ref() {
+            Some(name) => name,
+            None => return false,
+        };
+        let dirs = DIRS.map(|dir| self.manifest_dir.join(dir));
+        dirs.iter().any(|dir| {
+            fs::read_dir(dir)
+                .ok()
+                .and_then(|entries| {
+                    entries
+                        .filter_map(Result::ok)
+                        .find(|entry| file_stem_eq(entry.path(), crate_name))
+                })
+                .is_some()
+        })
+    }
 }
 
 /// An `ethers-rs` workspace crate.
@@ -261,86 +355,7 @@ impl EthersCrate {
     }
 }
 
-/// Returns whether `crate`, in the current environment, refers to the root package.
-///
-/// This is false for integration tests, benches, and examples, as the `crate` keyword will not
-/// refer to the root package.
-///
-/// We can find this using some [environment variables set by Cargo during compilation][ref]:
-/// - `CARGO_TARGET_TMPDIR` is only set when building integration test or benchmark code;
-/// - When `CARGO_MANIFEST_DIR` contains `/benches/` or `/examples/`
-/// - `CARGO_CRATE_NAME`, see [`is_crate_name_in_dirs`].
-///
-/// [ref]: https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates
-#[inline]
-fn is_crate_root(manifest_dir: impl AsRef<Path>) -> bool {
-    let manifest_dir = manifest_dir.as_ref();
-    env::var_os("CARGO_TARGET_TMPDIR").is_none() &&
-        manifest_dir.components().all(|c| {
-            let s = c.as_os_str();
-            s != "examples" && s != "benches"
-        }) &&
-        !is_crate_name_in_dirs(manifest_dir)
-}
-
-/// Returns whether `CARGO_CRATE_NAME` is the name of a file or directory in the first level of
-/// `manifest_dir/{benches,examples,tests}/`.
-///
-/// # Example
-///
-/// With this project structure:
-///
-/// ```text
-/// .
-/// ├── Cargo.lock
-/// ├── Cargo.toml
-/// ├── src/
-/// │   ...
-/// ├── benches/
-/// │   ├── large-input.rs
-/// │   └── multi-file-bench/
-/// │       ├── main.rs
-/// │       └── bench_module.rs
-/// ├── examples/
-/// │   ├── simple.rs
-/// │   └── multi-file-example/
-/// │       ├── main.rs
-/// │       └── ex_module.rs
-/// └── tests/
-///     ├── some-integration-tests.rs
-///     └── multi-file-test/
-///         ├── main.rs
-///         └── test_module.rs
-/// ```
-///
-/// The resulting `CARGO_CRATE_NAME` values will be:
-///
-/// |                  Path                  |          Value         |
-/// |:-------------------------------------- | ----------------------:|
-/// | benches/large-input.rs                 |            large-input |
-/// | benches/multi-file-bench/\*\*/\*.rs    |       multi-file-bench |
-/// | examples/simple.rs                     |                 simple |
-/// | examples/multi-file-example/\*\*/\*.rs |     multi-file-example |
-/// | tests/some-integration-tests.rs        | some-integration-tests |
-/// | tests/multi-file-test/\*\*/\*.rs       |        multi-file-test |
-#[inline]
-fn is_crate_name_in_dirs(manifest_dir: &Path) -> bool {
-    let crate_name = match env::var("CARGO_CRATE_NAME") {
-        Ok(name) => name,
-        Err(_) => return false,
-    };
-
-    let dirs = ["tests", "examples", "benches"].map(|d| manifest_dir.join(d));
-    dirs.iter().any(|dir| {
-        fs::read_dir(dir)
-            .ok()
-            .and_then(|entries| {
-                entries.filter_map(Result::ok).find(|entry| file_stem_eq(entry.path(), &crate_name))
-            })
-            .is_some()
-    })
-}
-
+/// `path.file_stem() == s`
 #[inline]
 fn file_stem_eq<T: AsRef<Path>, U: AsRef<str>>(path: T, s: U) -> bool {
     if let Some(stem) = path.as_ref().file_stem() {
@@ -357,34 +372,25 @@ mod tests {
     use rand::{thread_rng, Rng};
     use std::{
         collections::{BTreeMap, HashSet},
-        env,
-        ffi::OsStr,
-        fs,
-        process::Command,
+        env, fs,
     };
     use tempfile::TempDir;
 
-    const DIRS: &[&str] = &["benches", "examples", "tests"];
-
     #[test]
     fn test_names() {
-        fn assert_names(
-            dir: &TempDir,
-            crate_name: &str,
-            sub_name: &str,
-            ethers: bool,
-            dependencies: &[EthersCrate],
-        ) {
-            let root = dir.path();
-            with_test_manifest(root, crate_name, ethers, dependencies);
+        fn assert_names(s: &EthersProjectEnvironment, ethers: bool, dependencies: &[EthersCrate]) {
+            with_test_manifest(s, ethers, dependencies);
+
             // speeds up by not having to creating and deleting lockfile on every run
             // this is tested separately: test_lock_file
-            std::fs::write(root.join("Cargo.lock"), "").unwrap();
+            std::fs::write(s.manifest_dir.join("Cargo.lock"), "").unwrap();
 
-            let names: CrateNames = determine_ethers_crates(root, sub_name);
+            let names = s
+                .determine_ethers_crates()
+                .unwrap_or_else(|| EthersCrate::ethers_path_names().collect());
 
-            let krate = crate_name.parse::<EthersCrate>();
-            let is_internal = krate.is_ok();
+            let krate = s.crate_name.as_ref().and_then(|x| x.parse::<EthersCrate>().ok());
+            let is_internal = krate.is_some();
             let mut expected: CrateNames = match (is_internal, ethers) {
                 // internal
                 (true, _) => EthersCrate::path_names().collect(),
@@ -402,7 +408,7 @@ mod tests {
                 }
             };
 
-            if is_internal && crate_name == sub_name {
+            if is_internal {
                 expected.insert(krate.unwrap(), "crate");
             }
 
@@ -411,7 +417,7 @@ mod tests {
                 // BTreeMap sorts the keys
                 let names: BTreeMap<_, _> = names.into_iter().collect();
                 let expected: BTreeMap<_, _> = expected.into_iter().collect();
-                panic!("\nCase failed: (`{crate_name}`, `{sub_name}`, `{ethers}`, `{dependencies:?}`)\nNames: {names:#?}\nExpected: {expected:#?}\n");
+                panic!("\nCase failed: (`{:?}`, `{ethers}`, `{dependencies:?}`)\nNames: {names:#?}\nExpected: {expected:#?}\n", s.crate_name);
             }
         }
 
@@ -426,79 +432,76 @@ mod tests {
             vec.try_into().unwrap()
         }
 
-        let dir = test_project();
-        let crate_name = dir.path().file_name().unwrap().to_str().unwrap();
+        let (s, _dir) = test_project();
         // crate_name        -> represents an external crate
         // "ethers-contract" -> represents an internal crate
-        for name in [crate_name, "ethers-contract"] {
+        for name in [s.crate_name.as_ref().unwrap(), "ethers-contract"] {
+            let s = EthersProjectEnvironment::new(&s.manifest_dir, name);
             // only ethers
-            assert_names(&dir, name, name, true, &[]);
+            assert_names(&s, true, &[]);
 
             // only others
-            assert_names(&dir, name, name, false, gen_unique::<3>().as_slice());
+            assert_names(&s, false, gen_unique::<3>().as_slice());
 
             // ethers and others
-            assert_names(&dir, name, name, true, gen_unique::<3>().as_slice());
+            assert_names(&s, true, gen_unique::<3>().as_slice());
         }
     }
 
     #[test]
     fn test_lock_file() {
-        let dir = test_project();
-        let root = dir.path();
-        let name = root.file_name().unwrap().to_str().unwrap();
-        with_test_manifest(root, name, true, &[]);
-        let lock_file = root.join("Cargo.lock");
+        let (s, _dir) = test_project();
+        with_test_manifest(&s, true, &[]);
+        let lock_file = s.manifest_dir.join("Cargo.lock");
 
         assert!(!lock_file.exists());
-        determine_ethers_crates(root, name);
+        s.determine_ethers_crates();
         assert!(!lock_file.exists());
 
         std::fs::write(&lock_file, "").unwrap();
 
         assert!(lock_file.exists());
-        determine_ethers_crates(root, name);
+        s.determine_ethers_crates();
         assert!(lock_file.exists());
         assert!(!std::fs::read(lock_file).unwrap().is_empty());
     }
 
     #[test]
     fn test_is_crate_root() {
-        let dir = test_project();
-        let root = dir.path();
-
-        assert!(is_crate_root(root, root.file_name().unwrap()));
-
-        // `CARGO_TARGET_TMPDIR`
-        // name, path name or path validity not checked
-        env::set_var("CARGO_TARGET_TMPDIR", root.join("target/tmp"));
-        assert!(!is_crate_root(root, "simple_tests"));
-        assert!(!is_crate_root(root, "complex_tests"));
-        assert!(!is_crate_root(root, "simple_benches"));
-        assert!(!is_crate_root(root, "complex_benches"));
-        assert!(!is_crate_root(root, "non_existant"));
-        assert!(!is_crate_root(root.join("does-not-exist"), "foo_bar"));
-        env::remove_var("CARGO_TARGET_TMPDIR");
+        let (s, _dir) = test_project();
+        assert!(s.is_crate_root());
 
         // `CARGO_MANIFEST_DIR`
         // complex path has `/{dir_name}/` in the path
         // name or path validity not checked
-        assert!(!is_crate_root(root.join("examples/complex_examples"), "complex-examples"));
-        assert!(!is_crate_root(root.join("benches/complex_benches"), "complex-benches"));
+        let s = EthersProjectEnvironment::new(
+            s.manifest_dir.join("examples/complex_examples"),
+            "complex-examples",
+        );
+        assert!(!s.is_crate_root());
+        let s = EthersProjectEnvironment::new(
+            s.manifest_dir.join("benches/complex_benches"),
+            "complex-benches",
+        );
+        assert!(!s.is_crate_root());
     }
 
     #[test]
-    fn test_is_crate_in_dirs() {
-        let dir = test_project();
-        let root = dir.path();
+    fn test_is_crate_name_in_dirs() {
+        let (s, _dir) = test_project();
+        let root = &s.manifest_dir;
 
         for dir_name in DIRS {
-            assert!(is_crate_name_in_dirs(root, format!("simple_{dir_name}")));
-            assert!(is_crate_name_in_dirs(root, format!("complex_{dir_name}")));
+            for ty in ["simple", "complex"] {
+                let s = EthersProjectEnvironment::new(root, format!("{ty}_{dir_name}"));
+                assert!(s.is_crate_name_in_dirs(), "{s:?}");
+            }
         }
 
-        assert!(!is_crate_name_in_dirs(root, "non_existant"));
-        assert!(!is_crate_name_in_dirs(root.join("does-not-exist"), "foo_bar"));
+        let s = EthersProjectEnvironment::new(root, "non_existant");
+        assert!(!s.is_crate_name_in_dirs());
+        let s = EthersProjectEnvironment::new(root.join("does-not-exist"), "foo_bar");
+        assert!(!s.is_crate_name_in_dirs());
     }
 
     #[test]
@@ -534,16 +537,21 @@ mod tests {
     ///         - main.rs
     ///         - module.rs
     /// ```
-    fn test_project() -> TempDir {
-        // without the default `.` which is not a valid crate name
+    fn test_project() -> (EthersProjectEnvironment, TempDir) {
+        // change the prefix to one without the default `.` because it is not a valid crate name
         let dir = tempfile::Builder::new().prefix("tmp").tempdir().unwrap();
         let root = dir.path();
-        env::set_current_dir(root).unwrap();
-        let _ = Command::new("cargo").arg("init").current_dir(root).output().unwrap();
+        let name = root.file_name().unwrap().to_str().unwrap();
 
-        for &dir_name in DIRS {
+        // No Cargo.toml, git
+        fs::create_dir_all(root).unwrap();
+        let src = root.join("src");
+        fs::create_dir(&src).unwrap();
+        fs::write(src.join("main.rs"), "fn main(){}").unwrap();
+
+        for dir_name in DIRS {
             let new_dir = root.join(dir_name);
-            fs::create_dir_all(&new_dir).unwrap();
+            fs::create_dir(&new_dir).unwrap();
 
             let simple = new_dir.join(format!("simple_{dir_name}.rs"));
             fs::write(simple, "").unwrap();
@@ -564,13 +572,12 @@ mod tests {
         fs::create_dir(&target).unwrap();
         fs::create_dir_all(target.join("tmp")).unwrap();
 
-        dir
+        (EthersProjectEnvironment::new(root, name), dir)
     }
 
     /// Writes a test manifest to `{root}/Cargo.toml`.
     fn with_test_manifest(
-        root: impl AsRef<Path>,
-        name: &str,
+        s: &EthersProjectEnvironment,
         ethers: bool,
         dependencies: &[EthersCrate],
     ) {
@@ -595,75 +602,19 @@ mod tests {
         let contents = format!(
             r#"
 [package]
-name = "{name}"
+name = "{}"
 version = "0.0.0"
 edition = "2021"
 
 [dependencies]
 {dependencies_toml}
-"#
+"#,
+            s.crate_name.as_ref().unwrap()
         );
-        fs::write(root.as_ref().join("Cargo.toml"), contents).unwrap();
+        fs::write(s.manifest_dir.join("Cargo.toml"), contents).unwrap();
     }
 
     fn escaped_path(path: impl AsRef<Path>) -> impl std::fmt::Display {
         path.as_ref().display().to_string().replace(r"\", r"\\")
-    }
-
-    // wrappers for overriding env
-    fn determine_ethers_crates(
-        manifest_dir: impl AsRef<OsStr>,
-        crate_name: impl AsRef<OsStr>,
-    ) -> CrateNames {
-        run_with_env(
-            &[
-                ("CARGO_MANIFEST_DIR", manifest_dir.as_ref()),
-                ("CARGO_CRATE_NAME", crate_name.as_ref()),
-            ],
-            super::determine_ethers_crates,
-        )
-    }
-
-    fn is_crate_root(manifest_dir: impl AsRef<Path>, crate_name: impl AsRef<OsStr>) -> bool {
-        run_with_env(&[("CARGO_CRATE_NAME", crate_name)], || {
-            super::is_crate_root(manifest_dir.as_ref())
-        })
-    }
-
-    fn is_crate_name_in_dirs(
-        manifest_dir: impl AsRef<Path>,
-        crate_name: impl AsRef<OsStr>,
-    ) -> bool {
-        run_with_env(&[("CARGO_CRATE_NAME", crate_name)], || {
-            super::is_crate_name_in_dirs(manifest_dir.as_ref())
-        })
-    }
-
-    fn run_with_env<F, T, K, V>(env: &[(K, V)], f: F) -> T
-    where
-        F: Fn() -> T,
-        K: AsRef<OsStr>,
-        V: AsRef<OsStr>,
-    {
-        let mut previous = Vec::with_capacity(env.len());
-        for (key, value) in env.iter() {
-            // store old
-            previous.push((key, env::var_os(value)));
-            // set new
-            env::set_var(key, value);
-        }
-
-        // run
-        let res = f();
-
-        // set old
-        for (key, value) in previous {
-            match value {
-                Some(value) => env::set_var(key, value),
-                None => env::remove_var(key),
-            }
-        }
-
-        res
     }
 }
