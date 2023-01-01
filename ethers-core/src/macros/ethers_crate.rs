@@ -142,7 +142,7 @@ impl ProjectEnvironment {
     /// We can find this using some [environment variables set by Cargo during compilation][ref]:
     /// - `CARGO_TARGET_TMPDIR` is only set when building integration test or benchmark code;
     /// - When `CARGO_MANIFEST_DIR` contains `/benches/` or `/examples/`
-    /// - `CARGO_CRATE_NAME`, see [`is_crate_name_in_dirs`].
+    /// - `CARGO_CRATE_NAME`, see `is_crate_name_in_dirs`.
     ///
     /// [ref]: https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-crates
     #[inline]
