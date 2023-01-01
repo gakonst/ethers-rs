@@ -1,10 +1,3 @@
-//! N.B.:
-//! - crate names must not be [global paths](https://doc.rust-lang.org/reference/paths.html#path-qualifiers)
-//!   since we must be able to override them internally, like in Multicall.
-//!
-//! - [`ETHERS_CRATE_NAMES`] cannot hold [`syn::Path`] because it is not [`Sync`], so the names must
-//!   be parsed at every call.
-
 use cargo_metadata::MetadataCommand;
 use once_cell::sync::Lazy;
 use std::{
@@ -25,11 +18,14 @@ type CrateNames = HashMap<EthersCrate, &'static str>;
 
 const DIRS: [&str; 3] = ["benches", "examples", "tests"];
 
-/// Maps an [`EthersCrate`] to its name in the compilation environment.
+/// Maps an [`EthersCrate`] to its path string.
 ///
 /// See [`ProjectEnvironment`] for more information.
+///
+/// Note: this static variable cannot hold [`syn::Path`] because it is not [`Sync`], so the names
+/// must be parsed at every call.
 static ETHERS_CRATE_NAMES: Lazy<CrateNames> = Lazy::new(|| {
-    EthersProjectEnvironment::new_from_env()
+    ProjectEnvironment::new_from_env()
         .and_then(|x| x.determine_ethers_crates())
         .unwrap_or_else(|| EthersCrate::ethers_path_names().collect())
 });
@@ -58,13 +54,14 @@ pub fn get_crate_path(krate: EthersCrate) -> syn::Path {
     krate.get_path()
 }
 
+/// Represents a generic Rust/Cargo project's environment.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EthersProjectEnvironment {
+pub struct ProjectEnvironment {
     manifest_dir: PathBuf,
     crate_name: Option<String>,
 }
 
-impl EthersProjectEnvironment {
+impl ProjectEnvironment {
     pub fn new<T: Into<PathBuf>, U: Into<String>>(manifest_dir: T, crate_name: U) -> Self {
         Self { manifest_dir: manifest_dir.into(), crate_name: Some(crate_name.into()) }
     }
@@ -218,7 +215,7 @@ impl EthersProjectEnvironment {
     }
 }
 
-/// An `ethers-rs` workspace crate.
+/// An `ethers-rs` internal crate.
 #[derive(
     Clone,
     Copy,
@@ -378,10 +375,10 @@ mod tests {
 
     #[test]
     fn test_names() {
-        fn assert_names(s: &EthersProjectEnvironment, ethers: bool, dependencies: &[EthersCrate]) {
-            with_test_manifest(s, ethers, dependencies);
+        fn assert_names(s: &ProjectEnvironment, ethers: bool, dependencies: &[EthersCrate]) {
+            write_manifest(s, ethers, dependencies);
 
-            // speeds up by not having to creating and deleting lockfile on every run
+            // speeds up consecutive runs by not having to re-create and delete the lockfile
             // this is tested separately: test_lock_file
             std::fs::write(s.manifest_dir.join("Cargo.lock"), "").unwrap();
 
@@ -436,7 +433,7 @@ mod tests {
         // crate_name        -> represents an external crate
         // "ethers-contract" -> represents an internal crate
         for name in [s.crate_name.as_ref().unwrap(), "ethers-contract"] {
-            let s = EthersProjectEnvironment::new(&s.manifest_dir, name);
+            let s = ProjectEnvironment::new(&s.manifest_dir, name);
             // only ethers
             assert_names(&s, true, &[]);
 
@@ -451,7 +448,7 @@ mod tests {
     #[test]
     fn test_lock_file() {
         let (s, _dir) = test_project();
-        with_test_manifest(&s, true, &[]);
+        write_manifest(&s, true, &[]);
         let lock_file = s.manifest_dir.join("Cargo.lock");
 
         assert!(!lock_file.exists());
@@ -474,12 +471,12 @@ mod tests {
         // `CARGO_MANIFEST_DIR`
         // complex path has `/{dir_name}/` in the path
         // name or path validity not checked
-        let s = EthersProjectEnvironment::new(
+        let s = ProjectEnvironment::new(
             s.manifest_dir.join("examples/complex_examples"),
             "complex-examples",
         );
         assert!(!s.is_crate_root());
-        let s = EthersProjectEnvironment::new(
+        let s = ProjectEnvironment::new(
             s.manifest_dir.join("benches/complex_benches"),
             "complex-benches",
         );
@@ -493,14 +490,14 @@ mod tests {
 
         for dir_name in DIRS {
             for ty in ["simple", "complex"] {
-                let s = EthersProjectEnvironment::new(root, format!("{ty}_{dir_name}"));
+                let s = ProjectEnvironment::new(root, format!("{ty}_{dir_name}"));
                 assert!(s.is_crate_name_in_dirs(), "{s:?}");
             }
         }
 
-        let s = EthersProjectEnvironment::new(root, "non_existant");
+        let s = ProjectEnvironment::new(root, "non_existant");
         assert!(!s.is_crate_name_in_dirs());
-        let s = EthersProjectEnvironment::new(root.join("does-not-exist"), "foo_bar");
+        let s = ProjectEnvironment::new(root.join("does-not-exist"), "foo_bar");
         assert!(!s.is_crate_name_in_dirs());
     }
 
@@ -537,7 +534,7 @@ mod tests {
     ///         - main.rs
     ///         - module.rs
     /// ```
-    fn test_project() -> (EthersProjectEnvironment, TempDir) {
+    fn test_project() -> (ProjectEnvironment, TempDir) {
         // change the prefix to one without the default `.` because it is not a valid crate name
         let dir = tempfile::Builder::new().prefix("tmp").tempdir().unwrap();
         let root = dir.path();
@@ -572,15 +569,11 @@ mod tests {
         fs::create_dir(&target).unwrap();
         fs::create_dir_all(target.join("tmp")).unwrap();
 
-        (EthersProjectEnvironment::new(root, name), dir)
+        (ProjectEnvironment::new(root, name), dir)
     }
 
     /// Writes a test manifest to `{root}/Cargo.toml`.
-    fn with_test_manifest(
-        s: &EthersProjectEnvironment,
-        ethers: bool,
-        dependencies: &[EthersCrate],
-    ) {
+    fn write_manifest(s: &ProjectEnvironment, ethers: bool, dependencies: &[EthersCrate]) {
         // use paths to avoid downloading dependencies
         const ETHERS_CORE: &str = env!("CARGO_MANIFEST_DIR");
         let ethers_root = Path::new(ETHERS_CORE).parent().unwrap();
