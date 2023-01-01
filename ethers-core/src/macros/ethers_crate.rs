@@ -377,7 +377,8 @@ mod tests {
         ) {
             let root = dir.path();
             with_test_manifest(root, crate_name, ethers, dependencies);
-            // speeds up by not having to re-do lockfile every run; tested separately
+            // speeds up by not having to creating and deleting lockfile on every run
+            // this is tested separately: test_lock_file
             std::fs::write(root.join("Cargo.lock"), "").unwrap();
 
             let names: CrateNames = determine_ethers_crates(root, sub_name);
@@ -458,6 +459,7 @@ mod tests {
         assert!(lock_file.exists());
         determine_ethers_crates(root, name);
         assert!(lock_file.exists());
+        assert!(!std::fs::read(lock_file).unwrap().is_empty());
     }
 
     #[test]
@@ -478,7 +480,7 @@ mod tests {
         assert!(!is_crate_root(root.join("does-not-exist"), "foo_bar"));
         env::remove_var("CARGO_TARGET_TMPDIR");
 
-        // `CARGO_TARGET_TMPDIR`
+        // `CARGO_MANIFEST_DIR`
         // complex path has `/{dir_name}/` in the path
         // name or path validity not checked
         assert!(!is_crate_root(root.join("examples/complex_examples"), "complex-examples"));
