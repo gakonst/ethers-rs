@@ -377,6 +377,8 @@ mod tests {
         ) {
             let root = dir.path();
             with_test_manifest(root, crate_name, ethers, dependencies);
+            // speeds up by not having to re-do lockfile every run; tested separately
+            std::fs::write(root.join("Cargo.lock"), "").unwrap();
 
             let names: CrateNames = determine_ethers_crates(root, sub_name);
 
@@ -425,6 +427,8 @@ mod tests {
 
         let dir = test_project();
         let crate_name = dir.path().file_name().unwrap().to_str().unwrap();
+        // crate_name        -> represents an external crate
+        // "ethers-contract" -> represents an internal crate
         for name in [crate_name, "ethers-contract"] {
             // only ethers
             assert_names(&dir, name, name, true, &[]);
@@ -435,6 +439,25 @@ mod tests {
             // ethers and others
             assert_names(&dir, name, name, true, gen_unique::<3>().as_slice());
         }
+    }
+
+    #[test]
+    fn test_lock_file() {
+        let dir = test_project();
+        let root = dir.path();
+        let name = root.file_name().unwrap().to_str().unwrap();
+        with_test_manifest(root, name, true, &[]);
+        let lock_file = root.join("Cargo.lock");
+
+        assert!(!lock_file.exists());
+        determine_ethers_crates(root, name);
+        assert!(!lock_file.exists());
+
+        std::fs::write(&lock_file, "").unwrap();
+
+        assert!(lock_file.exists());
+        determine_ethers_crates(root, name);
+        assert!(lock_file.exists());
     }
 
     #[test]
