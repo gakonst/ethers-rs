@@ -588,14 +588,13 @@ mod tests {
             String::with_capacity(150 * (ethers as usize + dependencies.len()));
 
         if ethers {
-            let path = escaped_path(ethers_root);
-            let ethers = format!("ethers = {{ path = \"{path}\" }}\n");
+            let ethers = format!("ethers = {{ path = {ethers_root:?} }}\n");
             dependencies_toml.push_str(&ethers);
         }
 
         for dep in dependencies.iter() {
-            let path = escaped_path(ethers_root.join(dep.fs_path()));
-            let dep = format!("{dep} = {{ path = \"{path}\" }}\n");
+            let path = ethers_root.join(dep.fs_path());
+            let dep = format!("{dep} = {{ path = {path:?} }}\n");
             dependencies_toml.push_str(&dep);
         }
 
@@ -612,9 +611,5 @@ edition = "2021"
             s.crate_name.as_ref().unwrap()
         );
         fs::write(s.manifest_dir.join("Cargo.toml"), contents).unwrap();
-    }
-
-    fn escaped_path(path: impl AsRef<Path>) -> impl std::fmt::Display {
-        path.as_ref().display().to_string().replace(r"\", r"\\")
     }
 }
