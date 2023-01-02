@@ -1,10 +1,11 @@
 # Summary
 
-
 # Getting started
   - [Intro](./1_getting-started/1_intro.md)
   - [Start a new project](./1_getting-started/2_start_a_new_project.md)
   - [Connect to an Ethereum node](./1_getting-started/3_connect_to_an_ethereum_node.md)
+
+# Reference guide
 - [Providers]()
   - [Http]()
   - [IPC]()
@@ -74,12 +75,12 @@
   - [Sign message]()
   - [Trezor]()
   - [Yubi]()
-- [Big numbers]()
-  - [Comparison and equivalence]() 
-  - [Conversion]()
-  - [Creating Instances]()
-  - [Math operations]()
-  - [Utilities]()
+- [Big numbers](./10_big-numbers/1_intro.md)
+  - [Comparison and equivalence](./10_big-numbers/2_comparison-and-equivalence.md) 
+  - [Conversion](./10_big-numbers/3_conversion.md)
+  - [Creating Instances](./10_big-numbers/4_creating_instances.md)
+  - [Math operations](./10_big-numbers/5_math-operations.md)
+  - [Utilities](./10_big-numbers/6_utilities.md)
 - [Anvil]()
     - [Boot anvil]()
     - [Deploy contracts]()
