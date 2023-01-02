@@ -1,6 +1,10 @@
 # Summary
 
-[Ethers-rs]()
+
+# Getting started
+  - [Intro](./1_getting-started/1_intro.md)
+  - [Start a new project](./1_getting-started/2_start_a_new_project.md)
+  - [Connect to an Ethereum node](./1_getting-started/3_connect_to_an_ethereum_node.md)
 - [Providers]()
   - [Http]()
   - [IPC]()
