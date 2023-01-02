@@ -528,6 +528,16 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().remove_trusted_peer(enode_url).await.map_err(FromErr::from)
     }
 
+    // Miner namespace
+
+    /// Starts the miner with the given number of threads. If threads is nil, the number of workers
+    /// started is equal to the number of logical CPUs that are usable by this process. If mining
+    /// is already running, this method adjust the number of threads allowed to use and updates the
+    /// minimum price required by the transaction pool.
+    async fn start_mining(&self, threads: Option<usize>) -> Result<bool, Self::Error> {
+        self.inner().start_mining(threads).await.map_err(FromErr::from)
+    }
+
     // Mempool inspection for Geth's API
 
     async fn txpool_content(&self) -> Result<TxpoolContent, Self::Error> {

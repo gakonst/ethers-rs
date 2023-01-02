@@ -855,6 +855,17 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("admin_removeTrustedPeer", [enode_url]).await
     }
 
+    // miner namespace (just used for starting mining)
+
+    /// Starts the miner with the given number of threads. If threads is nil, the number of workers
+    /// started is equal to the number of logical CPUs that are usable by this process. If mining
+    /// is already running, this method adjust the number of threads allowed to use and updates the
+    /// minimum price required by the transaction pool.
+    async fn start_mining(&self, threads: Option<usize>) -> Result<bool, Self::Error> {
+        let threads = utils::serialize(&threads);
+        self.request("miner_start", [threads]).await
+    }
+
     ////// Ethereum Naming Service
     // The Ethereum Naming Service (ENS) allows easy to remember and use names to
     // be assigned to Ethereum addresses. Any provider operation which takes an address
