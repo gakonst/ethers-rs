@@ -11,7 +11,7 @@
   - [IPC](./providers/ipc.md)
   - [Mock]()
   - [Quorum]()
-  - [Retry]()
+  - [Retry](./providers/retry.md)
   - [RW]()
   - [WS]()
 - [Middleware]()

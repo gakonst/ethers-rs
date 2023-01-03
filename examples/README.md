@@ -35,11 +35,11 @@
   - [ ] Time lag
   - [ ] Transformer
 - [ ] Providers
-  - [ ] Http
+  - [x] Http
   - [x] IPC
   - [ ] Mock 
   - [x] Quorum
-  - [ ] Retry
+  - [x] Retry
   - [x] RW
   - [ ] WS
 - [ ] Queries
