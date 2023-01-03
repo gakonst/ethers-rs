@@ -243,7 +243,7 @@ impl super::Signer for AwsSigner {
         let chain_id = tx_with_chain.chain_id().map(|id| id.as_u64()).unwrap_or(self.chain_id);
         tx_with_chain.set_chain_id(chain_id);
 
-        let sighash = tx.sighash();
+        let sighash = tx_with_chain.sighash();
         self.sign_digest_with_eip155(sighash, chain_id).await
     }
 
