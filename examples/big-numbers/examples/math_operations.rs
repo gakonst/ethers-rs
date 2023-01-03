@@ -1,6 +1,9 @@
 use ethers::{types::U256, utils::format_units};
 use std::ops::{Div, Mul};
 
+/// `U256` implements traits in `std::ops`, that means it supports arithmetic operations
+/// using standard Rust operators `+`, `-`. `*`, `/`, `%`, along with additional utilities to
+/// perform common mathematical tasks.
 fn main() {
     let a = U256::from(10);
     let b = U256::from(2);

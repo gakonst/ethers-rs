@@ -8,7 +8,7 @@ fn main() {
     format_units_example();
 }
 
-/// DApps business logics handles big numbers in 'wei' units (i.e. sending transactions, on-chain
+/// dApps business logics handle big numbers in 'wei' units (i.e. sending transactions, on-chain
 /// math, etc.). We provide convenient methods to map user inputs (usually in 'ether' or 'gwei')
 /// into 'wei' format.
 fn parse_units_example() {
@@ -45,7 +45,7 @@ fn parse_units_example() {
     assert_eq!(num, U256::from(1000000000000000000_u128));
 }
 
-/// DApps business logics handles big numbers in 'wei' units (i.e. sending transactions, on-chain
+/// dApps business logics handle big numbers in 'wei' units (i.e. sending transactions, on-chain
 /// math, etc.). On the other hand it is useful to convert big numbers into user readable formats
 /// when displaying on a UI. Generally dApps display numbers in 'ether' and 'gwei' units,
 /// respectively for displaying amounts and gas. The `format_units` function will format a big
