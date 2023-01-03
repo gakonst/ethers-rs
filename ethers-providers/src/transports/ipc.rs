@@ -1,7 +1,22 @@
+use super::common::Params;
+use crate::{
+    provider::ProviderError,
+    transports::common::{JsonRpcError, Request, Response},
+    JsonRpcClient, PubsubClient,
+};
+use async_trait::async_trait;
+use bytes::{Buf, BytesMut};
+use ethers_core::types::U256;
+use futures_channel::mpsc;
+use futures_util::stream::StreamExt;
+use hashers::fx_hash::FxHasher64;
+use serde::{de::DeserializeOwned, Serialize};
+use serde_json::{value::RawValue, Deserializer};
 use std::{
     cell::RefCell,
     convert::Infallible,
     hash::BuildHasherDefault,
+    io,
     path::Path,
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -9,40 +24,194 @@ use std::{
     },
     thread,
 };
-
-use async_trait::async_trait;
-use bytes::{Buf as _, BytesMut};
-use ethers_core::types::U256;
-use futures_channel::mpsc;
-use futures_util::stream::StreamExt as _;
-use hashers::fx_hash::FxHasher64;
-use serde::{de::DeserializeOwned, Serialize};
-use serde_json::{value::RawValue, Deserializer};
 use thiserror::Error;
 use tokio::{
-    io::{AsyncReadExt as _, AsyncWriteExt as _, BufReader},
-    net::{
-        unix::{ReadHalf, WriteHalf},
-        UnixStream,
-    },
+    io::{AsyncReadExt, AsyncWriteExt, BufReader},
     runtime,
     sync::oneshot::{self, error::RecvError},
 };
-
-use crate::{
-    provider::ProviderError,
-    transports::common::{JsonRpcError, Request, Response},
-    JsonRpcClient, PubsubClient,
-};
-
-use super::common::Params;
 
 type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHasher64>>;
 
 type Pending = oneshot::Sender<Result<Box<RawValue>, JsonRpcError>>;
 type Subscription = mpsc::UnboundedSender<Box<RawValue>>;
 
-/// Unix Domain Sockets (IPC) transport.
+#[cfg(unix)]
+#[doc(hidden)]
+mod imp {
+    pub(super) use tokio::net::{
+        unix::{ReadHalf, WriteHalf},
+        UnixStream as Stream,
+    };
+}
+
+#[cfg(windows)]
+#[doc(hidden)]
+mod imp {
+    use super::*;
+    use std::{
+        ops::{Deref, DerefMut},
+        pin::Pin,
+        task::{Context, Poll},
+        time::Duration,
+    };
+    use tokio::{
+        io::{AsyncRead, AsyncWrite, ReadBuf},
+        net::windows::named_pipe::{ClientOptions, NamedPipeClient},
+        time::sleep,
+    };
+    use winapi::shared::winerror;
+
+    /// Wrapper around [NamedPipeClient] to have the same methods as a UnixStream.
+    ///
+    /// Should not be exported.
+    #[repr(transparent)]
+    pub(super) struct Stream(pub NamedPipeClient);
+
+    impl Deref for Stream {
+        type Target = NamedPipeClient;
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl DerefMut for Stream {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
+        }
+    }
+
+    impl Stream {
+        pub async fn connect(addr: impl AsRef<Path>) -> Result<Self, io::Error> {
+            let addr = addr.as_ref().as_os_str();
+            loop {
+                match ClientOptions::new().open(addr) {
+                    Ok(client) => break Ok(Self(client)),
+                    Err(e) if e.raw_os_error() == Some(winerror::ERROR_PIPE_BUSY as i32) => (),
+                    Err(e) => break Err(e),
+                }
+
+                sleep(Duration::from_millis(50)).await;
+            }
+        }
+
+        #[allow(unsafe_code)]
+        pub fn split(&mut self) -> (ReadHalf, WriteHalf) {
+            // SAFETY: ReadHalf cannot write but still needs a mutable reference for polling.
+            // NamedPipeClient calls its `io` using immutable references, but it's private.
+            let self1 = unsafe { &mut *(self as *mut Self) };
+            let self2 = self;
+            (ReadHalf(self1), WriteHalf(self2))
+        }
+    }
+
+    impl AsyncRead for Stream {
+        fn poll_read(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            buf: &mut ReadBuf<'_>,
+        ) -> Poll<io::Result<()>> {
+            let this = Pin::new(&mut self.get_mut().0);
+            this.poll_read(cx, buf)
+        }
+    }
+
+    impl AsyncWrite for Stream {
+        fn poll_write(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            buf: &[u8],
+        ) -> Poll<io::Result<usize>> {
+            let this = Pin::new(&mut self.get_mut().0);
+            this.poll_write(cx, buf)
+        }
+
+        fn poll_write_vectored(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            bufs: &[io::IoSlice<'_>],
+        ) -> Poll<io::Result<usize>> {
+            let this = Pin::new(&mut self.get_mut().0);
+            this.poll_write_vectored(cx, bufs)
+        }
+
+        fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+            Poll::Ready(Ok(()))
+        }
+
+        fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+            self.poll_flush(cx)
+        }
+    }
+
+    pub(super) struct ReadHalf<'a>(pub &'a mut Stream);
+
+    pub(super) struct WriteHalf<'a>(pub &'a mut Stream);
+
+    impl AsyncRead for ReadHalf<'_> {
+        fn poll_read(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            buf: &mut ReadBuf<'_>,
+        ) -> Poll<io::Result<()>> {
+            let this = Pin::new(&mut self.get_mut().0 .0);
+            this.poll_read(cx, buf)
+        }
+    }
+
+    impl AsyncWrite for WriteHalf<'_> {
+        fn poll_write(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            buf: &[u8],
+        ) -> Poll<io::Result<usize>> {
+            let this = Pin::new(&mut self.get_mut().0 .0);
+            this.poll_write(cx, buf)
+        }
+
+        fn poll_write_vectored(
+            self: Pin<&mut Self>,
+            cx: &mut Context<'_>,
+            bufs: &[io::IoSlice<'_>],
+        ) -> Poll<io::Result<usize>> {
+            let this = Pin::new(&mut self.get_mut().0 .0);
+            this.poll_write_vectored(cx, bufs)
+        }
+
+        fn is_write_vectored(&self) -> bool {
+            self.0.is_write_vectored()
+        }
+
+        fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+            let this = Pin::new(&mut self.get_mut().0 .0);
+            this.poll_flush(cx)
+        }
+
+        fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+            self.poll_flush(cx)
+        }
+    }
+}
+
+use self::imp::*;
+
+#[cfg_attr(unix, doc = "A JSON-RPC Client over Unix IPC.")]
+#[cfg_attr(windows, doc = "A JSON-RPC Client over named pipes.")]
+///
+/// # Example
+///
+/// ```no_run
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+/// use ethers_providers::Ipc;
+///
+/// // the ipc's path
+#[cfg_attr(unix, doc = r#"let path = "/home/user/.local/share/reth/reth.ipc";"#)]
+#[cfg_attr(windows, doc = r#"let path = r"\\.\pipe\reth.ipc";"#)]
+/// let ipc = Ipc::connect(path).await?;
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct Ipc {
     id: Arc<AtomicU64>,
@@ -57,12 +226,17 @@ enum TransportMessage {
 }
 
 impl Ipc {
-    /// Creates a new IPC transport from a given path using Unix sockets.
+    #[cfg_attr(unix, doc = "Connects to the Unix socket at the provided path.")]
+    #[cfg_attr(windows, doc = "Connects to the named pipe at the provided path.\n")]
+    #[cfg_attr(
+        windows,
+        doc = r"Note: the path must be the fully qualified, like: `\\.\pipe\<name>`."
+    )]
     pub async fn connect(path: impl AsRef<Path>) -> Result<Self, IpcError> {
         let id = Arc::new(AtomicU64::new(1));
         let (request_tx, request_rx) = mpsc::unbounded();
 
-        let stream = UnixStream::connect(path).await?;
+        let stream = Stream::connect(path).await?;
         spawn_ipc_server(stream, request_rx);
 
         Ok(Self { id, request_tx })
@@ -121,11 +295,11 @@ impl PubsubClient for Ipc {
     }
 }
 
-fn spawn_ipc_server(stream: UnixStream, request_rx: mpsc::UnboundedReceiver<TransportMessage>) {
-    // 65 KiB should be more than enough for this thread, as all unbounded data
+fn spawn_ipc_server(stream: Stream, request_rx: mpsc::UnboundedReceiver<TransportMessage>) {
+    // 256 Kb should be more than enough for this thread, as all unbounded data
     // growth occurs on heap-allocated data structures and buffers and the call
     // stack is not going to do anything crazy either
-    const STACK_SIZE: usize = 1 << 16;
+    const STACK_SIZE: usize = 1 << 18;
     // spawn a light-weight thread with a thread-local async runtime just for
     // sending and receiving data over the IPC socket
     let _ = thread::Builder::new()
@@ -142,10 +316,7 @@ fn spawn_ipc_server(stream: UnixStream, request_rx: mpsc::UnboundedReceiver<Tran
         .expect("failed to spawn ipc server thread");
 }
 
-async fn run_ipc_server(
-    mut stream: UnixStream,
-    request_rx: mpsc::UnboundedReceiver<TransportMessage>,
-) {
+async fn run_ipc_server(mut stream: Stream, request_rx: mpsc::UnboundedReceiver<TransportMessage>) {
     // the shared state for both reads & writes
     let shared = Shared {
         pending: FxHashMap::with_capacity_and_hasher(64, BuildHasherDefault::default()).into(),
@@ -289,8 +460,8 @@ impl Shared {
     }
 }
 
-#[derive(Error, Debug)]
 /// Error thrown when sending or receiving an IPC message.
+#[derive(Debug, Error)]
 pub enum IpcError {
     /// Thrown if deserialization failed
     #[error(transparent)]
@@ -298,7 +469,7 @@ pub enum IpcError {
 
     /// std IO error forwarding.
     #[error(transparent)]
-    IoError(#[from] std::io::Error),
+    IoError(#[from] io::Error),
 
     #[error(transparent)]
     /// Thrown if the response could not be parsed
@@ -319,22 +490,30 @@ impl From<IpcError> for ProviderError {
         ProviderError::JsonRpcClientError(Box::new(src))
     }
 }
-#[cfg(all(test, target_family = "unix"))]
-#[cfg(not(feature = "celo"))]
-mod test {
+
+#[cfg(test)]
+mod tests {
     use super::*;
-    use ethers_core::{
-        types::{Block, TxHash, U256},
-        utils::Geth,
-    };
+    use ethers_core::utils::{Geth, GethInstance};
     use tempfile::NamedTempFile;
+
+    async fn connect() -> (Ipc, GethInstance) {
+        let temp_file = NamedTempFile::new().unwrap();
+        let path = temp_file.into_temp_path().to_path_buf();
+        let geth = Geth::new().block_time(1u64).ipc_path(&path).spawn();
+
+        // [Windows named pipes](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipes)
+        // are located at `\\<machine_address>\pipe\<pipe_name>`.
+        #[cfg(windows)]
+        let path = format!(r"\\.\pipe\{}", path.display());
+        let ipc = Ipc::connect(path).await.unwrap();
+
+        (ipc, geth)
+    }
 
     #[tokio::test]
     async fn request() {
-        let temp_file = NamedTempFile::new().unwrap();
-        let path = temp_file.into_temp_path().to_path_buf();
-        let _geth = Geth::new().block_time(1u64).ipc_path(&path).spawn();
-        let ipc = Ipc::connect(path).await.unwrap();
+        let (ipc, _geth) = connect().await;
 
         let block_num: U256 = ipc.request("eth_blockNumber", ()).await.unwrap();
         std::thread::sleep(std::time::Duration::new(3, 0));
@@ -343,25 +522,25 @@ mod test {
     }
 
     #[tokio::test]
+    #[cfg(not(feature = "celo"))]
     async fn subscription() {
-        let temp_file = NamedTempFile::new().unwrap();
-        let path = temp_file.into_temp_path().to_path_buf();
-        let _geth = Geth::new().block_time(2u64).ipc_path(&path).spawn();
-        let ipc = Ipc::connect(path).await.unwrap();
+        use ethers_core::types::{Block, TxHash};
 
-        let sub_id: U256 = ipc.request("eth_subscribe", ["newHeads"]).await.unwrap();
-        let mut stream = ipc.subscribe(sub_id).unwrap();
+        let (ipc, _geth) = connect().await;
 
         // Subscribing requires sending the sub request and then subscribing to
         // the returned sub_id
-        let block_num: u64 = ipc.request::<_, U256>("eth_blockNumber", ()).await.unwrap().as_u64();
-        let mut blocks = Vec::new();
-        for _ in 0..3 {
-            let item = stream.next().await.unwrap();
-            let block: Block<TxHash> = serde_json::from_str(item.get()).unwrap();
-            blocks.push(block.number.unwrap_or_default().as_u64());
-        }
-        let offset = blocks[0] - block_num;
-        assert_eq!(blocks, &[block_num + offset, block_num + offset + 1, block_num + offset + 2])
+        let sub_id: U256 = ipc.request("eth_subscribe", ["newHeads"]).await.unwrap();
+        let stream = ipc.subscribe(sub_id).unwrap();
+
+        let blocks: Vec<u64> = stream
+            .take(3)
+            .map(|item| {
+                let block: Block<TxHash> = serde_json::from_str(item.get()).unwrap();
+                block.number.unwrap_or_default().as_u64()
+            })
+            .collect()
+            .await;
+        assert_eq!(blocks, vec![1, 2, 3]);
     }
 }

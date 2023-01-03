@@ -1,5 +1,4 @@
 use crate::{JsonRpcClient, ProviderError};
-
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;

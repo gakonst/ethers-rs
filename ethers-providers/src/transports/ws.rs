@@ -1,11 +1,11 @@
+use super::common::{Params, Response};
 use crate::{
     provider::ProviderError,
     transports::common::{JsonRpcError, Request},
     JsonRpcClient, PubsubClient,
 };
-use ethers_core::types::U256;
-
 use async_trait::async_trait;
+use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
 use futures_util::{
     sink::{Sink, SinkExt},
@@ -24,7 +24,19 @@ use std::{
 use thiserror::Error;
 use tracing::trace;
 
-use super::common::{Params, Response};
+macro_rules! if_wasm {
+    ($($item:item)*) => {$(
+        #[cfg(target_arch = "wasm32")]
+        $item
+    )*}
+}
+
+macro_rules! if_not_wasm {
+    ($($item:item)*) => {$(
+        #[cfg(not(target_arch = "wasm32"))]
+        $item
+    )*}
+}
 
 if_wasm! {
     use wasm_bindgen::prelude::*;
@@ -84,11 +96,13 @@ enum Instruction {
 
 /// A JSON-RPC Client over Websockets.
 ///
+/// # Example
+///
 /// ```no_run
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// use ethers_providers::Ws;
 ///
-/// let ws = Ws::connect("wss://localhost:8545").await?;
+/// let ws = Ws::connect("ws://localhost:8545").await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -427,8 +441,8 @@ fn to_client_error<T: Debug>(err: T) -> ClientError {
     ClientError::ChannelError(format!("{err:?}"))
 }
 
-#[derive(Error, Debug)]
 /// Error thrown when sending a WS message
+#[derive(Debug, Error)]
 pub enum ClientError {
     /// Thrown if deserialization failed
     #[error(transparent)]
@@ -488,15 +502,10 @@ impl From<ClientError> for ProviderError {
     }
 }
 
-#[cfg(test)]
-#[cfg(not(feature = "celo"))]
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
-    use ethers_core::{
-        types::{Block, TxHash, U256},
-        utils::Anvil,
-    };
+    use ethers_core::{types::U256, utils::Anvil};
 
     #[tokio::test]
     async fn request() {
@@ -504,29 +513,33 @@ mod tests {
         let ws = Ws::connect(anvil.ws_endpoint()).await.unwrap();
 
         let block_num: U256 = ws.request("eth_blockNumber", ()).await.unwrap();
-        std::thread::sleep(std::time::Duration::new(3, 0));
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
         let block_num2: U256 = ws.request("eth_blockNumber", ()).await.unwrap();
         assert!(block_num2 > block_num);
     }
 
     #[tokio::test]
+    #[cfg(not(feature = "celo"))]
     async fn subscription() {
+        use ethers_core::types::{Block, TxHash};
+
         let anvil = Anvil::new().block_time(1u64).spawn();
         let ws = Ws::connect(anvil.ws_endpoint()).await.unwrap();
 
         // Subscribing requires sending the sub request and then subscribing to
         // the returned sub_id
         let sub_id: U256 = ws.request("eth_subscribe", ["newHeads"]).await.unwrap();
-        let mut stream = ws.subscribe(sub_id).unwrap();
+        let stream = ws.subscribe(sub_id).unwrap();
 
-        let mut blocks = Vec::new();
-        for _ in 0..3 {
-            let item = stream.next().await.unwrap();
-            let block: Block<TxHash> = serde_json::from_str(item.get()).unwrap();
-            blocks.push(block.number.unwrap_or_default().as_u64());
-        }
-
-        assert_eq!(blocks, vec![1, 2, 3])
+        let blocks: Vec<u64> = stream
+            .take(3)
+            .map(|item| {
+                let block: Block<TxHash> = serde_json::from_str(item.get()).unwrap();
+                block.number.unwrap_or_default().as_u64()
+            })
+            .collect()
+            .await;
+        assert_eq!(blocks, vec![1, 2, 3]);
     }
 
     #[tokio::test]

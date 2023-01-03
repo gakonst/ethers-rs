@@ -21,26 +21,24 @@ use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
-        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, FeeHistory,
-        Filter, FilterBlockOption, GethDebugTracingCallOptions, GethDebugTracingOptions, GethTrace,
-        Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction,
-        TransactionReceipt, TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus,
-        H256, U256, U64,
+        Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Chain, EIP1186ProofResponse,
+        FeeHistory, Filter, FilterBlockOption, GethDebugTracingCallOptions,
+        GethDebugTracingOptions, GethTrace, Log, NameOrAddress, Selector, Signature, Trace,
+        TraceFilter, TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash,
+        TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
     },
     utils,
 };
+use futures_util::{lock::Mutex, try_join};
 use hex::FromHex;
 use serde::{de::DeserializeOwned, Serialize};
-use thiserror::Error;
-use url::{ParseError, Url};
-
-use ethers_core::types::Chain;
-use futures_util::{lock::Mutex, try_join};
 use std::{
     collections::VecDeque, convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration,
 };
+use thiserror::Error;
 use tracing::trace;
 use tracing_futures::Instrument;
+use url::{ParseError, Url};
 
 #[derive(Copy, Clone)]
 pub enum NodeClient {
@@ -1415,9 +1413,14 @@ impl Provider<crate::Ws> {
     }
 }
 
-#[cfg(all(target_family = "unix", feature = "ipc"))]
+#[cfg(all(feature = "ipc", any(unix, windows)))]
 impl Provider<crate::Ipc> {
-    /// Direct connection to an IPC socket.
+    #[cfg_attr(unix, doc = "Connects to the Unix socket at the provided path.")]
+    #[cfg_attr(windows, doc = "Connects to the named pipe at the provided path.\n")]
+    #[cfg_attr(
+        windows,
+        doc = r"Note: the path must be the fully qualified, like: `\\.\pipe\<name>`."
+    )]
     pub async fn connect_ipc(path: impl AsRef<std::path::Path>) -> Result<Self, ProviderError> {
         let ipc = crate::Ipc::connect(path).await?;
         Ok(Self::new(ipc))

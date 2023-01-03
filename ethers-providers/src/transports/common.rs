@@ -1,17 +1,16 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
-use std::fmt;
 
+use ethers_core::types::U256;
 use serde::{
     de::{self, MapAccess, Unexpected, Visitor},
     Deserialize, Serialize,
 };
 use serde_json::{value::RawValue, Value};
+use std::fmt;
 use thiserror::Error;
 
-use ethers_core::types::U256;
-
-#[derive(Deserialize, Debug, Clone, Error)]
 /// A JSON-RPC 2.0 error
+#[derive(Deserialize, Debug, Clone, Error)]
 pub struct JsonRpcError {
     /// The error code
     pub code: i64,
