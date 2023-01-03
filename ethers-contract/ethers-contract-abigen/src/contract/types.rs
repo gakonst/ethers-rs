@@ -15,7 +15,7 @@ pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
             3..=4 => Ok(quote! { i32 }),
             5..=8 => Ok(quote! { i64 }),
             9..=16 => Ok(quote! { i128 }),
-            17..=32 => Ok(quote! { I256 }),
+            17..=32 => Ok(quote! { #ethers_core::types::I256 }),
             _ => bail!("unsupported solidity type int{}", n),
         },
         ParamType::Uint(n) => match n / 8 {
