@@ -1,9 +1,9 @@
 # Summary
 
 # Getting started
-  - [Intro](./1_getting-started/1_intro.md)
-  - [Start a new project](./1_getting-started/2_start_a_new_project.md)
-  - [Connect to an Ethereum node](./1_getting-started/3_connect_to_an_ethereum_node.md)
+  - [Intro](./getting-started/intro.md)
+  - [Start a new project](./getting-started/start_a_new_project.md)
+  - [Connect to an Ethereum node](./getting-started/connect_to_an_ethereum_node.md)
 
 # Reference guide
 - [Providers]()
@@ -75,12 +75,12 @@
   - [Sign message]()
   - [Trezor]()
   - [Yubi]()
-- [Big numbers](./10_big-numbers/1_intro.md)
-  - [Comparison and equivalence](./10_big-numbers/2_comparison-and-equivalence.md) 
-  - [Conversion](./10_big-numbers/3_conversion.md)
-  - [Creating Instances](./10_big-numbers/4_creating_instances.md)
-  - [Math operations](./10_big-numbers/5_math-operations.md)
-  - [Utilities](./10_big-numbers/6_utilities.md)
+- [Big numbers](./big-numbers/intro.md)
+  - [Comparison and equivalence](./big-numbers/comparison-and-equivalence.md) 
+  - [Conversion](./big-numbers/conversion.md)
+  - [Creating Instances](./big-numbers/creating_instances.md)
+  - [Math operations](./big-numbers/math-operations.md)
+  - [Utilities](./big-numbers/utilities.md)
 - [Anvil]()
     - [Boot anvil]()
     - [Deploy contracts]()
