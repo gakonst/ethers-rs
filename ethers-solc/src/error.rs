@@ -27,18 +27,19 @@ pub enum SolcError {
     /// Filesystem IO error
     #[error(transparent)]
     Io(#[from] SolcIoError),
+    #[error("File could not be resolved due to broken symlink: {0}.")]
+    ResolveBadSymlink(SolcIoError),
     /// Failed to resolve a file
     #[error("Failed to resolve file: {0}.\n Check configured remappings.")]
     Resolve(SolcIoError),
-    #[error("File could not be resolved due to broken symlink: {0}.")]
-    ResolveBadSymlink(SolcIoError),
+    #[error("File cannot be resolved due to mismatch of file name case: {error}.\n Found existing file: {existing_file:?}\n Please check the case of the import.")]
+    ResolveCaseSensitiveFileName { error: SolcIoError, existing_file: PathBuf },
     #[error(
-        r#"Failed to resolve file: {0}.
+        r#"{0}.
     --> {1:?}
-        {2:?}
-    Check configured remappings."#
+        {2:?}"#
     )]
-    FailedResolveImport(SolcIoError, PathBuf, PathBuf),
+    FailedResolveImport(Box<SolcError>, PathBuf, PathBuf),
     #[cfg(feature = "svm-solc")]
     #[error(transparent)]
     SvmError(#[from] svm::SolcVmError),

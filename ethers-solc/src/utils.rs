@@ -385,6 +385,26 @@ pub(crate) fn find_fave_or_alt_path(root: impl AsRef<Path>, fave: &str, alt: &st
     p
 }
 
+/// Attempts to find a file with different case that exists next to the `non_existing` file
+pub(crate) fn find_case_sensitive_existing_file(non_existing: &Path) -> Option<PathBuf> {
+    let non_existing_file_name = non_existing.file_name()?;
+    let parent = non_existing.parent()?;
+    WalkDir::new(parent)
+        .max_depth(1)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| e.file_type().is_file())
+        .find_map(|e| {
+            let existing_file_name = e.path().file_name()?;
+            if existing_file_name.eq_ignore_ascii_case(non_existing_file_name) &&
+                existing_file_name != non_existing_file_name
+            {
+                return Some(e.path().to_path_buf())
+            }
+            None
+        })
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::runtime::{Handle, Runtime};
 
@@ -453,12 +473,52 @@ pub fn create_parent_dir_all(file: impl AsRef<Path>) -> Result<(), SolcError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::resolver::Node;
     use solang_parser::pt::SourceUnitPart;
     use std::{
         collections::HashSet,
         fs::{create_dir_all, File},
     };
     use tempdir;
+
+    #[test]
+    fn can_find_different_case() {
+        let tmp_dir = tempdir("out").unwrap();
+        let path = tmp_dir.path().join("forge-std");
+        create_dir_all(&path).unwrap();
+        let existing = path.join("Test.sol");
+        let non_existing = path.join("test.sol");
+        std::fs::write(&existing, b"").unwrap();
+
+        #[cfg(target_os = "linux")]
+        assert!(!non_existing.exists());
+
+        let found = find_case_sensitive_existing_file(&non_existing).unwrap();
+        assert_eq!(found, existing);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn can_read_different_case() {
+        let tmp_dir = tempdir("out").unwrap();
+        let path = tmp_dir.path().join("forge-std");
+        create_dir_all(&path).unwrap();
+        let existing = path.join("Test.sol");
+        let non_existing = path.join("test.sol");
+        std::fs::write(
+            &existing,
+            r#"
+pragma solidity ^0.8.10;
+contract A {}
+        "#,
+        )
+        .unwrap();
+
+        assert!(!non_existing.exists());
+
+        let found = Node::read(&non_existing).unwrap_err();
+        matches!(found, SolcError::ResolveCaseSensitiveFileName { .. });
+    }
 
     #[test]
     fn can_create_parent_dirs_with_ext() {
