@@ -208,7 +208,7 @@ impl Eip1559TransactionRequest {
         *offset += 1;
         tx.gas = Some(rlp.val_at(*offset)?);
         *offset += 1;
-        tx.to = decode_to(rlp, offset)?;
+        tx.to = decode_to(rlp, offset)?.map(NameOrAddress::Address);
         tx.value = Some(rlp.val_at(*offset)?);
         *offset += 1;
         let data = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;

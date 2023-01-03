@@ -59,6 +59,7 @@ use std::{
 mod parse;
 mod tree;
 
+use crate::utils::find_case_sensitive_existing_file;
 pub use parse::SolImportAlias;
 pub use tree::{print, Charset, TreeOptions};
 
@@ -371,10 +372,12 @@ impl Graph {
                         add_node(&mut unresolved, &mut index, &mut resolved_imports, import)
                             .map_err(|err| {
                                 match err {
-                                    SolcError::Resolve(err) => {
-                                        // make the error more verbose
+                                    err @ SolcError::ResolveCaseSensitiveFileName { .. } |
+                                    err @ SolcError::Resolve(_) => {
+                                        // make the error more helpful by providing additional
+                                        // context
                                         SolcError::FailedResolveImport(
-                                            err,
+                                            Box::new(err),
                                             node.path.clone(),
                                             import_path.clone(),
                                         )
@@ -649,7 +652,7 @@ impl Graph {
                 return Vec::new()
             }
 
-            let mut result = sets.pop().cloned().expect("not empty; qed.").clone();
+            let mut result = sets.pop().cloned().expect("not empty; qed.");
             if !sets.is_empty() {
                 result.retain(|item| sets.iter().all(|set| set.contains(item)));
             }
@@ -832,10 +835,21 @@ impl Node {
     pub fn read(file: impl AsRef<Path>) -> Result<Self> {
         let file = file.as_ref();
         let source = Source::read(file).map_err(|err| {
-            if !err.path().exists() && err.path().is_symlink() {
+            let exists = err.path().exists();
+            if !exists && err.path().is_symlink() {
                 SolcError::ResolveBadSymlink(err)
             } else {
-                SolcError::Resolve(err)
+                // This is an additional check useful on OS that have case-sensitive paths, See also <https://docs.soliditylang.org/en/v0.8.17/path-resolution.html#import-callback>
+                if !exists {
+                    // check if there exists a file with different case
+                    if let Some(existing_file) = find_case_sensitive_existing_file(file) {
+                        SolcError::ResolveCaseSensitiveFileName { error: err, existing_file }
+                    } else {
+                        SolcError::Resolve(err)
+                    }
+                } else {
+                    SolcError::Resolve(err)
+                }
             }
         })?;
         let data = SolData::parse(source.as_ref(), file);

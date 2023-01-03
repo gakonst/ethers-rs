@@ -9,7 +9,7 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use thiserror::Error;
 
-/// A client contains two clients.
+/// A client containing two clients.
 ///
 /// One is used for _read_ operations
 /// One is used for _write_ operations that consume gas `["eth_sendTransaction",
@@ -48,7 +48,7 @@ impl<Read, Write> RwClient<Read, Write> {
         &self.r
     }
 
-    /// Returns the client used for read operations
+    /// Returns the client used for write operations
     pub fn write_client(&self) -> &Write {
         &self.w
     }

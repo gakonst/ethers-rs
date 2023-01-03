@@ -121,6 +121,7 @@ cargo check --all-features
 cargo +nightly fmt --all
 cargo build --all-features
 cargo test --all-features
+cargo +nightly clippy --all-features
 ```
 
 ### Tests

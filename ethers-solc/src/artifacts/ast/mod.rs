@@ -14,10 +14,20 @@
 mod macros;
 mod misc;
 pub use misc::*;
+<<<<<<< HEAD
 pub mod lowfidelity;
 pub mod util;
 pub mod visitor;
 
+=======
+pub mod util;
+pub mod visitor;
+
+/// A low fidelity representation of the AST.
+pub(crate) mod lowfidelity;
+pub use lowfidelity::{Ast, Node, NodeType, SourceLocation as LowFidelitySourceLocation};
+
+>>>>>>> master
 /// Types for the Yul AST.
 ///
 /// The Yul AST is embedded into the Solidity AST for inline assembly blocks.
@@ -1086,11 +1096,19 @@ mod tests {
                 let result: Result<SourceUnit, _> = serde_path_to_error::deserialize(deserializer);
                 match result {
                     Err(e) => {
+<<<<<<< HEAD
                         println!("... {} fail: {e}", path_str);
                         panic!();
                     }
                     Ok(_) => {
                         println!("... {} ok", path_str);
+=======
+                        println!("... {path_str} fail: {e}");
+                        panic!();
+                    }
+                    Ok(_) => {
+                        println!("... {path_str} ok");
+>>>>>>> master
                     }
                 }
             })

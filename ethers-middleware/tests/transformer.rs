@@ -1,5 +1,5 @@
-#![cfg(not(target_arch = "wasm32"))]
-#![allow(unused)]
+#![cfg(all(not(target_arch = "wasm32"), not(feature = "celo")))]
+
 use ethers_contract::{BaseContract, ContractFactory};
 use ethers_core::{abi::Abi, types::*, utils::Anvil};
 use ethers_middleware::{
@@ -24,7 +24,6 @@ fn compile_contract(path: &str, name: &str) -> (Abi, Bytes) {
 }
 
 #[tokio::test]
-#[cfg(not(feature = "celo"))]
 async fn ds_proxy_transformer() {
     // randomness
     let mut rng = rand::thread_rng();
@@ -83,7 +82,6 @@ async fn ds_proxy_transformer() {
 }
 
 #[tokio::test]
-#[cfg(not(feature = "celo"))]
 async fn ds_proxy_code() {
     // randomness
     let mut rng = rand::thread_rng();
