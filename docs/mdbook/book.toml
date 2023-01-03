@@ -1,6 +1,0 @@
-[book]
-authors = ["The ethers-rs contributors"]
-language = "en"
-multilingual = false
-src = "src"
-title = "Ethers.rs: The Ethereum Library for Rust"

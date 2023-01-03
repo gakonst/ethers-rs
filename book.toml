@@ -1,0 +1,26 @@
+[book]
+authors = ["The ethers-rs contributors"]
+language = "en"
+multilingual = false
+src = "book"
+title = "Ethers.rs: The Ethereum Library for Rust"
+description = "A book on all things ethers-rs"
+
+[output.html]
+git-repository-url = "https://github.com/gakonst/ethers-rs"
+default-theme = "ayu"
+no-section-label = true
+
+[output.html.fold]
+enable = true
+level = 1
+
+[build]
+build-dir = "target/book"
+
+[preprocessor.template]
+before = [ "links" ]
+
+[preprocessor.index]
+
+[preprocessor.links]
