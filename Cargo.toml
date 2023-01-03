@@ -2,7 +2,7 @@
 name = "ethers"
 version = "1.0.2"
 edition = "2021"
-rust-version = "1.64"
+rust-version = "1.64" # must also be changed in **/Cargo.toml and .clippy.toml
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
@@ -21,7 +21,8 @@ members = [
     "ethers-middleware",
     "ethers-etherscan",
     "ethers-solc",
-    "examples/ethers-wasm",
+    # Example crates
+    "examples/*",
 ]
 
 default-members = [
@@ -63,12 +64,14 @@ eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
 ws = ["ethers-providers/ws"]
 ipc = ["ethers-providers/ipc"]
 rustls = [
+    "ethers-middleware/rustls",
     "ethers-providers/rustls",
     "ethers-etherscan/rustls",
     "ethers-contract/rustls",
     "ethers-solc/rustls",
 ]
 openssl = [
+    "ethers-middleware/openssl",
     "ethers-providers/openssl",
     "ethers-etherscan/openssl",
     "ethers-contract/openssl",
@@ -84,6 +87,7 @@ abigen = ["ethers-contract/abigen"]
 ### abigen without reqwest
 abigen-offline = ["ethers-contract/abigen-offline"]
 ## solc
+ethers-solc = ["dep:ethers-solc", "ethers-etherscan/ethers-solc"]
 solc-full = ["ethers-solc", "ethers-solc/full"]
 solc-tests = ["ethers-solc", "ethers-solc/tests"]
 solc-sha2-asm = ["ethers-solc", "ethers-solc/asm"]
@@ -125,62 +129,3 @@ bytes = "1.3.0"
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
 
-[[example]]
-name = "abigen"
-path = "examples/abigen.rs"
-required-features = ["ethers-solc"]
-
-[[example]]
-name = "contract_human_readable"
-path = "examples/contract_human_readable.rs"
-required-features = ["ethers-solc"]
-
-[[example]]
-name = "contract_with_abi"
-path = "examples/contract_with_abi.rs"
-required-features = ["ethers-solc"]
-
-[[example]]
-name = "contract_with_abi_and_bytecode"
-path = "examples/contract_with_abi_and_bytecode.rs"
-required-features = ["ethers-solc"]
-
-[[example]]
-name = "ipc"
-path = "examples/ipc.rs"
-required-features = ["ipc"]
-
-[[example]]
-name = "ledger"
-path = "examples/ledger.rs"
-required-features = ["ledger"]
-
-[[example]]
-name = "moonbeam_with_abi"
-path = "examples/moonbeam_with_abi.rs"
-required-features = ["legacy", "ethers-solc"]
-
-[[example]]
-name = "trezor"
-path = "examples/trezor.rs"
-required-features = ["trezor"]
-
-[[example]]
-name = "yubi"
-path = "examples/yubi.rs"
-required-features = ["yubi"]
-
-[[example]]
-name = "paginated_logs"
-path = "examples/paginated_logs.rs"
-required-features = ["rustls"]
-
-[[example]]
-name = "subscribe_contract_events"
-path = "examples/subscribe_contract_events.rs"
-required-features = ["rustls", "ws"]
-
-[[example]]
-name = "subscribe_contract_events_with_meta"
-path = "examples/subscribe_contract_events_with_meta.rs"
-required-features = ["rustls", "ws"]

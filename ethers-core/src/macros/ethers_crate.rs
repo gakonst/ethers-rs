@@ -63,7 +63,7 @@ pub fn determine_ethers_crates() -> (&'static str, &'static str, &'static str) {
     let needs_lock_file_cleanup = !std::path::Path::new(&lock_file).exists();
 
     let res = MetadataCommand::new()
-        .manifest_path(&format!("{manifest_dir}/Cargo.toml"))
+        .manifest_path(format!("{manifest_dir}/Cargo.toml"))
         .exec()
         .ok()
         .and_then(|metadata| {

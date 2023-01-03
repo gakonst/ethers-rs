@@ -1,6 +1,6 @@
 use crate::{
     source_tree::{SourceTree, SourceTreeEntry},
-    utils::{deserialize_address_opt, deserialize_stringified_source_code},
+    utils::{deserialize_address_opt, deserialize_source_code},
     Client, EtherscanError, Response, Result,
 };
 use ethers_core::{
@@ -107,7 +107,7 @@ impl SourceCodeMetadata {
 #[serde(rename_all = "PascalCase")]
 pub struct Metadata {
     /// Includes metadata for compiler settings and language.
-    #[serde(deserialize_with = "deserialize_stringified_source_code")]
+    #[serde(deserialize_with = "deserialize_source_code")]
     pub source_code: SourceCodeMetadata,
 
     /// The ABI of the contract.
@@ -148,7 +148,11 @@ pub struct Metadata {
     pub proxy: u64,
 
     /// If this contract is a proxy, the address of its implementation.
-    #[serde(deserialize_with = "deserialize_address_opt")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_address_opt"
+    )]
     pub implementation: Option<Address>,
 
     /// The swarm source of the contract.

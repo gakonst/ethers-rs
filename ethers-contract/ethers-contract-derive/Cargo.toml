@@ -1,11 +1,12 @@
 [package]
 name = "ethers-contract-derive"
 version = "1.0.2"
+edition = "2021"
+rust-version = "1.64"
 authors = [
     "Nicholas Rodrigues Lordello <nlordell@gmail.com>",
     "Georgios Konstantopoulos <me@gakonst.com>",
 ]
-edition = "2018"
 license = "MIT OR Apache-2.0"
 description = "Proc macro for type-safe bindings generation to Ethereum and Celo smart contracts"
 homepage = "https://docs.rs/ethers"
@@ -17,7 +18,7 @@ proc-macro = true
 
 [dependencies]
 ethers-core = { version = "^1.0.0", path = "../../ethers-core" }
-ethers-contract-abigen = { version = "^1.0.0", path = "../ethers-contract-abigen" }
+ethers-contract-abigen = { version = "^1.0.0", path = "../ethers-contract-abigen", default-features = false }
 
 serde_json = "1.0.53"
 hex = { version = "0.4.3", default-features = false, features = ["std"] }

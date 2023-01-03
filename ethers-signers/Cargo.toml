@@ -1,7 +1,7 @@
 [package]
 name = "ethers-signers"
 version = "1.0.2"
-edition = "2018"
+edition = "2021"
 rust-version = "1.64"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
 license = "MIT OR Apache-2.0"
@@ -16,7 +16,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 ethers-core = { version = "^1.0.0", path = "../ethers-core", features = ["eip712"] }
-thiserror = { version = "1.0.37", default-features = false }
+thiserror = { version = "1.0.38", default-features = false }
 coins-bip32 = "0.7.0"
 coins-bip39 = "0.7.0"
 coins-ledger = { version = "0.7.0", default-features = false, optional = true }
@@ -28,7 +28,7 @@ rand = { version = "0.8.5", default-features = false }
 yubihsm = { version = "0.41.0", features = ["secp256k1", "http", "usb"], optional = true }
 futures-util = { version = "^0.3", optional = true }
 futures-executor = { version = "^0.3", optional = true }
-semver = { version = "1.0.14", optional = true }
+semver = { version = "1.0.16", optional = true }
 trezor-client = { version = "0.0.7", optional = true, default-features = false, features = [
     "f_ethereum",
 ] }

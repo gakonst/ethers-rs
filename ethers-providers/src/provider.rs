@@ -22,9 +22,10 @@ use ethers_core::{
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, EIP1186ProofResponse, FeeHistory,
-        Filter, FilterBlockOption, GethDebugTracingOptions, GethTrace, Log, NameOrAddress,
-        Selector, Signature, Trace, TraceFilter, TraceType, Transaction, TransactionReceipt,
-        TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
+        Filter, FilterBlockOption, GethDebugTracingCallOptions, GethDebugTracingOptions, GethTrace,
+        Log, NameOrAddress, Selector, Signature, Trace, TraceFilter, TraceType, Transaction,
+        TransactionReceipt, TransactionRequest, TxHash, TxpoolContent, TxpoolInspect, TxpoolStatus,
+        H256, U256, U64,
     },
     utils,
 };
@@ -351,8 +352,19 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                 if inner.max_fee_per_gas.is_none() || inner.max_priority_fee_per_gas.is_none() {
                     let (max_fee_per_gas, max_priority_fee_per_gas) =
                         self.estimate_eip1559_fees(None).await?;
-                    inner.max_fee_per_gas = Some(max_fee_per_gas);
-                    inner.max_priority_fee_per_gas = Some(max_priority_fee_per_gas);
+                    // we want to avoid overriding the user if either of these
+                    // are set. In order to do this, we refuse to override the
+                    // `max_fee_per_gas` if already set.
+                    // However, we must preserve the constraint that the tip
+                    // cannot be higher than max fee, so we override user
+                    // intent if that is so. We override by
+                    //   - first: if set, set to the min(current value, MFPG)
+                    //   - second, if still unset, use the RPC estimated amount
+                    let mfpg = inner.max_fee_per_gas.get_or_insert(max_fee_per_gas);
+                    inner
+                        .max_priority_fee_per_gas
+                        .map(|tip| std::cmp::min(tip, *mfpg))
+                        .get_or_insert(max_priority_fee_per_gas);
                 };
             }
         }
@@ -1046,6 +1058,20 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let tx_hash = utils::serialize(&tx_hash);
         let trace_options = utils::serialize(&trace_options);
         self.request("debug_traceTransaction", [tx_hash, trace_options]).await
+    }
+
+    /// Executes the given call and returns a number of possible traces for it
+    async fn debug_trace_call<T: Into<TypedTransaction> + Send + Sync>(
+        &self,
+        req: T,
+        block: Option<BlockId>,
+        trace_options: GethDebugTracingCallOptions,
+    ) -> Result<GethTrace, ProviderError> {
+        let req = req.into();
+        let req = utils::serialize(&req);
+        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
+        let trace_options = utils::serialize(&trace_options);
+        self.request("debug_traceCall", [req, block, trace_options]).await
     }
 
     /// Executes the given call and returns a number of possible traces for it

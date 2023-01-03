@@ -1,4 +1,7 @@
-use crate::types::{Bytes, H256, U256};
+use crate::{
+    types::{Bytes, H256, U256},
+    utils::from_int_or_hex,
+};
 use serde::{Deserialize, Serialize, Serializer};
 use std::collections::BTreeMap;
 
@@ -6,7 +9,8 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GethTrace {
     pub failed: bool,
-    pub gas: u64,
+    #[serde(deserialize_with = "from_int_or_hex")]
+    pub gas: U256,
     #[serde(serialize_with = "serialize_bytes", rename = "returnValue")]
     pub return_value: Bytes,
     #[serde(rename = "structLogs")]
@@ -35,6 +39,16 @@ pub struct StructLog {
     pub storage: Option<BTreeMap<H256, H256>>,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+/// Available built-in tracers
+///
+/// See <https://geth.ethereum.org/docs/developers/evm-tracing/built-in-tracers>
+pub enum GethDebugTracerType {
+    /// callTracer (native)
+    #[serde(rename = "callTracer")]
+    CallTracer,
+}
+
 /// Bindings for additional `debug_traceTransaction` options
 ///
 /// See <https://geth.ethereum.org/docs/rpc/ns-debug#debug_tracetransaction>
@@ -50,9 +64,20 @@ pub struct GethDebugTracingOptions {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub enable_return_data: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub tracer: Option<String>,
+    pub tracer: Option<GethDebugTracerType>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout: Option<String>,
+}
+
+/// Bindings for additional `debug_traceCall` options
+///
+/// See <https://geth.ethereum.org/docs/rpc/ns-debug#debug_tracecall>
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GethDebugTracingCallOptions {
+    #[serde(flatten)]
+    pub tracing_options: GethDebugTracingOptions,
+    // TODO: Add stateoverrides and blockoverrides options
 }
 
 fn serialize_bytes<S, T>(x: T, s: S) -> Result<S::Ok, S::Error>
