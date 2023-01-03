@@ -1,9 +1,11 @@
-#![deny(missing_docs, unsafe_code)]
-#![deny(rustdoc::broken_intra_doc_links)]
+//! # Abigen
+//!
+//! Generate type-safe bindings to Ethereum smart contracts.
+//!
+//! This crate is intended to be used either indirectly with the `abigen` procedural macro or
+//! directly from a build script / CLI.
 
-//! Module for generating type-safe bindings to Ethereum smart contracts. This
-//! module is intended to be used either indirectly with the `abigen` procedural
-//! macro or directly from a build script / CLI
+#![deny(rustdoc::broken_intra_doc_links, missing_docs, unsafe_code)]
 
 #[cfg(test)]
 #[allow(missing_docs)]
@@ -11,28 +13,30 @@
 #[path = "test/macros.rs"]
 mod test_macros;
 
-/// Contains types to generate rust bindings for solidity contracts
 pub mod contract;
 pub use contract::structs::InternalStructs;
-use contract::Context;
-
-mod rustfmt;
-mod source;
-mod util;
 
 pub mod filter;
 pub use filter::{ContractFilter, ExcludeContracts, SelectContracts};
+
 pub mod multi;
 pub use multi::MultiAbigen;
 
-pub use ethers_core::types::Address;
+mod source;
 pub use source::Source;
+
+mod rustfmt;
+
+mod util;
 pub use util::parse_address;
 
-use crate::contract::ExpandedContract;
+pub use ethers_core::types::Address;
+
+use contract::{Context, ExpandedContract};
 use eyre::Result;
 use proc_macro2::TokenStream;
-use std::{collections::HashMap, fs::File, io::Write, path::Path};
+use quote::ToTokens;
+use std::{collections::HashMap, fs, io, path::Path};
 
 /// Builder struct for generating type-safe bindings from a contract's ABI
 ///
