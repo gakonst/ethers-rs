@@ -1,5 +1,5 @@
 [book]
-authors = ["Andrea Simeoni"]
+authors = ["The ethers-rs contributors"]
 language = "en"
 multilingual = false
 src = "src"
