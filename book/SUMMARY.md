@@ -7,7 +7,7 @@
 
 # Reference guide
 - [Providers]()
-  - [Http]()
+  - [Http](./providers/http.md)
   - [IPC]()
   - [Mock]()
   - [Quorum]()
