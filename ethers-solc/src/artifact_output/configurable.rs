@@ -19,7 +19,7 @@ use crate::{
         },
         CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
         GeneratedSource, LosslessAbi, LosslessMetadata, Metadata, Offsets,
-        Settings, /*SourceUnit,*/
+        Settings, /* SourceUnit, */
         StorageLayout, UserDoc,
     },
     sources::VersionedSourceFile,
@@ -154,7 +154,7 @@ pub struct ConfigurableArtifacts {
     /// _always_ be done using a public constructor or update syntax:
     ///
     /// ```rust
-    ///
+    /// 
     /// use ethers_solc::{ExtraOutputFiles, ConfigurableArtifacts};
     /// let config = ConfigurableArtifacts {
     ///     additional_files: ExtraOutputFiles { metadata: true, ..Default::default() },
@@ -397,7 +397,7 @@ pub struct ExtraOutputValues {
     /// _always_ be done using a public constructor or update syntax:
     ///
     /// ```rust
-    ///
+    /// 
     /// use ethers_solc::ExtraOutputValues;
     /// let config = ExtraOutputValues {
     ///     ir: true,
@@ -515,7 +515,7 @@ pub struct ExtraOutputFiles {
     /// _always_ be done using a public constructor or update syntax:
     ///
     /// ```rust
-    ///
+    /// 
     /// use ethers_solc::ExtraOutputFiles;
     /// let config = ExtraOutputFiles {
     ///     metadata: true,
