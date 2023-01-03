@@ -1,4 +1,5 @@
-#![deny(missing_docs)]
+//! Contains types to generate Rust bindings for Solidity contracts.
+
 mod common;
 mod errors;
 mod events;
@@ -15,7 +16,7 @@ use ethers_core::{
 };
 use eyre::{eyre, Context as _, Result};
 use proc_macro2::{Ident, Literal, TokenStream};
-use quote::quote;
+use quote::{format_ident, quote};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use syn::Path;
@@ -183,7 +184,7 @@ impl Context {
     pub fn from_abigen(args: Abigen) -> Result<Self> {
         // get the actual ABI string
         let mut abi_str =
-            args.abi_source.get().map_err(|e| eyre!("failed to get ABI JSON: {}", e))?;
+            args.abi_source.get().map_err(|e| eyre!("failed to get ABI JSON: {e}"))?;
 
         // holds the bytecode parsed from the abi_str, if present
         let mut contract_bytecode = None;
@@ -234,7 +235,7 @@ impl Context {
             };
 
             if method_aliases.insert(signature.clone(), alias).is_some() {
-                eyre::bail!("duplicate method signature '{}' in method aliases", signature)
+                eyre::bail!("duplicate method signature {signature:?} in method aliases")
             }
         }
 
@@ -293,27 +294,27 @@ impl Context {
         })
     }
 
-    /// The initial name fo the contract
+    /// The name of the contract.
     pub(crate) fn contract_name(&self) -> &str {
         &self.contract_name
     }
 
-    /// name of the `Lazy` that stores the ABI
+    /// Name of the `Lazy` that stores the ABI.
     pub(crate) fn inline_abi_ident(&self) -> Ident {
-        util::safe_ident(&format!("{}_ABI", self.contract_ident.to_string().to_uppercase()))
+        format_ident!("{}_ABI", self.contract_name.to_uppercase())
     }
 
-    /// name of the `Lazy` that stores the Bytecode
+    /// Name of the `Lazy` that stores the Bytecode.
     pub(crate) fn inline_bytecode_ident(&self) -> Ident {
-        util::safe_ident(&format!("{}_BYTECODE", self.contract_ident.to_string().to_uppercase()))
+        format_ident!("{}_BYTECODE", self.contract_name.to_uppercase())
     }
 
-    /// The internal abi struct mapping table
+    /// Returns a reference to the internal ABI struct mapping table.
     pub fn internal_structs(&self) -> &InternalStructs {
         &self.internal_structs
     }
 
-    /// The internal mutable abi struct mapping table
+    /// Returns a mutable reference to the internal ABI struct mapping table.
     pub fn internal_structs_mut(&mut self) -> &mut InternalStructs {
         &mut self.internal_structs
     }
