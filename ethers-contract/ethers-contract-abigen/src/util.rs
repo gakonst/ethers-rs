@@ -1,7 +1,4 @@
-use ethers_core::{
-    abi::{Param, ParamType},
-    types::Address,
-};
+use ethers_core::abi::{Param, ParamType};
 use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
@@ -94,16 +91,6 @@ pub fn expand_doc(s: &str) -> TokenStream {
 
 pub fn expand_derives(derives: &[Path]) -> TokenStream {
     quote! {#(#derives),*}
-}
-
-/// Parses the given address string
-pub fn parse_address<S>(address_str: S) -> Result<Address>
-where
-    S: AsRef<str>,
-{
-    let address_str = address_str.as_ref();
-    eyre::ensure!(address_str.starts_with("0x"), "address must start with '0x'");
-    Ok(address_str[2..].parse()?)
 }
 
 /// Perform an HTTP GET request and return the contents of the response.
@@ -243,23 +230,6 @@ mod tests {
     #[test]
     fn input_name_to_ident_snake_case() {
         assert_quote!(expand_input_name(0, "CamelCase1"), { camel_case_1 });
-    }
-
-    #[test]
-    fn parse_address_missing_prefix() {
-        let _ = parse_address("0000000000000000000000000000000000000000").unwrap_err();
-    }
-
-    #[test]
-    fn parse_address_address_too_short() {
-        let _ = parse_address("0x00000000000000").unwrap_err();
-    }
-
-    #[test]
-    fn parse_address_ok() {
-        let expected =
-            Address::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
-        assert_eq!(parse_address("0x000102030405060708090a0b0c0d0e0f10111213").unwrap(), expected);
     }
 
     #[test]

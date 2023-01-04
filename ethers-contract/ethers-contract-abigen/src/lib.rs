@@ -27,7 +27,6 @@ pub use multi::MultiAbigen;
 
 pub use ethers_core::types::Address;
 pub use source::Source;
-pub use util::parse_address;
 
 use crate::contract::ExpandedContract;
 use eyre::Result;

@@ -1,12 +1,13 @@
 //! Module implements reading of contract artifacts from various sources.
-use super::util;
-use ethers_core::types::Address;
 
-use crate::util::resolve_path;
+use crate::util;
 use cfg_if::cfg_if;
+use ethers_core::types::Address;
 use eyre::{eyre, Context, Error, Result};
 use std::{env, fs, path::Path, str::FromStr};
 use url::Url;
+
+// TODO: Feature gate HTTP and Etherscan with Reqwest and ethers-etherscan respectively.
 
 /// A source of a Truffle artifact JSON.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -66,10 +67,7 @@ impl Source {
     /// - `npm:@org/package@1.0.0/path/to/contract.json` an npmjs package with an optional version
     ///   and path (defaulting to the latest version and `index.js`). The contract ABI will be
     ///   retrieved through `unpkg.io`.
-    pub fn parse<S>(source: S) -> Result<Self>
-    where
-        S: AsRef<str>,
-    {
+    pub fn parse(source: impl AsRef<str>) -> Result<Self> {
         let source = source.as_ref();
         if matches!(source.chars().next(), Some('[' | '{')) {
             return Ok(Source::String(source.to_owned()))
@@ -148,58 +146,32 @@ impl Source {
     }
 
     /// Creates an HTTP source from a URL.
-    pub fn http<S>(url: S) -> Result<Self>
-    where
-        S: AsRef<str>,
-    {
+    pub fn http(url: impl AsRef<str>) -> Result<Self> {
         Ok(Source::Http(Url::parse(url.as_ref())?))
     }
 
-    /// Creates an Bscscan source from an address string.
-    pub fn bscscan<S>(address: S) -> Result<Self>
-    where
-        S: AsRef<str>,
-    {
-        let address =
-            util::parse_address(address).context("failed to parse address for Bscscan source")?;
-        Ok(Source::Bscscan(address))
-    }
-
     /// Creates an Etherscan source from an address string.
-    pub fn etherscan<S>(address: S) -> Result<Self>
-    where
-        S: AsRef<str>,
-    {
-        let address =
-            util::parse_address(address).context("failed to parse address for Etherscan source")?;
-        Ok(Source::Etherscan(address))
+    pub fn etherscan(address: impl AsRef<str>) -> Result<Self> {
+        Ok(Source::Etherscan(address.as_ref().parse()?))
     }
 
     /// Creates an Polygonscan source from an address string.
-    pub fn polygonscan<S>(address: S) -> Result<Self>
-    where
-        S: AsRef<str>,
-    {
-        let address = util::parse_address(address)
-            .context("failed to parse address for Polygonscan source")?;
-        Ok(Source::Polygonscan(address))
+    pub fn polygonscan(address: impl AsRef<str>) -> Result<Self> {
+        Ok(Source::Polygonscan(address.as_ref().parse()?))
     }
 
     /// Creates an Snowtrace source from an address string.
-    pub fn snowtrace<S>(address: S) -> Result<Self>
-    where
-        S: AsRef<str>,
-    {
-        let address =
-            util::parse_address(address).context("failed to parse address for Snowtrace source")?;
-        Ok(Source::Snowtrace(address))
+    pub fn snowtrace(address: impl AsRef<str>) -> Result<Self> {
+        Ok(Source::Snowtrace(address.as_ref().parse()?))
+    }
+
+    /// Creates an Bscscan source from an address string.
+    pub fn bscscan(address: impl AsRef<str>) -> Result<Self> {
+        Ok(Source::Bscscan(address.as_ref().parse()?))
     }
 
     /// Creates an Etherscan source from an address string.
-    pub fn npm<S>(package_path: S) -> Self
-    where
-        S: Into<String>,
-    {
+    pub fn npm(package_path: impl Into<String>) -> Self {
         Source::Npm(package_path.into())
     }
 
@@ -211,12 +183,12 @@ impl Source {
              if #[cfg(target_arch = "wasm32")] {
                 match self {
                     Source::Local(path) => get_local_contract(path),
-                    Source::Http(_) =>   panic!("Http abi location are not supported for wasm"),
-                    Source::Bscscan(_) => panic!("Bscscan abi location are not supported for wasm"),
-                    Source::Etherscan(_) => panic!("Etherscan abi location are not supported for wasm"),
-                    Source::Polygonscan(_) => panic!("Polygonscan abi location are not supported for wasm"),
-                    Source::Snowtrace(_) => panic!("Snowtrace abi location are not supported for wasm"),
-                    Source::Npm(_) => panic!("npm abi location are not supported for wasm"),
+                    Source::Http(_) => panic!("HTTP ABI locations are not supported for WASM"),
+                    Source::Bscscan(_) => panic!("BscScan ABI locations are not supported for WASM"),
+                    Source::Etherscan(_) => panic!("Etherscan ABI locations are not supported for WASM"),
+                    Source::Polygonscan(_) => panic!("Polygonscan ABI locations are not supported for WASM"),
+                    Source::Snowtrace(_) => panic!("Snowtrace ABI locations are not supported for WASM"),
+                    Source::Npm(_) => panic!("NPM ABI locations are not supported for WASM"),
                     Source::String(abi) => Ok(abi.clone()),
                 }
              } else {
@@ -250,7 +222,7 @@ impl FromStr for Source {
 /// If the path is relative after all env vars have been resolved then we assume the root is either
 /// `CARGO_MANIFEST_DIR` or the current working directory.
 fn get_local_contract(path: impl AsRef<str>) -> Result<String> {
-    let path = resolve_path(path.as_ref())?;
+    let path = util::resolve_path(path.as_ref())?;
     let path = if path.is_relative() {
         let manifest_path = env::var("CARGO_MANIFEST_DIR")?;
         let root = Path::new(&manifest_path);
