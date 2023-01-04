@@ -75,8 +75,8 @@ where
     /// will be wrapped into the right-hand variant of that `Either`.
     ///
     /// # Example
-    ///
-    /// ```
+    // Ignore because `ethers-contract-derive` macros do not work in doctests in `ethers-contract`.
+    /// ```ignore
     /// # #[cfg(feature = "abigen")]
     /// # async fn test<M:ethers_providers::Middleware>(contract: ethers_contract::Contract<M>) {
     /// # use ethers_core::types::*;
