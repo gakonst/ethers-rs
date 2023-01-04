@@ -107,10 +107,12 @@ use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 /// ```
 ///
 /// # Event Logging
+///
 /// Querying structured logs requires you to have defined a struct with the expected
 /// datatypes and to have implemented `Detokenize` for it. This boilerplate code
 /// is generated for you via the [`abigen`] and [`Abigen` builder] utilities.
-///
+//
+// Ignore because `ethers-contract-derive` macros do not work in doctests in `ethers-contract`.
 /// ```ignore
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// use ethers_core::{abi::Abi, types::Address};
