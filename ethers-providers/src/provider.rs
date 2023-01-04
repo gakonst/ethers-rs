@@ -818,6 +818,39 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_mining", ()).await
     }
 
+    // Personal namespace
+    // NOTE: This will eventually need to be enabled by users explicitly because the personal
+    // namespace is being deprecated:
+    // Issue: https://github.com/ethereum/go-ethereum/issues/25948
+    // PR: https://github.com/ethereum/go-ethereum/pull/26390
+
+    /// Sends the given key to the node to be encrypted with the provided passphrase and stored.
+    async fn import_raw_key(
+        &self,
+        private_key: Bytes,
+        passphrase: String,
+    ) -> Result<Address, ProviderError> {
+        let private_key = utils::serialize(&private_key);
+        let passphrase = utils::serialize(&passphrase);
+        self.request("personal_importRawKey", [private_key, passphrase]).await
+    }
+
+    /// Prompts the node to decrypt the given account from its keystore.
+    ///
+    /// If the duration provided is `None`, then the account will be unlocked indefinitely.
+    /// Otherwise, the account will be unlocked for the provided number of seconds.
+    async fn unlock_account<T: Into<Address> + Send + Sync>(
+        &self,
+        account: T,
+        passphrase: String,
+        duration: Option<u64>,
+    ) -> Result<bool, ProviderError> {
+        let account = utils::serialize(&account.into());
+        let duration = utils::serialize(&duration.unwrap_or(0));
+        let passphrase = utils::serialize(&passphrase);
+        self.request("personal_unlockAccount", [account, passphrase, duration]).await
+    }
+
     // Admin namespace
 
     /// Requests adding the given peer, returning a boolean representing whether or not the peer
