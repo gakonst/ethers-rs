@@ -834,7 +834,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     ) -> Result<Address, ProviderError> {
         // private key should not be prefixed with 0x - it is also up to the user to pass in a key
         // of the correct length
-        let private_key = utils::serialize(&private_key.0);
+
+        // the private key argument is supposed to be a string
+        let private_key_hex = hex::encode(private_key);
+        let private_key = utils::serialize(&private_key_hex);
         let passphrase = utils::serialize(&passphrase);
         self.request("personal_importRawKey", [private_key, passphrase]).await
     }
