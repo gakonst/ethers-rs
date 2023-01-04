@@ -54,23 +54,23 @@ use std::{collections::HashMap, fs::File, io::Write, path::Path};
 /// Abigen::new("ERC20Token", "./abi.json")?.generate()?.write_to_file("token.rs")?;
 /// # Ok(())
 /// # }
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
+#[must_use = "Abigen does nothing unless you generate or expand it."]
 pub struct Abigen {
-    /// The source of the ABI JSON for the contract whose bindings
-    /// are being generated.
+    /// The source of the ABI JSON for the contract whose bindings are being generated.
     abi_source: Source,
 
-    /// Override the contract name to use for the generated type.
+    /// The contract's name to use for the generated type.
     contract_name: String,
+
+    /// Whether to format the generated bindings using a locally installed copy of `rustfmt`.
+    rustfmt: bool,
 
     /// Manually specified contract method aliases.
     method_aliases: HashMap<String, String>,
 
-    /// Derives added to event structs and enums.
-    event_derives: Vec<String>,
-
-    /// Format the code using a locally installed copy of `rustfmt`.
-    rustfmt: bool,
+    /// Manually specified `derive` macros added to event structs and enums.
+    derives: Vec<String>,
 
     /// Manually specified event name aliases.
     event_aliases: HashMap<String, String>,
@@ -80,16 +80,16 @@ pub struct Abigen {
 }
 
 impl Abigen {
-    /// Creates a new builder with the given ABI JSON source.
-    pub fn new<S: AsRef<str>>(contract_name: &str, abi_source: S) -> Result<Self> {
+    /// Creates a new builder with the given ABI source.
+    pub fn new<T: Into<String>, S: AsRef<str>>(contract_name: T, abi_source: S) -> Result<Self> {
         let abi_source = abi_source.as_ref().parse()?;
         Ok(Self {
             abi_source,
-            contract_name: contract_name.to_owned(),
-            method_aliases: HashMap::new(),
-            event_derives: Vec::new(),
-            event_aliases: HashMap::new(),
+            contract_name: contract_name.into(),
             rustfmt: true,
+            method_aliases: Default::default(),
+            derives: Default::default(),
+            event_aliases: Default::default(),
             error_aliases: Default::default(),
         })
     }
@@ -111,9 +111,8 @@ impl Abigen {
         Self::new(name, std::fs::read_to_string(path.as_ref())?)
     }
 
-    /// Manually adds a solidity event alias to specify what the event struct
-    /// and function name will be in Rust.
-    #[must_use]
+    /// Manually adds a solidity event alias to specify what the event struct and function name will
+    /// be in Rust.
     pub fn add_event_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -123,10 +122,9 @@ impl Abigen {
         self
     }
 
-    /// Manually adds a solidity method alias to specify what the method name
-    /// will be in Rust. For solidity methods without an alias, the snake cased
-    /// method name will be used.
-    #[must_use]
+    /// Add a Solidity method error alias to specify the generated method name.
+    ///
+    /// For methods without an alias, the `snake_case` method name will be used.
     pub fn add_method_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -136,8 +134,7 @@ impl Abigen {
         self
     }
 
-    /// Manually adds a solidity error alias to specify what the error struct will be in Rust.
-    #[must_use]
+    /// Add a Solidity custom error alias to specify the generated struct's name.
     pub fn add_error_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -147,27 +144,29 @@ impl Abigen {
         self
     }
 
-    /// Specify whether or not to format the code using a locally installed copy
-    /// of `rustfmt`.
+    /// Specify whether or not to format the code using a locally installed copy of `rustfmt`.
     ///
-    /// Note that in case `rustfmt` does not exist or produces an error, the
-    /// unformatted code will be used.
-    #[must_use]
+    /// Note that in case `rustfmt` does not exist or produces an error, the unformatted code will
+    /// be used.
     pub fn rustfmt(mut self, rustfmt: bool) -> Self {
         self.rustfmt = rustfmt;
         self
     }
 
-    /// Add a custom derive to the derives for event structs and enums.
+    /// Add a custom derive to the derives for all structs and enums.
     ///
-    /// This makes it possible to for example derive serde::Serialize and
-    /// serde::Deserialize for events.
-    #[must_use]
-    pub fn add_event_derive<S>(mut self, derive: S) -> Self
-    where
-        S: Into<String>,
-    {
-        self.event_derives.push(derive.into());
+    /// For example, this makes it possible to derive serde::Serialize and serde::Deserialize.
+    #[deprecated = "Use add_derive instead"]
+    pub fn add_event_derive<S: Into<String>>(mut self, derive: S) -> Self {
+        self.derives.push(derive.into());
+        self
+    }
+
+    /// Add a custom derive to the derives for all structs and enums.
+    ///
+    /// For example, this makes it possible to derive serde::Serialize and serde::Deserialize.
+    pub fn add_derive<S: Into<String>>(mut self, derive: S) -> Self {
+        self.derives.push(derive.into());
         self
     }
 
