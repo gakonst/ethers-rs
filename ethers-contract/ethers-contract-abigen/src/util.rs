@@ -93,16 +93,10 @@ pub fn expand_derives(derives: &[Path]) -> TokenStream {
     quote! {#(#derives),*}
 }
 
-/// Perform an HTTP GET request and return the contents of the response.
-#[cfg(not(target_arch = "wasm32"))]
-pub fn http_get(_url: &str) -> Result<String> {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "reqwest")]{
-            Ok(reqwest::blocking::get(_url)?.text()?)
-        } else {
-            eyre::bail!("HTTP is unsupported")
-        }
-    }
+/// Perform a blocking HTTP GET request and return the contents of the response as a String.
+#[cfg(all(feature = "online", not(target_arch = "wasm32")))]
+pub fn http_get(url: &str) -> Result<String> {
+    Ok(reqwest::blocking::get(url)?.text()?)
 }
 
 /// Replaces any occurrences of env vars in the `raw` str with their value

@@ -1,0 +1,164 @@
+//! Module implements reading of contract artifacts from various sources.
+
+// TODO: Support `online` for WASM
+
+#[cfg(all(feature = "online", not(target_arch = "wasm32")))]
+mod online;
+#[cfg(all(feature = "online", not(target_arch = "wasm32")))]
+pub use online::*;
+
+use crate::util;
+use eyre::{Error, Result};
+use std::{env, fs, path::PathBuf, str::FromStr};
+
+/// A source of a smart contract ABI.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum Source {
+    /// A raw ABI string.
+    String(String),
+
+    /// An ABI located on the local file system.
+    Local(PathBuf),
+
+    /// An address of a smart contract address verified at a [supported blockchain explorer].
+    ///
+    /// [supported blockchain explorer]: Explorer
+    #[cfg(feature = "online")]
+    Explorer(Explorer, ethers_core::types::Address),
+
+    /// The package identifier of an npm package with a path to a Truffle artifact or ABI to be
+    /// retrieved from `unpkg.io`.
+    #[cfg(feature = "online")]
+    Npm(String),
+
+    /// An ABI to be retrieved over HTTP(S).
+    #[cfg(feature = "online")]
+    Http(url::Url),
+}
+
+impl FromStr for Source {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        Source::parse(s)
+    }
+}
+
+impl Source {
+    /// Parses an ABI from a source.
+    ///
+    /// Contract ABIs can be retrieved from the local filesystem or online
+    /// from `etherscan.io`. They can also be provided in-line. This method parses
+    /// ABI source URLs and accepts the following:
+    ///
+    /// - raw ABI JSON
+    ///
+    /// - `relative/path/to/Contract.json`: a relative path to an ABI JSON file.
+    /// This relative path is rooted in the current working directory.
+    /// To specify the root for relative paths, use `Source::with_root`.
+    ///
+    /// - `/absolute/path/to/Contract.json` or `file:///absolute/path/to/Contract.json`: an absolute
+    ///   path or file URL to an ABI JSON file.
+    ///
+    /// - `http(s)://...` an HTTP url to a contract ABI.
+    ///
+    /// - `<name>:0xXX..XX` or `https://<domain>/address/0xXX..XX`: an address or URL of a verified
+    ///   contract on a blockchain explorer. <br> Supported explorers: `etherscan`, `bscscan`,
+    ///   `polygonscan`, `snowtrace`.
+    /// - `npm:@org/package@1.0.0/path/to/contract.json` an npmjs package with an optional version
+    ///   and path (defaulting to the latest version and `index.js`). The contract ABI will be
+    ///   retrieved through `unpkg.io`.
+    pub fn parse(source: impl AsRef<str>) -> Result<Self> {
+        let source = source.as_ref().trim();
+        match source.chars().next() {
+            Some('[' | '{') => Ok(Self::String(source.to_string())),
+
+            #[cfg(not(feature = "online"))]
+            _ => Ok(Self::local(source)?),
+
+            #[cfg(feature = "online")]
+            Some('/') => return Ok(Self::local(source)?),
+            #[cfg(feature = "online")]
+            _ => Self::parse_online(source),
+        }
+    }
+
+    /// Creates a local filesystem source from a path string.
+    pub fn local(path: impl AsRef<str>) -> Result<Self> {
+        // resolve env vars
+        let path = path.as_ref().trim_start_matches("file://");
+        let mut resolved = util::resolve_path(path)?;
+
+        if resolved.is_relative() {
+            // use manifest dir if it exists
+            if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
+                let new = PathBuf::from(manifest_dir).join(&resolved);
+                if new.exists() {
+                    resolved = new;
+                }
+            }
+        }
+
+        // canonicalize
+        if let Ok(canonicalized) = dunce::canonicalize(&resolved) {
+            resolved = canonicalized;
+        } else {
+            return Err(eyre::eyre!("File does not exist: {}", resolved.display()))
+        }
+
+        Ok(Source::Local(resolved))
+    }
+
+    /// Retrieves the source JSON of the artifact this will either read the JSON from the file
+    /// system or retrieve a contract ABI from the network depending on the source type.
+    pub fn get(&self) -> Result<String> {
+        match self {
+            Self::Local(path) => Ok(fs::read_to_string(path)?),
+            Self::String(abi) => Ok(abi.clone()),
+
+            #[cfg(feature = "online")]
+            _ => {
+                cfg_if::cfg_if! {
+                    if #[cfg(target_arch = "wasm32")] {
+                        Err(eyre::eyre!("Online ABI locations are currently unsupported for WASM builds."))
+                    } else {
+                        self.get_online()
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn parse_source() {
+        let rel = "../tests/solidity-contracts/console.json";
+        let abs = concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/solidity-contracts/console.json");
+        let abs_url = concat!(
+            "file://",
+            env!("CARGO_MANIFEST_DIR"),
+            "/../tests/solidity-contracts/console.json"
+        );
+        let exp = Source::Local(Path::new(rel).canonicalize().unwrap());
+        assert_eq!(Source::parse(rel).unwrap(), exp);
+        assert_eq!(Source::parse(abs).unwrap(), exp);
+        assert_eq!(Source::parse(abs_url).unwrap(), exp);
+
+        // ABI
+        let source = r#"[{"constant":true,"inputs":[],"name":"name","outputs":[{"name":"name","type":"string"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"symbol","type":"string"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"decimals","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"value","type":"uint256"}],"name":"approve","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"totalSupply","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"from","type":"address"},{"name":"to","type":"address"},{"name":"value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"who","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"to","type":"address"},{"name":"value","type":"uint256"}],"name":"transfer","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"payable":false,"type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"}]"#;
+        let parsed = Source::parse(source).unwrap();
+        assert_eq!(parsed, Source::String(source.to_owned()));
+
+        // Hardhat-like artifact
+        let source = format!(
+            r#"{{"_format": "hh-sol-artifact-1", "contractName": "Verifier", "sourceName": "contracts/verifier.sol", "abi": {source}, "bytecode": "0x", "deployedBytecode": "0x", "linkReferences": {{}}, "deployedLinkReferences": {{}}}}"#,
+        );
+        let parsed = Source::parse(&source).unwrap();
+        assert_eq!(parsed, Source::String(source));
+    }
+}
