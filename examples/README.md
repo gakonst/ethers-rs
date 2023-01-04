@@ -41,7 +41,7 @@
   - [x] Quorum
   - [x] Retry
   - [x] RW
-  - [ ] WS
+  - [x] WS
 - [ ] Queries
   - [ ] Blocks
   - [x] Contracts

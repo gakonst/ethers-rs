@@ -16,7 +16,7 @@ async fn main() -> eyre::Result<()> {
 }
 
 async fn create_instance() -> eyre::Result<()> {
-    // An Http provider can be mainly created from an http(s) URI.
+    // An Http provider can be created from an http(s) URI.
     // In case of https you must add the "rustls" or "openssl" feature
     // to the ethers library dependency in `Cargo.toml`.
     let _provider = Provider::<Http>::try_from(RPC_URL)?;

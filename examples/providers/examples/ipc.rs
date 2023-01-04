@@ -10,11 +10,10 @@ async fn main() -> eyre::Result<()> {
 
     // We instantiate the provider using the path of a local Unix domain socket
     // --------------------------------------------------------------------------------
-    // NOTE: Although the IPC transport is designed to support push notifications, we still need to
-    // specify a polling interval since only the `subscribe` family of RPC calls (such as
-    // transactions, blocks, and events) support push notifications in Ethereum's RPC API. Other RPC
-    // calls do not use push notifications, so even though the IPC transport is capable of push, we
-    // still need to use repeated polling for many operations.
+    // NOTE: The IPC transport supports push notifications, but we still need to specify a polling
+    // interval because only subscribe RPC calls (e.g., transactions, blocks, events) support push
+    // notifications in Ethereum's RPC API. For other calls we must use repeated polling for many
+    // operations even with the IPC transport.
     let provider = Provider::connect_ipc("~/.ethereum/geth.ipc")
         .await?
         .interval(std::time::Duration::from_millis(2000));

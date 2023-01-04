@@ -13,7 +13,7 @@
   - [Quorum]()
   - [Retry](./providers/retry.md)
   - [RW]()
-  - [WS]()
+  - [WebSocket](./providers/ws.md)
 - [Middleware]()
   - [Builder]()
   - [Create custom middleware]()
