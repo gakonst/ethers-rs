@@ -180,6 +180,7 @@ pub struct Geth {
     ipc_path: Option<PathBuf>,
     data_dir: Option<PathBuf>,
     chain_id: Option<u64>,
+    insecure_unlock: bool,
     genesis: Option<Genesis>,
     mode: GethMode,
 }
@@ -259,6 +260,13 @@ impl Geth {
         self
     }
 
+    /// Allow geth to unlock accounts when rpc apis are open.
+    #[must_use]
+    pub fn insecure_unlock(mut self) -> Self {
+        self.insecure_unlock = true;
+        self
+    }
+
     /// Disable discovery for the geth instance.
     ///
     /// This will put the geth instance into non-dev mode, discarding any previously set dev-mode
@@ -327,6 +335,11 @@ impl Geth {
         cmd.arg("--ws");
         cmd.arg("--ws.port").arg(port.to_string());
         cmd.arg("--ws.api").arg(API);
+
+        // pass insecure unlock flag if set
+        if self.insecure_unlock {
+            cmd.arg("--allow-insecure-unlock");
+        }
 
         // Set the port for authenticated APIs
         cmd.arg("--authrpc.port").arg(authrpc_port.to_string());
