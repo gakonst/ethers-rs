@@ -813,6 +813,11 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getProof", [from, locations, block]).await
     }
 
+    /// Returns an indication if this node is currently mining.
+    async fn mining(&self) -> Result<bool, Self::Error> {
+        self.request("eth_mining", ()).await
+    }
+
     // Admin namespace
 
     /// Requests adding the given peer, returning a boolean representing whether or not the peer
@@ -853,6 +858,23 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn remove_trusted_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
         let enode_url = utils::serialize(&enode_url);
         self.request("admin_removeTrustedPeer", [enode_url]).await
+    }
+
+    // Miner namespace
+
+    /// Starts the miner with the given number of threads. If threads is nil, the number of workers
+    /// started is equal to the number of logical CPUs that are usable by this process. If mining
+    /// is already running, this method adjust the number of threads allowed to use and updates the
+    /// minimum price required by the transaction pool.
+    async fn start_mining(&self, threads: Option<usize>) -> Result<(), Self::Error> {
+        let threads = utils::serialize(&threads);
+        self.request("miner_start", [threads]).await
+    }
+
+    /// Stop terminates the miner, both at the consensus engine level as well as at the block
+    /// creation level.
+    async fn stop_mining(&self) -> Result<(), Self::Error> {
+        self.request("miner_stop", ()).await
     }
 
     ////// Ethereum Naming Service

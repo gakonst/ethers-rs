@@ -502,6 +502,11 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().get_proof(from, locations, block).await.map_err(FromErr::from)
     }
 
+    /// Returns an indication if this node is currently mining.
+    async fn mining(&self) -> Result<bool, Self::Error> {
+        self.inner().mining().await.map_err(FromErr::from)
+    }
+
     // Admin namespace
 
     async fn add_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
@@ -526,6 +531,22 @@ pub trait Middleware: Sync + Send + Debug {
 
     async fn remove_trusted_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
         self.inner().remove_trusted_peer(enode_url).await.map_err(FromErr::from)
+    }
+
+    // Miner namespace
+
+    /// Starts the miner with the given number of threads. If threads is nil, the number of workers
+    /// started is equal to the number of logical CPUs that are usable by this process. If mining
+    /// is already running, this method adjust the number of threads allowed to use and updates the
+    /// minimum price required by the transaction pool.
+    async fn start_mining(&self, threads: Option<usize>) -> Result<(), Self::Error> {
+        self.inner().start_mining(threads).await.map_err(FromErr::from)
+    }
+
+    /// Stop terminates the miner, both at the consensus engine level as well as at
+    /// the block creation level.
+    async fn stop_mining(&self) -> Result<(), Self::Error> {
+        self.inner().stop_mining().await.map_err(FromErr::from)
     }
 
     // Mempool inspection for Geth's API
