@@ -1684,6 +1684,7 @@ version = "1.0.2"
 dependencies = [
  "ethers",
  "eyre",
+ "reqwest",
  "serde",
  "serde_json",
  "tokio",

@@ -7,13 +7,13 @@
 
 # Reference guide
 - [Providers]()
-  - [Http]()
-  - [IPC]()
+  - [Http](./providers/http.md)
+  - [IPC](./providers/ipc.md)
   - [Mock]()
   - [Quorum]()
-  - [Retry]()
+  - [Retry](./providers/retry.md)
   - [RW]()
-  - [WS]()
+  - [WebSocket](./providers/ws.md)
 - [Middleware]()
   - [Builder]()
   - [Create custom middleware]()
