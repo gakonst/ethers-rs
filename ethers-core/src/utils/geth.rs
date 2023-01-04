@@ -5,7 +5,7 @@ use std::{
     fs::{create_dir, File},
     io::{BufRead, BufReader},
     path::PathBuf,
-    process::{Child, Command, Stdio},
+    process::{Child, ChildStderr, Command, Stdio},
     time::{Duration, Instant},
 };
 
@@ -76,7 +76,17 @@ impl GethInstance {
         &self.data_dir
     }
 
+    /// Takes the stderr contained in the child process.
+    ///
+    /// This leaves a `None` in its place, so calling methods that require a stderr to be present
+    /// will fail if called after this.
+    pub fn stderr(&mut self) -> Result<ChildStderr, GethInstanceError> {
+        self.pid.stderr.take().ok_or(GethInstanceError::NoStderr)
+    }
+
     /// Blocks until geth adds the specified peer, using 20s as the timeout.
+    ///
+    /// Requires the stderr to be present in the `GethInstance`.
     pub fn wait_to_add_peer(&mut self, id: H256) -> Result<(), GethInstanceError> {
         let mut stderr = self.pid.stderr.as_mut().ok_or(GethInstanceError::NoStderr)?;
         let mut err_reader = BufReader::new(&mut stderr);
