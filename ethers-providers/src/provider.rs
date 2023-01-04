@@ -825,12 +825,16 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     // PR: https://github.com/ethereum/go-ethereum/pull/26390
 
     /// Sends the given key to the node to be encrypted with the provided passphrase and stored.
+    ///
+    /// The key represents a secp256k1 private key and should be 32 bytes.
     async fn import_raw_key(
         &self,
         private_key: Bytes,
         passphrase: String,
     ) -> Result<Address, ProviderError> {
-        let private_key = utils::serialize(&private_key);
+        // private key should not be prefixed with 0x - it is also up to the user to pass in a key
+        // of the correct length
+        let private_key = utils::serialize(&private_key.0);
         let passphrase = utils::serialize(&passphrase);
         self.request("personal_importRawKey", [private_key, passphrase]).await
     }
