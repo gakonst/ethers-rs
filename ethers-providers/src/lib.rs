@@ -507,6 +507,25 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().mining().await.map_err(FromErr::from)
     }
 
+    // Personal namespace
+
+    async fn import_raw_key(
+        &self,
+        private_key: Bytes,
+        passphrase: String,
+    ) -> Result<Address, ProviderError> {
+        self.inner().import_raw_key(private_key, passphrase).await.map_err(FromErr::from)
+    }
+
+    async fn unlock_account<T: Into<Address> + Send + Sync>(
+        &self,
+        account: T,
+        passphrase: String,
+        duration: Option<u64>,
+    ) -> Result<bool, ProviderError> {
+        self.inner().unlock_account(account, passphrase, duration).await.map_err(FromErr::from)
+    }
+
     // Admin namespace
 
     async fn add_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
