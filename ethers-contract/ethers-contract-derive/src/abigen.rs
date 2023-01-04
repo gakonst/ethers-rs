@@ -1,14 +1,13 @@
-//! Implementation of procedural macro for generating type-safe bindings to an
-//! ethereum smart contract.
+//! Implementation of procedural macro for generating type-safe bindings to an Ethereum smart
+//! contract.
+
 use crate::spanned::{ParseInner, Spanned};
-
-use ethers_contract_abigen::Abigen;
-use ethers_core::abi::{Function, FunctionExt, Param, StateMutability};
-
 use ethers_contract_abigen::{
     contract::{Context, ExpandedContract},
     multi::MultiExpansion,
+    Abigen,
 };
+use ethers_core::abi::{Function, FunctionExt, Param, StateMutability};
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::ToTokens;
 use std::{collections::HashSet, error::Error};
@@ -75,9 +74,9 @@ impl ContractArgs {
                 Parameter::Methods(methods) => methods
                     .into_iter()
                     .fold(builder, |builder, m| builder.add_method_alias(m.signature, m.alias)),
-                Parameter::EventDerives(derives) => derives
-                    .into_iter()
-                    .fold(builder, |builder, derive| builder.add_event_derive(derive)),
+                Parameter::Derives(derives) => {
+                    derives.into_iter().fold(builder, |builder, derive| builder.add_derive(derive))
+                }
             };
         }
 
@@ -133,7 +132,7 @@ impl ParseInner for ContractArgs {
 #[cfg_attr(test, derive(Debug, Eq, PartialEq))]
 enum Parameter {
     Methods(Vec<Method>),
-    EventDerives(Vec<String>),
+    Derives(Vec<String>),
 }
 
 impl Parse for Parameter {
@@ -171,7 +170,7 @@ impl Parse for Parameter {
 
                 Parameter::Methods(methods)
             }
-            "event_derives" => {
+            "derives" | "event_derives" => {
                 let content;
                 parenthesized!(content in input);
                 let derives = content
@@ -179,7 +178,7 @@ impl Parse for Parameter {
                     .into_iter()
                     .map(|path| path.to_token_stream().to_string())
                     .collect();
-                Parameter::EventDerives(derives)
+                Parameter::Derives(derives)
             }
             _ => {
                 return Err(ParseError::new(
@@ -295,7 +294,7 @@ mod tests {
                 ContractArgs {
                     name: "TestContract".to_string(),
                     abi: "path/to/abi.json".to_string(),
-                    parameters: vec![Parameter::EventDerives(vec![
+                    parameters: vec![Parameter::Derives(vec![
                         "serde :: Deserialize".into(),
                         "serde :: Serialize".into(),
                     ])],
@@ -303,7 +302,7 @@ mod tests {
                 ContractArgs {
                     name: "TestContract2".to_string(),
                     abi: "other.json".to_string(),
-                    parameters: vec![Parameter::EventDerives(vec![
+                    parameters: vec![Parameter::Derives(vec![
                         "serde :: Deserialize".into(),
                         "serde :: Serialize".into(),
                     ])],
@@ -341,7 +340,7 @@ mod tests {
                 ContractArgs {
                     name: "TestContract2".to_string(),
                     abi: "other.json".to_string(),
-                    parameters: vec![Parameter::EventDerives(vec![
+                    parameters: vec![Parameter::Derives(vec![
                         "serde :: Deserialize".into(),
                         "serde :: Serialize".into(),
                     ])],
@@ -372,7 +371,7 @@ mod tests {
                 ContractArgs {
                     name: "TestContract2".to_string(),
                     abi: "other.json".to_string(),
-                    parameters: vec![Parameter::EventDerives(vec![
+                    parameters: vec![Parameter::Derives(vec![
                         "serde :: Deserialize".into(),
                         "serde :: Serialize".into(),
                     ])],
@@ -423,7 +422,7 @@ mod tests {
                         method("myMethod(uint256,bool)", "my_renamed_method"),
                         method("myOtherMethod()", "my_other_renamed_method"),
                     ]),
-                    Parameter::EventDerives(vec![
+                    Parameter::Derives(vec![
                         "Asdf".into(),
                         "a :: B".into(),
                         "a :: b :: c :: D".into()
