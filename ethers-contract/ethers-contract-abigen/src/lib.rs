@@ -264,16 +264,16 @@ impl ContractBindings {
         self.write_to_file(file)
     }
 
-    /// Generate the default module name (snake case of the contract name).
-    pub fn module_name(&self) -> String {
-        util::safe_module_name(&self.name)
-    }
-
     /// Converts the bindings into its underlying token stream. This allows it
     /// to be used within a procedural macro.
     #[deprecated = "Use ::quote::ToTokens::into_token_stream instead"]
     pub fn into_tokens(self) -> TokenStream {
         self.tokens
+    }
+
+    /// Generate the default module name (snake case of the contract name).
+    pub fn module_name(&self) -> String {
+        util::safe_module_name(&self.name)
     }
 
     /// Generate the default file name of the module.
