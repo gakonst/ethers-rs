@@ -16,7 +16,6 @@ mod misc;
 pub use misc::*;
 pub mod lowfidelity;
 pub mod util;
-pub mod visitor;
 
 /// Types for the Yul AST.
 ///
