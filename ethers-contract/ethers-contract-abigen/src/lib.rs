@@ -75,7 +75,7 @@ pub struct Abigen {
     /// Manually specified contract method aliases.
     method_aliases: HashMap<String, String>,
 
-    /// Manually specified `derive` macros added to event structs and enums.
+    /// Manually specified `derive` macros added to all structs and enums.
     derives: Vec<String>,
 
     /// Manually specified event name aliases.
