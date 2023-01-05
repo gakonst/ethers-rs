@@ -14,6 +14,8 @@ async fn nonce_manager() {
     let address = accounts[0];
     let to = accounts[1];
 
+    // the nonce manager must be over the Client so that it overrides the nonce
+    // before the client gets it
     let provider = provider.nonce_manager(address);
 
     let nonce = provider
