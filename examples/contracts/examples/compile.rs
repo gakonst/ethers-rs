@@ -27,7 +27,7 @@ fn main() -> Result<()> {
     if let Some(output_path) = args.next() {
         bindings.write_to_file(output_path)?;
     } else {
-        bindings.write(std::io::stdout())?;
+        bindings.write(&mut std::io::stdout())?;
     }
 
     Ok(())
