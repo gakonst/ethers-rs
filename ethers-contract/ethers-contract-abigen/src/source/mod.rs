@@ -1,17 +1,19 @@
-//! Module implements reading of contract artifacts from various sources.
+//! Parse ABI artifacts from different sources.
 
 // TODO: Support `online` for WASM
 
 #[cfg(all(feature = "online", not(target_arch = "wasm32")))]
 mod online;
 #[cfg(all(feature = "online", not(target_arch = "wasm32")))]
-pub use online::*;
+pub use online::Explorer;
 
 use crate::util;
 use eyre::{Error, Result};
 use std::{env, fs, path::PathBuf, str::FromStr};
 
-/// A source of a smart contract ABI.
+/// A source of an Ethereum smart contract's ABI.
+///
+/// See [`parse`][#method.parse] for more information.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Source {
     /// A raw ABI string.
@@ -47,27 +49,31 @@ impl FromStr for Source {
 impl Source {
     /// Parses an ABI from a source.
     ///
-    /// Contract ABIs can be retrieved from the local filesystem or online
-    /// from `etherscan.io`. They can also be provided in-line. This method parses
-    /// ABI source URLs and accepts the following:
+    /// This method accepts the following:
     ///
-    /// - raw ABI JSON
+    /// - `{ ... }` or `[ ... ]`: A raw or human-readable ABI object or array of objects.
     ///
-    /// - `relative/path/to/Contract.json`: a relative path to an ABI JSON file.
-    /// This relative path is rooted in the current working directory.
-    /// To specify the root for relative paths, use `Source::with_root`.
+    /// - `relative/path/to/Contract.json`: a relative path to an ABI JSON file. This relative path
+    ///   is rooted in the current working directory.
     ///
     /// - `/absolute/path/to/Contract.json` or `file:///absolute/path/to/Contract.json`: an absolute
     ///   path or file URL to an ABI JSON file.
     ///
-    /// - `http(s)://...` an HTTP url to a contract ABI.
+    /// If the `online` feature is enabled:
     ///
-    /// - `<name>:0xXX..XX` or `https://<domain>/address/0xXX..XX`: an address or URL of a verified
-    ///   contract on a blockchain explorer. <br> Supported explorers: `etherscan`, `bscscan`,
-    ///   `polygonscan`, `snowtrace`.
-    /// - `npm:@org/package@1.0.0/path/to/contract.json` an npmjs package with an optional version
-    ///   and path (defaulting to the latest version and `index.js`). The contract ABI will be
-    ///   retrieved through `unpkg.io`.
+    /// - `npm:@org/package@1.0.0/path/to/contract.json`: A npmjs package with an optional version
+    ///   and path (defaulting to the latest version and `index.js`), retrieved through `unpkg.io`.
+    ///
+    /// - `http://...`: an HTTP URL to a contract ABI. <br> Note: either the `rustls` or `openssl`
+    ///   feature must be enabled to support *HTTPS* URLs.
+    ///
+    /// - `<name>:<address>`, `<chain>:<address>` or `<url>/.../<address>`: an address or URL of a
+    ///   verified contract on a blockchain explorer. <br> Supported explorers and their respective
+    ///   chain:
+    ///   - `etherscan`   -> `mainnet`
+    ///   - `bscscan`     -> `bsc`
+    ///   - `polygonscan` -> `polygon`
+    ///   - `snowtrace`   -> `avalanche`
     pub fn parse(source: impl AsRef<str>) -> Result<Self> {
         let source = source.as_ref().trim();
         match source.chars().next() {
@@ -90,7 +96,7 @@ impl Source {
         let mut resolved = util::resolve_path(path)?;
 
         if resolved.is_relative() {
-            // use manifest dir if it exists
+            // set root at manifest dir, if the path exists
             if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
                 let new = PathBuf::from(manifest_dir).join(&resolved);
                 if new.exists() {

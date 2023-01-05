@@ -6,6 +6,7 @@ use eyre::{Context, Result};
 use std::{fmt, str::FromStr};
 use url::Url;
 
+/// An [etherscan](https://etherscan.io)-like blockchain explorer.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Explorer {
     #[default]
@@ -36,16 +37,18 @@ impl fmt::Display for Explorer {
 }
 
 impl Explorer {
-    pub fn from_chain(chain: Chain) -> Option<Self> {
+    /// Returns the chain's Explorer, if it is known.
+    pub fn from_chain(chain: Chain) -> Result<Self> {
         match chain {
-            Chain::Mainnet => Some(Self::Etherscan),
-            Chain::BinanceSmartChain => Some(Self::Bscscan),
-            Chain::Polygon => Some(Self::Polygonscan),
-            Chain::Avalanche => Some(Self::Snowtrace),
-            _ => None,
+            Chain::Mainnet => Ok(Self::Etherscan),
+            Chain::BinanceSmartChain => Ok(Self::Bscscan),
+            Chain::Polygon => Ok(Self::Polygonscan),
+            Chain::Avalanche => Ok(Self::Snowtrace),
+            _ => Err(eyre::eyre!("Provided chain has no known blockchain explorer")),
         }
     }
 
+    /// Returns the Explorer's chain. If it has multiple, the main one is returned.
     pub const fn chain(&self) -> Chain {
         match self {
             Self::Etherscan => Chain::Mainnet,
@@ -55,6 +58,7 @@ impl Explorer {
         }
     }
 
+    /// Creates an `ethers-etherscan` client using this Explorer's settings.
     pub fn client(self, api_key: Option<String>) -> Result<Client> {
         let chain = self.chain();
         let client = match api_key {
@@ -83,33 +87,38 @@ impl Source {
     pub(super) fn parse_online(source: &str) -> Result<Self> {
         if let Ok(url) = Url::parse(source) {
             match url.scheme() {
+                // file://<path>
                 "file" => Self::local(source),
-                "http" | "https" => {
-                    if let Some(host) = url.host_str() {
-                        Self::_explorer(host, &url)
-                    } else {
-                        Ok(Self::Http(url))
-                    }
-                }
-                "npm" => Ok(Self::npm(source)),
-                scheme => Self::_explorer(scheme, &url)
+
+                // npm:<npm package>
+                "npm" => Ok(Self::npm(url.path())),
+
+                // try first: <explorer url>/.../<address>
+                // then: any http url
+                "http" | "https" => Ok(url
+                    .host_str()
+                    .and_then(|host| Self::from_explorer(host, &url).ok())
+                    .unwrap_or_else(|| Self::Http(url))),
+
+                // custom scheme: <explorer or chain>:<address>
+                // fallback: local fs path
+                scheme => Self::from_explorer(scheme, &url)
                     .or_else(|_| Self::local(source))
                     .wrap_err("Invalid path or URL"),
             }
         } else {
+            // not a valid URL so fallback to path
             Self::local(source)
         }
     }
 
-    fn _explorer(explorer: &str, url: &Url) -> Result<Self> {
-        let explorer: Explorer = explorer.parse()?;
-        let address = url
-            .as_str()
-            .rsplit('/')
-            .next()
-            .ok_or_else(|| eyre::eyre!("Invalid URL: {url}"))?
-            .parse()
-            .wrap_err("Invalid address")?;
+    /// Parse `s` as an explorer ("etherscan"), explorer domain ("etherscan.io") or a chain that has
+    /// an explorer ("mainnet").
+    ///
+    /// The URL can be either <explorer>:<address> or <explorer_url>/.../<address>
+    fn from_explorer(s: &str, url: &Url) -> Result<Self> {
+        let explorer: Explorer = s.parse().or_else(|_| Explorer::from_chain(s.parse()?))?;
+        let address = last_segment_address(url).ok_or_else(|| eyre::eyre!("Invalid URL: {url}"))?;
         Ok(Self::Explorer(explorer, address))
     }
 
@@ -120,8 +129,7 @@ impl Source {
 
     /// Creates an Etherscan source from an address string.
     pub fn explorer(chain: Chain, address: Address) -> Result<Self> {
-        let explorer = Explorer::from_chain(chain)
-            .ok_or_else(|| eyre::eyre!("Provided chain has no known blockchain explorer"))?;
+        let explorer = Explorer::from_chain(chain)?;
         Ok(Self::Explorer(explorer, address))
     }
 
@@ -133,28 +141,23 @@ impl Source {
     #[inline]
     pub(super) fn get_online(&self) -> Result<String> {
         match self {
-            Self::Http(url) => get_http_contract(url),
+            Self::Http(url) => {
+                util::http_get(url.clone()).wrap_err("Failed to retrieve ABI from URL")
+            }
             Self::Explorer(explorer, address) => explorer.get(*address),
-            Self::Npm(package) => get_npm_contract(package),
+            Self::Npm(package) => {
+                // TODO: const?
+                let unpkg = Url::parse("https://unpkg.io/").unwrap();
+                let url = unpkg.join(package).wrap_err("Invalid NPM package")?;
+                util::http_get(url).wrap_err("Failed to retrieve ABI from NPM package")
+            }
             _ => unreachable!(),
         }
     }
 }
 
-/// Retrieves a Truffle artifact or ABI from an HTTP URL.
-fn get_http_contract(url: &Url) -> Result<String> {
-    let json = util::http_get(url.as_str())
-        .wrap_err_with(|| format!("failed to retrieve JSON from {url}"))?;
-    Ok(json)
-}
-
-/// Retrieves a Truffle artifact or ABI from an npm package through `unpkg.io`.
-fn get_npm_contract(package: &str) -> Result<String> {
-    let unpkg_url = format!("https://unpkg.io/{package}");
-    let json = util::http_get(&unpkg_url)
-        .wrap_err_with(|| format!("failed to retrieve JSON from for npm package {package}"))?;
-
-    Ok(json)
+fn last_segment_address(url: &Url) -> Option<Address> {
+    url.path().rsplit('/').next()?.parse().ok()
 }
 
 #[cfg(test)]
@@ -174,42 +177,34 @@ mod tests {
         );
 
         let explorers = &[
-            (
-                "mainnet:0x0102030405060708091011121314151617181920",
-                "etherscan:0x0102030405060708091011121314151617181920",
-                "https://etherscan.io/address/0x0102030405060708091011121314151617181920",
-                Chain::Mainnet,
-            ),
-            (
-                "bsc:0x0102030405060708091011121314151617181920",
-                "bscscan:0x0102030405060708091011121314151617181920",
-                "https://bscscan.com/address/0x0102030405060708091011121314151617181920",
-                Chain::BinanceSmartChain,
-            ),
-            (
-                "polygon:0x0102030405060708091011121314151617181920",
-                "polygonscan:0x0102030405060708091011121314151617181920",
-                "https://polygonscan.com/address/0x0102030405060708091011121314151617181920",
-                Chain::Polygon,
-            ),
-            (
-                "avalanche:0x0102030405060708091011121314151617181920",
-                "snowtrace:0x0102030405060708091011121314151617181920",
-                "https://snowtrace.io/address/0x0102030405060708091011121314151617181920",
-                Chain::Avalanche,
-            ),
+            ("mainnet:", "etherscan:", "https://etherscan.io/address/", Chain::Mainnet),
+            ("bsc:", "bscscan:", "https://bscscan.com/address/", Chain::BinanceSmartChain),
+            ("polygon:", "polygonscan:", "https://polygonscan.com/address/", Chain::Polygon),
+            ("avalanche:", "snowtrace:", "https://snowtrace.io/address/", Chain::Avalanche),
         ];
 
         let address: Address = "0x0102030405060708091011121314151617181920".parse().unwrap();
         for &(chain_s, scan_s, url_s, chain) in explorers {
-            let a = Source::parse(chain_s).unwrap();
-            let b = Source::parse(scan_s).unwrap();
-            let c = Source::parse(url_s).unwrap();
             let expected = Source::explorer(chain, address).unwrap();
-            assert!(
-                a == b && b == c && c == expected,
-                "Expected: {expected:?}; Got: {chain_s} => {a:?}, {scan_s} => {b:?}, {url_s} => {c:?}"
-            );
+
+            let tests2 = [chain_s, scan_s, url_s].map(|s| s.to_string() + &format!("{address:?}"));
+            let tests2 =
+                tests2.map(|s| Source::parse(s)).into_iter().chain(Some(Ok(expected.clone())));
+            let tests2 = tests2.collect::<Result<Vec<_>>>().unwrap();
+
+            for slice in tests2.windows(2) {
+                let (a, b) = (&slice[0], &slice[1]);
+                if a != b {
+                    panic!("Expected: {expected:?}; Got: {a:?} | {b:?}");
+                }
+            }
         }
+    }
+
+    #[test]
+    fn get_mainnet_contract() {
+        let source = Source::parse("mainnet:0x6b175474e89094c44da98b954eedeac495271d0f").unwrap();
+        let abi = source.get().unwrap();
+        assert!(!abi.is_empty());
     }
 }

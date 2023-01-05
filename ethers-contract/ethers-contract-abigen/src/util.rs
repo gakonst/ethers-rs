@@ -95,7 +95,7 @@ pub fn expand_derives(derives: &[Path]) -> TokenStream {
 
 /// Perform a blocking HTTP GET request and return the contents of the response as a String.
 #[cfg(all(feature = "online", not(target_arch = "wasm32")))]
-pub fn http_get(url: &str) -> Result<String> {
+pub fn http_get(url: impl reqwest::IntoUrl) -> Result<String> {
     Ok(reqwest::blocking::get(url)?.text()?)
 }
 
