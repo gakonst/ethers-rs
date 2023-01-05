@@ -272,7 +272,7 @@ impl Context {
         }
 
         let event_derives = args
-            .event_derives
+            .derives
             .iter()
             .map(|derive| syn::parse_str::<Path>(derive))
             .collect::<Result<Vec<_>, _>>()
