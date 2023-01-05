@@ -50,6 +50,7 @@ pub enum Chain {
     Arbitrum = 42161,
     ArbitrumTestnet = 421611,
     ArbitrumGoerli = 421613,
+    ArbitrumNova = 42170,
 
     Cronos = 25,
     CronosTestnet = 338,
@@ -205,7 +206,7 @@ impl Chain {
         use Chain::*;
 
         let ms = match self {
-            Arbitrum | ArbitrumTestnet | ArbitrumGoerli => 1_300,
+            Arbitrum | ArbitrumTestnet | ArbitrumGoerli | ArbitrumNova => 1_300,
             Mainnet | Optimism => 13_000,
             Polygon | PolygonMumbai => 2_100,
             Moonbeam | Moonriver => 12_500,
@@ -276,6 +277,10 @@ impl Chain {
                 "https://goerli-rollup-explorer.arbitrum.io/api",
                 "https://goerli-rollup-explorer.arbitrum.io",
             ),
+            ArbitrumNova => (
+              "https://api-nova.arbiscan.io/api",
+              "https://nova.arbiscan.io/",
+            ),
             Cronos => ("https://api.cronoscan.com/api", "https://cronoscan.com"),
             CronosTestnet => {
                 ("https://api-testnet.cronoscan.com/api", "https://testnet.cronoscan.com")
@@ -340,6 +345,7 @@ impl Chain {
             Arbitrum |
             ArbitrumTestnet |
             ArbitrumGoerli |
+            ArbitrumNova |
             Rsk |
             Oasis |
             Emerald |
