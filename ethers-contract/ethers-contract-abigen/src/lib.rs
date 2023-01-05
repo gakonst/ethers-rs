@@ -1,9 +1,11 @@
 //! # Abigen
 //!
-//! Generate type-safe bindings to Ethereum smart contracts.
+//! Programmatically generate type-safe Rust bindings for Ethereum smart contracts.
 //!
-//! This crate is intended to be used either indirectly with the `abigen` procedural macro or
-//! directly from a build script / CLI.
+//! This crate is intended to be used either indirectly with the [`abigen` procedural macro][abigen]
+//! or directly from a build script / CLI.
+//!
+//! [abigen]: https://docs.rs/ethers/latest/ethers/contract/macro.abigen.html
 
 #![deny(rustdoc::broken_intra_doc_links, missing_docs, unsafe_code)]
 
@@ -38,7 +40,7 @@ use proc_macro2::TokenStream;
 use quote::ToTokens;
 use std::{collections::HashMap, fmt, fs, io, path::Path};
 
-/// Programmatically generate type-safe Rust bindings from a Solidity smart contract's ABI.
+/// Programmatically generate type-safe Rust bindings for an Ethereum smart contract from its ABI.
 ///
 /// For all the supported ABI sources, see [Source].
 ///
