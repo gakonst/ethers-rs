@@ -10,8 +10,8 @@ use std::{convert::TryFrom, sync::Arc, time::Duration};
 
 // Generate the type-safe contract bindings by providing the json artifact
 // *Note*: this requires a `bytecode` and `abi` object in the `greeter.json` artifact:
-// `{"abi": [..], "bin": "..."}`  or `{"abi": [..], "bytecode": {"object": "..."}}`
-// this will embedd the bytecode in a variable `GREETER_BYTECODE`
+// `{"abi": [..], "bin": "..."}` , `{"abi": [..], "bytecode": {"object": "..."}}` or
+// `{"abi": [..], "bytecode": "..."}` this will embedd the bytecode in a variable `GREETER_BYTECODE`
 abigen!(Greeter, "ethers-contract/tests/solidity-contracts/greeter.json",);
 
 #[tokio::main]
