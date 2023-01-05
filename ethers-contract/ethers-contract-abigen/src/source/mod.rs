@@ -22,9 +22,7 @@ pub enum Source {
     /// An ABI located on the local file system.
     Local(PathBuf),
 
-    /// An address of a smart contract address verified at a [supported blockchain explorer].
-    ///
-    /// [supported blockchain explorer]: Explorer
+    /// An address of a smart contract address verified at a supported blockchain explorer.
     #[cfg(feature = "online")]
     Explorer(Explorer, ethers_core::types::Address),
 
