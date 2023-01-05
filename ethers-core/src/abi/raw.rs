@@ -147,8 +147,10 @@ impl<'de> Visitor<'de> for AbiObjectVisitor {
         let mut bytecode = None;
 
         #[derive(Deserialize)]
-        struct BytecodeObject {
-            object: Bytes,
+        #[serde(untagged)]
+        enum Bytecode {
+            Object { object: Bytes },
+            Bytes(Bytes),
         }
 
         struct DeserializeBytes(Bytes);
@@ -169,9 +171,12 @@ impl<'de> Visitor<'de> for AbiObjectVisitor {
                 }
                 "bytecode" | "byteCode" => {
                     bytecode = map
-                        .next_value::<BytecodeObject>()
+                        .next_value::<Bytecode>()
                         .ok()
-                        .map(|obj| obj.object)
+                        .map(|obj| match obj {
+                            Bytecode::Object { object } => object,
+                            Bytecode::Bytes(bytes) => bytes,
+                        })
                         .filter(|bytecode| !bytecode.0.is_empty());
                 }
                 "bin" => {
@@ -261,6 +266,9 @@ mod tests {
         assert_has_bytecode(&s);
 
         let s = format!(r#"{{"abi": {abi_str}, "bytecode" : {{ "object": "{code}" }} }}"#);
+        assert_has_bytecode(&s);
+
+        let s = format!(r#"{{"abi": {abi_str}, "bytecode" : "{code}" }}"#);
         assert_has_bytecode(&s);
 
         let hh_artifact = include_str!(
