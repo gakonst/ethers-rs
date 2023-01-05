@@ -33,7 +33,7 @@ pub use util::parse_address;
 pub use ethers_core::types::Address;
 
 use contract::{Context, ExpandedContract};
-use eyre::Result;
+use eyre::{Context as _, Result};
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use std::{collections::HashMap, fmt, fs, io, path::Path};
@@ -102,18 +102,18 @@ impl Abigen {
 
     /// Attempts to load a new builder from an ABI JSON file at the specific path.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
-        let name = path
-            .as_ref()
-            .file_stem()
-            .ok_or_else(|| eyre::format_err!("Missing file stem in path"))?
+        let path = dunce::canonicalize(path).wrap_err("File does not exist")?;
+        // this shouldn't error when the path is canonicalized
+        let file_name = path.file_name().ok_or_else(|| eyre::eyre!("Invalid path"))?;
+        let name = file_name
             .to_str()
-            .ok_or_else(|| eyre::format_err!("Unable to convert file stem to string"))?;
+            .ok_or_else(|| eyre::eyre!("File name contains invalid UTF-8"))?
+            .split('.') // ignore everything after the first `.`
+            .next()
+            .unwrap(); // file_name is not empty as asserted by .file_name() already
+        let contents = fs::read_to_string(&path)?;
 
-        // test,script files usually end with `.t.sol` or `.s.sol`, we simply cut off everything
-        // after the first `.`
-        let name = name.split('.').next().expect("name not empty.");
-
-        Self::new(name, std::fs::read_to_string(path.as_ref())?)
+        Self::new(name, contents)
     }
 
     /// Manually adds a solidity event alias to specify what the event struct and function name will
