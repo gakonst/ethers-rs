@@ -81,7 +81,7 @@ impl Source {
             _ => Ok(Self::local(source)?),
 
             #[cfg(feature = "online")]
-            Some('/') => return Ok(Self::local(source)?),
+            Some('/') => Self::local(source),
             #[cfg(feature = "online")]
             _ => Self::parse_online(source),
         }

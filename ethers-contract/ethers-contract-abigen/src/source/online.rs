@@ -98,7 +98,7 @@ impl Source {
                 "http" | "https" => Ok(url
                     .host_str()
                     .and_then(|host| Self::from_explorer(host, &url).ok())
-                    .unwrap_or_else(|| Self::Http(url))),
+                    .unwrap_or(Self::Http(url))),
 
                 // custom scheme: <explorer or chain>:<address>
                 // fallback: local fs path
@@ -189,7 +189,7 @@ mod tests {
 
             let tests2 = [chain_s, scan_s, url_s].map(|s| s.to_string() + &format!("{address:?}"));
             let tests2 =
-                tests2.map(|s| Source::parse(s)).into_iter().chain(Some(Ok(expected.clone())));
+                tests2.map(Source::parse).into_iter().chain(Some(Ok(expected.clone())));
             let tests2 = tests2.collect::<Result<Vec<_>>>().unwrap();
 
             for slice in tests2.windows(2) {
