@@ -1,7 +1,5 @@
 use ethers::prelude::*;
 
-type BoxErr = Box<dyn std::error::Error>;
-
 /// `MockProvider` is a mock Ethereum provider that can be used for testing purposes.
 /// It allows to simulate Ethereum state and behavior, by explicitly instructing
 /// provider's responses on client requests.
@@ -13,13 +11,13 @@ type BoxErr = Box<dyn std::error::Error>;
 /// In these examples we use the common Arrange, Act, Assert (AAA) test approach.
 /// It is a useful pattern for well-structured, understandable and maintainable tests.
 #[tokio::main]
-async fn main() -> Result<(), BoxErr> {
+async fn main() -> eyre::Result<()> {
     mocked_block_number().await?;
     mocked_provider_dependency().await?;
     Ok(())
 }
 
-async fn mocked_block_number() -> Result<(), BoxErr> {
+async fn mocked_block_number() -> eyre::Result<()> {
     // Arrange
     let mock = MockProvider::new();
     let block_num_1 = U64::from(1);
@@ -47,7 +45,7 @@ async fn mocked_block_number() -> Result<(), BoxErr> {
 /// on a Provider to perform some logics.
 /// The Provider reference is expressed with trait bounds, enforcing lose coupling,
 /// maintainability and testability.
-async fn mocked_provider_dependency() -> Result<(), BoxErr> {
+async fn mocked_provider_dependency() -> eyre::Result<()> {
     // Arrange
     let (provider, mock) = crate::Provider::mocked();
     mock.push(U64::from(2))?;
@@ -75,7 +73,7 @@ where
     }
 
     /// We want to test this!
-    async fn is_odd_block(&self) -> Result<bool, BoxErr> {
+    async fn is_odd_block(&self) -> eyre::Result<bool> {
         let block: U64 = self.provider.get_block_number().await?;
         Ok(block % 2 == U64::zero())
     }
