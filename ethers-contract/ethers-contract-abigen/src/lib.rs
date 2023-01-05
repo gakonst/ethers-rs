@@ -34,19 +34,21 @@ use eyre::Result;
 use proc_macro2::TokenStream;
 use std::{collections::HashMap, fs::File, io::Write, path::Path};
 
-/// Builder struct for generating type-safe bindings from a contract's ABI
+/// Programmatically generate type-safe Rust bindings from a Solidity smart contract's ABI.
 ///
-/// Note: Your contract's ABI must contain the `stateMutability` field. This is
-/// [still not supported by Vyper](https://github.com/vyperlang/vyper/issues/1931), so you must adjust your ABIs and replace
-/// `constant` functions with `view` or `pure`.
+/// For all the supported ABI sources, see [Source].
 ///
-/// To generate bindings for _multiple_ contracts at once see also [`crate::MultiAbigen`].
+/// To generate bindings for *multiple* contracts at once, see [`MultiAbigen`].
+///
+/// To generate bindings at compile time, see [the abigen! macro][abigen], or use in a `build.rs`
+/// file.
+///
+/// [abigen]: https://docs.rs/ethers/latest/ethers/contract/macro.abigen.html
 ///
 /// # Example
 ///
-/// Running the code below will generate a file called `token.rs` containing the
-/// bindings inside, which exports an `ERC20Token` struct, along with all its events. Put into a
-/// `build.rs` file this will generate the bindings during `cargo build`.
+/// Running the code below will generate a file called `token.rs` containing the bindings inside,
+/// which exports an `ERC20Token` struct, along with all its events.
 ///
 /// ```no_run
 /// # use ethers_contract_abigen::Abigen;
@@ -80,7 +82,7 @@ pub struct Abigen {
 }
 
 impl Abigen {
-    /// Creates a new builder with the given ABI source.
+    /// Creates a new builder with the given [ABI Source][Source].
     pub fn new<T: Into<String>, S: AsRef<str>>(contract_name: T, abi_source: S) -> Result<Self> {
         let abi_source = abi_source.as_ref().parse()?;
         Ok(Self {
@@ -94,8 +96,7 @@ impl Abigen {
         })
     }
 
-    /// Attempts to load a new builder from an ABI JSON file at the specific
-    /// path.
+    /// Attempts to load a new builder from an ABI JSON file at the specific path.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
         let name = path
             .as_ref()
@@ -113,6 +114,8 @@ impl Abigen {
 
     /// Manually adds a solidity event alias to specify what the event struct and function name will
     /// be in Rust.
+    ///
+    /// For events without an alias, the `PascalCase` event name will be used.
     pub fn add_event_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -135,6 +138,8 @@ impl Abigen {
     }
 
     /// Add a Solidity custom error alias to specify the generated struct's name.
+    ///
+    /// For errors without an alias, the `PascalCase` error name will be used.
     pub fn add_error_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -146,17 +151,15 @@ impl Abigen {
 
     /// Specify whether or not to format the code using a locally installed copy of `rustfmt`.
     ///
-    /// Note that in case `rustfmt` does not exist or produces an error, the unformatted code will
-    /// be used.
+    /// Note that in the case that `rustfmt` does not exist or produces an error during formatting,
+    /// the unformatted code will be used.
     pub fn rustfmt(mut self, rustfmt: bool) -> Self {
         self.rustfmt = rustfmt;
         self
     }
 
-    /// Add a custom derive to the derives for all structs and enums.
-    ///
-    /// For example, this makes it possible to derive serde::Serialize and serde::Deserialize.
     #[deprecated = "Use add_derive instead"]
+    #[doc(hidden)]
     pub fn add_event_derive<S: Into<String>>(mut self, derive: S) -> Self {
         self.derives.push(derive.into());
         self
