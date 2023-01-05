@@ -110,7 +110,7 @@ impl Abigen {
             .split('.') // ignore everything after the first `.`
             .next()
             .unwrap(); // file_name is not empty as asserted by .file_name() already
-        let contents = fs::read_to_string(&path)?;
+        let contents = fs::read_to_string(&path).wrap_err("Could not read file")?;
 
         Self::new(name, contents)
     }
@@ -270,9 +270,8 @@ impl ContractBindings {
         self.write_to_file(file)
     }
 
-    /// Converts the bindings into its underlying token stream. This allows it
-    /// to be used within a procedural macro.
     #[deprecated = "Use ::quote::ToTokens::into_token_stream instead"]
+    #[doc(hidden)]
     pub fn into_tokens(self) -> TokenStream {
         self.tokens
     }
