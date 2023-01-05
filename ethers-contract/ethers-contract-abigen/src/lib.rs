@@ -250,12 +250,12 @@ impl ContractBindings {
         self.tokens
     }
 
-    /// Generate the default module name (snake case of the contract name)
+    /// Generate the default module name (snake case of the contract name).
     pub fn module_name(&self) -> String {
         util::safe_module_name(&self.name)
     }
 
-    /// Generate the default filename of the module
+    /// Generate the default file name of the module.
     pub fn module_filename(&self) -> String {
         let mut name = self.module_name();
         name.extend([".rs"]);
