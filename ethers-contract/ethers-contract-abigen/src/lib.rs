@@ -1,11 +1,9 @@
-//! # Abigen
-//!
-//! Generate type-safe bindings to Ethereum smart contracts.
-//!
-//! This crate is intended to be used either indirectly with the `abigen` procedural macro or
-//! directly from a build script / CLI.
+#![deny(missing_docs, unsafe_code)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
-#![deny(rustdoc::broken_intra_doc_links, missing_docs, unsafe_code)]
+//! Module for generating type-safe bindings to Ethereum smart contracts. This
+//! module is intended to be used either indirectly with the `abigen` procedural
+//! macro or directly from a build script / CLI
 
 #[cfg(test)]
 #[allow(missing_docs)]
