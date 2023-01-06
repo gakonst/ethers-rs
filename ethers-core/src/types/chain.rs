@@ -9,7 +9,9 @@ use strum::{AsRefStr, EnumString, EnumVariantNames};
 
 // compatibility re-export
 #[doc(hidden)]
-pub use num_enum::{TryFromPrimitive, TryFromPrimitiveError as ParseChainError};
+pub use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
+#[doc(hidden)]
+pub type ParseChainError = TryFromPrimitiveError<Chain>;
 
 // When adding a new chain:
 //   1. add new variant to the Chain enum;
@@ -136,7 +138,7 @@ macro_rules! impl_try_from_numeric {
     ($($native:ty)+ ; $($primitive:ty)*) => {
         $(
             impl TryFrom<$native> for Chain {
-                type Error = ParseChainError<Self>;
+                type Error = ParseChainError;
 
                 fn try_from(value: $native) -> Result<Self, Self::Error> {
                     (value as u64).try_into()
@@ -146,7 +148,7 @@ macro_rules! impl_try_from_numeric {
 
         $(
             impl TryFrom<$primitive> for Chain {
-                type Error = ParseChainError<Self>;
+                type Error = ParseChainError;
 
                 fn try_from(value: $primitive) -> Result<Self, Self::Error> {
                     if value.bits() > 64 {
@@ -170,7 +172,7 @@ impl From<Chain> for u64 {
 impl_into_numeric!(u128 U64 U128 U256 U512);
 
 impl TryFrom<U64> for Chain {
-    type Error = ParseChainError<Self>;
+    type Error = ParseChainError;
 
     fn try_from(value: U64) -> Result<Self, Self::Error> {
         value.low_u64().try_into()
