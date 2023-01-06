@@ -277,10 +277,7 @@ impl Chain {
                 "https://goerli-rollup-explorer.arbitrum.io/api",
                 "https://goerli-rollup-explorer.arbitrum.io",
             ),
-            ArbitrumNova => (
-              "https://api-nova.arbiscan.io/api",
-              "https://nova.arbiscan.io/",
-            ),
+            ArbitrumNova => ("https://api-nova.arbiscan.io/api", "https://nova.arbiscan.io/"),
             Cronos => ("https://api.cronoscan.com/api", "https://cronoscan.com"),
             CronosTestnet => {
                 ("https://api-testnet.cronoscan.com/api", "https://testnet.cronoscan.com")
