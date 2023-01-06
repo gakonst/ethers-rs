@@ -150,7 +150,7 @@ macro_rules! impl_try_from_numeric {
 
                 fn try_from(value: $primitive) -> Result<Self, Self::Error> {
                     if value.bits() > 64 {
-                        // `ParseChainError` only has a `number` field which has the same type
+                        // `TryFromPrimitiveError` only has a `number` field which has the same type
                         // as the `#[repr(_)]` attribute on the enum.
                         return Err(ParseChainError { number: value.low_u64() })
                     }
