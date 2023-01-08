@@ -798,7 +798,7 @@ mod tests {
 
             let txs = client
                 .get_transactions(
-                    &"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap(),
+                    &"0x4F26FfBe5F04ED43630fdC30A87638d53D0b0876".parse().unwrap(),
                     None,
                 )
                 .await;
