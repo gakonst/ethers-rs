@@ -23,7 +23,7 @@ graph LR
   %% Actual Diagram code is below
   
     A[Ethers-rs <br> Manual] --> A1[Providers]
-	A --> A2[Middlewear]
+	A --> A2[Middleware]
     A --> A3[Contracts]
     A --> A4[Events]
     A --> A5[Subscriptions]
