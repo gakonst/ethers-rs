@@ -186,6 +186,7 @@ pub struct NormalTransaction {
     pub transaction_index: Option<u64>,
     #[serde(with = "genesis_string")]
     pub from: GenesisOption<Address>,
+    #[serde(with = "json_string")]
     pub to: Option<Address>,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub value: U256,
