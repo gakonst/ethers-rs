@@ -164,7 +164,8 @@ async fn typed_txs() {
         .from(address)
         .to(address)
         .nonce(nonce + 2)
-        .max_fee_per_gas(gas_price);
+        .max_fee_per_gas(gas_price)
+        .max_priority_fee_per_gas(gas_price);
     let tx3 = provider.send_transaction(tx, bn).await.unwrap();
 
     futures_util::join!(check_tx(tx1, 0), check_tx(tx2, 1), check_tx(tx3, 2),);
