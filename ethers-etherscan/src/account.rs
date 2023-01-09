@@ -186,6 +186,7 @@ pub struct NormalTransaction {
     pub transaction_index: Option<u64>,
     #[serde(with = "genesis_string")]
     pub from: GenesisOption<Address>,
+    #[serde(with = "json_string")]
     pub to: Option<Address>,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub value: U256,
@@ -797,7 +798,7 @@ mod tests {
 
             let txs = client
                 .get_transactions(
-                    &"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap(),
+                    &"0x4F26FfBe5F04ED43630fdC30A87638d53D0b0876".parse().unwrap(),
                     None,
                 )
                 .await;
