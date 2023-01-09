@@ -16,7 +16,6 @@ pub mod contract;
 pub use contract::structs::InternalStructs;
 use contract::Context;
 
-mod rustfmt;
 mod source;
 mod util;
 
@@ -68,8 +67,8 @@ pub struct Abigen {
     /// Derives added to event structs and enums.
     event_derives: Vec<String>,
 
-    /// Format the code using a locally installed copy of `rustfmt`.
-    rustfmt: bool,
+    /// Whether to format the code. Uses [`prettyplease`].
+    format: bool,
 
     /// Manually specified event name aliases.
     event_aliases: HashMap<String, String>,
@@ -88,7 +87,7 @@ impl Abigen {
             method_aliases: HashMap::new(),
             event_derives: Vec::new(),
             event_aliases: HashMap::new(),
-            rustfmt: true,
+            format: true,
             error_aliases: Default::default(),
         })
     }
@@ -146,14 +145,20 @@ impl Abigen {
         self
     }
 
-    /// Specify whether or not to format the code using a locally installed copy
-    /// of `rustfmt`.
-    ///
-    /// Note that in case `rustfmt` does not exist or produces an error, the
-    /// unformatted code will be used.
     #[must_use]
+    #[deprecated = "Use format instead"]
+    #[doc(hidden)]
     pub fn rustfmt(mut self, rustfmt: bool) -> Self {
-        self.rustfmt = rustfmt;
+        self.format = rustfmt;
+        self
+    }
+
+    /// Specify whether to format the code or not. True by default.
+    ///
+    /// This will use [`prettyplease`], so the resulting formatted code **will not** be affected by
+    /// the local `rustfmt` version or config.
+    pub fn format(mut self, format: bool) -> Self {
+        self.format = format;
         self
     }
 
@@ -172,10 +177,10 @@ impl Abigen {
 
     /// Generates the contract bindings.
     pub fn generate(self) -> Result<ContractBindings> {
-        let rustfmt = self.rustfmt;
+        let format = self.format;
         let name = self.contract_name.clone();
         let (expanded, _) = self.expand()?;
-        Ok(ContractBindings { tokens: expanded.into_tokens(), rustfmt, name })
+        Ok(ContractBindings { tokens: expanded.into_tokens(), format, name })
     }
 
     /// Expands the `Abigen` and returns the [`ExpandedContract`] that holds all tokens and the
@@ -192,7 +197,7 @@ pub struct ContractBindings {
     /// The TokenStream representing the contract bindings.
     tokens: TokenStream,
     /// The output options used for serialization.
-    rustfmt: bool,
+    format: bool,
     /// The contract name
     name: String,
 }
@@ -203,14 +208,11 @@ impl ContractBindings {
     where
         W: Write,
     {
-        let source = {
-            let raw = self.tokens.to_string();
-
-            if self.rustfmt {
-                rustfmt::format(&raw).unwrap_or(raw)
-            } else {
-                raw
-            }
+        let source = if self.format {
+            let syntax_tree = syn::parse2::<syn::File>(self.tokens.clone()).unwrap();
+            prettyplease::unparse(&syntax_tree)
+        } else {
+            self.tokens.to_string()
         };
 
         w.write_all(source.as_bytes())?;

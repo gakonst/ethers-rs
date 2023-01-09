@@ -405,7 +405,7 @@ mod tests {
             #[doc = "Gets the contract's `Transfer` event"]
             pub fn transfer_event_filter(
                 &self
-            ) -> ethers_contract::builders::Event<M, TransferEventFilter> {
+            ) -> ::ethers_contract::builders::Event<M, TransferEventFilter> {
                 self.0.event()
             }
         });
@@ -424,7 +424,7 @@ mod tests {
         let cx = test_context();
         assert_quote!(cx.expand_filter(&event), {
             #[doc = "Gets the contract's `Transfer` event"]
-            pub fn transfer_filter(&self) -> ethers_contract::builders::Event<M, TransferFilter> {
+            pub fn transfer_filter(&self) -> ::ethers_contract::builders::Event<M, TransferFilter> {
                 self.0.event()
             }
         });
@@ -449,7 +449,7 @@ mod tests {
         assert_quote!(definition, {
             struct FooFilter {
                 pub a: bool,
-                pub p1: ethers_core::types::Address,
+                pub p1: ::ethers_core::types::Address,
             }
         });
     }
@@ -474,7 +474,7 @@ mod tests {
         assert_quote!(definition, {
             struct FooAliasedFilter {
                 pub a: bool,
-                pub p1: ethers_core::types::Address,
+                pub p1: ::ethers_core::types::Address,
             }
         });
     }
@@ -496,7 +496,7 @@ mod tests {
         let definition = expand_data_tuple(&name, &params);
 
         assert_quote!(definition, {
-            struct FooFilter(pub bool, pub ethers_core::types::Address);
+            struct FooFilter(pub bool, pub ::ethers_core::types::Address);
         });
     }
 
@@ -518,7 +518,7 @@ mod tests {
         let definition = expand_data_tuple(&name, &params);
 
         assert_quote!(definition, {
-            struct FooAliasedFilter(pub bool, pub ethers_core::types::Address);
+            struct FooAliasedFilter(pub bool, pub ::ethers_core::types::Address);
         });
     }
 
@@ -530,7 +530,7 @@ mod tests {
                 "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f".parse().unwrap()
             ),
             {
-                ethers_core::types::H256([
+                ::ethers_core::types::H256([
                     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                     16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
                 ])
