@@ -14,7 +14,7 @@
   - [Quorum](./providers/quorum.md)
   - [Retry](./providers/retry.md)
   - [RW](./providers/rw.md)
-  - [Advanced Provider Methods](./providers/advanced_provider_methods.md)
+  - [Advanced Usage](./providers/advanced_usage.md)
 - [Middleware]()
   - [Builder]()
   - [Create custom middleware]()
