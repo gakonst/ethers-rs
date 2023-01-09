@@ -13,16 +13,19 @@ A JSON-RPC client instance can be constructed as a stack of middlewares, backed 
 %%-------------------------------------------------  
 %%{init: {'theme':'dark', 'themeVariables':{'textColor':' #ffffff ', 'nodeBorder':'#ff2d00', 'edgeLabelBackground':'#000000'  ,'lineColor':'#87ff00', 'fontSize':'14px', 'curve':'linear'}}}%%
 
-flowchart LR
+flowchart TB
+  %% The code below is for styling the graph 
+  %%-------------------------------------------------  
+  %%{init: {'theme':'dark', 'themeVariables':{'textColor':' #ffffff ', 'nodeBorder':'#ff2d00', 'edgeLabelBackground':'#000000'  ,'lineColor':'#87ff00', 'fontSize':'14px', 'curve':'linear'}}}%%
     subgraph ide1 [Client]
-    middlewaren[Middleware n]--inner-->middleware-dots[...]--inner--> middleware0[Middleware 0]
-    middleware0 --inner-->jrpcclient[Provider <br> <i>JsonRpcClient</i>]
-    middleware0 --inner-->pubsubclient[Provider <br> <i>PubSubClient</i>]
+    middleware2--inner-->middleware1--inner-->middleware0--inner-->provider
     end
     subgraph ide2 [Transport]
-    jrpcclient-->transports-rpc[Https<br>Retry<br>Mock<br>Rw<br>Quorum]
-    pubsubclient-->transports-rpc
-    pubsubclient-->transports-pubsub[WebSocket<br>IPC]
+    provider--PubSubClient-->ws
+    provider--PubSubClient-->ipc
+    provider--JsonRpcClient<br>PubSubClient-->http
+    provider--JsonRpcClient<br>PubSubClient-->retry
+    provider--JsonRpcClient<br>PubSubClient-->rw
     end
 ```
 
