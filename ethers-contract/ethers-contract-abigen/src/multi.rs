@@ -139,11 +139,8 @@ impl MultiAbigen {
 
     /// Build the contract bindings and prepare for writing
     pub fn build(self) -> Result<MultiBindings> {
-        let rustfmt = self.abigens.iter().any(|gen| gen.rustfmt);
-        Ok(MultiBindings {
-            expansion: MultiExpansion::from_abigen(self.abigens)?.expand(),
-            rustfmt,
-        })
+        let format = self.abigens.iter().any(|gen| gen.format);
+        Ok(MultiBindings { expansion: MultiExpansion::from_abigen(self.abigens)?.expand(), format })
     }
 }
 
@@ -298,14 +295,14 @@ impl MultiExpansionResult {
     }
 
     /// Converts this result into [`MultiBindingsInner`]
-    fn into_bindings(mut self, single_file: bool, rustfmt: bool) -> MultiBindingsInner {
+    fn into_bindings(mut self, single_file: bool, format: bool) -> MultiBindingsInner {
         self.set_shared_import_path(single_file);
         let Self { contracts, shared_types, root, .. } = self;
         let bindings = contracts
             .into_iter()
             .map(|(expanded, ctx)| ContractBindings {
                 tokens: expanded.into_tokens(),
-                rustfmt,
+                format,
                 name: ctx.contract_name().to_string(),
             })
             .map(|v| (v.name.clone(), v))
@@ -325,7 +322,7 @@ impl MultiExpansionResult {
             };
             Some(ContractBindings {
                 tokens: shared_types,
-                rustfmt,
+                format,
                 name: "shared_types".to_string(),
             })
         } else {
@@ -364,7 +361,7 @@ impl MultiExpansionResult {
 ///     changed)
 pub struct MultiBindings {
     expansion: MultiExpansionResult,
-    rustfmt: bool,
+    format: bool,
 }
 
 impl MultiBindings {
@@ -378,18 +375,25 @@ impl MultiBindings {
         self.expansion.contracts.is_empty()
     }
 
-    /// Specify whether or not to format the code using a locally installed copy
-    /// of `rustfmt`.
-    ///
-    /// Note that in case `rustfmt` does not exist or produces an error, the
-    /// unformatted code will be used.
+    #[must_use]
+    #[deprecated = "Use format instead"]
+    #[doc(hidden)]
     pub fn rustfmt(mut self, rustfmt: bool) -> Self {
-        self.rustfmt = rustfmt;
+        self.format = rustfmt;
+        self
+    }
+
+    /// Specify whether to format the code or not. True by default.
+    ///
+    /// This will use [`prettyplease`], so the resulting formatted code **will not** be affected by
+    /// the local `rustfmt` version or config.
+    pub fn format(mut self, format: bool) -> Self {
+        self.format = format;
         self
     }
 
     fn into_inner(self, single_file: bool) -> MultiBindingsInner {
-        self.expansion.into_bindings(single_file, self.rustfmt)
+        self.expansion.into_bindings(single_file, self.format)
     }
 
     /// Generates all the bindings and writes them to the given module

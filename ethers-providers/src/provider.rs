@@ -359,10 +359,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                     //   - first: if set, set to the min(current value, MFPG)
                     //   - second, if still unset, use the RPC estimated amount
                     let mfpg = inner.max_fee_per_gas.get_or_insert(max_fee_per_gas);
-                    inner
+                    inner.max_priority_fee_per_gas = inner
                         .max_priority_fee_per_gas
                         .map(|tip| std::cmp::min(tip, *mfpg))
-                        .get_or_insert(max_priority_fee_per_gas);
+                        .or(Some(max_priority_fee_per_gas));
                 };
             }
         }

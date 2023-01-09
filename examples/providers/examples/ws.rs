@@ -4,20 +4,18 @@ use ethers::prelude::*;
 
 const WSS_URL: &str = "wss://mainnet.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27";
 
-type BoxErr = Box<dyn std::error::Error>;
-
 /// The Ws transport allows you to send JSON-RPC requests and receive responses over WebSocket
 /// connections. It is useful for connecting to Ethereum nodes that support WebSockets.
 /// This allows to interact with the Ethereum network in real-time without the need for HTTP
 /// polling.
 #[tokio::main]
-async fn main() -> Result<(), BoxErr> {
+async fn main() -> eyre::Result<()> {
     create_instance().await?;
     watch_blocks().await?;
     Ok(())
 }
 
-async fn create_instance() -> Result<(), BoxErr> {
+async fn create_instance() -> eyre::Result<()> {
     // An Ws provider can be created from an ws(s) URI.
     // In case of wss you must add the "rustls" or "openssl" feature
     // to the ethers library dependency in `Cargo.toml`.
@@ -39,7 +37,7 @@ async fn create_instance() -> Result<(), BoxErr> {
 }
 
 /// Let's show how the Ws connection enables listening for blocks using a persistent TCP connection
-async fn watch_blocks() -> Result<(), BoxErr> {
+async fn watch_blocks() -> eyre::Result<()> {
     let provider = Provider::<Ws>::connect(WSS_URL).await?;
     let mut stream = provider.watch_blocks().await?.take(1);
 

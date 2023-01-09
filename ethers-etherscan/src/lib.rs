@@ -95,6 +95,7 @@ impl Client {
             Chain::Arbitrum |
             Chain::ArbitrumTestnet |
             Chain::ArbitrumGoerli |
+            Chain::ArbitrumNova |
             Chain::Cronos |
             Chain::CronosTestnet |
             Chain::Aurora |

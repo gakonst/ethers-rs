@@ -16,10 +16,12 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 [dependencies]
 ethers-core = { version = "^1.0.0", path = "../../ethers-core", features = ["macros"] }
 
-Inflector = "0.11"
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = "1.0.12"
+syn = { version = "1.0.12", default-features = false, features = ["full"] }
+prettyplease = "0.1.23"
+
+Inflector = "0.11"
 url = "2.1"
 serde_json = "1.0.61"
 serde = { version = "1.0.124", features = ["derive"] }

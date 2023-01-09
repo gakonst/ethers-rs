@@ -117,6 +117,26 @@ pub enum JsonAbi {
     Array(RawAbi),
 }
 
+// === impl JsonAbi ===
+
+impl JsonAbi {
+    /// Returns the bytecode object
+    pub fn bytecode(&self) -> Option<Bytes> {
+        match self {
+            JsonAbi::Object(abi) => abi.bytecode.clone(),
+            JsonAbi::Array(_) => None,
+        }
+    }
+
+    /// Returns the deployed bytecode object
+    pub fn deployed_bytecode(&self) -> Option<Bytes> {
+        match self {
+            JsonAbi::Object(abi) => abi.deployed_bytecode.clone(),
+            JsonAbi::Array(_) => None,
+        }
+    }
+}
+
 fn deserialize_abi_array<'de, D>(deserializer: D) -> Result<RawAbi, D::Error>
 where
     D: Deserializer<'de>,
@@ -128,6 +148,7 @@ where
 pub struct AbiObject {
     pub abi: RawAbi,
     pub bytecode: Option<Bytes>,
+    pub deployed_bytecode: Option<Bytes>,
 }
 
 struct AbiObjectVisitor;
@@ -145,12 +166,35 @@ impl<'de> Visitor<'de> for AbiObjectVisitor {
     {
         let mut abi = None;
         let mut bytecode = None;
+        let mut deployed_bytecode = None;
 
         #[derive(Deserialize)]
         #[serde(untagged)]
         enum Bytecode {
             Object { object: Bytes },
             Bytes(Bytes),
+        }
+
+        impl Bytecode {
+            fn into_bytes(self) -> Option<Bytes> {
+                let bytecode = match self {
+                    Bytecode::Object { object } => object,
+                    Bytecode::Bytes(bytes) => bytes,
+                };
+                if bytecode.is_empty() {
+                    None
+                } else {
+                    Some(bytecode)
+                }
+            }
+        }
+
+        /// represents nested bytecode objects of the `evm` value
+        #[derive(Deserialize)]
+        struct EvmObj {
+            bytecode: Option<Bytecode>,
+            #[serde(rename = "deployedBytecode")]
+            deployed_bytecode: Option<Bytecode>,
         }
 
         struct DeserializeBytes(Bytes);
@@ -169,18 +213,28 @@ impl<'de> Visitor<'de> for AbiObjectVisitor {
                 "abi" => {
                     abi = Some(RawAbi(map.next_value::<Vec<Item>>()?));
                 }
+                "evm" => {
+                    if let Ok(evm) = map.next_value::<EvmObj>() {
+                        bytecode = evm.bytecode.and_then(|b| b.into_bytes());
+                        deployed_bytecode = evm.deployed_bytecode.and_then(|b| b.into_bytes())
+                    }
+                }
                 "bytecode" | "byteCode" => {
-                    bytecode = map
-                        .next_value::<Bytecode>()
-                        .ok()
-                        .map(|obj| match obj {
-                            Bytecode::Object { object } => object,
-                            Bytecode::Bytes(bytes) => bytes,
-                        })
-                        .filter(|bytecode| !bytecode.0.is_empty());
+                    bytecode = map.next_value::<Bytecode>().ok().and_then(|b| b.into_bytes());
+                }
+                "deployedbytecode" | "deployedBytecode" => {
+                    deployed_bytecode =
+                        map.next_value::<Bytecode>().ok().and_then(|b| b.into_bytes());
                 }
                 "bin" => {
                     bytecode = map
+                        .next_value::<DeserializeBytes>()
+                        .ok()
+                        .map(|b| b.0)
+                        .filter(|b| !b.0.is_empty());
+                }
+                "runtimebin" | "runtimeBin" => {
+                    deployed_bytecode = map
                         .next_value::<DeserializeBytes>()
                         .ok()
                         .map(|b| b.0)
@@ -193,7 +247,7 @@ impl<'de> Visitor<'de> for AbiObjectVisitor {
         }
 
         let abi = abi.ok_or_else(|| serde::de::Error::missing_field("abi"))?;
-        Ok(AbiObject { abi, bytecode })
+        Ok(AbiObject { abi, bytecode, deployed_bytecode })
     }
 }
 
@@ -310,6 +364,20 @@ mod tests {
         match serde_json::from_str::<JsonAbi>(&s).unwrap() {
             JsonAbi::Object(abi) => {
                 assert!(abi.bytecode.is_none());
+            }
+            _ => {
+                panic!("expected abi object")
+            }
+        }
+    }
+
+    #[test]
+    fn can_parse_deployed_bytecode() {
+        let artifact = include_str!("../../testdata/solc-obj.json");
+        match serde_json::from_str::<JsonAbi>(artifact).unwrap() {
+            JsonAbi::Object(abi) => {
+                assert!(abi.bytecode.is_some());
+                assert!(abi.deployed_bytecode.is_some());
             }
             _ => {
                 panic!("expected abi object")
