@@ -25,6 +25,7 @@ flowchart TB
     provider--PubSubClient-->ipc
     provider--JsonRpcClient<br>PubSubClient-->http
     provider--JsonRpcClient<br>PubSubClient-->retry
+    provider--JsonRpcClient<br>PubSubClient-->quorum
     provider--JsonRpcClient<br>PubSubClient-->rw
     end
 ```
