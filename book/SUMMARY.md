@@ -9,7 +9,7 @@
 - [Providers]()
   - [Http](./providers/http.md)
   - [IPC](./providers/ipc.md)
-  - [Mock]()
+  - [Mock](./providers/mock.md)
   - [Quorum](./providers/quorum.md)
   - [Retry](./providers/retry.md)
   - [RW](./providers/rw.md)

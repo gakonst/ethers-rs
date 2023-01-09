@@ -34,10 +34,10 @@
   - [x] Signer
   - [ ] Time lag
   - [ ] Transformer
-- [ ] Providers
+- [x] Providers
   - [x] Http
   - [x] IPC
-  - [ ] Mock 
+  - [x] Mock 
   - [x] Quorum
   - [x] Retry
   - [x] RW

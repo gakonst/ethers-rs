@@ -1,5 +1,4 @@
 use super::{U128, U256, U512, U64};
-use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
 use serde::{Deserialize, Serialize, Serializer};
 use std::{
     convert::{TryFrom, TryInto},
@@ -7,6 +6,12 @@ use std::{
     time::Duration,
 };
 use strum::{AsRefStr, EnumString, EnumVariantNames};
+
+// compatibility re-export
+#[doc(hidden)]
+pub use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
+#[doc(hidden)]
+pub type ParseChainError = TryFromPrimitiveError<Chain>;
 
 // When adding a new chain:
 //   1. add new variant to the Chain enum;
@@ -50,6 +55,7 @@ pub enum Chain {
     Arbitrum = 42161,
     ArbitrumTestnet = 421611,
     ArbitrumGoerli = 421613,
+    ArbitrumNova = 42170,
 
     Cronos = 25,
     CronosTestnet = 338,
@@ -132,7 +138,7 @@ macro_rules! impl_try_from_numeric {
     ($($native:ty)+ ; $($primitive:ty)*) => {
         $(
             impl TryFrom<$native> for Chain {
-                type Error = TryFromPrimitiveError<Self>;
+                type Error = ParseChainError;
 
                 fn try_from(value: $native) -> Result<Self, Self::Error> {
                     (value as u64).try_into()
@@ -142,13 +148,13 @@ macro_rules! impl_try_from_numeric {
 
         $(
             impl TryFrom<$primitive> for Chain {
-                type Error = TryFromPrimitiveError<Self>;
+                type Error = ParseChainError;
 
                 fn try_from(value: $primitive) -> Result<Self, Self::Error> {
                     if value.bits() > 64 {
                         // `TryFromPrimitiveError` only has a `number` field which has the same type
                         // as the `#[repr(_)]` attribute on the enum.
-                        return Err(TryFromPrimitiveError { number: value.low_u64() })
+                        return Err(ParseChainError { number: value.low_u64() })
                     }
                     value.low_u64().try_into()
                 }
@@ -166,7 +172,7 @@ impl From<Chain> for u64 {
 impl_into_numeric!(u128 U64 U128 U256 U512);
 
 impl TryFrom<U64> for Chain {
-    type Error = TryFromPrimitiveError<Self>;
+    type Error = ParseChainError;
 
     fn try_from(value: U64) -> Result<Self, Self::Error> {
         value.low_u64().try_into()
@@ -205,7 +211,7 @@ impl Chain {
         use Chain::*;
 
         let ms = match self {
-            Arbitrum | ArbitrumTestnet | ArbitrumGoerli => 1_300,
+            Arbitrum | ArbitrumTestnet | ArbitrumGoerli | ArbitrumNova => 1_300,
             Mainnet | Optimism => 13_000,
             Polygon | PolygonMumbai => 2_100,
             Moonbeam | Moonriver => 12_500,
@@ -276,6 +282,7 @@ impl Chain {
                 "https://goerli-rollup-explorer.arbitrum.io/api",
                 "https://goerli-rollup-explorer.arbitrum.io",
             ),
+            ArbitrumNova => ("https://api-nova.arbiscan.io/api", "https://nova.arbiscan.io/"),
             Cronos => ("https://api.cronoscan.com/api", "https://cronoscan.com"),
             CronosTestnet => {
                 ("https://api-testnet.cronoscan.com/api", "https://testnet.cronoscan.com")
@@ -340,6 +347,7 @@ impl Chain {
             Arbitrum |
             ArbitrumTestnet |
             ArbitrumGoerli |
+            ArbitrumNova |
             Rsk |
             Oasis |
             Emerald |
