@@ -1,5 +1,6 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
+use base64::prelude::*;
 use ethers_core::types::U256;
 use serde::{
     de::{self, MapAccess, Unexpected, Visitor},
@@ -191,7 +192,7 @@ pub enum Authorization {
 
 impl Authorization {
     pub fn basic(username: impl Into<String>, password: impl Into<String>) -> Self {
-        let auth_secret = base64::encode(username.into() + ":" + &password.into());
+        let auth_secret = BASE64_STANDARD.encode(username.into() + ":" + &password.into());
         Self::Basic(auth_secret)
     }
 
