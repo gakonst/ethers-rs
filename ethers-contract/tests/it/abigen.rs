@@ -751,8 +751,8 @@ fn can_handle_overloaded_function_with_array() {
     );
 }
 
-#[tokio::test]
-async fn convert_uses_correct_abi() {
+#[test]
+fn convert_uses_correct_abi() {
     abigen!(
         Foo, r#"[function foo()]"#;
         Bar, r#"[function bar()]"#;
