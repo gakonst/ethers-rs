@@ -1,0 +1,13 @@
+%%{
+    init: {
+      'theme':'dark', 
+      'themeVariables': {
+        'textColor':' #ffffff ', 
+        'nodeBorder':'#ff2d00', 
+        'edgeLabelBackground':'#00000',
+        'lineColor':'#87ff00', 
+        'fontSize':'14px', 
+        'curve':'linear'
+        }
+      }
+}%%

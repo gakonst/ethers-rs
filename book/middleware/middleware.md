@@ -9,9 +9,7 @@ standard operations and unlocking powerful use cases.
 A JSON-RPC client instance can be constructed as a stack of middlewares, backed by a common instance of `Provider` of one specific type among `JsonRpcClient` and `PubSubClient`. 
 
 ```mermaid
-%% The code below is for styling the graph 
-%%-------------------------------------------------  
-%%{init: {'theme':'dark', 'themeVariables':{'textColor':' #ffffff ', 'nodeBorder':'#ff2d00', 'edgeLabelBackground':'#000000'  ,'lineColor':'#87ff00', 'fontSize':'14px', 'curve':'linear'}}}%%
+{{#include ../mermaid-style.txt}}
 
 flowchart TB
     subgraph ide1 [Client]
