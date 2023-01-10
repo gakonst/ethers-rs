@@ -4,7 +4,7 @@ use ethers_core::{
     types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, TxHash, H160, U256},
 };
 use ethers_providers::Middleware;
-use std::{convert::TryFrom, sync::Arc};
+use std::{convert::TryFrom, fmt, sync::Arc};
 
 pub mod multicall_contract;
 use multicall_contract::multicall_3::{
@@ -265,7 +265,6 @@ impl TryFrom<u8> for MulticallVersion {
 /// [`add_call`]: #method.add_call
 /// [`call`]: #method.call
 /// [`send`]: #method.send
-#[derive(Clone)]
 #[must_use = "Multicall does nothing unless you use `call` or `send`"]
 pub struct Multicall<M> {
     /// The Multicall contract interface.
@@ -276,15 +275,27 @@ pub struct Multicall<M> {
     calls: Vec<Call>,
 }
 
-// Manually implement Debug due to Middleware trait bounds.
-impl<M: Middleware> std::fmt::Debug for Multicall<M> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+// Manually implement Clone and Debug to avoid trait bounds.
+impl<M> Clone for Multicall<M> {
+    fn clone(&self) -> Self {
+        Self {
+            contract: self.contract.clone(),
+            version: self.version,
+            legacy: self.legacy,
+            block: self.block.clone(),
+            calls: self.calls.clone(),
+        }
+    }
+}
+
+impl<M> fmt::Debug for Multicall<M> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Multicall")
+            .field("address", &self.contract.address())
             .field("version", &self.version)
             .field("legacy", &self.legacy)
             .field("block", &self.block)
             .field("calls", &self.calls)
-            .field("contract", &self.contract)
             .finish()
     }
 }
