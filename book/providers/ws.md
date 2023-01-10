@@ -53,4 +53,22 @@ async fn main() -> eyre::Result<()> {
 ```
 
 ## Usage
-TODO: Examples of syncing to new blocks, filter logs.
+TODO: Examples of syncing to new blocks, filter logs. Mention that the WS client implements the `PubSubClient` trait which gives access to the subscribe and unsubscribe methods. 
+
+```rust
+use ethers::providers::{Middleware, Provider, StreamExt, Ws};
+
+#[tokio::main]
+async fn main() -> eyre::Result<()> {
+    let ws_endpoint = "";
+    let provider = Provider::<Ws>::connect(ws_endpoint).await?;
+    //Create a new stream yielding pending transactions from the mempool
+    let mut tx_pool_stream = provider.subscribe_pending_txs().await?;
+
+    while let Some(tx_hash) = tx_pool_stream.next().await {
+        println!("Pending tx: {:?}", tx_hash);
+    }
+
+    Ok(())
+}
+```
