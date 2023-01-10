@@ -1,7 +1,4 @@
-use crate::{
-    call::{ContractCall, ContractError},
-    Lazy,
-};
+use crate::call::{ContractCall, ContractError};
 use ethers_core::{
     abi::{AbiDecode, Detokenize, Function, Token},
     types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, TxHash, H160, U256},
@@ -26,60 +23,70 @@ pub const MULTICALL_ADDRESS: Address = H160([
 ]);
 
 /// The chain IDs that [`MULTICALL_ADDRESS`] has been deployed to.
+///
 /// Taken from: <https://github.com/mds1/multicall#multicall3-contract-addresses>
-pub static MULTICALL_SUPPORTED_CHAIN_IDS: Lazy<[U256; 48]> = Lazy::new(|| {
+pub const MULTICALL_SUPPORTED_CHAIN_IDS: &[u64] = {
     use Chain::*;
-    [
-        U256::from(Mainnet),                  // Mainnet
-        U256::from(Kovan),                    // Kovan
-        U256::from(Rinkeby),                  // Rinkeby
-        U256::from(Goerli),                   // Goerli
-        U256::from(Ropsten),                  // Ropsten
-        U256::from(Sepolia),                  // Sepolia
-        U256::from(Optimism),                 // Optimism
-        U256::from(OptimismGoerli),           // OptimismGoerli
-        U256::from(OptimismKovan),            // OptimismKovan
-        U256::from(Arbitrum),                 // Arbitrum
-        U256::from(ArbitrumGoerli),           // ArbitrumGoerli,
-        U256::from(ArbitrumTestnet),          // Arbitrum Rinkeby
-        U256::from(Polygon),                  // Polygon
-        U256::from(PolygonMumbai),            // PolygonMumbai
-        U256::from(XDai),                     // XDai
-        U256::from(Chiado),                   // ChiadoTestnet
-        U256::from(Avalanche),                // Avalanche
-        U256::from(AvalancheFuji),            // AvalancheFuji
-        U256::from(FantomTestnet),            // FantomTestnet
-        U256::from(Fantom),                   // Fantom
-        U256::from(BinanceSmartChain),        // BinanceSmartChain
-        U256::from(BinanceSmartChainTestnet), // BinanceSmartChainTestnet
-        U256::from(Moonbeam),                 // Moonbeam
-        U256::from(Moonriver),                // Moonriver
-        U256::from(Moonbase),                 // Moonbase
-        U256::from(1666600000),               // Harmony0
-        U256::from(1666600001),               // Harmony1
-        U256::from(1666600002),               // Harmony2
-        U256::from(1666600003),               // Harmony3
-        U256::from(Cronos),                   // Cronos
-        U256::from(122),                      // Fuse
-        U256::from(19),                       // Songbird
-        U256::from(16),                       // CostonTestnet
-        U256::from(288),                      // Boba
-        U256::from(Aurora),                   // Aurora
-        U256::from(592),                      // Astar
-        U256::from(66),                       // OKC
-        U256::from(128),                      // Heco
-        U256::from(1088),                     // Metis
-        U256::from(Rsk),                      // Rsk
-        U256::from(31),                       // RskTestnet
-        U256::from(Evmos),                    // Evmos
-        U256::from(EvmosTestnet),             // EvmosTestnet
-        U256::from(71402),                    // Godwoken
-        U256::from(71401),                    // GodwokenTestnet
-        U256::from(8217),                     // Klaytn
-        U256::from(2001),                     // Milkomeda
-        U256::from(321),                      // KCC
+    &[
+        Mainnet as u64,                  // Mainnet
+        Kovan as u64,                    // Kovan
+        Rinkeby as u64,                  // Rinkeby
+        Goerli as u64,                   // Görli
+        Ropsten as u64,                  // Ropsten
+        Sepolia as u64,                  // Sepolia
+        Optimism as u64,                 // Optimism
+        OptimismKovan as u64,            // Optimism Kovan
+        OptimismGoerli as u64,           // Optimism Görli
+        Arbitrum as u64,                 // Arbitrum
+        ArbitrumNova as u64,             // Arbitrum Nova
+        ArbitrumGoerli as u64,           // Arbitrum Görli
+        ArbitrumTestnet as u64,          // Arbitrum Rinkeby
+        Polygon as u64,                  // Polygon
+        PolygonMumbai as u64,            // Polygon Mumbai
+        XDai as u64,                     // Gnosis Chain
+        Avalanche as u64,                // Avalanche
+        AvalancheFuji as u64,            // Avalanche Fuji
+        FantomTestnet as u64,            // Fantom Testnet
+        Fantom as u64,                   // Fantom Opera
+        BinanceSmartChain as u64,        // BNB Smart Chain
+        BinanceSmartChainTestnet as u64, // BNB Smart Chain Testnet
+        Moonbeam as u64,                 // Moonbeam
+        Moonriver as u64,                // Moonriver
+        Moonbase as u64,                 // Moonbase
+        1666600000,                      // Harmony0
+        1666600001,                      // Harmony1
+        1666600002,                      // Harmony2
+        1666600003,                      // Harmony3
+        Cronos as u64,                   // Cronos
+        122,                             // Fuse
+        14,                              // Flare Mainnet
+        19,                              // Songbird Canary Network
+        16,                              // Coston Testnet
+        114,                             // Coston2 Testnet
+        288,                             // Boba
+        Aurora as u64,                   // Aurora
+        592,                             // Astar
+        66,                              // OKC
+        128,                             // Heco Chain
+        1088,                            // Metis
+        Rsk as u64,                      // Rsk
+        31,                              // Rsk Testnet
+        Evmos as u64,                    // Evmos
+        EvmosTestnet as u64,             // Evmos Testnet
+        Oasis as u64,                    // Oasis
+        42261,                           // Oasis Emerald ParaTime Testnet
+        42262,                           // Oasis Emerald ParaTime
+        Celo as u64,                     // Celo
+        CeloAlfajores as u64,            // Celo Alfajores Testnet
+        71402,                           // Godwoken
+        71401,                           // Godwoken Testnet
+        8217,                            // Klaytn
+        2001,                            // Milkomeda
+        321,                             // KCC
+        106,                             // Velas
+        40,                              // Telos
     ]
-});
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum MulticallError<M: Middleware> {
@@ -87,7 +94,7 @@ pub enum MulticallError<M: Middleware> {
     ContractError(#[from] ContractError<M>),
 
     #[error("Chain ID {0} is currently not supported by Multicall. Provide an address instead.")]
-    InvalidChainId(U256),
+    InvalidChainId(u64),
 
     #[error("Illegal revert: Multicall2 call reverted when it wasn't allowed to.")]
     IllegalRevert,
@@ -306,7 +313,7 @@ impl<M: Middleware> Multicall<M> {
             Some(addr) => addr,
             None => {
                 let chain_id =
-                    client.get_chainid().await.map_err(ContractError::MiddlewareError)?;
+                    client.get_chainid().await.map_err(ContractError::MiddlewareError)?.as_u64();
                 if !MULTICALL_SUPPORTED_CHAIN_IDS.contains(&chain_id) {
                     return Err(MulticallError::InvalidChainId(chain_id))
                 }
@@ -342,21 +349,23 @@ impl<M: Middleware> Multicall<M> {
     pub fn new_with_chain_id(
         client: impl Into<Arc<M>>,
         address: Option<Address>,
-        chain_id: Option<impl Into<U256>>,
+        chain_id: Option<impl Into<u64>>,
     ) -> Result<Self, M> {
         // If no address is provided, check if chain_id is supported and use the default multicall
         // address.
-        let address: Address = match address {
-            Some(addr) => addr,
-            None => {
-                // Can't fetch chain_id from provider since we're not in an async function so we
-                // panic instead.
-                let chain_id =
-                    chain_id.expect("Must provide at least one of: address or chain ID.").into();
+        let address: Address = match (address, chain_id) {
+            (Some(addr), _) => addr,
+            (_, Some(chain_id)) => {
+                let chain_id = chain_id.into();
                 if !MULTICALL_SUPPORTED_CHAIN_IDS.contains(&chain_id) {
                     return Err(MulticallError::InvalidChainId(chain_id))
                 }
                 MULTICALL_ADDRESS
+            }
+            _ => {
+                // Can't fetch chain_id from provider since we're not in an async function so we
+                // panic instead.
+                panic!("Must provide at least one of: address or chain ID.")
             }
         };
 
