@@ -277,6 +277,8 @@
 - `eth-keystore-rs` crate updated. Allow an optional name for the to-be-generated
   keystore file [#910](https://github.com/gakonst/ethers-rs/pull/910)
 - [1983](https://github.com/gakonst/ethers-rs/pull/1983) Added a `from_bytes` function for the `Wallet` type.
+- Allow parsing of private key that has `0x` prefix
+  [#2037](https://github.com/gakonst/ethers-rs/pull/2037)
 
 ### 0.6.0
 
