@@ -14,9 +14,6 @@ A JSON-RPC client instance can be constructed as a stack of middlewares, backed 
 %%{init: {'theme':'dark', 'themeVariables':{'textColor':' #ffffff ', 'nodeBorder':'#ff2d00', 'edgeLabelBackground':'#000000'  ,'lineColor':'#87ff00', 'fontSize':'14px', 'curve':'linear'}}}%%
 
 flowchart TB
-  %% The code below is for styling the graph 
-  %%-------------------------------------------------  
-  %%{init: {'theme':'dark', 'themeVariables':{'textColor':' #ffffff ', 'nodeBorder':'#ff2d00', 'edgeLabelBackground':'#000000'  ,'lineColor':'#87ff00', 'fontSize':'14px', 'curve':'linear'}}}%%
     subgraph ide1 [Client]
     middleware2--inner-->middleware1--inner-->middleware0--inner-->provider
     end
