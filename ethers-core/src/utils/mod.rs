@@ -36,7 +36,7 @@ pub use rlp;
 /// Re-export hex
 pub use hex;
 
-use crate::types::{Address, Bytes, ParseI256Error, I256, U256};
+use crate::types::{Address, ParseI256Error, H160, I256, U256};
 use elliptic_curve::sec1::ToEncodedPoint;
 use ethabi::ethereum_types::FromDecStrErr;
 use k256::{ecdsa::SigningKey, PublicKey as K256PublicKey};
@@ -212,10 +212,7 @@ where
 /// assert_eq!(eth, parse_ether(1usize).unwrap());
 /// assert_eq!(eth, parse_ether("1").unwrap());
 /// ```
-pub fn parse_ether<S>(eth: S) -> Result<U256, ConversionError>
-where
-    S: ToString,
-{
+pub fn parse_ether<S: ToString>(eth: S) -> Result<U256, ConversionError> {
     Ok(parse_units(eth, "ether")?.into())
 }
 
@@ -299,7 +296,7 @@ pub fn get_contract_address(sender: impl Into<Address>, nonce: impl Into<U256>) 
 
     let mut bytes = [0u8; 20];
     bytes.copy_from_slice(&hash[12..]);
-    Address::from(bytes)
+    H160(bytes)
 }
 
 /// Returns the CREATE2 address of a smart contract as specified in
@@ -308,10 +305,11 @@ pub fn get_contract_address(sender: impl Into<Address>, nonce: impl Into<U256>) 
 /// keccak256( 0xff ++ senderAddress ++ salt ++ keccak256(init_code))[12..]
 pub fn get_create2_address(
     from: impl Into<Address>,
-    salt: impl Into<Bytes>,
-    init_code: impl Into<Bytes>,
+    salt: impl AsRef<[u8]>,
+    init_code: impl AsRef<[u8]>,
 ) -> Address {
-    get_create2_address_from_hash(from, salt, keccak256(init_code.into().as_ref()).to_vec())
+    let init_code_hash = keccak256(init_code.as_ref());
+    get_create2_address_from_hash(from, salt, init_code_hash)
 }
 
 /// Returns the CREATE2 address of a smart contract as specified in
@@ -332,9 +330,7 @@ pub fn get_create2_address(
 ///     utils::{get_create2_address_from_hash, keccak256},
 /// };
 ///
-/// let UNISWAP_V3_POOL_INIT_CODE_HASH = Bytes::from(
-///     hex::decode("e34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54").unwrap(),
-/// );
+/// let init_code_hash = hex::decode("e34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54").unwrap();
 /// let factory: Address = "0x1F98431c8aD98523631AE4a59f267346ea31F984"
 ///     .parse()
 ///     .unwrap();
@@ -344,19 +340,18 @@ pub fn get_create2_address(
 /// let token1: Address = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
 ///     .parse()
 ///     .unwrap();
-/// let fee = 500;
+/// let fee = U256::from(500_u64);
 ///
 /// // abi.encode(token0 as address, token1 as address, fee as uint256)
 /// let input = abi::encode(&vec![
 ///     Token::Address(token0),
 ///     Token::Address(token1),
-///     Token::Uint(U256::from(fee)),
+///     Token::Uint(fee),
 /// ]);
 ///
 /// // keccak256(abi.encode(token0, token1, fee))
 /// let salt = keccak256(&input);
-/// let pool_address =
-///     get_create2_address_from_hash(factory, salt.to_vec(), UNISWAP_V3_POOL_INIT_CODE_HASH);
+/// let pool_address = get_create2_address_from_hash(factory, salt, init_code_hash);
 ///
 /// assert_eq!(
 ///     pool_address,
@@ -367,18 +362,24 @@ pub fn get_create2_address(
 /// ```
 pub fn get_create2_address_from_hash(
     from: impl Into<Address>,
-    salt: impl Into<Bytes>,
-    init_code_hash: impl Into<Bytes>,
+    salt: impl AsRef<[u8]>,
+    init_code_hash: impl AsRef<[u8]>,
 ) -> Address {
-    let bytes =
-        [&[0xff], from.into().as_bytes(), salt.into().as_ref(), init_code_hash.into().as_ref()]
-            .concat();
+    let from = from.into();
+    let salt = salt.as_ref();
+    let init_code_hash = init_code_hash.as_ref();
+
+    let mut bytes = Vec::with_capacity(1 + 20 + salt.len() + init_code_hash.len());
+    bytes.push(0xff);
+    bytes.extend_from_slice(from.as_bytes());
+    bytes.extend_from_slice(salt);
+    bytes.extend_from_slice(init_code_hash);
 
     let hash = keccak256(bytes);
 
     let mut bytes = [0u8; 20];
     bytes.copy_from_slice(&hash[12..]);
-    Address::from(bytes)
+    H160(bytes)
 }
 
 /// Converts a K256 SigningKey to an Ethereum Address
@@ -388,11 +389,15 @@ pub fn secret_key_to_address(secret_key: &SigningKey) -> Address {
     let public_key = public_key.as_bytes();
     debug_assert_eq!(public_key[0], 0x04);
     let hash = keccak256(&public_key[1..]);
-    Address::from_slice(&hash[12..])
+
+    let mut bytes = [0u8; 20];
+    bytes.copy_from_slice(&hash[12..]);
+    H160(bytes)
 }
 
-/// Converts an Ethereum address to the checksum encoding
-/// Ref: <https://github.com/ethereum/EIPs/blob/master/EIPS/eip-55.md>
+/// Encodes an Ethereum address to its [EIP-55] checksum.
+///
+/// [EIP-55]: https://eips.ethereum.org/EIPS/eip-55
 pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
     let prefixed_addr = match chain_id {
         Some(chain_id) => format!("{chain_id}0x{addr:x}"),
