@@ -36,7 +36,7 @@ pub use rlp;
 /// Re-export hex
 pub use hex;
 
-use crate::types::{Address, ParseI256Error, H160, I256, U256};
+use crate::types::{Address, ParseI256Error, I256, U256};
 use elliptic_curve::sec1::ToEncodedPoint;
 use ethabi::ethereum_types::FromDecStrErr;
 use k256::{ecdsa::SigningKey, PublicKey as K256PublicKey};
@@ -296,7 +296,7 @@ pub fn get_contract_address(sender: impl Into<Address>, nonce: impl Into<U256>) 
 
     let mut bytes = [0u8; 20];
     bytes.copy_from_slice(&hash[12..]);
-    H160(bytes)
+    Address::from(bytes)
 }
 
 /// Returns the CREATE2 address of a smart contract as specified in
@@ -379,7 +379,7 @@ pub fn get_create2_address_from_hash(
 
     let mut bytes = [0u8; 20];
     bytes.copy_from_slice(&hash[12..]);
-    H160(bytes)
+    Address::from(bytes)
 }
 
 /// Converts a K256 SigningKey to an Ethereum Address
@@ -392,7 +392,7 @@ pub fn secret_key_to_address(secret_key: &SigningKey) -> Address {
 
     let mut bytes = [0u8; 20];
     bytes.copy_from_slice(&hash[12..]);
-    H160(bytes)
+    Address::from(bytes)
 }
 
 /// Encodes an Ethereum address to its [EIP-55] checksum.
