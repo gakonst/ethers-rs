@@ -223,8 +223,7 @@ impl TryFrom<u8> for MulticallVersion {
 ///
 /// // `await`ing the `send` method waits for the transaction to be broadcast, which also
 /// // returns the transaction hash
-/// let tx_hash = multicall.send().await?;
-/// let _tx_receipt = PendingTransaction::new(tx_hash, &client).await?;
+/// let _tx_receipt = multicall.send().await?.await.expect("tx dropped");
 ///
 /// // you can also query ETH balances of multiple addresses
 /// let address_1 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse::<Address>()?;
@@ -569,7 +568,7 @@ impl<M: Middleware> Multicall<M> {
     ///     .add_call(broadcast_1, false)
     ///     .add_call(broadcast_2, false);
     ///
-    /// let _tx_hash = multicall.send().await?;
+    /// let _tx_receipt = multicall.send().await?.await.expect("tx dropped");
     ///
     /// # let call_1 = contract.method::<_, String>("getValue", ())?;
     /// # let call_2 = contract.method::<_, Address>("lastSender", ())?;
