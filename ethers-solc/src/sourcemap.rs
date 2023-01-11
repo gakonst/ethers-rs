@@ -512,7 +512,7 @@ mod tests {
         let source_maps = include_str!("../test-data/out-source-maps.txt");
 
         for (line, s) in source_maps.lines().enumerate() {
-            parse(s).unwrap_or_else(|_| panic!("Failed to parse line {}", line));
+            parse(s).unwrap_or_else(|_| panic!("Failed to parse line {line}"));
         }
     }
 
