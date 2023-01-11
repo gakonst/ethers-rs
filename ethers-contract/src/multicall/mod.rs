@@ -4,9 +4,9 @@ use crate::{
 };
 use ethers_core::{
     abi::{AbiDecode, Detokenize, Function, Token},
-    types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, TxHash, H160, U256},
+    types::{Address, BlockNumber, Bytes, Chain, NameOrAddress, H160, U256},
 };
-use ethers_providers::Middleware;
+use ethers_providers::{Middleware, PendingTransaction};
 use std::{convert::TryFrom, sync::Arc};
 
 pub mod multicall_contract;
@@ -735,7 +735,7 @@ impl<M: Middleware> Multicall<M> {
             v @ (MulticallVersion::Multicall2 | MulticallVersion::Multicall3) => {
                 let is_v2 = v == MulticallVersion::Multicall2;
                 let call = if is_v2 { self.as_try_aggregate() } else { self.as_aggregate_3() };
-                let return_data = call.call().await?;
+                let return_data = ContractCall::call(&call).await?;
                 self.calls
                     .iter()
                     .zip(return_data.into_iter())
@@ -789,7 +789,7 @@ impl<M: Middleware> Multicall<M> {
     }
 
     /// Signs and broadcasts a batch of transactions by using the Multicall contract as proxy,
-    /// returning the transaction hash once the transaction confirms.
+    /// returning the pending transaction.
     ///
     /// Note: this method will broadcast a transaction from an account, meaning it must have
     /// sufficient funds for gas and transaction value.
@@ -811,32 +811,18 @@ impl<M: Middleware> Multicall<M> {
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn send(&self) -> Result<TxHash, M> {
-        // Broadcast transaction and return the transaction hash
-        // TODO: Can we make this return a PendingTransaction directly instead?
-        // Seems hard due to `returns a value referencing data owned by the current function`
-
-        // running clippy --fix on this throws E0597
-        #[allow(clippy::let_and_return)]
-        let tx_hash = match self.version {
-            MulticallVersion::Multicall => {
-                let call = self.as_aggregate();
-                let hash = *call.send().await?;
-                hash
-            }
-            MulticallVersion::Multicall2 => {
-                let call = self.as_try_aggregate();
-                let hash = *call.send().await?;
-                hash
-            }
-            MulticallVersion::Multicall3 => {
-                let call = self.as_aggregate_3_value();
-                let hash = *call.send().await?;
-                hash
-            }
+    pub async fn send(&self) -> Result<PendingTransaction<'_, M::Provider>, M> {
+        let tx = match self.version {
+            MulticallVersion::Multicall => self.as_aggregate().tx,
+            MulticallVersion::Multicall2 => self.as_try_aggregate().tx,
+            MulticallVersion::Multicall3 => self.as_aggregate_3_value().tx,
         };
 
-        Ok(tx_hash)
+        self.contract
+            .client_ref()
+            .send_transaction(tx, self.block.map(Into::into))
+            .await
+            .map_err(|e| MulticallError::ContractError(ContractError::MiddlewareError(e)))
     }
 
     /// v1

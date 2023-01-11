@@ -4,20 +4,17 @@ use crate::{
     event::{EthEvent, Event},
     EthLogDecode,
 };
-
 use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, Tokenize},
     types::{Address, Filter, Selector, ValueOrArray},
 };
+use ethers_providers::Middleware;
+use std::{marker::PhantomData, sync::Arc};
 
 #[cfg(not(feature = "legacy"))]
 use ethers_core::types::Eip1559TransactionRequest;
 #[cfg(feature = "legacy")]
 use ethers_core::types::TransactionRequest;
-
-use ethers_providers::Middleware;
-
-use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 /// A Contract is an abstraction of an executable program on the Ethereum Blockchain.
 /// It has code (called byte code) as well as allocated long-term memory
@@ -161,6 +158,7 @@ pub struct Contract<M> {
 
 impl<M> std::ops::Deref for Contract<M> {
     type Target = BaseContract;
+
     fn deref(&self) -> &Self::Target {
         &self.base_contract
     }
@@ -177,19 +175,24 @@ impl<M> Clone for Contract<M> {
 }
 
 impl<M> Contract<M> {
-    /// Returns the contract's address
+    /// Returns the contract's address.
     pub fn address(&self) -> Address {
         self.address
     }
 
-    /// Returns a reference to the contract's ABI
+    /// Returns a reference to the contract's ABI.
     pub fn abi(&self) -> &Abi {
         &self.base_contract.abi
     }
 
-    /// Returns a pointer to the contract's client
+    /// Returns a pointer to the contract's client.
     pub fn client(&self) -> Arc<M> {
-        self.client.clone()
+        Arc::clone(&self.client)
+    }
+
+    /// Returns a reference to the contract's client.
+    pub fn client_ref(&self) -> &M {
+        Arc::as_ref(&self.client)
     }
 }
 
@@ -301,10 +304,7 @@ impl<M: Middleware> Contract<M> {
     ///
     /// Clones `self` internally
     #[must_use]
-    pub fn at<T: Into<Address>>(&self, address: T) -> Self
-    where
-        M: Clone,
-    {
+    pub fn at<T: Into<Address>>(&self, address: T) -> Self {
         let mut this = self.clone();
         this.address = address.into();
         this
@@ -314,10 +314,7 @@ impl<M: Middleware> Contract<M> {
     ///
     /// Clones `self` internally
     #[must_use]
-    pub fn connect<N>(&self, client: Arc<N>) -> Contract<N>
-    where
-        N: Clone,
-    {
+    pub fn connect<N>(&self, client: Arc<N>) -> Contract<N> {
         Contract { base_contract: self.base_contract.clone(), client, address: self.address }
     }
 }
