@@ -343,7 +343,7 @@ pub fn get_create2_address(
 /// let fee = U256::from(500_u64);
 ///
 /// // abi.encode(token0 as address, token1 as address, fee as uint256)
-/// let input = abi::encode(&vec![
+/// let input = abi::encode(&[
 ///     Token::Address(token0),
 ///     Token::Address(token1),
 ///     Token::Uint(fee),
