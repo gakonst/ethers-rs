@@ -5,7 +5,7 @@ use std::{
     fmt,
     time::Duration,
 };
-use strum::{AsRefStr, EnumString, EnumVariantNames};
+use strum::{AsRefStr, EnumCount, EnumIter, EnumString, EnumVariantNames};
 
 // compatibility re-export
 #[doc(hidden)]
@@ -33,6 +33,8 @@ pub type ParseChainError = TryFromPrimitiveError<Chain>;
     AsRefStr,         // also for fmt::Display and serde::Serialize
     EnumVariantNames, // Self::VARIANTS
     EnumString,       // FromStr, TryFrom<&str>
+    EnumIter,
+    EnumCount,
     TryFromPrimitive, // TryFrom<u64>
     Deserialize,
 )]
@@ -372,9 +374,15 @@ impl Chain {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use strum::IntoEnumIterator;
 
     #[test]
     fn test_default_chain() {
         assert_eq!(serde_json::to_string(&Chain::default()).unwrap(), "\"mainnet\"");
+    }
+
+    #[test]
+    fn test_enum_iter() {
+        assert_eq!(Chain::COUNT, Chain::iter().size_hint().0);
     }
 }
