@@ -169,7 +169,7 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
     async fn get_quorum_number<N>(
         &self,
         method: &str,
-        params: QuorumParams,
+        params: WrappedParams,
     ) -> Result<N, QuorumError>
     where
         N: Serialize + DeserializeOwned + Ord + Copy,
@@ -230,12 +230,12 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
 
     /// Returns the block height that a _quorum_ of providers have reached.
     async fn get_quorum_block_number(&self) -> Result<U64, QuorumError> {
-        self.get_quorum_number("eth_blockNumber", QuorumParams::Zst).await
+        self.get_quorum_number("eth_blockNumber", WrappedParams::Zst).await
     }
 
     /// Normalizes the request payload depending on the call
-    async fn normalize_request(&self, method: &str, q_params: &mut QuorumParams) {
-        let params = if let QuorumParams::Value(v) = q_params {
+    async fn normalize_request(&self, method: &str, q_params: &mut WrappedParams) {
+        let params = if let WrappedParams::Value(v) = q_params {
             v
         } else {
             // at this time no normalization is required for calls with zero parameters.
@@ -433,7 +433,7 @@ impl From<QuorumError> for ProviderError {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait JsonRpcClientWrapper: Send + Sync + Debug {
-    async fn request(&self, method: &str, params: QuorumParams) -> Result<Value, ProviderError>;
+    async fn request(&self, method: &str, params: WrappedParams) -> Result<Value, ProviderError>;
 }
 type NotificationStream =
     Box<dyn futures_core::Stream<Item = Box<RawValue>> + Send + Unpin + 'static>;
@@ -449,8 +449,8 @@ pub trait PubsubClientWrapper: JsonRpcClientWrapper {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<C: JsonRpcClient> JsonRpcClientWrapper for C {
-    async fn request(&self, method: &str, params: QuorumParams) -> Result<Value, ProviderError> {
-        let fut = if let QuorumParams::Value(params) = params {
+    async fn request(&self, method: &str, params: WrappedParams) -> Result<Value, ProviderError> {
+        let fut = if let WrappedParams::Value(params) = params {
             JsonRpcClient::request(self, method, params)
         } else {
             JsonRpcClient::request(self, method, ())
@@ -462,7 +462,7 @@ impl<C: JsonRpcClient> JsonRpcClientWrapper for C {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl JsonRpcClientWrapper for Box<dyn JsonRpcClientWrapper> {
-    async fn request(&self, method: &str, params: QuorumParams) -> Result<Value, ProviderError> {
+    async fn request(&self, method: &str, params: WrappedParams) -> Result<Value, ProviderError> {
         self.as_ref().request(method, params).await
     }
 }
@@ -470,7 +470,7 @@ impl JsonRpcClientWrapper for Box<dyn JsonRpcClientWrapper> {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl JsonRpcClientWrapper for Box<dyn PubsubClientWrapper> {
-    async fn request(&self, method: &str, params: QuorumParams) -> Result<Value, ProviderError> {
+    async fn request(&self, method: &str, params: WrappedParams) -> Result<Value, ProviderError> {
         self.as_ref().request(method, params).await
     }
 }
@@ -511,12 +511,7 @@ where
         method: &str,
         params: T,
     ) -> Result<R, Self::Error> {
-        let mut params = if std::mem::size_of::<T>() == 0 {
-            // we don't want `()` to become `"null"`.
-            QuorumParams::Zst
-        } else {
-            QuorumParams::Value(serde_json::to_value(params)?)
-        };
+        let mut params = WrappedParams::new(params)?;
         self.normalize_request(method, &mut params).await;
 
         match method {
@@ -699,16 +694,27 @@ where
 /// This is necessary because the wrapper provider is supposed to skip the `params` if it's of
 /// size 0, see `crate::transports::common::Request`
 #[derive(Clone)]
-pub enum QuorumParams {
+pub enum WrappedParams {
     Value(Value),
     Zst,
+}
+
+impl WrappedParams {
+    pub fn new<T: Serialize>(params: T) -> Result<Self, serde_json::Error> {
+        Ok(if std::mem::size_of::<T>() == 0 {
+            // we don't want `()` to become `"null"`.
+            WrappedParams::Zst
+        } else {
+            WrappedParams::Value(serde_json::to_value(params)?)
+        })
+    }
 }
 
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::{Quorum, QuorumProvider, WeightedProvider};
-    use crate::{transports::quorum::QuorumParams, Middleware, MockProvider, Provider};
+    use crate::{transports::quorum::WrappedParams, Middleware, MockProvider, Provider};
     use ethers_core::types::{U256, U64};
 
     async fn test_quorum(q: Quorum) {
@@ -770,7 +776,7 @@ mod tests {
             .quorum(Quorum::ProviderCount(5))
             .build();
         assert_eq!(
-            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            quorum.get_quorum_number::<U64>("foo", WrappedParams::Zst).await.unwrap().as_u64(),
             68
         );
 
@@ -779,7 +785,7 @@ mod tests {
             .quorum(Quorum::ProviderCount(4))
             .build();
         assert_eq!(
-            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            quorum.get_quorum_number::<U64>("foo", WrappedParams::Zst).await.unwrap().as_u64(),
             100
         );
 
@@ -788,7 +794,7 @@ mod tests {
             .quorum(Quorum::ProviderCount(3))
             .build();
         assert_eq!(
-            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            quorum.get_quorum_number::<U64>("foo", WrappedParams::Zst).await.unwrap().as_u64(),
             100
         );
 
@@ -797,7 +803,7 @@ mod tests {
             .quorum(Quorum::ProviderCount(2))
             .build();
         assert_eq!(
-            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            quorum.get_quorum_number::<U64>("foo", WrappedParams::Zst).await.unwrap().as_u64(),
             101
         );
 
@@ -806,7 +812,7 @@ mod tests {
             .quorum(Quorum::ProviderCount(1))
             .build();
         assert_eq!(
-            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            quorum.get_quorum_number::<U64>("foo", WrappedParams::Zst).await.unwrap().as_u64(),
             102
         );
 
@@ -815,7 +821,7 @@ mod tests {
             .quorum(Quorum::Majority)
             .build();
         assert_eq!(
-            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            quorum.get_quorum_number::<U64>("foo", WrappedParams::Zst).await.unwrap().as_u64(),
             100
         );
     }
@@ -846,7 +852,7 @@ mod tests {
             .quorum(Quorum::ProviderCount(2))
             .build();
         assert_eq!(
-            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            quorum.get_quorum_number::<U64>("foo", WrappedParams::Zst).await.unwrap().as_u64(),
             100
         );
 
@@ -855,7 +861,7 @@ mod tests {
             .quorum(Quorum::Majority)
             .build();
         assert_eq!(
-            quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.unwrap().as_u64(),
+            quorum.get_quorum_number::<U64>("foo", WrappedParams::Zst).await.unwrap().as_u64(),
             100
         );
     }
@@ -882,13 +888,13 @@ mod tests {
             .add_providers(providers.clone())
             .quorum(Quorum::ProviderCount(2))
             .build();
-        assert!(quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.is_err());
+        assert!(quorum.get_quorum_number::<U64>("foo", WrappedParams::Zst).await.is_err());
 
         let quorum = QuorumProvider::builder()
             .add_providers(providers.clone())
             .quorum(Quorum::Majority)
             .build();
-        assert!(quorum.get_quorum_number::<U64>("foo", QuorumParams::Zst).await.is_err());
+        assert!(quorum.get_quorum_number::<U64>("foo", WrappedParams::Zst).await.is_err());
     }
 
     #[tokio::test]
