@@ -491,8 +491,7 @@ mod eth_tests {
         multicall_send.clear_calls().add_call(broadcast, false).add_call(broadcast2, false);
 
         // broadcast the transaction and wait for it to be mined
-        let tx_hash = multicall_send.legacy().send().await.unwrap();
-        let _tx_receipt = PendingTransaction::new(tx_hash, client.provider()).await.unwrap();
+        let _tx_receipt = multicall_send.legacy().send().await.unwrap().await.unwrap();
 
         // Do another multicall to check the updated return values
         // The `getValue` calls should return the last value we set in the batched broadcast

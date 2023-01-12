@@ -291,6 +291,8 @@
 
 ### Unreleased
 
+- Return pending transaction from `Multicall::send`
+  [#2044](https://github.com/gakonst/ethers-rs/pull/2044)
 - Add abigen to default features
   [#1684](https://github.com/gakonst/ethers-rs/pull/1684)
 - Add extra Multicall helper methods
