@@ -112,7 +112,7 @@ pub struct Trace {
 }
 
 /// Response
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Res {
     /// Call
@@ -120,13 +120,8 @@ pub enum Res {
     /// Create
     Create(CreateResult),
     /// None
+    #[default]
     None,
-}
-
-impl Default for Res {
-    fn default() -> Res {
-        Res::None
-    }
 }
 
 /// Action
@@ -198,9 +193,10 @@ pub struct Call {
 }
 
 /// Call type.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum CallType {
     /// None
+    #[default]
     #[serde(rename = "none")]
     None,
     /// Call
@@ -215,12 +211,6 @@ pub enum CallType {
     /// Static call
     #[serde(rename = "staticcall")]
     StaticCall,
-}
-
-impl Default for CallType {
-    fn default() -> CallType {
-        CallType::None
-    }
 }
 
 /// Create response

@@ -531,9 +531,10 @@ impl<'de> Deserialize<'de> for BlockId {
 }
 
 /// A block Number (or tag - "latest", "earliest", "pending")
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub enum BlockNumber {
     /// Latest block
+    #[default]
     Latest,
     /// Finalized block accepted as canonical
     Finalized,
@@ -645,12 +646,6 @@ impl fmt::Display for BlockNumber {
             BlockNumber::Earliest => f.write_str("earliest"),
             BlockNumber::Pending => f.write_str("pending"),
         }
-    }
-}
-
-impl Default for BlockNumber {
-    fn default() -> Self {
-        BlockNumber::Latest
     }
 }
 
