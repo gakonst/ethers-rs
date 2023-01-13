@@ -15,6 +15,7 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [dependencies]
 ethers-core = { version = "^1.0.0", path = "../../ethers-core", features = ["macros"] }
+ethers-etherscan = { path = "../../ethers-etherscan", default-features = false, optional = true }
 
 proc-macro2 = "1.0"
 quote = "1.0"
@@ -22,17 +23,22 @@ syn = { version = "1.0.12", default-features = false, features = ["full"] }
 prettyplease = "0.1.23"
 
 Inflector = "0.11"
-url = "2.1"
 serde_json = "1.0.61"
 serde = { version = "1.0.124", features = ["derive"] }
 hex = { version = "0.4.2", default-features = false, features = ["std"] }
-reqwest = { version = "0.11.3", default-features = false, features = ["blocking"], optional = true }
 cfg-if = "1.0.0"
 dunce = "1.0.2"
 walkdir = "2.3.2"
 eyre = "0.6"
 regex = "1.6.0"
 toml = "0.5.9"
+
+reqwest = { version = "0.11.3", default-features = false, features = ["blocking"], optional = true }
+tokio = { version = "1.0", default-features = false, features = [
+    "rt-multi-thread",
+    "sync",
+], optional = true }
+url = { version = "2.3.1", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly
@@ -43,9 +49,9 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["reqwest", "rustls"]
-openssl = ["reqwest/native-tls"]
-rustls = ["reqwest/rustls-tls"]
+online = ["reqwest", "ethers-etherscan", "url", "tokio"]
+openssl = ["online", "reqwest/native-tls", "ethers-etherscan/openssl"]
+rustls = ["online", "reqwest/rustls-tls", "ethers-etherscan/rustls"]
 
 [dev-dependencies]
 tempfile = "3.2.0"
