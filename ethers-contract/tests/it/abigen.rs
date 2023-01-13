@@ -750,3 +750,21 @@ fn can_handle_overloaded_function_with_array() {
     ]"#,
     );
 }
+
+#[test]
+fn convert_uses_correct_abi() {
+    abigen!(
+        Foo, r#"[function foo()]"#;
+        Bar, r#"[function bar()]"#;
+    );
+
+    let provider = Arc::new(Provider::new(MockProvider::new()));
+    let foo = Foo::new(Address::default(), Arc::clone(&provider));
+
+    let contract: &ethers_contract::Contract<_> = &foo;
+    let bar: Bar<Provider<MockProvider>> = contract.clone().into();
+
+    // Ensure that `bar` is using the `Bar` ABI internally (this method lookup will panic if `bar`
+    // is incorrectly using the `Foo` ABI internally).
+    bar.bar().call();
+}

@@ -150,7 +150,7 @@ impl Context {
                     /// client at the given `Address`. The contract derefs to a `ethers::Contract`
                     /// object
                     pub fn new<T: Into<#ethers_core::types::Address>>(address: T, client: ::std::sync::Arc<M>) -> Self {
-                        #ethers_contract::Contract::new(address.into(), #abi_name.clone(), client).into()
+                        Self(#ethers_contract::Contract::new(address.into(), #abi_name.clone(), client))
                     }
 
                     #deployment_methods
@@ -163,7 +163,7 @@ impl Context {
 
                 impl<M : #ethers_providers::Middleware> From<#ethers_contract::Contract<M>> for #name<M> {
                     fn from(contract: #ethers_contract::Contract<M>) -> Self {
-                       Self(contract)
+                       Self::new(contract.address(), contract.client())
                     }
                 }
         };
@@ -271,7 +271,7 @@ impl Context {
         }
 
         let event_derives = args
-            .event_derives
+            .derives
             .iter()
             .map(|derive| syn::parse_str::<Path>(derive))
             .collect::<Result<Vec<_>, _>>()

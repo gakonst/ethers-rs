@@ -1,9 +1,13 @@
-#![deny(missing_docs, unsafe_code)]
-#![deny(rustdoc::broken_intra_doc_links)]
+//! # Abigen
+//!
+//! Programmatically generate type-safe Rust bindings for Ethereum smart contracts.
+//!
+//! This crate is intended to be used either indirectly with the [`abigen` procedural macro][abigen]
+//! or directly from a build script / CLI.
+//!
+//! [abigen]: https://docs.rs/ethers/latest/ethers/contract/macro.abigen.html
 
-//! Module for generating type-safe bindings to Ethereum smart contracts. This
-//! module is intended to be used either indirectly with the `abigen` procedural
-//! macro or directly from a build script / CLI
+#![deny(rustdoc::broken_intra_doc_links, missing_docs, unsafe_code)]
 
 #[cfg(test)]
 #[allow(missing_docs)]
@@ -33,19 +37,21 @@ use eyre::Result;
 use proc_macro2::TokenStream;
 use std::{collections::HashMap, fs::File, io::Write, path::Path};
 
-/// Builder struct for generating type-safe bindings from a contract's ABI
+/// Programmatically generate type-safe Rust bindings for an Ethereum smart contract from its ABI.
 ///
-/// Note: Your contract's ABI must contain the `stateMutability` field. This is
-/// [still not supported by Vyper](https://github.com/vyperlang/vyper/issues/1931), so you must adjust your ABIs and replace
-/// `constant` functions with `view` or `pure`.
+/// For all the supported ABI sources, see [Source].
 ///
-/// To generate bindings for _multiple_ contracts at once see also [`crate::MultiAbigen`].
+/// To generate bindings for *multiple* contracts at once, see [`MultiAbigen`].
+///
+/// To generate bindings at compile time, see [the abigen! macro][abigen], or use in a `build.rs`
+/// file.
+///
+/// [abigen]: https://docs.rs/ethers/latest/ethers/contract/macro.abigen.html
 ///
 /// # Example
 ///
-/// Running the code below will generate a file called `token.rs` containing the
-/// bindings inside, which exports an `ERC20Token` struct, along with all its events. Put into a
-/// `build.rs` file this will generate the bindings during `cargo build`.
+/// Running the code below will generate a file called `token.rs` containing the bindings inside,
+/// which exports an `ERC20Token` struct, along with all its events.
 ///
 /// ```no_run
 /// # use ethers_contract_abigen::Abigen;
@@ -53,22 +59,22 @@ use std::{collections::HashMap, fs::File, io::Write, path::Path};
 /// Abigen::new("ERC20Token", "./abi.json")?.generate()?.write_to_file("token.rs")?;
 /// # Ok(())
 /// # }
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
+#[must_use = "Abigen does nothing unless you generate or expand it."]
 pub struct Abigen {
-    /// The source of the ABI JSON for the contract whose bindings
-    /// are being generated.
+    /// The source of the ABI JSON for the contract whose bindings are being generated.
     abi_source: Source,
 
-    /// Override the contract name to use for the generated type.
+    /// The contract's name to use for the generated type.
     contract_name: String,
 
     /// Manually specified contract method aliases.
     method_aliases: HashMap<String, String>,
 
-    /// Derives added to event structs and enums.
-    event_derives: Vec<String>,
+    /// Manually specified `derive` macros added to all structs and enums.
+    derives: Vec<String>,
 
-    /// Whether to format the code. Uses [`prettyplease`].
+    /// Whether to format the generated bindings using [`prettyplease`].
     format: bool,
 
     /// Manually specified event name aliases.
@@ -79,22 +85,21 @@ pub struct Abigen {
 }
 
 impl Abigen {
-    /// Creates a new builder with the given ABI JSON source.
-    pub fn new<S: AsRef<str>>(contract_name: &str, abi_source: S) -> Result<Self> {
+    /// Creates a new builder with the given [ABI Source][Source].
+    pub fn new<T: Into<String>, S: AsRef<str>>(contract_name: T, abi_source: S) -> Result<Self> {
         let abi_source = abi_source.as_ref().parse()?;
         Ok(Self {
             abi_source,
-            contract_name: contract_name.to_owned(),
-            method_aliases: HashMap::new(),
-            event_derives: Vec::new(),
-            event_aliases: HashMap::new(),
+            contract_name: contract_name.into(),
             format: true,
+            method_aliases: Default::default(),
+            derives: Default::default(),
+            event_aliases: Default::default(),
             error_aliases: Default::default(),
         })
     }
 
-    /// Attempts to load a new builder from an ABI JSON file at the specific
-    /// path.
+    /// Attempts to load a new builder from an ABI JSON file at the specific path.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
         let name = path
             .as_ref()
@@ -110,9 +115,10 @@ impl Abigen {
         Self::new(name, std::fs::read_to_string(path.as_ref())?)
     }
 
-    /// Manually adds a solidity event alias to specify what the event struct
-    /// and function name will be in Rust.
-    #[must_use]
+    /// Manually adds a solidity event alias to specify what the event struct and function name will
+    /// be in Rust.
+    ///
+    /// For events without an alias, the `PascalCase` event name will be used.
     pub fn add_event_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -122,10 +128,9 @@ impl Abigen {
         self
     }
 
-    /// Manually adds a solidity method alias to specify what the method name
-    /// will be in Rust. For solidity methods without an alias, the snake cased
-    /// method name will be used.
-    #[must_use]
+    /// Add a Solidity method error alias to specify the generated method name.
+    ///
+    /// For methods without an alias, the `snake_case` method name will be used.
     pub fn add_method_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -135,8 +140,9 @@ impl Abigen {
         self
     }
 
-    /// Manually adds a solidity error alias to specify what the error struct will be in Rust.
-    #[must_use]
+    /// Add a Solidity custom error alias to specify the generated struct's name.
+    ///
+    /// For errors without an alias, the `PascalCase` error name will be used.
     pub fn add_error_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -163,16 +169,18 @@ impl Abigen {
         self
     }
 
-    /// Add a custom derive to the derives for event structs and enums.
+    #[deprecated = "Use add_derive instead"]
+    #[doc(hidden)]
+    pub fn add_event_derive<S: Into<String>>(mut self, derive: S) -> Self {
+        self.derives.push(derive.into());
+        self
+    }
+
+    /// Add a custom derive to the derives for all structs and enums.
     ///
-    /// This makes it possible to for example derive serde::Serialize and
-    /// serde::Deserialize for events.
-    #[must_use]
-    pub fn add_event_derive<S>(mut self, derive: S) -> Self
-    where
-        S: Into<String>,
-    {
-        self.event_derives.push(derive.into());
+    /// For example, this makes it possible to derive serde::Serialize and serde::Deserialize.
+    pub fn add_derive<S: Into<String>>(mut self, derive: S) -> Self {
+        self.derives.push(derive.into());
         self
     }
 
@@ -253,12 +261,12 @@ impl ContractBindings {
         self.tokens
     }
 
-    /// Generate the default module name (snake case of the contract name)
+    /// Generate the default module name (snake case of the contract name).
     pub fn module_name(&self) -> String {
         util::safe_module_name(&self.name)
     }
 
-    /// Generate the default filename of the module
+    /// Generate the default file name of the module.
     pub fn module_filename(&self) -> String {
         let mut name = self.module_name();
         name.extend([".rs"]);
