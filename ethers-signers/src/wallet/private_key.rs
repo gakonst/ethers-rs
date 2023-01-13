@@ -130,9 +130,26 @@ impl FromStr for Wallet<SigningKey> {
     type Err = WalletError;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
+        let src = src.strip_prefix("0x").or_else(|| src.strip_prefix("0X")).unwrap_or(src);
         let src = hex::decode(src)?;
         let sk = SigningKey::from_bytes(&src)?;
         Ok(sk.into())
+    }
+}
+
+impl TryFrom<&str> for Wallet<SigningKey> {
+    type Error = WalletError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
+}
+
+impl TryFrom<String> for Wallet<SigningKey> {
+    type Error = WalletError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        value.parse()
     }
 }
 
@@ -324,5 +341,49 @@ mod tests {
         assert_eq!(wallet.address, wallet_from_bytes.address);
         assert_eq!(wallet.chain_id, wallet_from_bytes.chain_id);
         assert_eq!(wallet.signer, wallet_from_bytes.signer);
+    }
+
+    #[test]
+    fn key_from_str() {
+        let wallet: Wallet<SigningKey> =
+            "0000000000000000000000000000000000000000000000000000000000000001".parse().unwrap();
+
+        // Check FromStr and `0x`
+        let wallet_0x: Wallet<SigningKey> =
+            "0x0000000000000000000000000000000000000000000000000000000000000001".parse().unwrap();
+        assert_eq!(wallet.address, wallet_0x.address);
+        assert_eq!(wallet.chain_id, wallet_0x.chain_id);
+        assert_eq!(wallet.signer, wallet_0x.signer);
+
+        // Check FromStr and `0X`
+        let wallet_0x_cap: Wallet<SigningKey> =
+            "0X0000000000000000000000000000000000000000000000000000000000000001".parse().unwrap();
+        assert_eq!(wallet.address, wallet_0x_cap.address);
+        assert_eq!(wallet.chain_id, wallet_0x_cap.chain_id);
+        assert_eq!(wallet.signer, wallet_0x_cap.signer);
+
+        // Check TryFrom<&str>
+        let wallet_0x_tryfrom_str: Wallet<SigningKey> =
+            "0x0000000000000000000000000000000000000000000000000000000000000001"
+                .try_into()
+                .unwrap();
+        assert_eq!(wallet.address, wallet_0x_tryfrom_str.address);
+        assert_eq!(wallet.chain_id, wallet_0x_tryfrom_str.chain_id);
+        assert_eq!(wallet.signer, wallet_0x_tryfrom_str.signer);
+
+        // Check TryFrom<String>
+        let wallet_0x_tryfrom_string: Wallet<SigningKey> =
+            "0x0000000000000000000000000000000000000000000000000000000000000001"
+                .to_string()
+                .try_into()
+                .unwrap();
+        assert_eq!(wallet.address, wallet_0x_tryfrom_string.address);
+        assert_eq!(wallet.chain_id, wallet_0x_tryfrom_string.chain_id);
+        assert_eq!(wallet.signer, wallet_0x_tryfrom_string.signer);
+
+        // Must fail because of `0z`
+        "0z0000000000000000000000000000000000000000000000000000000000000001"
+            .parse::<Wallet<SigningKey>>()
+            .unwrap_err();
     }
 }

@@ -14,24 +14,19 @@ We hope that these docs will help you get started with ethers-rs and give you a 
 The following is a brief overview diagram of the  topis covered in this guide.
 
 ```mermaid
-graph LR
-  %% The code below is for styling the graph 
-  %%-------------------------------------------------  
-  %%{init: {'theme':'dark', 'themeVariables':{'textColor':' #ffffff ', 'nodeBorder':'#ff2d00', 'edgeLabelBackground':'#000000'  ,'lineColor':'#87ff00', 'fontSize':'14px', 'curve':'linear'}}}%%
+{{#include ../mermaid-style.txt}}
 
-  %%-------------------------------------------------
-  %% Actual Diagram code is below
-  
-    A[Ethers-rs <br> Manual] --> A1[Providers]
+graph LR  
+  A[Ethers-rs <br> Manual] --> A1[Providers]
 	A --> A2[Middleware]
-    A --> A3[Contracts]
-    A --> A4[Events]
-    A --> A5[Subscriptions]
-    A --> A6[Queries]
-    A --> A7[Transactions]
-    A --> A8[Wallets]
-    A --> A9[Big numbers]
-    A --> A10[Anvil]
+  A --> A3[Contracts]
+  A --> A4[Events]
+  A --> A5[Subscriptions]
+  A --> A6[Queries]
+  A --> A7[Transactions]
+  A --> A8[Wallets]
+  A --> A9[Big numbers]
+  A --> A10[Anvil]
 ```
 ```admonish bug 
 This diagram is incomplete and will undergo continuous changes.

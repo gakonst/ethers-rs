@@ -911,13 +911,13 @@ mod tests {
 
         let root = root.path();
         assert_eq!(ProjectPathsConfig::find_source_dir(root), src,);
-        std::fs::File::create(&contracts).unwrap();
+        std::fs::create_dir_all(&contracts).unwrap();
         assert_eq!(ProjectPathsConfig::find_source_dir(root), contracts,);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(root).sources,
             utils::canonicalized(contracts),
         );
-        std::fs::File::create(&src).unwrap();
+        std::fs::create_dir_all(&src).unwrap();
         assert_eq!(ProjectPathsConfig::find_source_dir(root), src,);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(root).sources,
@@ -925,18 +925,19 @@ mod tests {
         );
 
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), out,);
-        std::fs::File::create(&artifacts).unwrap();
+        std::fs::create_dir_all(&artifacts).unwrap();
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), artifacts,);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(root).artifacts,
             utils::canonicalized(artifacts),
         );
+        std::fs::create_dir_all(&build_infos).unwrap();
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(root).build_infos,
             utils::canonicalized(build_infos)
         );
 
-        std::fs::File::create(&out).unwrap();
+        std::fs::create_dir_all(&out).unwrap();
         assert_eq!(ProjectPathsConfig::find_artifacts_dir(root), out,);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(root).artifacts,
@@ -944,13 +945,13 @@ mod tests {
         );
 
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![lib.clone()],);
-        std::fs::File::create(&node_modules).unwrap();
+        std::fs::create_dir_all(&node_modules).unwrap();
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![node_modules.clone()],);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(root).libraries,
             vec![utils::canonicalized(node_modules)],
         );
-        std::fs::File::create(&lib).unwrap();
+        std::fs::create_dir_all(&lib).unwrap();
         assert_eq!(ProjectPathsConfig::find_libs(root), vec![lib.clone()],);
         assert_eq!(
             ProjectPathsConfig::builder().build_with_root(root).libraries,

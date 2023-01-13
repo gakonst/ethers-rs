@@ -1,9 +1,13 @@
-#![deny(missing_docs, unsafe_code)]
-#![deny(rustdoc::broken_intra_doc_links)]
+//! # Abigen
+//!
+//! Programmatically generate type-safe Rust bindings for Ethereum smart contracts.
+//!
+//! This crate is intended to be used either indirectly with the [`abigen` procedural macro][abigen]
+//! or directly from a build script / CLI.
+//!
+//! [abigen]: https://docs.rs/ethers/latest/ethers/contract/macro.abigen.html
 
-//! Module for generating type-safe bindings to Ethereum smart contracts. This
-//! module is intended to be used either indirectly with the `abigen` procedural
-//! macro or directly from a build script / CLI
+#![deny(rustdoc::broken_intra_doc_links, missing_docs, unsafe_code)]
 
 #[cfg(test)]
 #[allow(missing_docs)]
@@ -11,40 +15,41 @@
 #[path = "test/macros.rs"]
 mod test_macros;
 
-/// Contains types to generate rust bindings for solidity contracts
 pub mod contract;
 pub use contract::structs::InternalStructs;
-use contract::Context;
-
-mod source;
-mod util;
 
 pub mod filter;
 pub use filter::{ContractFilter, ExcludeContracts, SelectContracts};
+
 pub mod multi;
 pub use multi::MultiAbigen;
 
-pub use ethers_core::types::Address;
+mod source;
 pub use source::Source;
 
-use crate::contract::ExpandedContract;
-use eyre::Result;
-use proc_macro2::TokenStream;
-use std::{collections::HashMap, fs::File, io::Write, path::Path};
+pub use ethers_core::types::Address;
 
-/// Builder struct for generating type-safe bindings from a contract's ABI
+use contract::{Context, ExpandedContract};
+use eyre::{Context as _, Result};
+use proc_macro2::TokenStream;
+use quote::ToTokens;
+use std::{collections::HashMap, fmt, fs, io, path::Path};
+
+/// Programmatically generate type-safe Rust bindings for an Ethereum smart contract from its ABI.
 ///
-/// Note: Your contract's ABI must contain the `stateMutability` field. This is
-/// [still not supported by Vyper](https://github.com/vyperlang/vyper/issues/1931), so you must adjust your ABIs and replace
-/// `constant` functions with `view` or `pure`.
+/// For all the supported ABI sources, see [Source].
 ///
-/// To generate bindings for _multiple_ contracts at once see also [`crate::MultiAbigen`].
+/// To generate bindings for *multiple* contracts at once, see [`MultiAbigen`].
+///
+/// To generate bindings at compile time, see [the abigen! macro][abigen], or use in a `build.rs`
+/// file.
+///
+/// [abigen]: https://docs.rs/ethers/latest/ethers/contract/macro.abigen.html
 ///
 /// # Example
 ///
-/// Running the code below will generate a file called `token.rs` containing the
-/// bindings inside, which exports an `ERC20Token` struct, along with all its events. Put into a
-/// `build.rs` file this will generate the bindings during `cargo build`.
+/// Running the code below will generate a file called `token.rs` containing the bindings inside,
+/// which exports an `ERC20Token` struct, along with all its events.
 ///
 /// ```no_run
 /// # use ethers_contract_abigen::Abigen;
@@ -52,22 +57,22 @@ use std::{collections::HashMap, fs::File, io::Write, path::Path};
 /// Abigen::new("ERC20Token", "./abi.json")?.generate()?.write_to_file("token.rs")?;
 /// # Ok(())
 /// # }
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
+#[must_use = "Abigen does nothing unless you generate or expand it."]
 pub struct Abigen {
-    /// The source of the ABI JSON for the contract whose bindings
-    /// are being generated.
+    /// The source of the ABI JSON for the contract whose bindings are being generated.
     abi_source: Source,
 
-    /// Override the contract name to use for the generated type.
+    /// The contract's name to use for the generated type.
     contract_name: String,
 
     /// Manually specified contract method aliases.
     method_aliases: HashMap<String, String>,
 
-    /// Derives added to event structs and enums.
-    event_derives: Vec<String>,
+    /// Manually specified `derive` macros added to all structs and enums.
+    derives: Vec<String>,
 
-    /// Whether to format the code. Uses [`prettyplease`].
+    /// Whether to format the generated bindings using [`prettyplease`].
     format: bool,
 
     /// Manually specified event name aliases.
@@ -78,40 +83,40 @@ pub struct Abigen {
 }
 
 impl Abigen {
-    /// Creates a new builder with the given ABI JSON source.
-    pub fn new<S: AsRef<str>>(contract_name: &str, abi_source: S) -> Result<Self> {
+    /// Creates a new builder with the given [ABI Source][Source].
+    pub fn new<T: Into<String>, S: AsRef<str>>(contract_name: T, abi_source: S) -> Result<Self> {
         let abi_source = abi_source.as_ref().parse()?;
         Ok(Self {
             abi_source,
-            contract_name: contract_name.to_owned(),
-            method_aliases: HashMap::new(),
-            event_derives: Vec::new(),
-            event_aliases: HashMap::new(),
+            contract_name: contract_name.into(),
             format: true,
+            method_aliases: Default::default(),
+            derives: Default::default(),
+            event_aliases: Default::default(),
             error_aliases: Default::default(),
         })
     }
 
-    /// Attempts to load a new builder from an ABI JSON file at the specific
-    /// path.
+    /// Attempts to load a new builder from an ABI JSON file at the specific path.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
-        let name = path
-            .as_ref()
-            .file_stem()
-            .ok_or_else(|| eyre::format_err!("Missing file stem in path"))?
+        let path = dunce::canonicalize(path).wrap_err("File does not exist")?;
+        // this shouldn't error when the path is canonicalized
+        let file_name = path.file_name().ok_or_else(|| eyre::eyre!("Invalid path"))?;
+        let name = file_name
             .to_str()
-            .ok_or_else(|| eyre::format_err!("Unable to convert file stem to string"))?;
+            .ok_or_else(|| eyre::eyre!("File name contains invalid UTF-8"))?
+            .split('.') // ignore everything after the first `.`
+            .next()
+            .unwrap(); // file_name is not empty as asserted by .file_name() already
+        let contents = fs::read_to_string(&path).wrap_err("Could not read file")?;
 
-        // test,script files usually end with `.t.sol` or `.s.sol`, we simply cut off everything
-        // after the first `.`
-        let name = name.split('.').next().expect("name not empty.");
-
-        Self::new(name, std::fs::read_to_string(path.as_ref())?)
+        Self::new(name, contents)
     }
 
-    /// Manually adds a solidity event alias to specify what the event struct
-    /// and function name will be in Rust.
-    #[must_use]
+    /// Manually adds a solidity event alias to specify what the event struct and function name will
+    /// be in Rust.
+    ///
+    /// For events without an alias, the `PascalCase` event name will be used.
     pub fn add_event_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -121,10 +126,9 @@ impl Abigen {
         self
     }
 
-    /// Manually adds a solidity method alias to specify what the method name
-    /// will be in Rust. For solidity methods without an alias, the snake cased
-    /// method name will be used.
-    #[must_use]
+    /// Add a Solidity method error alias to specify the generated method name.
+    ///
+    /// For methods without an alias, the `snake_case` method name will be used.
     pub fn add_method_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -134,8 +138,9 @@ impl Abigen {
         self
     }
 
-    /// Manually adds a solidity error alias to specify what the error struct will be in Rust.
-    #[must_use]
+    /// Add a Solidity custom error alias to specify the generated struct's name.
+    ///
+    /// For errors without an alias, the `PascalCase` error name will be used.
     pub fn add_error_alias<S1, S2>(mut self, signature: S1, alias: S2) -> Self
     where
         S1: Into<String>,
@@ -162,16 +167,18 @@ impl Abigen {
         self
     }
 
-    /// Add a custom derive to the derives for event structs and enums.
+    #[deprecated = "Use add_derive instead"]
+    #[doc(hidden)]
+    pub fn add_event_derive<S: Into<String>>(mut self, derive: S) -> Self {
+        self.derives.push(derive.into());
+        self
+    }
+
+    /// Add a custom derive to the derives for all structs and enums.
     ///
-    /// This makes it possible to for example derive serde::Serialize and
-    /// serde::Deserialize for events.
-    #[must_use]
-    pub fn add_event_derive<S>(mut self, derive: S) -> Self
-    where
-        S: Into<String>,
-    {
-        self.event_derives.push(derive.into());
+    /// For example, this makes it possible to derive serde::Serialize and serde::Deserialize.
+    pub fn add_derive<S: Into<String>>(mut self, derive: S) -> Self {
+        self.derives.push(derive.into());
         self
     }
 
@@ -191,76 +198,100 @@ impl Abigen {
     }
 }
 
-/// Type-safe contract bindings generated by a `Builder`. This type can be
-/// either written to file or into a token stream for use in a procedural macro.
+/// Type-safe contract bindings generated by `Abigen`.
+///
+/// This type can be either written to file or converted to a token stream for a procedural macro.
+#[derive(Clone)]
 pub struct ContractBindings {
-    /// The TokenStream representing the contract bindings.
-    tokens: TokenStream,
-    /// The output options used for serialization.
-    format: bool,
-    /// The contract name
-    name: String,
+    /// The contract's name.
+    pub name: String,
+
+    /// The generated bindings as a `TokenStream`.
+    pub tokens: TokenStream,
+
+    /// Whether to format the generated bindings using [`prettyplease`].
+    pub format: bool,
+}
+
+impl ToTokens for ContractBindings {
+    fn into_token_stream(self) -> TokenStream {
+        self.tokens
+    }
+
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        tokens.extend(Some(self.tokens.clone()))
+    }
+
+    fn to_token_stream(&self) -> TokenStream {
+        self.tokens.clone()
+    }
+}
+
+impl fmt::Display for ContractBindings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.format {
+            let syntax_tree = syn::parse2::<syn::File>(self.tokens.clone()).unwrap();
+            let s = prettyplease::unparse(&syntax_tree);
+            f.write_str(&s)
+        } else {
+            fmt::Display::fmt(&self.tokens, f)
+        }
+    }
+}
+
+impl fmt::Debug for ContractBindings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ContractBindings")
+            .field("name", &self.name)
+            .field("format", &self.format)
+            .finish()
+    }
 }
 
 impl ContractBindings {
-    /// Writes the bindings to a given `Write`.
-    pub fn write<W>(&self, mut w: W) -> Result<()>
-    where
-        W: Write,
-    {
-        let source = if self.format {
-            let syntax_tree = syn::parse2::<syn::File>(self.tokens.clone()).unwrap();
-            prettyplease::unparse(&syntax_tree)
-        } else {
-            self.tokens.to_string()
-        };
-
-        w.write_all(source.as_bytes())?;
-        Ok(())
+    /// Writes the bindings to a new Vec.
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.to_string().into_bytes()
     }
 
-    /// Writes the bindings to a new Vec. Panics if unable to allocate
-    pub fn to_vec(&self) -> Vec<u8> {
-        let mut bindings = vec![];
-        self.write(&mut bindings).expect("allocations don't fail");
-        bindings
+    /// Writes the bindings to a given `io::Write`.
+    pub fn write(&self, w: &mut impl io::Write) -> io::Result<()> {
+        let tokens = self.to_string();
+        w.write_all(tokens.as_bytes())
+    }
+
+    /// Writes the bindings to a given `fmt::Write`.
+    pub fn write_fmt(&self, w: &mut impl fmt::Write) -> fmt::Result {
+        let tokens = self.to_string();
+        w.write_str(&tokens)
     }
 
     /// Writes the bindings to the specified file.
-    pub fn write_to_file<P>(&self, path: P) -> Result<()>
-    where
-        P: AsRef<Path>,
-    {
-        let file = File::create(path)?;
-        self.write(file)
+    pub fn write_to_file(&self, file: impl AsRef<Path>) -> io::Result<()> {
+        fs::write(file.as_ref(), self.to_string())
     }
 
-    /// Writes the bindings to a `contract_name.rs` file in the specified
-    /// directory. The filename is the snake_case transformation of the contract
-    /// name.
-    pub fn write_module_in_dir<P>(&self, dir: P) -> Result<()>
-    where
-        P: AsRef<Path>,
-    {
+    /// Writes the bindings to a `contract_name.rs` file in the specified directory.
+    pub fn write_module_in_dir(&self, dir: impl AsRef<Path>) -> io::Result<()> {
         let file = dir.as_ref().join(self.module_filename());
         self.write_to_file(file)
     }
 
-    /// Converts the bindings into its underlying token stream. This allows it
-    /// to be used within a procedural macro.
+    #[deprecated = "Use ::quote::ToTokens::into_token_stream instead"]
+    #[doc(hidden)]
     pub fn into_tokens(self) -> TokenStream {
         self.tokens
     }
 
-    /// Generate the default module name (snake case of the contract name)
+    /// Generate the default module name (snake case of the contract name).
     pub fn module_name(&self) -> String {
         util::safe_module_name(&self.name)
     }
 
-    /// Generate the default filename of the module
+    /// Generate the default file name of the module.
     pub fn module_filename(&self) -> String {
         let mut name = self.module_name();
-        name.extend([".rs"]);
+        name.push_str(".rs");
         name
     }
 }
