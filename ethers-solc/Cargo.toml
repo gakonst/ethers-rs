@@ -45,10 +45,10 @@ cfg-if = "1.0.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 home = "0.5.4"
-svm = { package = "svm-rs", version = "0.2.18", default-features = false, optional = true, features = [
+svm = { package = "svm-rs", version = "0.2.19", default-features = false, optional = true, features = [
     "blocking",
 ] }
-svm-builds = { package = "svm-rs-builds", version = "0.1.8", optional = true }
+svm-builds = { package = "svm-rs-builds", version = "0.1.11", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly
