@@ -55,7 +55,7 @@ svm-builds = { package = "svm-rs-builds", version = "0.1.8", optional = true }
 getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
-criterion = { version = "0.3", features = ["async_tokio"] }
+criterion = { version = "0.4", features = ["async_tokio"] }
 env_logger = "0.10.0"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
 rand = "0.8.5"
