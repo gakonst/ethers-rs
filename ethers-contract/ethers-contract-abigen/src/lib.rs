@@ -27,7 +27,7 @@ pub use multi::MultiAbigen;
 mod source;
 pub use source::Source;
 
-pub mod util;
+mod util;
 
 pub use ethers_core::types::Address;
 
