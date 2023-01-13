@@ -27,6 +27,8 @@ pub use multi::MultiAbigen;
 mod source;
 pub use source::Source;
 
+pub mod util;
+
 pub use ethers_core::types::Address;
 
 use contract::{Context, ExpandedContract};
