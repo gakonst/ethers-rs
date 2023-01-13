@@ -130,11 +130,13 @@ pub struct ChainConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub merge_netsplit_block: Option<u64>,
 
-    /// The Shanghai hard fork block.
+    /// Shanghai switch time.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub shanghai_block: Option<u64>,
+    pub shanghai_time: Option<u64>,
 
-    /// The Cancun hard fork block.
+    // TODO: change to cancunTime when <https://github.com/ethereum/go-ethereum/pull/26481> is
+    // merged in geth
+    /// Cancun hard fork block.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cancun_block: Option<u64>,
 
