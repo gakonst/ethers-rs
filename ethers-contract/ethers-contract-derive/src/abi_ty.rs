@@ -39,7 +39,14 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
 
                 let assignments = fields.named.iter().map(|f| {
                     let name = f.ident.as_ref().expect("Named fields have names");
-                    quote_spanned! { f.span() => #name: #core_crate::abi::Tokenizable::from_token(iter.next().unwrap())? }
+                    let name_str = name.to_string();
+                    quote_spanned! { f.span() => #name: iter
+                        .next()
+                        .ok_or_else(|| #core_crate::abi::InvalidOutputType(::std::format!(
+                            "Struct field {:} doesn't have correspond token.", #name_str
+                        )))
+                        .and_then(|t| #core_crate::abi::Tokenizable::from_token(t))?
+                    }
                 });
                 let init_struct_impl = quote! { Self { #(#assignments,)* } };
 
@@ -59,7 +66,13 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
                 let tokenize_predicates = quote! { #(#tokenize_predicates,)* };
 
                 let assignments = fields.unnamed.iter().map(|f| {
-                    quote_spanned! { f.span() => #core_crate::abi::Tokenizable::from_token(iter.next().unwrap())? }
+                    quote_spanned! { f.span() => iter
+                            .next()
+                            .ok_or_else(|| #core_crate::abi::InvalidOutputType(::std::format!(
+                                "Struct unnamed field doesn't have correspond token."
+                            )))
+                            .and_then(|t| #core_crate::abi::Tokenizable::from_token(t))?
+                    }
                 });
                 let init_struct_impl = quote! { Self(#(#assignments,)* ) };
 
