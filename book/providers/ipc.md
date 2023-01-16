@@ -2,6 +2,7 @@
 The IPC (Inter-Process Communication) transport is a way for a process to communicate with a running Ethereum client over a local Unix domain socket. If you are new to IPC, you can [follow this link to learn more](https://en.wikipedia.org/wiki/Inter-process_communication). Using the IPC transport allows the ethers library to send JSON-RPC requests to the Ethereum client and receive responses, without the need for a network connection or HTTP server. This can be useful for interacting with a local Ethereum node that is running on the same machine. Using Ipc [is faster than RPC](https://github.com/0xKitsune/geth-ipc-rpc-bench), however you will need to have a local node that you can connect to.
 
 ## Initializing an Ipc Provider
+Below is an example of how to initialize a new Ipc provider. 
 
 ```rust
 #[tokio::main]
@@ -20,6 +21,9 @@ async fn main() -> eyre::Result<()> {
     Ok(())
 }
 ```
+
+Note that if you are using Windows, you must use [Windows Ipc (Named pipes)](https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipes). Instead of passing the provider the path to the `.ipc` file, you must pass a named pipe (`\\<machine_address>\pipe\<pipe_name>`).  For a local geth connection, the named pipe will look something like this: `\\.\pipe\geth`
+
 ## Usage
 
 The `Ipc` provider has the same methods as the `Ws` provider, allowing it to subscribe and unsubscribe via a `NotificationStream`.
