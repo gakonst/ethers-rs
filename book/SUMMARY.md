@@ -6,14 +6,16 @@
   - [Connect to an Ethereum node](./getting-started/connect_to_an_ethereum_node.md)
 
 # Reference guide
-- [Providers]()
+- [Providers](./providers/providers.md)
   - [Http](./providers/http.md)
+  - [WebSocket](./providers/ws.md)
   - [IPC](./providers/ipc.md)
   - [Mock](./providers/mock.md)
   - [Quorum](./providers/quorum.md)
   - [Retry](./providers/retry.md)
   - [RW](./providers/rw.md)
   - [WebSocket](./providers/ws.md)
+  - [Advanced Usage](./providers/advanced_usage.md)
 - [Middleware](./middleware/middleware.md)
   - [Builder](./middleware/builder.md)
   - [Create custom middleware](./middleware/custom.md)
