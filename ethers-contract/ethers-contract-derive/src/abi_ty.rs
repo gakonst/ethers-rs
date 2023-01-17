@@ -39,7 +39,7 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
 
                 let assignments = fields.named.iter().map(|f| {
                     let name = f.ident.as_ref().expect("Named fields have names");
-                    quote_spanned! { f.span() => #name: #core_crate::abi::Tokenizable::from_token(iter.next().unwrap())? }
+                    quote_spanned! { f.span() => #name: #core_crate::abi::Tokenizable::from_token(iter.next().expect("The iter is guaranteed to be something due to the size check"))? }
                 });
                 let init_struct_impl = quote! { Self { #(#assignments,)* } };
 
@@ -59,7 +59,7 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> proc_macro2::TokenStream
                 let tokenize_predicates = quote! { #(#tokenize_predicates,)* };
 
                 let assignments = fields.unnamed.iter().map(|f| {
-                    quote_spanned! { f.span() => #core_crate::abi::Tokenizable::from_token(iter.next().unwrap())? }
+                    quote_spanned! { f.span() => #core_crate::abi::Tokenizable::from_token(iter.next().expect("The iter is guaranteed to be something due to the size check"))? }
                 });
                 let init_struct_impl = quote! { Self(#(#assignments,)* ) };
 
