@@ -53,11 +53,13 @@ impl FileFilter for TestFileFilter {
 
 /// A type that can apply a filter to a set of preprocessed [FilteredSources] in order to set sparse
 /// output for specific files
+#[derive(Default)]
 pub enum SparseOutputFilter {
     /// Sets the configured [OutputSelection] for dirty files only.
     ///
     /// In other words, we request the output of solc only for files that have been detected as
     /// _dirty_.
+    #[default]
     AllDirty,
     /// Apply an additional filter to [FilteredSources] to
     Custom(Box<dyn FileFilter>),
@@ -173,12 +175,6 @@ impl SparseOutputFilter {
 impl From<Box<dyn FileFilter>> for SparseOutputFilter {
     fn from(f: Box<dyn FileFilter>) -> Self {
         SparseOutputFilter::Custom(f)
-    }
-}
-
-impl Default for SparseOutputFilter {
-    fn default() -> Self {
-        SparseOutputFilter::AllDirty
     }
 }
 
