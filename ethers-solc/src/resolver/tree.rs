@@ -5,9 +5,9 @@ use std::{collections::HashSet, io, io::Write, str::FromStr};
 pub enum Charset {
     // when operating in a console on windows non-UTF-8 byte sequences are not supported on
     // stdout, See also [`StdoutLock`]
-    #[cfg_attr(target_os = "windows", default)]
-    Utf8,
     #[cfg_attr(not(target_os = "windows"), default)]
+    Utf8,
+    #[cfg_attr(target_os = "windows", default)]
     Ascii,
 }
 
