@@ -1,12 +1,17 @@
 use super::{U128, U256, U512, U64};
-use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
 use serde::{Deserialize, Serialize, Serializer};
 use std::{
     convert::{TryFrom, TryInto},
     fmt,
     time::Duration,
 };
-use strum::{AsRefStr, EnumString, EnumVariantNames};
+use strum::{AsRefStr, EnumCount, EnumIter, EnumString, EnumVariantNames};
+
+// compatibility re-export
+#[doc(hidden)]
+pub use num_enum::{TryFromPrimitive, TryFromPrimitiveError};
+#[doc(hidden)]
+pub type ParseChainError = TryFromPrimitiveError<Chain>;
 
 // When adding a new chain:
 //   1. add new variant to the Chain enum;
@@ -28,6 +33,8 @@ use strum::{AsRefStr, EnumString, EnumVariantNames};
     AsRefStr,         // also for fmt::Display and serde::Serialize
     EnumVariantNames, // Self::VARIANTS
     EnumString,       // FromStr, TryFrom<&str>
+    EnumIter,
+    EnumCount,
     TryFromPrimitive, // TryFrom<u64>
     Deserialize,
 )]
@@ -133,7 +140,7 @@ macro_rules! impl_try_from_numeric {
     ($($native:ty)+ ; $($primitive:ty)*) => {
         $(
             impl TryFrom<$native> for Chain {
-                type Error = TryFromPrimitiveError<Self>;
+                type Error = ParseChainError;
 
                 fn try_from(value: $native) -> Result<Self, Self::Error> {
                     (value as u64).try_into()
@@ -143,13 +150,13 @@ macro_rules! impl_try_from_numeric {
 
         $(
             impl TryFrom<$primitive> for Chain {
-                type Error = TryFromPrimitiveError<Self>;
+                type Error = ParseChainError;
 
                 fn try_from(value: $primitive) -> Result<Self, Self::Error> {
                     if value.bits() > 64 {
                         // `TryFromPrimitiveError` only has a `number` field which has the same type
                         // as the `#[repr(_)]` attribute on the enum.
-                        return Err(TryFromPrimitiveError { number: value.low_u64() })
+                        return Err(ParseChainError { number: value.low_u64() })
                     }
                     value.low_u64().try_into()
                 }
@@ -167,7 +174,7 @@ impl From<Chain> for u64 {
 impl_into_numeric!(u128 U64 U128 U256 U512);
 
 impl TryFrom<U64> for Chain {
-    type Error = TryFromPrimitiveError<Self>;
+    type Error = ParseChainError;
 
     fn try_from(value: U64) -> Result<Self, Self::Error> {
         value.low_u64().try_into()
@@ -367,9 +374,15 @@ impl Chain {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use strum::IntoEnumIterator;
 
     #[test]
     fn test_default_chain() {
         assert_eq!(serde_json::to_string(&Chain::default()).unwrap(), "\"mainnet\"");
+    }
+
+    #[test]
+    fn test_enum_iter() {
+        assert_eq!(Chain::COUNT, Chain::iter().size_hint().0);
     }
 }

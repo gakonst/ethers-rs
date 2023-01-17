@@ -503,6 +503,7 @@ impl ExtraOutputValues {
 pub struct ExtraOutputFiles {
     pub abi: bool,
     pub metadata: bool,
+    pub ir: bool,
     pub ir_optimized: bool,
     pub ewasm: bool,
     pub assembly: bool,
@@ -530,6 +531,7 @@ impl ExtraOutputFiles {
         Self {
             abi: true,
             metadata: true,
+            ir: true,
             ir_optimized: true,
             ewasm: true,
             assembly: true,
@@ -551,6 +553,9 @@ impl ExtraOutputFiles {
                 }
                 ContractOutputSelection::Metadata => {
                     config.metadata = true;
+                }
+                ContractOutputSelection::Ir => {
+                    config.ir = true;
                 }
                 ContractOutputSelection::IrOptimized => {
                     config.ir_optimized = true;
@@ -606,7 +611,7 @@ impl ExtraOutputFiles {
             }
         }
 
-        if self.ewasm {
+        if self.ir {
             if let Some(ref ir) = contract.ir {
                 let file = file.with_extension("ir");
                 fs::write(&file, ir).map_err(|err| SolcError::io(err, file))?

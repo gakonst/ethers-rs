@@ -506,7 +506,7 @@ mod tests {
         let existing = path.join("Test.sol");
         let non_existing = path.join("test.sol");
         std::fs::write(
-            &existing,
+            existing,
             r#"
 pragma solidity ^0.8.10;
 contract A {}

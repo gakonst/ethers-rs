@@ -19,7 +19,7 @@ async fn main() -> eyre::Result<()> {
         .rate_limit_retries(10)
         .timeout_retries(3)
         .initial_backoff(Duration::from_millis(500))
-        .build(provider, Box::new(HttpRateLimitRetryPolicy::default()));
+        .build(provider, Box::<ethers::providers::HttpRateLimitRetryPolicy>::default());
 
     // Send a JSON-RPC request for the latest block
     let block_num = "latest".to_string();

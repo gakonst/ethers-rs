@@ -1,36 +1,42 @@
-//! Various utilities for manipulating Ethereum related dat
+//! Various utilities for manipulating Ethereum related data.
+
 use ethabi::ethereum_types::H256;
 use tiny_keccak::{Hasher, Keccak};
 
-const PREFIX: &str = "\x19Ethereum Signed Message:\n";
-
-/// Hash a message according to EIP-191.
+/// Hash a message according to [EIP-191] (version `0x01`).
 ///
-/// The data is a UTF-8 encoded string and will enveloped as follows:
-/// `"\x19Ethereum Signed Message:\n" + message.length + message` and hashed
-/// using keccak256.
-pub fn hash_message<S>(message: S) -> H256
-where
-    S: AsRef<[u8]>,
-{
-    let message = message.as_ref();
+/// The final message is a UTF-8 string, encoded as follows:
+/// `"\x19Ethereum Signed Message:\n" + message.length + message`
+///
+/// This message is then hashed using [Keccak-256](keccak256).
+///
+/// [EIP-191]: https://eips.ethereum.org/EIPS/eip-191
+pub fn hash_message<T: AsRef<[u8]>>(message: T) -> H256 {
+    const PREFIX: &str = "\x19Ethereum Signed Message:\n";
 
-    let mut eth_message = format!("{PREFIX}{}", message.len()).into_bytes();
+    let message = message.as_ref();
+    let len = message.len();
+    let len_string = len.to_string();
+
+    let mut eth_message = Vec::with_capacity(PREFIX.len() + len_string.len() + len);
+    eth_message.extend_from_slice(PREFIX.as_bytes());
+    eth_message.extend_from_slice(len_string.as_bytes());
     eth_message.extend_from_slice(message);
 
-    keccak256(&eth_message).into()
+    H256(keccak256(&eth_message))
 }
 
 /// Compute the Keccak-256 hash of input bytes.
+///
+/// Note that strings are interpreted as UTF-8 bytes,
 // TODO: Add Solidity Keccak256 packing support
-pub fn keccak256<S>(bytes: S) -> [u8; 32]
-where
-    S: AsRef<[u8]>,
-{
+pub fn keccak256<T: AsRef<[u8]>>(bytes: T) -> [u8; 32] {
     let mut output = [0u8; 32];
+
     let mut hasher = Keccak::v256();
     hasher.update(bytes.as_ref());
     hasher.finalize(&mut output);
+
     output
 }
 
@@ -53,7 +59,7 @@ pub fn id<S: AsRef<str>>(signature: S) -> [u8; 4] {
 ///
 /// If the type returns an error during serialization.
 pub fn serialize<T: serde::Serialize>(t: &T) -> serde_json::Value {
-    serde_json::to_value(t).expect("Types never fail to serialize.")
+    serde_json::to_value(t).expect("Failed to serialize value")
 }
 
 #[cfg(test)]

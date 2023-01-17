@@ -186,6 +186,7 @@ pub struct NormalTransaction {
     pub transaction_index: Option<u64>,
     #[serde(with = "genesis_string")]
     pub from: GenesisOption<Address>,
+    #[serde(with = "json_string")]
     pub to: Option<Address>,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub value: U256,
@@ -354,10 +355,11 @@ pub struct MinedBlock {
 }
 
 /// The pre-defined block parameter for balance API endpoints
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum Tag {
     Earliest,
     Pending,
+    #[default]
     Latest,
 }
 
@@ -368,12 +370,6 @@ impl Display for Tag {
             Tag::Pending => write!(f, "pending"),
             Tag::Latest => write!(f, "latest"),
         }
-    }
-}
-
-impl Default for Tag {
-    fn default() -> Self {
-        Tag::Latest
     }
 }
 
@@ -465,8 +461,9 @@ impl TokenQueryOption {
 }
 
 /// The pre-defined block type for retrieving mined blocks
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub enum BlockType {
+    #[default]
     CanonicalBlocks,
     Uncles,
 }
@@ -477,12 +474,6 @@ impl Display for BlockType {
             BlockType::CanonicalBlocks => write!(f, "blocks"),
             BlockType::Uncles => write!(f, "uncles"),
         }
-    }
-}
-
-impl Default for BlockType {
-    fn default() -> Self {
-        BlockType::CanonicalBlocks
     }
 }
 
@@ -797,7 +788,7 @@ mod tests {
 
             let txs = client
                 .get_transactions(
-                    &"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap(),
+                    &"0x4F26FfBe5F04ED43630fdC30A87638d53D0b0876".parse().unwrap(),
                     None,
                 )
                 .await;
