@@ -102,9 +102,9 @@ async fn main() -> eyre::Result<()> {
 
     let mut state = State::default();
 
-    //Set the account balance to max u256
+    // Set the account balance to max u256
     state.account(from_adr).balance(U256::MAX);
-    //Set the nonce to 0
+    // Set the nonce to 0
     state.account(from_adr).nonce(U64::zero());
 
     let result = provider.call_raw(&tx).state(&state).await?;

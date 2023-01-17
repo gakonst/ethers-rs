@@ -88,11 +88,11 @@ async fn main() -> eyre::Result<()> {
     let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
     let provider: Arc<Provider<Http>> = Arc::new(Provider::<Http>::try_from(rpc_url).unwrap());
 
-    //Initialize a new instance of the Weth/Dai Uniswap V2 pair contract
+    // Initialize a new instance of the Weth/Dai Uniswap V2 pair contract
     let pair_address = H160::from_str("0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11").unwrap();
     let uniswap_v2_pair = IUniswapV2Pair::new(pair_address, provider);
 
-    //Use the get_reserves() function to fetch the pool reserves
+    // Use the get_reserves() function to fetch the pool reserves
     let (reserve_0, reserve_1, block_timestamp_last) =
         uniswap_v2_pair.get_reserves().call().await?;
 
@@ -117,15 +117,15 @@ async fn main() -> eyre::Result<()> {
     let current_block_number = provider.get_block_number().await?;
     let prev_block_number = current_block_number - 1;
 
-    //Clone the Arc<Provider> and pass it into a new thread to get the uncle count of the current block
+    // Clone the Arc<Provider> and pass it into a new thread to get the uncle count of the current block
     let provider_1 = provider.clone();
     let task_0 =
         tokio::spawn(async move { provider_1.get_uncle_count(current_block_number).await });
 
-    //Spin up a new thread to get the uncle count of the previous block
+    // Spin up a new thread to get the uncle count of the previous block
     let task_1 = tokio::spawn(async move { provider.get_uncle_count(prev_block_number).await });
 
-    //Wait for the tasks to finish
+    // Wait for the tasks to finish
     for task in [task_0, task_1] {
         if let Ok(uncle_count) = task.await? {
             println!("Success!");

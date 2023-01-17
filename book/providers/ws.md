@@ -46,10 +46,10 @@ async fn main() -> eyre::Result<()> {
     let ws_endpoint = "";
     let mut provider = Provider::<Ws>::connect(ws_endpoint).await?;
 
-    //Update the polling interval
+    // Update the polling interval
     provider.set_interval(Duration::new(3, 0));
 
-    //Clone the providers to use in separate threads
+    // Clone the providers to use in separate threads
     let provider = Arc::new(provider);
     let provider_0 = provider.clone();
     let provider_1 = provider.clone();
@@ -70,7 +70,7 @@ async fn main() -> eyre::Result<()> {
         }
     });
 
-    //Add the JoinHandles to a vec and wait for the handles to complete
+    // Add the JoinHandles to a vec and wait for the handles to complete
     handles.push(pending_tx_handle);
     handles.push(new_block_headers_handle);
     for handle in handles {

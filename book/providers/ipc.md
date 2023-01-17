@@ -38,7 +38,7 @@ async fn main() -> eyre::Result<()> {
         .await?
         .interval(std::time::Duration::from_millis(2000));
         
-    //Create a new stream yielding pending transactions from the mempool
+    // Create a new stream yielding pending transactions from the mempool
     let mut tx_pool_stream = provider.subscribe_pending_txs().await?;
 
     while let Some(tx_hash) = tx_pool_stream.next().await {
@@ -73,11 +73,11 @@ async fn main() -> eyre::Result<()> {
         .await?
         .interval(std::time::Duration::from_millis(2000));
 
-    //Initialize a new instance of the Weth/Dai Uniswap V2 pair contract
+    // Initialize a new instance of the Weth/Dai Uniswap V2 pair contract
     let pair_address = H160::from_str("0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11").unwrap();
     let uniswap_v2_pair = IUniswapV2Pair::new(pair_address, provider);
 
-    //Use the get_reserves() function to fetch the pool reserves
+    // Use the get_reserves() function to fetch the pool reserves
     let (reserve_0, reserve_1, block_timestamp_last) =
         uniswap_v2_pair.get_reserves().call().await?;
 
