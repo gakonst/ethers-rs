@@ -2,7 +2,7 @@
 
 Providers play a central role in `ethers-rs`, enabling you to establish asynchronous [Ethereum JSON-RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC) compliant clients.
 
- your program to a node to get data, interact with smart contracts, listen to the mempool and much more. There are a few different types of default providers that are built into the library. The default providers are `Http`,`WS`,`Ipc`,`RWClient`,`Quorum`,`Mock` and `RetryClient`. In addition to all of these options, you can also create your own custom provider, which we will walk through later in this chapter. For now let take a look at what the `Provider` actually looks like.
+Providers let your program connect to a node to get data, interact with smart contracts, listen to the mempool and much more. There are a few different types of default providers that are built into the library. The default providers are `Http`,`WS`,`Ipc`,`RWClient`,`Quorum`,`Mock` and `RetryClient`. In addition to all of these options, you can also create your own custom provider, which we will walk through later in this chapter. For now let take a look at what the `Provider` actually looks like.
 
 
 ```rust
