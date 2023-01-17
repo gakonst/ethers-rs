@@ -10,9 +10,9 @@ use ethers::providers::{Http, Middleware, Provider};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    //Initialize a new Http provider
+    // Initialize a new Http provider
     let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
-    let provider: Provider<Http> = Provider::<Http>::from_str(rpc_url)?;
+    let provider = Provider::try_from(rpc_url)?;
 
     Ok(())
 }
@@ -26,7 +26,7 @@ use ethers::providers::{Authorization, Http};
 use url::Url;
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let url = Url::parse("http://localhost:8545").unwrap();
+    let url = Url::parse("http://localhost:8545")?;
     let provider = Http::new_with_auth(url, Authorization::basic("admin", "good_password"));
     Ok(())
 }
@@ -40,8 +40,8 @@ use url::Url;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let url = Url::parse("http://localhost:8545").unwrap();
-    let client = reqwest::Client::builder().build().unwrap();
+    let url = Url::parse("http://localhost:8545")?;
+    let client = reqwest::Client::builder().build()?;
     let provider = Http::new_with_client(url, client);
     Ok(())
 }
@@ -86,10 +86,10 @@ abigen!(
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
-    let provider: Arc<Provider<Http>> = Arc::new(Provider::<Http>::try_from(rpc_url).unwrap());
+    let provider: Arc<Provider<Http>> = Arc::new(Provider::<Http>::try_from(rpc_url)?);
 
     // Initialize a new instance of the Weth/Dai Uniswap V2 pair contract
-    let pair_address = H160::from_str("0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11").unwrap();
+    let pair_address = H160::from_str("0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11")?;
     let uniswap_v2_pair = IUniswapV2Pair::new(pair_address, provider);
 
     // Use the get_reserves() function to fetch the pool reserves
@@ -112,7 +112,7 @@ use ethers::providers::{Http, Middleware, Provider};
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
-    let provider: Arc<Provider<Http>> = Arc::new(Provider::<Http>::try_from(rpc_url).unwrap());
+    let provider: Arc<Provider<Http>> = Arc::new(Provider::<Http>::try_from(rpc_url)?);
 
     let current_block_number = provider.get_block_number().await?;
     let prev_block_number = current_block_number - 1;

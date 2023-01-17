@@ -57,14 +57,14 @@ async fn main() -> eyre::Result<()> {
     let mut handles = vec![];
 
     let pending_tx_handle = tokio::spawn(async move {
-        let mut tx_pool_stream = provider_0.watch_pending_transactions().await.unwrap();
+        let mut tx_pool_stream = provider_0.watch_pending_transactions().await?;
         while let Some(tx_hash) = tx_pool_stream.next().await {
             println!("Pending tx: {:?}", tx_hash);
         }
     });
 
     let new_block_headers_handle = tokio::spawn(async move {
-        let mut new_block_headers_stream = provider_1.watch_blocks().await.unwrap();
+        let mut new_block_headers_stream = provider_1.watch_blocks().await?;
         while let Some(block_hash) = new_block_headers_stream.next().await {
             println!("New block: {:?}", block_hash);
         }

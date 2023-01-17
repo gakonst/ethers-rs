@@ -74,7 +74,7 @@ async fn main() -> eyre::Result<()> {
         .interval(std::time::Duration::from_millis(2000));
 
     // Initialize a new instance of the Weth/Dai Uniswap V2 pair contract
-    let pair_address = H160::from_str("0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11").unwrap();
+    let pair_address = H160::from_str("0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11")?;
     let uniswap_v2_pair = IUniswapV2Pair::new(pair_address, provider);
 
     // Use the get_reserves() function to fetch the pool reserves
