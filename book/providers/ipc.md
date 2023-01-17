@@ -14,9 +14,7 @@ async fn main() -> eyre::Result<()> {
     // interval because only subscribe RPC calls (e.g., transactions, blocks, events) support push
     // notifications in Ethereum's RPC API. For other calls we must use repeated polling for many
     // operations even with the IPC transport.
-    let provider = Provider::connect_ipc("~/.ethereum/geth.ipc")
-        .await?
-        .interval(std::time::Duration::from_millis(2000));
+    let provider = Provider::connect_ipc("~/.ethereum/geth.ipc").await?;
 
     Ok(())
 }
@@ -34,9 +32,7 @@ use ethers::providers::{Middleware, Provider, StreamExt, Ws};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let provider = Provider::connect_ipc("~/.ethereum/geth.ipc")
-        .await?
-        .interval(std::time::Duration::from_millis(2000));
+    let provider = Provider::connect_ipc("~/.ethereum/geth.ipc").await?;
         
     // Create a new stream yielding pending transactions from the mempool
     let mut tx_pool_stream = provider.subscribe_pending_txs().await?;
@@ -69,9 +65,7 @@ abigen!(
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let provider = Provider::connect_ipc("~/.ethereum/geth.ipc")
-        .await?
-        .interval(std::time::Duration::from_millis(2000));
+    let provider = Provider::connect_ipc("~/.ethereum/geth.ipc").await?;
 
     // Initialize a new instance of the Weth/Dai Uniswap V2 pair contract
     let pair_address = H160::from_str("0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11")?;
