@@ -49,7 +49,7 @@ impl SolData {
             Ok((units, _)) => {
                 for unit in units.0 {
                     match unit {
-                        SourceUnitPart::PragmaDirective(loc, pragma, value) => {
+                        SourceUnitPart::PragmaDirective(loc, Some(pragma), Some(value)) => {
                             if pragma.name == "solidity" {
                                 // we're only interested in the solidity version pragma
                                 version = Some(SolDataUnit::from_loc(value.string.clone(), loc));
@@ -86,15 +86,16 @@ impl SolData {
                                     _ => None,
                                 })
                                 .collect();
-                            let name = def.name.name;
-                            match def.ty {
-                                ContractTy::Contract(_) => {
-                                    contracts.push(SolContract { name, functions });
+                            if let Some(name) = def.name {
+                                match def.ty {
+                                    ContractTy::Contract(_) => {
+                                        contracts.push(SolContract { name: name.name, functions });
+                                    }
+                                    ContractTy::Library(_) => {
+                                        libraries.push(SolLibrary { name: name.name, functions });
+                                    }
+                                    _ => {}
                                 }
-                                ContractTy::Library(_) => {
-                                    libraries.push(SolLibrary { name, functions });
-                                }
-                                _ => {}
                             }
                         }
                         _ => {}
