@@ -57,7 +57,7 @@ use ethers::providers::{Http, Middleware, Provider};
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
-    let provider: Provider<Http> = Provider::<Http>::from_str(rpc_url)?;
+    let provider = Provider::try_from(rpc_url)?;
 
     let chain_id = provider.get_chainid().await?;
     let block_number = provider.get_block_number().await?;
@@ -86,7 +86,7 @@ abigen!(
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
-    let provider: Arc<Provider<Http>> = Arc::new(Provider::<Http>::try_from(rpc_url)?);
+    let provider = Arc::new(Provider::try_from(rpc_url)?);
 
     // Initialize a new instance of the Weth/Dai Uniswap V2 pair contract
     let pair_address = H160::from_str("0xA478c2975Ab1Ea89e8196811F51A7B7Ade33eB11")?;
@@ -112,7 +112,7 @@ use ethers::providers::{Http, Middleware, Provider};
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
-    let provider: Arc<Provider<Http>> = Arc::new(Provider::<Http>::try_from(rpc_url)?);
+    let provider = Arc::new(Provider::try_from(rpc_url)?);
 
     let current_block_number = provider.get_block_number().await?;
     let prev_block_number = current_block_number - 1;
