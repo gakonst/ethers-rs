@@ -152,7 +152,6 @@ impl Abigen {
         self
     }
 
-    #[must_use]
     #[deprecated = "Use format instead"]
     #[doc(hidden)]
     pub fn rustfmt(mut self, rustfmt: bool) -> Self {

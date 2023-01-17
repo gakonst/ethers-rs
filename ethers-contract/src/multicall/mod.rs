@@ -282,7 +282,7 @@ impl<M> Clone for Multicall<M> {
             contract: self.contract.clone(),
             version: self.version,
             legacy: self.legacy,
-            block: self.block.clone(),
+            block: self.block,
             calls: self.calls.clone(),
         }
     }

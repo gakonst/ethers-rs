@@ -214,12 +214,13 @@ impl<T: JsonRpcClientWrapper> QuorumProvider<T> {
 }
 
 /// Determines when the provider reached a quorum
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Default, Copy, Clone)]
 pub enum Quorum {
     ///  The quorum is reached when all providers return the exact value
     All,
     /// The quorum is reached when the majority of the providers have returned a
     /// matching value, taking into account their weight.
+    #[default]
     Majority,
     /// The quorum is reached when the cumulative weight of a matching return
     /// exceeds the given percentage of the total weight.
@@ -254,12 +255,6 @@ impl Quorum {
             }
             Quorum::Weight(w) => w,
         }
-    }
-}
-
-impl Default for Quorum {
-    fn default() -> Self {
-        Quorum::Majority
     }
 }
 

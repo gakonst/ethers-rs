@@ -1,23 +1,14 @@
 use crate::Graph;
 use std::{collections::HashSet, io, io::Write, str::FromStr};
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
 pub enum Charset {
+    // when operating in a console on windows non-UTF-8 byte sequences are not supported on
+    // stdout, See also [`StdoutLock`]
+    #[cfg_attr(target_os = "windows", default)]
     Utf8,
+    #[cfg_attr(not(target_os = "windows"), default)]
     Ascii,
-}
-
-impl Default for Charset {
-    fn default() -> Self {
-        // when operating in a console on windows non-UTF-8 byte sequences are not supported on
-        // stdout, See also [`StdoutLock`]
-        #[cfg(target_os = "windows")]
-        {
-            Charset::Ascii
-        }
-        #[cfg(not(target_os = "windows"))]
-        Charset::Utf8
-    }
 }
 
 impl FromStr for Charset {

@@ -677,7 +677,7 @@ pub struct YulDetails {
     pub optimizer_steps: Option<String>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum EvmVersion {
     Homestead,
     TangerineWhistle,
@@ -687,13 +687,8 @@ pub enum EvmVersion {
     Petersburg,
     Istanbul,
     Berlin,
+    #[default]
     London,
-}
-
-impl Default for EvmVersion {
-    fn default() -> Self {
-        Self::London
-    }
 }
 
 impl EvmVersion {
@@ -786,9 +781,10 @@ pub struct DebuggingSettings {
 }
 
 /// How to treat revert (and require) reason strings.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum RevertStrings {
     /// "default" does not inject compiler-generated revert strings and keeps user-supplied ones.
+    #[default]
     Default,
     /// "strip" removes all revert strings (if possible, i.e. if literals are used) keeping
     /// side-effects
@@ -827,12 +823,6 @@ impl FromStr for RevertStrings {
     }
 }
 
-impl Default for RevertStrings {
-    fn default() -> Self {
-        RevertStrings::Default
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettingsMetadata {
     /// Use only literal content and not URLs (false by default)
@@ -868,17 +858,12 @@ impl From<BytecodeHash> for SettingsMetadata {
 /// Determines the hash method for the metadata hash that is appended to the bytecode.
 ///
 /// Solc's default is `Ipfs`, see <https://docs.soliditylang.org/en/latest/using-the-compiler.html#compiler-api>.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BytecodeHash {
+    #[default]
     Ipfs,
     None,
     Bzzr1,
-}
-
-impl Default for BytecodeHash {
-    fn default() -> Self {
-        BytecodeHash::Ipfs
-    }
 }
 
 impl FromStr for BytecodeHash {
@@ -1036,8 +1021,9 @@ pub struct ModelCheckerSettings {
 }
 
 /// Which model checker engine to run.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ModelCheckerEngine {
+    #[default]
     Default,
     All,
     BMC,
@@ -1067,12 +1053,6 @@ impl FromStr for ModelCheckerEngine {
             "chc" => Ok(ModelCheckerEngine::CHC),
             s => Err(format!("Unknown model checker engine: {s}")),
         }
-    }
-}
-
-impl Default for ModelCheckerEngine {
-    fn default() -> Self {
-        ModelCheckerEngine::Default
     }
 }
 

@@ -4,9 +4,10 @@ use regex::Regex;
 use std::collections::HashSet;
 
 /// Used to filter contracts that should be _included_ in the abigen generation.
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub enum ContractFilter {
     /// Include all contracts
+    #[default]
     All,
     /// Only include contracts that match the filter
     Select(SelectContracts),
@@ -24,12 +25,6 @@ impl ContractFilter {
             ContractFilter::Select(f) => f.is_match(name),
             ContractFilter::Exclude(f) => !f.is_match(name),
         }
-    }
-}
-
-impl Default for ContractFilter {
-    fn default() -> Self {
-        ContractFilter::All
     }
 }
 

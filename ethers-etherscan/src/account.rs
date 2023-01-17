@@ -355,10 +355,11 @@ pub struct MinedBlock {
 }
 
 /// The pre-defined block parameter for balance API endpoints
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum Tag {
     Earliest,
     Pending,
+    #[default]
     Latest,
 }
 
@@ -369,12 +370,6 @@ impl Display for Tag {
             Tag::Pending => write!(f, "pending"),
             Tag::Latest => write!(f, "latest"),
         }
-    }
-}
-
-impl Default for Tag {
-    fn default() -> Self {
-        Tag::Latest
     }
 }
 
@@ -466,8 +461,9 @@ impl TokenQueryOption {
 }
 
 /// The pre-defined block type for retrieving mined blocks
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub enum BlockType {
+    #[default]
     CanonicalBlocks,
     Uncles,
 }
@@ -478,12 +474,6 @@ impl Display for BlockType {
             BlockType::CanonicalBlocks => write!(f, "blocks"),
             BlockType::Uncles => write!(f, "uncles"),
         }
-    }
-}
-
-impl Default for BlockType {
-    fn default() -> Self {
-        BlockType::CanonicalBlocks
     }
 }
 
