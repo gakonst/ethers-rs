@@ -29,8 +29,8 @@ pub fn deserialize_address_opt<'de, D: Deserializer<'de>>(
         None => Ok(None),
         Some(s) => match s.is_empty() {
             true => Ok(None),
-            _ => Ok(Some(s.parse().map_err(serde::de::Error::custom)?))
-        }
+            _ => Ok(Some(s.parse().map_err(serde::de::Error::custom)?)),
+        },
     }
 }
 
