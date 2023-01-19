@@ -292,6 +292,11 @@ impl Geth {
     /// options.
     #[must_use]
     pub fn disable_discovery(mut self) -> Self {
+        self.inner_disable_discovery();
+        self
+    }
+
+    fn inner_disable_discovery(&mut self) {
         match self.mode {
             GethMode::Dev(_) => {
                 self.mode =
@@ -299,7 +304,6 @@ impl Geth {
             }
             GethMode::NonDev(ref mut opts) => opts.discovery = false,
         }
-        self
     }
 
     /// Manually sets the IPC path for the socket manually.
@@ -361,6 +365,10 @@ impl Geth {
             cmd.arg("--allow-insecure-unlock");
         }
 
+        if is_clique {
+            self.inner_disable_discovery();
+        }
+
         // Set the port for authenticated APIs
         cmd.arg("--authrpc.port").arg(authrpc_port.to_string());
 
@@ -375,8 +383,10 @@ impl Geth {
                 // set the extraData field
                 let extra_data_bytes = [
                     &[0u8; 32][..],
-                    secret_key_to_address(&self.clique_private_key.expect("is_clique == true"))
-                        .as_ref(),
+                    secret_key_to_address(
+                        self.clique_private_key.as_ref().expect("is_clique == true"),
+                    )
+                    .as_ref(),
                     &[0u8; 65][..],
                 ]
                 .concat();
@@ -386,11 +396,11 @@ impl Geth {
         } else if is_clique {
             self.genesis = Some(Genesis::new(
                 self.chain_id.expect("chain id must be set in clique mode"),
-                secret_key_to_address(&self.clique_private_key.expect("is_clique == true")),
+                secret_key_to_address(self.clique_private_key.as_ref().expect("is_clique == true")),
             ));
         }
 
-        if let Some(genesis) = self.genesis {
+        if let Some(ref genesis) = self.genesis {
             // create a temp dir to store the genesis file
             let temp_genesis_path = temp_dir().join("genesis.json");
 
