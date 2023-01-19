@@ -40,6 +40,63 @@ pub struct Genesis {
     pub alloc: HashMap<Address, GenesisAccount>,
 }
 
+impl Genesis {
+    /// Creates a chain config using the given chain id.
+    /// and funds the given address with max coins.
+    ///
+    /// Enables all hard forks up to London at genesis.
+    pub fn new(chain_id: u64, signer_addr: Address) -> Genesis {
+        // set up a clique config with an instant sealing period and short (8 block) epoch
+        let clique_config = CliqueConfig { period: 0, epoch: 8 };
+
+        let config = ChainConfig {
+            chain_id,
+            eip155_block: Some(0),
+            eip150_block: Some(0),
+            eip158_block: Some(0),
+
+            homestead_block: Some(0),
+            byzantium_block: Some(0),
+            constantinople_block: Some(0),
+            petersburg_block: Some(0),
+            istanbul_block: Some(0),
+            muir_glacier_block: Some(0),
+            berlin_block: Some(0),
+            london_block: Some(0),
+            clique: Some(clique_config),
+            ..Default::default()
+        };
+
+        // fund account
+        let mut alloc = HashMap::new();
+        alloc.insert(
+            signer_addr,
+            GenesisAccount { balance: U256::MAX, nonce: None, code: None, storage: None },
+        );
+
+        // put signer address in the extra data, padded by the required amount of zeros
+        // Clique issue: https://github.com/ethereum/EIPs/issues/225
+        // Clique EIP: https://eips.ethereum.org/EIPS/eip-225
+        //
+        // The first 32 bytes are vanity data, so we will populate it with zeros
+        // This is followed by the signer address, which is 20 bytes
+        // There are 65 bytes of zeros after the signer address, which is usually populated with the
+        // proposer signature. Because the genesis does not have a proposer signature, it will be
+        // populated with zeros.
+        let extra_data_bytes = [&[0u8; 32][..], signer_addr.as_bytes(), &[0u8; 65][..]].concat();
+        let extra_data = Bytes::from(extra_data_bytes);
+
+        Genesis {
+            config,
+            alloc,
+            difficulty: U256::one(),
+            gas_limit: U64::from(5000000),
+            extra_data,
+            ..Default::default()
+        }
+    }
+}
+
 /// An account in the state of the genesis block.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GenesisAccount {
