@@ -1,7 +1,7 @@
 use ethers::{
     core::types::{GethDebugTracingOptions, H256},
     providers::{Http, Middleware, Provider},
-    types::{GethDebugTracerType, GethDebugBuiltInTracerType},
+    types::{GethDebugBuiltInTracerType, GethDebugTracerType},
 };
 use eyre::Result;
 use std::str::FromStr;
