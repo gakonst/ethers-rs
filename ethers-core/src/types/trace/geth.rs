@@ -1,13 +1,14 @@
 use crate::{
-    types::{Bytes, H256, U256},
+    types::{Address, Bytes, NameOrAddress, H256, U256},
     utils::from_int_or_hex,
 };
 use serde::{Deserialize, Serialize, Serializer};
+use serde_json::Value;
 use std::collections::BTreeMap;
 
 // https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/logger/logger.go#L406-L411
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct GethTrace {
+pub struct DefaultFrame {
     pub failed: bool,
     #[serde(deserialize_with = "from_int_or_hex")]
     pub gas: U256,
@@ -39,14 +40,64 @@ pub struct StructLog {
     pub storage: Option<BTreeMap<H256, H256>>,
 }
 
+// https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/native/call.go#L37
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallFrame {
+    #[serde(rename = "type")]
+    pub typ: String,
+    pub from: Address,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub to: Option<NameOrAddress>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<U256>,
+    #[serde(deserialize_with = "from_int_or_hex")]
+    pub gas: U256,
+    #[serde(deserialize_with = "from_int_or_hex", rename = "gasUsed")]
+    pub gas_used: U256,
+    #[serde(serialize_with = "serialize_bytes")]
+    pub input: Bytes,
+    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_bytes_opt")]
+    pub output: Option<Bytes>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub calls: Option<Vec<CallFrame>>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum GethTraceFrame {
+    Default(DefaultFrame),
+    CallTracer(CallFrame),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum GethTrace {
+    Known(GethTraceFrame),
+    Unknown(Value),
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 /// Available built-in tracers
 ///
 /// See <https://geth.ethereum.org/docs/developers/evm-tracing/built-in-tracers>
-pub enum GethDebugTracerType {
-    /// callTracer (native)
+pub enum GethDebugBuiltInTracerType {
     #[serde(rename = "callTracer")]
     CallTracer,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+/// Available tracers
+///
+/// See <https://geth.ethereum.org/docs/developers/evm-tracing/built-in-tracers> and <https://geth.ethereum.org/docs/developers/evm-tracing/custom-tracer>
+pub enum GethDebugTracerType {
+    /// built-in tracer
+    BuiltInTracer(GethDebugBuiltInTracerType),
+
+    /// custom JS tracer
+    JsTracer(String),
 }
 
 /// Bindings for additional `debug_traceTransaction` options
@@ -86,4 +137,15 @@ where
     T: AsRef<[u8]>,
 {
     s.serialize_str(&hex::encode(x.as_ref()))
+}
+
+fn serialize_bytes_opt<S, T>(x: &Option<T>, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    T: AsRef<[u8]>,
+{
+    match x {
+        Some(x) => serialize_bytes(x, s),
+        None => s.serialize_none(),
+    }
 }
