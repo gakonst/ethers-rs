@@ -1,5 +1,10 @@
+use k256::ecdsa::SigningKey;
+
 use super::{unused_port, Genesis};
-use crate::types::H256;
+use crate::{
+    types::{Bytes, H256},
+    utils::secret_key_to_address,
+};
 use std::{
     env::temp_dir,
     fs::{create_dir, File},
@@ -181,8 +186,9 @@ pub struct Geth {
     data_dir: Option<PathBuf>,
     chain_id: Option<u64>,
     insecure_unlock: bool,
-    genesis: Option<Genesis>,
+    pub genesis: Option<Genesis>,
     mode: GethMode,
+    pub clique_private_key: Option<SigningKey>,
 }
 
 impl Geth {
@@ -208,6 +214,11 @@ impl Geth {
         Self::new().path(path)
     }
 
+    /// Returns whether the node is launched in Clique consensus mode
+    pub fn is_clique(&self) -> bool {
+        self.clique_private_key.is_some()
+    }
+
     /// Sets the `path` to the `geth` executable
     ///
     /// By default, it's expected that `geth` is in `$PATH`, see also
@@ -215,6 +226,14 @@ impl Geth {
     #[must_use]
     pub fn path<T: Into<PathBuf>>(mut self, path: T) -> Self {
         self.program = Some(path.into());
+        self
+    }
+
+    /// Sets the Clique Private Key  to the `geth` executable, which will be later
+    /// loaded on the node.
+    #[must_use]
+    pub fn set_clique_private_key<T: Into<SigningKey>>(mut self, private_key: T) -> Self {
+        self.clique_private_key = Some(private_key.into());
         self
     }
 
@@ -318,7 +337,7 @@ impl Geth {
 
     /// Consumes the builder and spawns `geth` with stdout redirected
     /// to /dev/null.
-    pub fn spawn(self) -> GethInstance {
+    pub fn spawn(mut self) -> GethInstance {
         let mut cmd =
             if let Some(ref prg) = self.program { Command::new(prg) } else { Command::new(GETH) };
         // geth uses stderr for its logs
@@ -337,7 +356,8 @@ impl Geth {
         cmd.arg("--ws.api").arg(API);
 
         // pass insecure unlock flag if set
-        if self.insecure_unlock {
+        let is_clique = self.is_clique();
+        if self.insecure_unlock || is_clique {
             cmd.arg("--allow-insecure-unlock");
         }
 
@@ -345,6 +365,31 @@ impl Geth {
         cmd.arg("--authrpc.port").arg(authrpc_port.to_string());
 
         // use geth init to initialize the datadir if the genesis exists
+        if let Some(ref mut genesis) = self.genesis {
+            if is_clique {
+                use super::CliqueConfig;
+                // set up a clique config with an instant sealing period and short (8 block) epoch
+                let clique_config = CliqueConfig { period: 0, epoch: 8 };
+                genesis.config.clique = Some(clique_config);
+
+                // set the extraData field
+                let extra_data_bytes = [
+                    &[0u8; 32][..],
+                    secret_key_to_address(&self.clique_private_key.expect("is_clique == true"))
+                        .as_ref(),
+                    &[0u8; 65][..],
+                ]
+                .concat();
+                let extra_data = Bytes::from(extra_data_bytes);
+                genesis.extra_data = extra_data;
+            }
+        } else if is_clique {
+            self.genesis = Some(Genesis::new(
+                self.chain_id.expect("chain id must be set in clique mode"),
+                secret_key_to_address(&self.clique_private_key.expect("is_clique == true")),
+            ));
+        }
+
         if let Some(genesis) = self.genesis {
             // create a temp dir to store the genesis file
             let temp_genesis_path = temp_dir().join("genesis.json");
