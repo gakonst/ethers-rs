@@ -6,13 +6,13 @@ use crate::{
     utils::secret_key_to_address,
 };
 use std::{
-    env::temp_dir,
     fs::{create_dir, File},
     io::{BufRead, BufReader},
     path::PathBuf,
     process::{Child, ChildStderr, Command, Stdio},
     time::{Duration, Instant},
 };
+use tempfile::tempdir;
 
 /// How long we will wait for geth to indicate that it is ready.
 const GETH_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
@@ -402,7 +402,11 @@ impl Geth {
 
         if let Some(ref genesis) = self.genesis {
             // create a temp dir to store the genesis file
-            let temp_genesis_path = temp_dir().join("genesis.json");
+            let temp_genesis_dir_path =
+                tempdir().expect("should be able to create temp dir for genesis init").into_path();
+
+            // create a temp dir to store the genesis file
+            let temp_genesis_path = temp_genesis_dir_path.join("genesis.json");
 
             // create the genesis file
             let mut file = File::create(&temp_genesis_path).expect("could not create genesis file");
@@ -425,6 +429,10 @@ impl Geth {
                 .expect("failed to spawn geth init")
                 .wait()
                 .expect("failed to wait for geth init to exit");
+
+            // clean up the temp dir which is now persisted
+            std::fs::remove_dir_all(temp_genesis_dir_path)
+                .expect("could not remove genesis temp dir");
         }
 
         if let Some(ref data_dir) = self.data_dir {
