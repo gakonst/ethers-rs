@@ -34,7 +34,7 @@ pub struct Client {
     /// Client that executes HTTP requests
     client: reqwest::Client,
     /// Etherscan API key
-    api_key: String,
+    api_key: Option<String>,
     /// Etherscan API endpoint like <https://api(-chain).etherscan.io/api>
     etherscan_api_url: Url,
     /// Etherscan base endpoint like <https://etherscan.io>
@@ -235,7 +235,7 @@ impl Client {
         other: T,
     ) -> Query<T> {
         Query {
-            apikey: Cow::Borrowed(&self.api_key),
+            apikey: self.api_key.as_deref().map(Cow::Borrowed),
             module: Cow::Borrowed(module),
             action: Cow::Borrowed(action),
             other,
@@ -307,7 +307,7 @@ impl ClientBuilder {
 
     /// Configures the etherscan api key
     pub fn with_api_key(mut self, api_key: impl Into<String>) -> Self {
-        self.api_key = Some(api_key.into());
+        self.api_key = Some(api_key.into()).filter(|s| !s.is_empty());
         self
     }
 
@@ -321,7 +321,6 @@ impl ClientBuilder {
     ///
     /// # Errors
     /// if required fields are missing:
-    ///   - `api_key`
     ///   - `etherscan_api_url`
     ///   - `etherscan_url`
     pub fn build(self) -> Result<Client> {
@@ -329,8 +328,7 @@ impl ClientBuilder {
 
         let client = Client {
             client: client.unwrap_or_default(),
-            api_key: api_key
-                .ok_or_else(|| EtherscanError::Builder("etherscan api key".to_string()))?,
+            api_key,
             etherscan_api_url: etherscan_api_url
                 .ok_or_else(|| EtherscanError::Builder("etherscan api url".to_string()))?,
             etherscan_url: etherscan_url
@@ -434,7 +432,8 @@ pub enum ResponseData<T> {
 /// The type that gets serialized as query
 #[derive(Clone, Debug, Serialize)]
 struct Query<'a, T: Serialize> {
-    apikey: Cow<'a, str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    apikey: Option<Cow<'a, str>>,
     module: Cow<'a, str>,
     action: Cow<'a, str>,
     #[serde(flatten)]
