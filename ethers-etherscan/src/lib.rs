@@ -285,7 +285,7 @@ impl ClientBuilder {
     ///
     /// Fails if the `etherscan_url` is not a valid `Url`
     pub fn with_url(mut self, etherscan_url: impl IntoUrl) -> Result<Self> {
-        self.etherscan_url = Some(etherscan_url.into_url()?);
+        self.etherscan_url = Some(ensure_url(etherscan_url)?);
         Ok(self)
     }
 
@@ -301,7 +301,7 @@ impl ClientBuilder {
     ///
     /// Fails if the `etherscan_api_url` is not a valid `Url`
     pub fn with_api_url(mut self, etherscan_api_url: impl IntoUrl) -> Result<Self> {
-        self.etherscan_api_url = Some(etherscan_api_url.into_url()?);
+        self.etherscan_api_url = Some(ensure_url(etherscan_api_url)?);
         Ok(self)
     }
 
@@ -441,14 +441,41 @@ struct Query<'a, T: Serialize> {
     other: T,
 }
 
+/// Ensures that the url is well formatted to be used by the Client's functions that join paths.
+fn ensure_url(url: impl IntoUrl) -> std::result::Result<Url, reqwest::Error> {
+    let url_str = url.as_str();
+
+    // ensure URL ends with `/`
+     if url_str.ends_with('/') {
+        url.into_url()
+    } else {
+        into_url(format!("{url_str}/"))
+    }
+}
+
+/// This is a hack to work around `IntoUrl`'s sealed private functions, which can't be called
+/// normally.
+#[inline]
+fn into_url(url: impl IntoUrl) -> std::result::Result<Url, reqwest::Error> {
+    url.into_url()
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{Client, EtherscanError};
+    use crate::{ Client, EtherscanError};
     use ethers_core::types::{Address, Chain, H256};
     use std::{
         future::Future,
         time::{Duration, SystemTime},
     };
+
+    #[test]
+    fn test_api_paths() {
+        let client = Client::new(Chain::Goerli, "").unwrap();
+        assert_eq!(client.etherscan_api_url.as_str(), "https://api-goerli.etherscan.io/api/");
+
+        assert_eq!(client.block_url(100), "https://goerli.etherscan.io/block/100");
+    }
 
     #[test]
     fn chain_not_supported() {
