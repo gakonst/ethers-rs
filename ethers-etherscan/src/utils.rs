@@ -25,12 +25,12 @@ pub async fn lookup_compiler_version(version: &Version) -> Result<Version> {
 pub fn deserialize_address_opt<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> std::result::Result<Option<Address>, D::Error> {
-    let s = String::deserialize(deserializer)?;
-    if s.is_empty() {
-        Ok(None)
-    } else {
-        let addr: Address = s.parse().map_err(serde::de::Error::custom)?;
-        Ok(Some(addr))
+    match Option::<String>::deserialize(deserializer)? {
+        None => Ok(None),
+        Some(s) => match s.is_empty() {
+            true => Ok(None),
+            _ => Ok(Some(s.parse().map_err(serde::de::Error::custom)?)),
+        },
     }
 }
 
@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn can_deserialize_address_opt() {
-        #[derive(Deserialize)]
+        #[derive(serde::Serialize, Deserialize)]
         struct Test {
             #[serde(deserialize_with = "deserialize_address_opt")]
             address: Option<Address>,
@@ -113,6 +113,11 @@ mod tests {
         // https://api.etherscan.io/api?module=contract&action=getsourcecode&address=0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413
         let json = r#"{"address":""}"#;
         let de: Test = serde_json::from_str(json).unwrap();
+        assert_eq!(de.address, None);
+
+        // Round-trip the above
+        let json = serde_json::to_string(&de).unwrap();
+        let de: Test = serde_json::from_str(&json).unwrap();
         assert_eq!(de.address, None);
 
         // https://api.etherscan.io/api?module=contract&action=getsourcecode&address=0xDef1C0ded9bec7F1a1670819833240f027b25EfF
