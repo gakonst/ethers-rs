@@ -1,22 +1,12 @@
 use ethers::prelude::*;
 use ethers::core::rand::thread_rng;
 use ethers::signers::{LocalWallet};
-use dotenv::dotenv;
-
 use eyre::Result;
-
 
 #[tokio::main]
 async fn main() -> Result<()>{
 
-    dotenv().ok();
-
-    let api_key = std::env::var("API_KEY").expect("expected environmental variable");
-    let encryption_path = std::env::var("ENCRYPTION_PATH").expect("expected environmental variable");
-    let decryption_path = std::env::var("DECRYPTION_PATH").expect("expected environmental variable");
-    let password = std::env::var("PASSWORD").expect("expected environmental variable");
-
-    let ws = Ws::connect(api_key)
+    let ws = Ws::connect("your_api_key")
         .await
         .expect("no connection");
 
@@ -25,14 +15,14 @@ async fn main() -> Result<()>{
     //generates a brand new keystore with key
     //name your keystore file, set the path, set the password
     //*NOTE* -- pls don't store your passwords in a plain text file, this is just an example 
-    let (signing_key, _) = LocalWallet::new_keystore(encryption_path, &mut thread_rng(), &password, Some("my_encrypted_keys"))
+    let (signing_key, _) = LocalWallet::new_keystore("C:/encryption_path", &mut thread_rng(), "PASSWORD", Some("my_encrypted_keys"))
         .expect("key store fail");
     
     println!("your signing key is: {:?}", signing_key);
 
 
     //decrypt your keystore given the filepath with the password you encrypted it with originally
-    let decrypt_key_store = LocalWallet::decrypt_keystore(decryption_path, &password)
+    let decrypt_key_store = LocalWallet::decrypt_keystore("C:/decryption_path/file_name", "PASSWORD")
         .expect("decryption failed");
 
     println!("your signing key is: {:?}", decrypt_key_store);
