@@ -28,9 +28,7 @@ async fn main() -> Result<()>{
     let (signing_key, _) = LocalWallet::new_keystore(encryption_path, &mut thread_rng(), &password, Some("my_encrypted_keys"))
         .expect("key store fail");
     
-    let (your_signing_key, _) = key_store; 
-
-    println!("your signing key is: {:?}", your_signing_key);
+    println!("your signing key is: {:?}", signing_key);
 
 
     //decrypt your keystore given the filepath with the password you encrypted it with originally
