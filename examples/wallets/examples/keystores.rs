@@ -25,7 +25,7 @@ async fn main() -> Result<()>{
     //generates a brand new keystore with key
     //name your keystore file, set the path, set the password
     //*NOTE* -- pls don't store your passwords in a plain text file, this is just an example 
-    let key_store = LocalWallet::new_keystore(encryption_path, &mut thread_rng(), &password, Some("my_encrypted_keys"))
+    let (signing_key, _) = LocalWallet::new_keystore(encryption_path, &mut thread_rng(), &password, Some("my_encrypted_keys"))
         .expect("key store fail");
     
     let (your_signing_key, _) = key_store; 
