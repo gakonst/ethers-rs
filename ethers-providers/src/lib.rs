@@ -76,7 +76,7 @@ pub trait JsonRpcClient: Debug + Send + Sync {
     async fn request<T, R>(&self, method: &str, params: T) -> Result<R, Self::Error>
     where
         T: Debug + Serialize + Send + Sync,
-        R: DeserializeOwned;
+        R: DeserializeOwned + Send;
 }
 
 pub trait FromErr<T> {
