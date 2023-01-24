@@ -12,7 +12,7 @@ async fn main() -> Result<()>{
     dotenv().ok();
 
     let api_key = std::env::var("API_KEY").expect("expected environmental variable");
-    let encryption_path = std::env::var("ENCYPTION_PATH").expect("expected environmental variable");
+    let encryption_path = std::env::var("ENCRYPTION_PATH").expect("expected environmental variable");
     let decryption_path = std::env::var("DECRYPTION_PATH").expect("expected environmental variable");
     let password = std::env::var("PASSWORD").expect("expected environmental variable");
 
