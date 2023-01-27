@@ -225,10 +225,10 @@ impl<M, D> IntoFuture for ContractCall<M, D>
 where
     Self: 'static,
     M: Middleware,
-    D: Detokenize,
+    D: Detokenize + Send + Sync,
 {
     type Output = Result<D, ContractError<M>>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output>>>;
+    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send>>;
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move { self.call().await })
