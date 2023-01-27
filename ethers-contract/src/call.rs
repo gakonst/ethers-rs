@@ -228,6 +228,11 @@ where
     D: Detokenize + Send + Sync,
 {
     type Output = Result<D, ContractError<M>>;
+
+    #[cfg(target_arch = "wasm32")]
+    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output>>>;
+
+    #[cfg(not(target_arch = "wasm32"))]
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send>>;
 
     fn into_future(self) -> Self::IntoFuture {
