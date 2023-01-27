@@ -57,12 +57,15 @@ pub struct Transaction {
     pub input: Bytes,
 
     /// ECDSA recovery id
+    #[serde(default)]
     pub v: U64,
 
     /// ECDSA signature r
+    #[serde(default)]
     pub r: U256,
 
     /// ECDSA signature s
+    #[serde(default)]
     pub s: U256,
 
     /////////////////  Celo-specific transaction fields /////////////////
