@@ -13,15 +13,15 @@ use crate::{
         bytecode::{CompactBytecode, CompactDeployedBytecode},
         contract::{CompactContract, CompactContractBytecode, Contract},
         output_selection::{
-            BytecodeOutputSelection, ContractOutputSelection, EvmOutputSelection,
-            EwasmOutputSelection,
+            BytecodeOutputSelection, ContractOutputSelection, DeployedBytecodeOutputSelection,
+            EvmOutputSelection, EwasmOutputSelection,
         },
         Ast, CompactContractBytecodeCow, DevDoc, Evm, Ewasm, FunctionDebugData, GasEstimates,
         GeneratedSource, LosslessAbi, LosslessMetadata, Metadata, Offsets, Settings, StorageLayout,
         UserDoc,
     },
     sources::VersionedSourceFile,
-    ArtifactOutput, SolcConfig, SolcError, SourceFile,
+    Artifact, ArtifactOutput, SolcConfig, SolcError, SourceFile,
 };
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::BTreeMap, fs, path::Path};
@@ -509,6 +509,8 @@ pub struct ExtraOutputFiles {
     pub assembly: bool,
     pub source_map: bool,
     pub generated_sources: bool,
+    pub bytecode: bool,
+    pub deployed_bytecode: bool,
 
     /// PRIVATE: This structure may grow, As such, constructing this structure should
     /// _always_ be done using a public constructor or update syntax:
@@ -537,6 +539,8 @@ impl ExtraOutputFiles {
             assembly: true,
             source_map: true,
             generated_sources: true,
+            bytecode: true,
+            deployed_bytecode: true,
             __non_exhaustive: (),
         }
     }
@@ -565,6 +569,8 @@ impl ExtraOutputFiles {
                         config.assembly = true;
                         config.generated_sources = true;
                         config.source_map = true;
+                        config.bytecode = true;
+                        config.deployed_bytecode = true;
                     }
                     EvmOutputSelection::Assembly => {
                         config.assembly = true;
@@ -572,8 +578,17 @@ impl ExtraOutputFiles {
                     EvmOutputSelection::ByteCode(BytecodeOutputSelection::GeneratedSources) => {
                         config.generated_sources = true;
                     }
+                    EvmOutputSelection::ByteCode(BytecodeOutputSelection::Object) => {
+                        config.bytecode = true;
+                    }
                     EvmOutputSelection::ByteCode(BytecodeOutputSelection::SourceMap) => {
                         config.source_map = true;
+                    }
+                    EvmOutputSelection::DeployedByteCode(DeployedBytecodeOutputSelection::All) |
+                    EvmOutputSelection::DeployedByteCode(
+                        DeployedBytecodeOutputSelection::Object,
+                    ) => {
+                        config.deployed_bytecode = true;
                     }
                     _ => {}
                 },
@@ -653,6 +668,21 @@ impl ExtraOutputFiles {
                         fs::write(&file, sourcemap).map_err(|err| SolcError::io(err, file))?
                     }
                 }
+            }
+        }
+
+        if self.bytecode {
+            if let Some(ref code) = contract.get_bytecode_bytes() {
+                let code = hex::encode(code.as_ref());
+                let file = file.with_extension("bin");
+                fs::write(&file, code).map_err(|err| SolcError::io(err, file))?
+            }
+        }
+        if self.deployed_bytecode {
+            if let Some(ref code) = contract.get_deployed_bytecode_bytes() {
+                let code = hex::encode(code.as_ref());
+                let file = file.with_extension("deployed-bin");
+                fs::write(&file, code).map_err(|err| SolcError::io(err, file))?
             }
         }
 
