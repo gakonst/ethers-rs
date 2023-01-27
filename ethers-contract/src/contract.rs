@@ -263,8 +263,23 @@ where
     /// Returns a new contract instance using the provided client
     ///
     /// Clones `self` internally
+    pub fn connect<N>(&self, client: Arc<N>) -> Contract<N>
+    where
+        N: Middleware,
+    {
+        ContractInternal {
+            base_contract: self.base_contract.clone(),
+            client,
+            address: self.address,
+            _m: PhantomData,
+        }
+    }
+
+    /// Returns a new contract instance using the provided client
+    ///
+    /// Clones `self` internally
     #[must_use]
-    pub fn connect<C, N>(&self, client: C) -> ContractInternal<C, N>
+    pub fn connect_with<C, N>(&self, client: C) -> ContractInternal<C, N>
     where
         C: Borrow<N>,
     {

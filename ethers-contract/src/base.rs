@@ -1,4 +1,4 @@
-use crate::Contract;
+use crate::contract::ContractInternal;
 
 pub use ethers_core::abi::AbiError;
 use ethers_core::{
@@ -8,10 +8,10 @@ use ethers_core::{
 use ethers_providers::Middleware;
 
 use std::{
+    borrow::Borrow,
     collections::{BTreeMap, HashMap},
     fmt::Debug,
     hash::Hash,
-    sync::Arc,
 };
 
 /// A reduced form of `Contract` which just takes the `abi` and produces
@@ -195,12 +195,12 @@ impl BaseContract {
     }
 
     /// Upgrades a `BaseContract` into a full fledged contract with an address and middleware.
-    pub fn into_contract<M: Middleware>(
-        self,
-        address: Address,
-        client: impl Into<Arc<M>>,
-    ) -> Contract<M> {
-        Contract::new(address, self, client.into())
+    pub fn into_contract<B, M>(self, address: Address, client: B) -> ContractInternal<B, M>
+    where
+        B: Borrow<M>,
+        M: Middleware,
+    {
+        ContractInternal::new(address, self, client)
     }
 }
 

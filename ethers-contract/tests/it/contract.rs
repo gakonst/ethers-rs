@@ -265,7 +265,7 @@ mod eth_tests {
 
         // Also set up a subscription for the same thing
         let ws = Provider::connect(anvil.ws_endpoint()).await.unwrap();
-        let contract2 = ethers_contract::Contract::new(contract.address(), abi, ws);
+        let contract2 = ethers_contract::Contract::new(contract.address(), abi, ws.into());
         let event2 = contract2.event::<ValueChanged>();
         let mut subscription = event2.subscribe().await.unwrap();
 
