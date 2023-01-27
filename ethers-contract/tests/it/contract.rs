@@ -23,7 +23,7 @@ mod eth_tests {
     }
 
     #[derive(Debug)]
-    struct MwErr<M: Middleware>(M::Error);
+    pub struct MwErr<M: Middleware>(M::Error);
     impl<M> ethers_providers::FromErr<M::Error> for MwErr<M>
     where
         M: Middleware,
@@ -73,7 +73,7 @@ mod eth_tests {
 
         // Works (B == &M, M: Clone)
         let c: ContractInternal<Provider<Http>, Provider<Http>> =
-            ContractInternal::new(H160::default(), abi, client.clone());
+            ContractInternal::new(H160::default(), abi.clone(), client.clone());
 
         let _ = c.method::<(), ()>("notARealMethod", ());
 
