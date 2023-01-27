@@ -105,14 +105,10 @@ where
 
     /// Sends a POST request with the provided method and the params serialized as JSON
     /// over HTTP
-    async fn request<T: Serialize + Send + Sync, R: DeserializeOwned>(
-        &self,
-        method: &str,
-        params: T,
-    ) -> Result<R, Self::Error>
+    async fn request<T, R>(&self, method: &str, params: T) -> Result<R, Self::Error>
     where
         T: std::fmt::Debug + Serialize + Send + Sync,
-        R: DeserializeOwned,
+        R: DeserializeOwned + Send,
     {
         match method {
             "eth_sendTransaction" | "eth_sendRawTransaction" => {

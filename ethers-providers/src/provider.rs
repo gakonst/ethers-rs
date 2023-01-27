@@ -199,7 +199,7 @@ impl<P: JsonRpcClient> Provider<P> {
     pub async fn request<T, R>(&self, method: &str, params: T) -> Result<R, ProviderError>
     where
         T: Debug + Serialize + Send + Sync,
-        R: Serialize + DeserializeOwned + Debug,
+        R: Serialize + DeserializeOwned + Debug + Send,
     {
         let span =
             tracing::trace_span!("rpc", method = method, params = ?serde_json::to_string(&params)?);
@@ -215,7 +215,7 @@ impl<P: JsonRpcClient> Provider<P> {
         Ok(res)
     }
 
-    async fn get_block_gen<Tx: Default + Serialize + DeserializeOwned + Debug>(
+    async fn get_block_gen<Tx: Default + Serialize + DeserializeOwned + Debug + Send>(
         &self,
         id: BlockId,
         include_txs: bool,
