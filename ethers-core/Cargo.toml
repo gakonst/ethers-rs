@@ -47,6 +47,10 @@ num_enum = "0.5.9"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tempfile = { version = "3.3.0", default-features = false }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# NOTE: this enables wasm compatibility for getrandom indirectly
+getrandom = { version = "0.2", features = ["js"] }
+
 [dev-dependencies]
 serde_json = { version = "1.0.64", default-features = false }
 bincode = { version = "1.3.3", default-features = false }
