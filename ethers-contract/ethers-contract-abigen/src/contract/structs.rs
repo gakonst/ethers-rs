@@ -100,7 +100,7 @@ impl Context {
             };
 
             if is_tuple {
-                fields.push(ty);
+                fields.push(quote!(pub #ty));
             } else {
                 let field_name = util::safe_ident(&field.name().to_snake_case());
                 fields.push(quote! { pub #field_name: #ty });
