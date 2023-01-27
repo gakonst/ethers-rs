@@ -145,6 +145,24 @@ use ethers_core::types::TransactionRequest;
 ///
 /// _Disclaimer: these above docs have been adapted from the corresponding [ethers.js page](https://docs.ethers.io/ethers.js/html/api-contract.html)_
 ///
+/// # Usage Note
+///
+/// `ContractInternal` accepts any client that implements `B: Borrow<M>` where
+/// `M :Middleware`. Previous `Contract` versions used only arcs, and relied
+/// heavily on [`Arc`]. Due to constraints on the [`ContractCallInternal`] type,
+/// calling contracts requires a `B: Borrow<M> + Clone`. This is fine for most
+/// middlware. However, when `B` is an owned middleware that is not Clone, we
+/// cannot issue contract calls. Some notable exceptions:
+///
+/// - `NonceManagerMiddleware`
+/// - `SignerMiddleware` (when using a non-Clone Signer)
+///
+/// When using non-Clone middlewares, instead of instantiating a contract that
+/// OWNS the middlware, pass the contract a REFERENCE to the middleware. This
+/// will fix the trait bounds issue (as `&M` is always `Clone`).
+///
+/// We expect to fix this fully in a future version
+///
 /// [`abigen`]: macro.abigen.html
 /// [`Abigen` builder]: struct.Abigen.html
 /// [`event`]: method@crate::Contract::event
@@ -157,6 +175,11 @@ pub struct ContractInternal<B, M> {
     _m: PhantomData<M>,
 }
 
+/// `Contract` is a [`ContractInternal`] object with an `Arc` middleware.
+/// This type alias exists to preserver backwards compatibility with
+/// non-abstract Contracts.
+///
+/// For full usage docs, see [`ContractInternal`]
 pub type Contract<M> = ContractInternal<std::sync::Arc<M>, M>;
 
 impl<B, M> std::ops::Deref for ContractInternal<B, M>
