@@ -331,11 +331,19 @@ impl InternalStructs {
     /// Returns the name of the rust type that will be generated if the given input is a struct
     /// NOTE: this does not account for arrays or fixed arrays
     pub fn get_function_input_struct_type(&self, function: &str, input: &str) -> Option<&str> {
-        let key = (function.to_string(), input.to_string());
-        self.function_params
-            .get(&key)
+        self.get_function_input_struct_solidity_id(function, input)
             .and_then(|id| self.rust_type_names.get(id))
             .map(String::as_str)
+    }
+
+    /// Returns solidity type identifier as it's used in the ABI.
+    pub fn get_function_input_struct_solidity_id(
+        &self,
+        function: &str,
+        input: &str,
+    ) -> Option<&str> {
+        let key = (function.to_string(), input.to_string());
+        self.function_params.get(&key).map(String::as_str)
     }
 
     /// Returns the name of the rust type that will be generated if the given input is a struct
@@ -343,8 +351,15 @@ impl InternalStructs {
     /// [`Self::get_function_input_struct_type`] does because we can't rely on the name since events
     /// support nameless parameters NOTE: this does not account for arrays or fixed arrays
     pub fn get_event_input_struct_type(&self, event: &str, idx: usize) -> Option<&str> {
+        self.get_event_input_struct_solidity_id(event, idx)
+            .and_then(|id| self.rust_type_names.get(id))
+            .map(String::as_str)
+    }
+
+    /// Returns the type identifier as it's used in the solidity ABI
+    pub fn get_event_input_struct_solidity_id(&self, event: &str, idx: usize) -> Option<&str> {
         let key = (event.to_string(), idx);
-        self.event_params.get(&key).and_then(|id| self.rust_type_names.get(id)).map(String::as_str)
+        self.event_params.get(&key).map(String::as_str)
     }
 
     /// Returns the name of the rust type that will be generated if the given output is a struct
@@ -354,12 +369,23 @@ impl InternalStructs {
         function: &str,
         internal_type: &str,
     ) -> Option<&str> {
+        self.get_function_output_struct_solidity_id(function, internal_type)
+            .and_then(|id| self.rust_type_names.get(id))
+            .map(String::as_str)
+    }
+
+    /// Returns the name of the rust type that will be generated if the given output is a struct
+    /// NOTE: this does not account for arrays or fixed arrays
+    pub fn get_function_output_struct_solidity_id(
+        &self,
+        function: &str,
+        internal_type: &str,
+    ) -> Option<&str> {
         self.outputs
             .get(function)
             .and_then(|outputs| {
                 outputs.iter().find(|s| s.as_str() == struct_type_identifier(internal_type))
             })
-            .and_then(|id| self.rust_type_names.get(id))
             .map(String::as_str)
     }
 
@@ -374,6 +400,8 @@ impl InternalStructs {
     }
 
     /// Returns all the solidity struct types
+    ///
+    /// These are grouped by their case-sensitive type identifiers extracted from the ABI.
     pub fn structs_types(&self) -> &HashMap<String, SolStruct> {
         &self.structs
     }
@@ -562,7 +590,7 @@ fn struct_type_name(name: &str) -> &str {
 }
 
 /// `Pairing.G2Point` -> `Pairing.G2Point`
-fn struct_type_identifier(name: &str) -> &str {
+pub fn struct_type_identifier(name: &str) -> &str {
     name.trim_start_matches("struct ").split('[').next().unwrap()
 }
 
