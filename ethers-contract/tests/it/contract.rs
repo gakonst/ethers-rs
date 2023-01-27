@@ -6,16 +6,91 @@ use ethers_core::types::{Filter, ValueOrArray, H256};
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
     use super::*;
-    use ethers_contract::{EthEvent, LogMeta, Multicall, MulticallVersion};
+    use ethers_contract::{ContractInternal, EthEvent, LogMeta, Multicall, MulticallVersion};
     use ethers_core::{
         abi::{encode, Detokenize, Token, Tokenizable},
-        types::{transaction::eip712::Eip712, Address, BlockId, Bytes, I256, U256},
+        types::{transaction::eip712::Eip712, Address, BlockId, Bytes, H160, I256, U256},
         utils::{keccak256, Anvil},
     };
     use ethers_derive_eip712::*;
     use ethers_providers::{Http, Middleware, PendingTransaction, Provider, StreamExt};
     use ethers_signers::{LocalWallet, Signer};
     use std::{convert::TryFrom, iter::FromIterator, sync::Arc, time::Duration};
+
+    #[derive(Debug)]
+    pub struct NonClone<M> {
+        m: M,
+    }
+
+    #[derive(Debug)]
+    struct MwErr<M: Middleware>(M::Error);
+    impl<M> ethers_providers::FromErr<M::Error> for MwErr<M>
+    where
+        M: Middleware,
+    {
+        fn from(src: M::Error) -> Self {
+            Self(src)
+        }
+    }
+
+    impl<M: Middleware> std::fmt::Display for MwErr<M> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            Ok(())
+        }
+    }
+    impl<M: Middleware> std::error::Error for MwErr<M> {}
+
+    impl<M: Middleware> Middleware for NonClone<M> {
+        type Error = MwErr<M>;
+
+        type Provider = M::Provider;
+
+        type Inner = M;
+
+        fn inner(&self) -> &Self::Inner {
+            &self.m
+        }
+    }
+
+    // this is not a test. It is a compile check. :)
+    // It exists to ensure that trait bounds on contract internal behave as
+    // expected. It should not be run
+    fn it_compiles() {
+        let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+
+        // launch anvil
+        let anvil = Anvil::new().spawn();
+
+        let client = Provider::<Http>::try_from(anvil.endpoint())
+            .unwrap()
+            .interval(Duration::from_millis(10u64));
+
+        // Works (B == M, M: Clone)
+        let c: ContractInternal<&Provider<Http>, Provider<Http>> =
+            ContractInternal::new(H160::default(), abi.clone(), &client);
+
+        let _ = c.method::<(), ()>("notARealMethod", ());
+
+        // Works (B == &M, M: Clone)
+        let c: ContractInternal<Provider<Http>, Provider<Http>> =
+            ContractInternal::new(H160::default(), abi, client.clone());
+
+        let _ = c.method::<(), ()>("notARealMethod", ());
+
+        let non_clone_mware = NonClone { m: client };
+
+        // Works (B == &M, M: !Clone)
+        let c: ContractInternal<&NonClone<Provider<Http>>, NonClone<Provider<Http>>> =
+            ContractInternal::new(H160::default(), abi, &non_clone_mware);
+
+        let _ = c.method::<(), ()>("notARealMethod", ());
+
+        // // Fails (B == M, M: !Clone)
+        // let c: ContractInternal<NonClone<Provider<Http>>, NonClone<Provider<Http>>> =
+        //     ContractInternal::new(H160::default(), abi, non_clone_mware);
+
+        // let _ = c.method::<(), ()>("notARealMethod", ());
+    }
 
     #[tokio::test]
     async fn deploy_and_call_contract() {

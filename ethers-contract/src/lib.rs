@@ -3,7 +3,7 @@
 #![deny(unsafe_code)]
 
 mod contract;
-pub use contract::Contract;
+pub use contract::{Contract, ContractInternal};
 
 mod base;
 pub use base::{decode_function_data, encode_function_data, AbiError, BaseContract};
