@@ -31,7 +31,7 @@ tracing = { version = "0.1.37", default-features = false }
 tracing-futures = { version = "0.2.5", default-features = false }
 
 # for gas oracles
-reqwest = { version = "0.11.13", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.11.14", default-features = false, features = ["json", "rustls-tls"] }
 url = { version = "2.3.1", default-features = false }
 
 serde_json = { version = "1.0.64", default-features = false }
@@ -50,7 +50,7 @@ ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-f
 once_cell = "1.17.0"
 ethers-solc = { version = "^1.0.0", path = "../ethers-solc" }
 serial_test = "0.10.0"
-reqwest = { version = "0.11.13", default-features = false, features = ["json", "rustls"] }
+reqwest = { version = "0.11.14", default-features = false, features = ["json", "rustls"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.18", default-features = false, features = ["rt", "macros", "time"] }
