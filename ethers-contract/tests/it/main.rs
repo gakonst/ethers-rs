@@ -6,5 +6,6 @@ pub(crate) mod common;
 mod console;
 #[cfg(feature = "abigen")]
 mod contract;
+mod contract_call;
 
 fn main() {}
