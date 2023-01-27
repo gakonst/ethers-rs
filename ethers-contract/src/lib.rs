@@ -5,6 +5,9 @@
 mod contract;
 pub use contract::Contract;
 
+// pub mod call2;
+// pub mod contract2;
+
 mod base;
 pub use base::{decode_function_data, encode_function_data, AbiError, BaseContract};
 

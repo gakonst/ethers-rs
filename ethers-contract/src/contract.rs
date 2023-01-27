@@ -1,6 +1,6 @@
 use crate::{
     base::{encode_function_data, AbiError, BaseContract},
-    call::ContractCall,
+    call::ContractCallInternal,
     event::{EthEvent, Event},
     EthLogDecode,
 };
@@ -9,7 +9,7 @@ use ethers_core::{
     types::{Address, Filter, Selector, ValueOrArray},
 };
 use ethers_providers::Middleware;
-use std::{marker::PhantomData, sync::Arc};
+use std::{borrow::Borrow, fmt::Debug, marker::PhantomData, sync::Arc};
 
 #[cfg(not(feature = "legacy"))]
 use ethers_core::types::Eip1559TransactionRequest;
@@ -150,13 +150,19 @@ use ethers_core::types::TransactionRequest;
 /// [`event`]: method@crate::Contract::event
 /// [`method`]: method@crate::Contract::method
 #[derive(Debug)]
-pub struct Contract<M> {
+pub struct ContractInternal<B, M> {
     address: Address,
     base_contract: BaseContract,
-    client: Arc<M>,
+    client: B,
+    _m: PhantomData<M>,
 }
 
-impl<M> std::ops::Deref for Contract<M> {
+pub type Contract<M> = ContractInternal<std::sync::Arc<M>, M>;
+
+impl<B, M> std::ops::Deref for ContractInternal<B, M>
+where
+    B: Borrow<M>,
+{
     type Target = BaseContract;
 
     fn deref(&self) -> &Self::Target {
@@ -164,18 +170,25 @@ impl<M> std::ops::Deref for Contract<M> {
     }
 }
 
-impl<M> Clone for Contract<M> {
+impl<B, M> Clone for ContractInternal<B, M>
+where
+    B: Clone + Borrow<M>,
+{
     fn clone(&self) -> Self {
-        Contract {
+        ContractInternal {
             base_contract: self.base_contract.clone(),
             client: self.client.clone(),
             address: self.address,
+            _m: self._m,
         }
     }
 }
 
-impl<M> Contract<M> {
-    /// Returns the contract's address.
+impl<B, M> ContractInternal<B, M>
+where
+    B: Borrow<M>,
+{
+    /// Returns the contract's address
     pub fn address(&self) -> Address {
         self.address
     }
@@ -186,17 +199,24 @@ impl<M> Contract<M> {
     }
 
     /// Returns a pointer to the contract's client.
-    pub fn client(&self) -> Arc<M> {
-        Arc::clone(&self.client)
+    pub fn client(&self) -> B
+    where
+        B: Clone,
+    {
+        self.client.clone()
     }
 
     /// Returns a reference to the contract's client.
     pub fn client_ref(&self) -> &M {
-        Arc::as_ref(&self.client)
+        self.client.borrow()
     }
 }
 
-impl<M: Middleware> Contract<M> {
+impl<B, M> ContractInternal<B, M>
+where
+    B: Borrow<M>,
+    M: Middleware,
+{
     /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
     /// This function operates in a static context, then it does not require a `self`
     /// to reference to instantiate an [`Event`](crate::builders::Event) builder.
@@ -209,14 +229,14 @@ impl<M: Middleware> Contract<M> {
     }
 }
 
-impl<M: Middleware> Contract<M> {
+impl<B, M> ContractInternal<B, M>
+where
+    B: Borrow<M>,
+    M: Middleware,
+{
     /// Creates a new contract from the provided client, abi and address
-    pub fn new(
-        address: impl Into<Address>,
-        abi: impl Into<BaseContract>,
-        client: impl Into<Arc<M>>,
-    ) -> Self {
-        Self { base_contract: abi.into(), client: client.into(), address: address.into() }
+    pub fn new(address: impl Into<Address>, abi: impl Into<BaseContract>, client: B) -> Self {
+        Self { base_contract: abi.into(), client, address: address.into(), _m: PhantomData }
     }
 
     /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
@@ -227,7 +247,7 @@ impl<M: Middleware> Contract<M> {
     /// Returns an [`Event`](crate::builders::Event) builder with the provided filter.
     pub fn event_with_filter<D: EthLogDecode>(&self, filter: Filter) -> Event<M, D> {
         Event {
-            provider: &self.client,
+            provider: self.client.borrow(),
             filter: filter.address(ValueOrArray::Value(self.address)),
             datatype: PhantomData,
         }
@@ -240,26 +260,35 @@ impl<M: Middleware> Contract<M> {
         Ok(self.event_with_filter(Filter::new().event(&event.abi_signature())))
     }
 
-    /// Returns a transaction builder for the provided function name. If there are
-    /// multiple functions with the same name due to overloading, consider using
-    /// the `method_hash` method instead, since this will use the first match.
-    pub fn method<T: Tokenize, D: Detokenize>(
-        &self,
-        name: &str,
-        args: T,
-    ) -> Result<ContractCall<M, D>, AbiError> {
-        // get the function
-        let function = self.base_contract.abi.function(name)?;
-        self.method_func(function, args)
+    /// Returns a new contract instance using the provided client
+    ///
+    /// Clones `self` internally
+    #[must_use]
+    pub fn connect<C, N>(&self, client: C) -> ContractInternal<C, N>
+    where
+        C: Borrow<N>,
+    {
+        ContractInternal {
+            base_contract: self.base_contract.clone(),
+            client,
+            address: self.address,
+            _m: PhantomData,
+        }
     }
+}
 
+impl<B, M> ContractInternal<B, M>
+where
+    B: Clone + Borrow<M>,
+    M: Middleware,
+{
     /// Returns a transaction builder for the selected function signature. This should be
     /// preferred if there are overloaded functions in your smart contract
     pub fn method_hash<T: Tokenize, D: Detokenize>(
         &self,
         signature: Selector,
         args: T,
-    ) -> Result<ContractCall<M, D>, AbiError> {
+    ) -> Result<ContractCallInternal<B, M, D>, AbiError> {
         let function = self
             .base_contract
             .methods
@@ -269,11 +298,27 @@ impl<M: Middleware> Contract<M> {
         self.method_func(function, args)
     }
 
+    /// Returns a transaction builder for the provided function name. If there are
+    /// multiple functions with the same name due to overloading, consider using
+    /// the `method_hash` method instead, since this will use the first match.
+    pub fn method<T: Tokenize, D: Detokenize>(
+        &self,
+        name: &str,
+        args: T,
+    ) -> Result<ContractCallInternal<B, M, D>, AbiError> {
+        // get the function
+        let function = self.base_contract.abi.function(name)?;
+        self.method_func(function, args)
+    }
+
     fn method_func<T: Tokenize, D: Detokenize>(
         &self,
         function: &Function,
         args: T,
-    ) -> Result<ContractCall<M, D>, AbiError> {
+    ) -> Result<ContractCallInternal<B, M, D>, AbiError>
+    where
+        B: Clone,
+    {
         let data = encode_function_data(function, args)?;
 
         #[cfg(feature = "legacy")]
@@ -291,12 +336,13 @@ impl<M: Middleware> Contract<M> {
 
         let tx = tx.into();
 
-        Ok(ContractCall {
+        Ok(ContractCallInternal {
             tx,
-            client: Arc::clone(&self.client), // cheap clone behind the Arc
+            client: self.client.clone(),
             block: None,
             function: function.to_owned(),
             datatype: PhantomData,
+            _m: self._m,
         })
     }
 
@@ -308,13 +354,5 @@ impl<M: Middleware> Contract<M> {
         let mut this = self.clone();
         this.address = address.into();
         this
-    }
-
-    /// Returns a new contract instance using the provided client
-    ///
-    /// Clones `self` internally
-    #[must_use]
-    pub fn connect<N>(&self, client: Arc<N>) -> Contract<N> {
-        Contract { base_contract: self.base_contract.clone(), client, address: self.address }
     }
 }

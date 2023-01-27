@@ -200,7 +200,7 @@ impl BaseContract {
         address: Address,
         client: impl Into<Arc<M>>,
     ) -> Contract<M> {
-        Contract::new(address, self, client)
+        Contract::new(address, self, client.into())
     }
 }
 

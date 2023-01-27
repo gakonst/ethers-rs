@@ -15,12 +15,11 @@ use ethers_providers::{
 };
 
 use std::{
-    borrow::Cow,
+    borrow::{Borrow, Cow},
     fmt::Debug,
     future::{Future, IntoFuture},
     marker::PhantomData,
     pin::Pin,
-    sync::Arc,
 };
 
 use thiserror::Error as ThisError;
@@ -73,33 +72,45 @@ pub enum ContractError<M: Middleware> {
     ContractNotDeployed,
 }
 
+/// type alias for backwards compatibility
+pub type ContractCall<M, D> = ContractCallInternal<std::sync::Arc<M>, M, D>;
+
 #[derive(Debug)]
 #[must_use = "contract calls do nothing unless you `send` or `call` them"]
 /// Helper for managing a transaction before submitting it to a node
-pub struct ContractCall<M, D> {
+pub struct ContractCallInternal<B, M, D> {
     /// The raw transaction object
     pub tx: TypedTransaction,
     /// The ABI of the function being called
     pub function: Function,
     /// Optional block number to be used when calculating the transaction's gas and nonce
     pub block: Option<BlockId>,
-    pub(crate) client: Arc<M>,
+    pub(crate) client: B,
     pub(crate) datatype: PhantomData<D>,
+    pub(crate) _m: PhantomData<M>,
 }
 
-impl<M, D> Clone for ContractCall<M, D> {
+impl<B, M, D> Clone for ContractCallInternal<B, M, D>
+where
+    B: Clone,
+{
     fn clone(&self) -> Self {
-        ContractCall {
+        ContractCallInternal {
             tx: self.tx.clone(),
             function: self.function.clone(),
             block: self.block,
             client: self.client.clone(),
             datatype: self.datatype,
+            _m: self._m,
         }
     }
 }
 
-impl<M, D: Detokenize> ContractCall<M, D> {
+impl<B, M, D> ContractCallInternal<B, M, D>
+where
+    B: Borrow<M>,
+    D: Detokenize,
+{
     /// Sets the `from` field in the transaction to the provided value
     pub fn from<T: Into<Address>>(mut self, from: T) -> Self {
         self.tx.set_from(from.into());
@@ -145,8 +156,9 @@ impl<M, D: Detokenize> ContractCall<M, D> {
     }
 }
 
-impl<M, D> ContractCall<M, D>
+impl<B, M, D> ContractCallInternal<B, M, D>
 where
+    B: Borrow<M>,
     M: Middleware,
     D: Detokenize,
 {
@@ -157,7 +169,11 @@ where
 
     /// Returns the estimated gas cost for the underlying transaction to be executed
     pub async fn estimate_gas(&self) -> Result<U256, ContractError<M>> {
-        self.client.estimate_gas(&self.tx, self.block).await.map_err(ContractError::MiddlewareError)
+        self.client
+            .borrow()
+            .estimate_gas(&self.tx, self.block)
+            .await
+            .map_err(ContractError::MiddlewareError)
     }
 
     /// Queries the blockchain via an `eth_call` for the provided transaction.
@@ -170,8 +186,12 @@ where
     ///
     /// Note: this function _does not_ send a transaction from your account
     pub async fn call(&self) -> Result<D, ContractError<M>> {
-        let bytes =
-            self.client.call(&self.tx, self.block).await.map_err(ContractError::MiddlewareError)?;
+        let bytes = self
+            .client
+            .borrow()
+            .call(&self.tx, self.block)
+            .await
+            .map_err(ContractError::MiddlewareError)?;
 
         // decode output
         let data = decode_function_data(&self.function, &bytes, false)?;
@@ -202,7 +222,7 @@ where
     ///
     /// Note: this function _does not_ send a transaction from your account
     pub fn call_raw_bytes(&self) -> CallBuilder<'_, M::Provider> {
-        let call = self.client.provider().call_raw(&self.tx);
+        let call = self.client.borrow().provider().call_raw(&self.tx);
         if let Some(block) = self.block {
             call.block(block)
         } else {
@@ -213,6 +233,7 @@ where
     /// Signs and broadcasts the provided transaction
     pub async fn send(&self) -> Result<PendingTransaction<'_, M::Provider>, ContractError<M>> {
         self.client
+            .borrow()
             .send_transaction(self.tx.clone(), self.block)
             .await
             .map_err(ContractError::MiddlewareError)
@@ -221,9 +242,10 @@ where
 
 /// [`ContractCall`] can be turned into [`Future`] automatically with `.await`.
 /// Defaults to calling [`ContractCall::call`].
-impl<M, D> IntoFuture for ContractCall<M, D>
+impl<B, M, D> IntoFuture for ContractCallInternal<B, M, D>
 where
     Self: 'static,
+    B: Borrow<M>,
     M: Middleware,
     D: Detokenize + Send + Sync,
 {
