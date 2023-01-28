@@ -131,24 +131,17 @@ impl Context {
             hex::encode(&function.selector()[..])
         );
         let abi_signature_doc = util::expand_doc(&doc);
-        let ethers_contract = ethers_contract_crate();
-        // use the same derives as for events
-        let derives = util::expand_derives(&self.event_derives);
 
-        // rust-std only derives default automatically for arrays len <= 32
-        // for large array types we skip derive(Default) <https://github.com/gakonst/ethers-rs/issues/1640>
-        let derive_default = if can_derive_defaults(&function.inputs) {
-            quote! {
-                #[derive(Default)]
-            }
-        } else {
-            quote! {}
-        };
+        let mut extra_derives = self.expand_extra_derives();
+        if can_derive_defaults(&function.inputs) {
+            extra_derives.extend(quote!(Default));
+        }
+
+        let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthCall, #ethers_contract::EthDisplay, #derives)]
-            #derive_default
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthCall, #ethers_contract::EthDisplay, #extra_derives)]
             #[ethcall( name = #function_name, abi = #abi_signature )]
             pub #call_type_definition
         })
@@ -183,33 +176,27 @@ impl Context {
             hex::encode(&function.selector()[..])
         );
         let abi_signature_doc = util::expand_doc(&doc);
-        let ethers_contract = ethers_contract_crate();
-        // use the same derives as for events
-        let derives = util::expand_derives(&self.event_derives);
 
-        // rust-std only derives default automatically for arrays len <= 32
-        // for large array types we skip derive(Default) <https://github.com/gakonst/ethers-rs/issues/1640>
-        let derive_default = if can_derive_defaults(&function.outputs) {
-            quote! {
-                #[derive(Default)]
-            }
-        } else {
-            quote! {}
-        };
+        let mut extra_derives = self.expand_extra_derives();
+        if can_derive_defaults(&function.inputs) {
+            extra_derives.extend(quote!(Default));
+        }
+
+        let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug,Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
-             #derive_default
+            #[derive(Clone, Debug,Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
             pub #return_type_definition
         })
     }
 
     /// Expands all call structs
     fn expand_call_structs(&self, aliases: BTreeMap<String, MethodAlias>) -> Result<TokenStream> {
-        let mut struct_defs = Vec::new();
-        let mut struct_names = Vec::new();
-        let mut variant_names = Vec::new();
+        let len = self.abi.functions.len();
+        let mut struct_defs = Vec::with_capacity(len);
+        let mut struct_names = Vec::with_capacity(len);
+        let mut variant_names = Vec::with_capacity(len);
         for function in self.abi.functions.values().flatten() {
             let signature = function.abi_signature();
             let alias = aliases.get(&signature);
@@ -218,70 +205,69 @@ impl Context {
             variant_names.push(expand_call_struct_variant_name(function, alias));
         }
 
-        let struct_def_tokens = quote! {
-            #(#struct_defs)*
-        };
+        let struct_def_tokens = quote!(#(#struct_defs)*);
 
         if struct_defs.len() <= 1 {
             // no need for an enum
             return Ok(struct_def_tokens)
         }
 
+        let extra_derives = self.expand_extra_derives();
+
+        let enum_name = self.expand_calls_enum_name();
+
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
 
-        // use the same derives as for events
-        let derives = util::expand_derives(&self.event_derives);
-        let enum_name = self.expand_calls_enum_name();
-
-        Ok(quote! {
+        let tokens = quote! {
             #struct_def_tokens
 
-           #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #derives)]
+           #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
             pub enum #enum_name {
                 #(#variant_names(#struct_names)),*
             }
 
-        impl  #ethers_core::abi::AbiDecode for #enum_name {
-            fn decode(data: impl AsRef<[u8]>) -> ::std::result::Result<Self, #ethers_core::abi::AbiError> {
-                 #(
-                    if let Ok(decoded) = <#struct_names as #ethers_core::abi::AbiDecode>::decode(data.as_ref()) {
-                        return Ok(#enum_name::#variant_names(decoded))
+            impl #ethers_core::abi::AbiDecode for #enum_name {
+                fn decode(data: impl AsRef<[u8]>) -> ::std::result::Result<Self, #ethers_core::abi::AbiError> {
+                    #(
+                        if let Ok(decoded) = <#struct_names as #ethers_core::abi::AbiDecode>::decode(data.as_ref()) {
+                            return Ok(#enum_name::#variant_names(decoded))
+                        }
+                    )*
+                    Err(#ethers_core::abi::Error::InvalidData.into())
+                }
+            }
+
+            impl #ethers_core::abi::AbiEncode for #enum_name {
+                fn encode(self) -> Vec<u8> {
+                    match self {
+                        #(
+                            #enum_name::#variant_names(element) => element.encode()
+                        ),*
                     }
-                )*
-                Err(#ethers_core::abi::Error::InvalidData.into())
-            }
-        }
-
-         impl  #ethers_core::abi::AbiEncode for #enum_name {
-            fn encode(self) -> Vec<u8> {
-                match self {
-                    #(
-                        #enum_name::#variant_names(element) => element.encode()
-                    ),*
                 }
             }
-        }
 
-        impl ::std::fmt::Display for #enum_name {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                match self {
-                    #(
-                        #enum_name::#variant_names(element) => element.fmt(f)
-                    ),*
+            impl ::std::fmt::Display for #enum_name {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                    match self {
+                        #(
+                            #enum_name::#variant_names(element) => element.fmt(f)
+                        ),*
+                    }
                 }
             }
-        }
 
-        #(
-            impl ::std::convert::From<#struct_names> for #enum_name {
-                fn from(var: #struct_names) -> Self {
-                    #enum_name::#variant_names(var)
+            #(
+                impl ::std::convert::From<#struct_names> for #enum_name {
+                    fn from(var: #struct_names) -> Self {
+                        #enum_name::#variant_names(var)
+                    }
                 }
-            }
-        )*
+            )*
+        };
 
-        })
+        Ok(tokens)
     }
 
     /// Expands all return structs

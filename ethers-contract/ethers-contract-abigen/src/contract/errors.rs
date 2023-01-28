@@ -42,10 +42,11 @@ impl Context {
     /// Expands an ABI error into a single error data type. This can expand either
     /// into a structure or a tuple in the case where all error parameters are anonymous.
     fn expand_error(&self, error: &AbiError) -> Result<TokenStream> {
-        let sig = self.error_aliases.get(&error.abi_signature()).cloned();
+        let error_name = &error.name;
         let abi_signature = error.abi_signature();
 
-        let error_name = error_struct_name(&error.name, sig);
+        let alias_opt = self.error_aliases.get(&abi_signature).cloned();
+        let error_struct_name = error_struct_name(&error.name, alias_opt);
 
         let fields = self.expand_error_params(error)?;
 
@@ -59,22 +60,21 @@ impl Context {
             expand_data_struct(&error_name, &fields)
         };
 
-        let doc = format!(
-            "Custom Error type `{}` with signature `{}` and selector `0x{}`",
-            error.name,
-            abi_signature,
-            hex::encode(&error.selector()[..])
+        let doc_str = format!(
+            "Custom Error type `{error_name}` with signature `{abi_signature}` and selector `0x{}`",
+            hex::encode(error.selector())
         );
-        let abi_signature_doc = util::expand_doc(&doc);
-        let ethers_contract = ethers_contract_crate();
-        // use the same derives as for events
-        let derives = util::expand_derives(&self.event_derives);
 
-        let error_name = &error.name;
+        let mut extra_derives = self.expand_extra_derives();
+        if util::can_derive_defaults(&error.inputs) {
+            extra_derives.extend(quote!(Default));
+        }
+
+        let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
-             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthError, #ethers_contract::EthDisplay, #derives)]
+            #[doc = #doc_str]
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthError, #ethers_contract::EthDisplay, #extra_derives)]
             #[etherror( name = #error_name, abi = #abi_signature )]
             pub #data_type_definition
         })
@@ -105,12 +105,11 @@ impl Context {
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
 
-        // use the same derives as for events
-        let derives = util::expand_derives(&self.event_derives);
+        let extra_derives = self.expand_extra_derives();
         let enum_name = self.expand_error_enum_name();
 
         quote! {
-           #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #derives)]
+           #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
             pub enum #enum_name {
                 #(#variants(#variants)),*
             }

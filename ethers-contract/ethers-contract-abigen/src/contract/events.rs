@@ -22,9 +22,9 @@ impl Context {
 
         // only expand enums when multiple events are present
         let events_enum_decl = if sorted_events.values().flatten().count() > 1 {
-            self.expand_events_enum()
+            Some(self.expand_events_enum())
         } else {
-            quote! {}
+            None
         };
 
         Ok(quote! {
@@ -67,12 +67,11 @@ impl Context {
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
 
-        // use the same derives as for events
-        let derives = util::expand_derives(&self.event_derives);
+        let extra_derives = self.expand_extra_derives();
         let enum_name = self.expand_event_enum_name();
 
         quote! {
-            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #derives)]
+            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
             pub enum #enum_name {
                 #(#variants(#variants)),*
             }
@@ -259,33 +258,15 @@ impl Context {
             expand_data_struct(&event_name, &params)
         };
 
-        let derives = util::expand_derives(&self.event_derives);
-
-        // rust-std only derives default automatically for arrays len <= 32
-        // for large array types we skip derive(Default) <https://github.com/gakonst/ethers-rs/issues/1640>
-        let derive_default = if can_derive_defaults(
-            &event
-                .inputs
-                .iter()
-                .map(|param| Param {
-                    name: param.name.clone(),
-                    kind: param.kind.clone(),
-                    internal_type: None,
-                })
-                .collect::<Vec<_>>(),
-        ) {
-            quote! {
-                #[derive(Default)]
-            }
-        } else {
-            quote! {}
-        };
+        let mut extra_derives = self.expand_extra_derives();
+        if event.inputs.iter().map(|param| &param.kind).all(util::can_derive_default) {
+            extra_derives.extend(quote!(Default));
+        }
 
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
-            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #derives)]
-             #derive_default
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #extra_derives)]
             #[ethevent( name = #event_abi_name, abi = #abi_signature )]
             pub #data_type_definition
         })

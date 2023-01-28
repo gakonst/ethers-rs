@@ -123,23 +123,21 @@ impl Context {
             }
         };
 
-        let sig = if let ParamType::Tuple(ref tokens) = tuple {
-            tokens.iter().map(|kind| kind.to_string()).collect::<Vec<_>>().join(",")
-        } else {
-            "".to_string()
+        let sig = match tuple {
+            ParamType::Tuple(ref tokens) if !tokens.is_empty() => {
+                tokens.iter().map(ToString::to_string).collect::<Vec<_>>().join(",")
+            }
+            _ => String::new(),
         };
 
-        let abi_signature = format!("{name}({sig})",);
+        let doc_str = format!("`{name}({sig})`");
 
-        let abi_signature_doc = util::expand_doc(&format!("`{abi_signature}`"));
-
-        // use the same derives as for events
-        let derives = util::expand_derives(&self.event_derives);
+        let extra_derives = self.expand_extra_derives();
 
         let ethers_contract = ethers_contract_crate();
         Ok(quote! {
-            #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
+            #[doc = #doc_str]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
             #struct_def
         })
     }
@@ -188,15 +186,13 @@ impl Context {
 
         let name = util::ident(name);
 
-        // use the same derives as for events
-        let derives = &self.event_derives;
-        let derives = quote! {#(#derives),*};
+        let extra_derives = self.expand_extra_derives();
 
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
             pub struct #name {
                 #( #fields ),*
             }

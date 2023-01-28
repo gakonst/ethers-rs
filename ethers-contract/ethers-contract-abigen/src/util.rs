@@ -3,8 +3,7 @@ use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote;
-use std::path::PathBuf;
-use syn::{Ident as SynIdent, Path};
+use std::path::{Path, PathBuf};
 
 /// Expands a identifier string into a token.
 pub fn ident(name: &str) -> Ident {
@@ -16,7 +15,7 @@ pub fn ident(name: &str) -> Ident {
 ///
 /// Parsing keywords like `self` can fail, in this case we add an underscore.
 pub fn safe_ident(name: &str) -> Ident {
-    syn::parse_str::<SynIdent>(name).unwrap_or_else(|_| ident(&format!("{name}_")))
+    syn::parse_str::<Ident>(name).unwrap_or_else(|_| ident(&format!("{name}_")))
 }
 
 ///  Converts a `&str` to `snake_case` `String` while respecting identifier rules
@@ -89,10 +88,6 @@ pub fn expand_doc(s: &str) -> TokenStream {
     }
 }
 
-pub fn expand_derives(derives: &[Path]) -> TokenStream {
-    quote! {#(#derives),*}
-}
-
 /// Perform a blocking HTTP GET request and return the contents of the response as a String.
 #[cfg(all(feature = "online", not(target_arch = "wasm32")))]
 pub fn http_get(url: impl reqwest::IntoUrl) -> Result<String> {
@@ -115,7 +110,7 @@ pub fn resolve_path(raw: &str) -> Result<PathBuf> {
                 unprocessed = rest;
             }
             None => {
-                eyre::bail!("Unable to parse a variable from \"{}\"", tail)
+                eyre::bail!("Unable to parse a variable from \"{tail}\"")
             }
         }
     }
@@ -157,7 +152,7 @@ fn take_while(s: &str, mut predicate: impl FnMut(char) -> bool) -> (&str, &str) 
 }
 
 /// Returns a list of absolute paths to all the json files under the root
-pub fn json_files(root: impl AsRef<std::path::Path>) -> Vec<PathBuf> {
+pub fn json_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
     walkdir::WalkDir::new(root)
         .into_iter()
         .filter_map(Result::ok)
@@ -170,8 +165,8 @@ pub fn json_files(root: impl AsRef<std::path::Path>) -> Vec<PathBuf> {
 /// rust-std derives `Default` automatically only for arrays len <= 32
 ///
 /// Returns whether the corresponding struct can derive `Default`
-pub fn can_derive_defaults(params: &[Param]) -> bool {
-    params.iter().map(|param| &param.kind).all(can_derive_default)
+pub fn can_derive_defaults<'a>(params: impl IntoIterator<Item = &'a Param>) -> bool {
+    params.into_iter().map(|param| &param.kind).all(can_derive_default)
 }
 
 pub fn can_derive_default(param: &ParamType) -> bool {

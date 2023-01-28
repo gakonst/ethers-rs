@@ -99,7 +99,7 @@ pub struct Context {
     error_aliases: BTreeMap<String, Ident>,
 
     /// Derives added to event structs and enums.
-    event_derives: Vec<Path>,
+    extra_derives: Vec<Path>,
 
     /// Manually specified event aliases.
     event_aliases: BTreeMap<String, Ident>,
@@ -271,12 +271,12 @@ impl Context {
             );
         }
 
-        let event_derives = args
+        let extra_derives = args
             .derives
             .iter()
             .map(|derive| syn::parse_str::<Path>(derive))
             .collect::<Result<Vec<_>, _>>()
-            .context("failed to parse event derives")?;
+            .wrap_err("failed to parse event derives")?;
 
         Ok(Context {
             abi,
@@ -289,7 +289,7 @@ impl Context {
             contract_bytecode,
             method_aliases,
             error_aliases: Default::default(),
-            event_derives,
+            extra_derives,
             event_aliases,
         })
     }
@@ -317,6 +317,13 @@ impl Context {
     /// Returns a mutable reference to the internal ABI struct mapping table.
     pub fn internal_structs_mut(&mut self) -> &mut InternalStructs {
         &mut self.internal_structs
+    }
+
+    /// Expands `self.extra_derives` into a comma separated list to be inserted in a
+    /// `#[derive(...)]` attribute.
+    pub(crate) fn expand_extra_derives(&self) -> TokenStream {
+        let extra_derives = &self.extra_derives;
+        quote!(#( #extra_derives, )*)
     }
 }
 
