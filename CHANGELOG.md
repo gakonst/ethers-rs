@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Add support for Geth javascript custom tracer request into `debug_traceCall` [#2088](https://github.com/gakonst/ethers-rs/pull/2088)
 - Add a `Send` bound to the `IntoFuture` implementation of `ContractCall` [#2083](https://github.com/gakonst/ethers-rs/pull/2083)
 - Bump [`svm-rs`](https://github.com/roynalnaruto/svm-rs) dependency to fix conflicts with Rust Crytpo packages [#2051](https://github.com/gakonst/ethers-rs/pull/2051)
 - Avoid unnecessary allocations in `utils` [#2046](https://github.com/gakonst/ethers-rs/pull/2046)
