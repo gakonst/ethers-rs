@@ -1,4 +1,4 @@
-use crate::contract::ContractInternal;
+use crate::contract::ContractInstance;
 
 pub use ethers_core::abi::AbiError;
 use ethers_core::{
@@ -195,12 +195,12 @@ impl BaseContract {
     }
 
     /// Upgrades a `BaseContract` into a full fledged contract with an address and middleware.
-    pub fn into_contract<B, M>(self, address: Address, client: B) -> ContractInternal<B, M>
+    pub fn into_contract<B, M>(self, address: Address, client: B) -> ContractInstance<B, M>
     where
         B: Borrow<M>,
         M: Middleware,
     {
-        ContractInternal::new(address, self, client)
+        ContractInstance::new(address, self, client)
     }
 }
 

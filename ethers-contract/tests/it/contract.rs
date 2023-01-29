@@ -6,7 +6,7 @@ use ethers_core::types::{Filter, ValueOrArray, H256};
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
     use super::*;
-    use ethers_contract::{ContractInternal, EthEvent, LogMeta, Multicall, MulticallVersion};
+    use ethers_contract::{ContractInstance, EthEvent, LogMeta, Multicall, MulticallVersion};
     use ethers_core::{
         abi::{encode, Detokenize, Token, Tokenizable},
         types::{transaction::eip712::Eip712, Address, BlockId, Bytes, H160, I256, U256},
@@ -66,22 +66,22 @@ mod eth_tests {
             .interval(Duration::from_millis(10u64));
 
         // Works (B == M, M: Clone)
-        let c: ContractInternal<&Provider<Http>, Provider<Http>> =
-            ContractInternal::new(H160::default(), abi.clone(), &client);
+        let c: ContractInstance<&Provider<Http>, Provider<Http>> =
+            ContractInstance::new(H160::default(), abi.clone(), &client);
 
         let _ = c.method::<(), ()>("notARealMethod", ());
 
         // Works (B == &M, M: Clone)
-        let c: ContractInternal<Provider<Http>, Provider<Http>> =
-            ContractInternal::new(H160::default(), abi.clone(), client.clone());
+        let c: ContractInstance<Provider<Http>, Provider<Http>> =
+            ContractInstance::new(H160::default(), abi.clone(), client.clone());
 
         let _ = c.method::<(), ()>("notARealMethod", ());
 
         let non_clone_mware = NonClone { m: client };
 
         // Works (B == &M, M: !Clone)
-        let c: ContractInternal<&NonClone<Provider<Http>>, NonClone<Provider<Http>>> =
-            ContractInternal::new(H160::default(), abi, &non_clone_mware);
+        let c: ContractInstance<&NonClone<Provider<Http>>, NonClone<Provider<Http>>> =
+            ContractInstance::new(H160::default(), abi, &non_clone_mware);
 
         let _ = c.method::<(), ()>("notARealMethod", ());
 

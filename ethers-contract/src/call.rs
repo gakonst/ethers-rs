@@ -72,13 +72,23 @@ pub enum ContractError<M: Middleware> {
     ContractNotDeployed,
 }
 
-/// type alias for backwards compatibility
-pub type ContractCall<M, D> = ContractCallInternal<std::sync::Arc<M>, M, D>;
+/// `ContractCall` is a [`FunctionCall`] object with an `Arc` middleware.
+/// This type alias exists to preserve backwards compatibility with
+/// non-abstract Contracts.
+///
+/// This type alias is deprecated, and its name may be used for the
+/// [`FunctionCall`] struct in the future. We recommend migrating code to
+/// explicitly use [`FunctionCall`] instead of relying on this type alias.
+///
+/// For full usage docs, see [`FunctionCall`].
+// #[deprecated = "ContractCall has been replaced with FunctionCall. Future versions may remove or
+// repurpose this type alias."]
+pub type ContractCall<M, D> = FunctionCall<std::sync::Arc<M>, M, D>;
 
 #[derive(Debug)]
 #[must_use = "contract calls do nothing unless you `send` or `call` them"]
 /// Helper for managing a transaction before submitting it to a node
-pub struct ContractCallInternal<B, M, D> {
+pub struct FunctionCall<B, M, D> {
     /// The raw transaction object
     pub tx: TypedTransaction,
     /// The ABI of the function being called
@@ -90,12 +100,12 @@ pub struct ContractCallInternal<B, M, D> {
     pub(crate) _m: PhantomData<M>,
 }
 
-impl<B, M, D> Clone for ContractCallInternal<B, M, D>
+impl<B, M, D> Clone for FunctionCall<B, M, D>
 where
     B: Clone,
 {
     fn clone(&self) -> Self {
-        ContractCallInternal {
+        FunctionCall {
             tx: self.tx.clone(),
             function: self.function.clone(),
             block: self.block,
@@ -106,7 +116,7 @@ where
     }
 }
 
-impl<B, M, D> ContractCallInternal<B, M, D>
+impl<B, M, D> FunctionCall<B, M, D>
 where
     B: Borrow<M>,
     D: Detokenize,
@@ -156,7 +166,7 @@ where
     }
 }
 
-impl<B, M, D> ContractCallInternal<B, M, D>
+impl<B, M, D> FunctionCall<B, M, D>
 where
     B: Borrow<M>,
     M: Middleware,
@@ -240,9 +250,9 @@ where
     }
 }
 
-/// [`ContractCall`] can be turned into [`Future`] automatically with `.await`.
-/// Defaults to calling [`ContractCall::call`].
-impl<B, M, D> IntoFuture for ContractCallInternal<B, M, D>
+/// [`FunctionCall`] can be turned into [`Future`] automatically with `.await`.
+/// Defaults to calling [`FunctionCall::call`].
+impl<B, M, D> IntoFuture for FunctionCall<B, M, D>
 where
     Self: 'static,
     B: Borrow<M>,

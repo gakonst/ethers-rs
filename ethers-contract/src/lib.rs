@@ -3,13 +3,13 @@
 #![deny(unsafe_code)]
 
 mod contract;
-pub use contract::{Contract, ContractInternal};
+pub use contract::{Contract, ContractInstance};
 
 mod base;
 pub use base::{decode_function_data, encode_function_data, AbiError, BaseContract};
 
 mod call;
-pub use call::{ContractCall, ContractCallInternal, ContractError, EthCall};
+pub use call::{ContractCall, ContractError, EthCall, FunctionCall};
 
 mod error;
 pub use error::EthError;

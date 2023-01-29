@@ -1,6 +1,6 @@
 use crate::{
     base::{encode_function_data, AbiError, BaseContract},
-    call::ContractCallInternal,
+    call::FunctionCall,
     event::{EthEvent, Event},
     EthLogDecode,
 };
@@ -15,6 +15,19 @@ use std::{borrow::Borrow, fmt::Debug, marker::PhantomData, sync::Arc};
 use ethers_core::types::Eip1559TransactionRequest;
 #[cfg(feature = "legacy")]
 use ethers_core::types::TransactionRequest;
+
+/// `Contract` is a [`ContractInstance`] object with an `Arc` middleware.
+/// This type alias exists to preserve backwards compatibility with
+/// non-abstract Contracts.
+///
+/// This type alias is deprecated, and its name may be used for the
+/// [`ContractInstance`] struct in the future. We recommend migrating code to
+/// explicitly use [`ContractInstance`] instead of relying on this type alias.
+///
+/// For full usage docs, see [`ContractInstance`].
+// #[deprecated = "Contract has been replaced with ContractInstance. Future versions may remove or
+// repurpose this type alias."]
+pub type Contract<M> = ContractInstance<std::sync::Arc<M>, M>;
 
 /// A Contract is an abstraction of an executable program on the Ethereum Blockchain.
 /// It has code (called byte code) as well as allocated long-term memory
@@ -69,7 +82,7 @@ use ethers_core::types::TransactionRequest;
 /// use ethers_contract::Contract;
 /// use ethers_providers::{Provider, Http};
 /// use ethers_signers::Wallet;
-/// use std::convert::TryFrom;
+/// use std::{convert::TryFrom, sync::Arc};
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 /// // this is a fake address used just for this example
@@ -82,7 +95,7 @@ use ethers_core::types::TransactionRequest;
 /// let client = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 ///
 /// // create the contract object at the address
-/// let contract = Contract::new(address, abi, client);
+/// let contract = Contract::new(address, abi, Arc::new(client));
 ///
 /// // Calling constant methods is done by calling `call()` on the method builder.
 /// // (if the function takes no arguments, then you must use `()` as the argument)
@@ -116,13 +129,13 @@ use ethers_core::types::TransactionRequest;
 /// use ethers_contract::{Contract, EthEvent};
 /// use ethers_providers::{Provider, Http, Middleware};
 /// use ethers_signers::Wallet;
-/// use std::convert::TryFrom;
+/// use std::{convert::TryFrom, sync::Arc};
 /// use ethers_core::abi::{Detokenize, Token, InvalidOutputType};
 /// # // this is a fake address used just for this example
 /// # let address = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse::<Address>()?;
 /// # let abi: Abi = serde_json::from_str(r#"[]"#)?;
 /// # let client = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-/// # let contract = Contract::new(address, abi, client);
+/// # let contract = Contract::new(address, abi, Arc::new(client));
 ///
 /// #[derive(Clone, Debug, EthEvent)]
 /// struct ValueChanged {
@@ -149,7 +162,7 @@ use ethers_core::types::TransactionRequest;
 ///
 /// `ContractInternal` accepts any client that implements `B: Borrow<M>` where
 /// `M :Middleware`. Previous `Contract` versions used only arcs, and relied
-/// heavily on [`Arc`]. Due to constraints on the [`ContractCallInternal`] type,
+/// heavily on [`Arc`]. Due to constraints on the [`FunctionCall`] type,
 /// calling contracts requires a `B: Borrow<M> + Clone`. This is fine for most
 /// middlware. However, when `B` is an owned middleware that is not Clone, we
 /// cannot issue contract calls. Some notable exceptions:
@@ -165,24 +178,17 @@ use ethers_core::types::TransactionRequest;
 ///
 /// [`abigen`]: macro.abigen.html
 /// [`Abigen` builder]: struct.Abigen.html
-/// [`event`]: method@crate::Contract::event
-/// [`method`]: method@crate::Contract::method
+/// [`event`]: method@crate::ContractInstance::event
+/// [`method`]: method@crate::ContractInstance::method
 #[derive(Debug)]
-pub struct ContractInternal<B, M> {
+pub struct ContractInstance<B, M> {
     address: Address,
     base_contract: BaseContract,
     client: B,
     _m: PhantomData<M>,
 }
 
-/// `Contract` is a [`ContractInternal`] object with an `Arc` middleware.
-/// This type alias exists to preserver backwards compatibility with
-/// non-abstract Contracts.
-///
-/// For full usage docs, see [`ContractInternal`]
-pub type Contract<M> = ContractInternal<std::sync::Arc<M>, M>;
-
-impl<B, M> std::ops::Deref for ContractInternal<B, M>
+impl<B, M> std::ops::Deref for ContractInstance<B, M>
 where
     B: Borrow<M>,
 {
@@ -193,12 +199,12 @@ where
     }
 }
 
-impl<B, M> Clone for ContractInternal<B, M>
+impl<B, M> Clone for ContractInstance<B, M>
 where
     B: Clone + Borrow<M>,
 {
     fn clone(&self) -> Self {
-        ContractInternal {
+        ContractInstance {
             base_contract: self.base_contract.clone(),
             client: self.client.clone(),
             address: self.address,
@@ -207,7 +213,7 @@ where
     }
 }
 
-impl<B, M> ContractInternal<B, M>
+impl<B, M> ContractInstance<B, M>
 where
     B: Borrow<M>,
 {
@@ -235,7 +241,7 @@ where
     }
 }
 
-impl<B, M> ContractInternal<B, M>
+impl<B, M> ContractInstance<B, M>
 where
     B: Borrow<M>,
     M: Middleware,
@@ -252,7 +258,7 @@ where
     }
 }
 
-impl<B, M> ContractInternal<B, M>
+impl<B, M> ContractInstance<B, M>
 where
     B: Borrow<M>,
     M: Middleware,
@@ -286,11 +292,11 @@ where
     /// Returns a new contract instance using the provided client
     ///
     /// Clones `self` internally
-    pub fn connect<N>(&self, client: Arc<N>) -> Contract<N>
+    pub fn connect<N>(&self, client: Arc<N>) -> ContractInstance<Arc<N>, N>
     where
         N: Middleware,
     {
-        ContractInternal {
+        ContractInstance {
             base_contract: self.base_contract.clone(),
             client,
             address: self.address,
@@ -302,11 +308,11 @@ where
     ///
     /// Clones `self` internally
     #[must_use]
-    pub fn connect_with<C, N>(&self, client: C) -> ContractInternal<C, N>
+    pub fn connect_with<C, N>(&self, client: C) -> ContractInstance<C, N>
     where
         C: Borrow<N>,
     {
-        ContractInternal {
+        ContractInstance {
             base_contract: self.base_contract.clone(),
             client,
             address: self.address,
@@ -315,7 +321,7 @@ where
     }
 }
 
-impl<B, M> ContractInternal<B, M>
+impl<B, M> ContractInstance<B, M>
 where
     B: Clone + Borrow<M>,
     M: Middleware,
@@ -326,7 +332,7 @@ where
         &self,
         signature: Selector,
         args: T,
-    ) -> Result<ContractCallInternal<B, M, D>, AbiError> {
+    ) -> Result<FunctionCall<B, M, D>, AbiError> {
         let function = self
             .base_contract
             .methods
@@ -343,7 +349,7 @@ where
         &self,
         name: &str,
         args: T,
-    ) -> Result<ContractCallInternal<B, M, D>, AbiError> {
+    ) -> Result<FunctionCall<B, M, D>, AbiError> {
         // get the function
         let function = self.base_contract.abi.function(name)?;
         self.method_func(function, args)
@@ -353,7 +359,7 @@ where
         &self,
         function: &Function,
         args: T,
-    ) -> Result<ContractCallInternal<B, M, D>, AbiError>
+    ) -> Result<FunctionCall<B, M, D>, AbiError>
     where
         B: Clone,
     {
@@ -374,7 +380,7 @@ where
 
         let tx = tx.into();
 
-        Ok(ContractCallInternal {
+        Ok(FunctionCall {
             tx,
             client: self.client.clone(),
             block: None,
