@@ -171,7 +171,7 @@ impl Context {
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
-            #abi_signature_doc
+            #[doc = #abi_signature]
             #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
             pub struct #name {
                 #( #fields ),*
