@@ -158,6 +158,7 @@ impl Context {
         function: &Function,
         alias: Option<&MethodAlias>,
     ) -> Result<TokenStream> {
+        let name = &function.name;
         let struct_name = expand_return_struct_name(function, alias);
         let fields = self.expand_output_params(function)?;
         // no point in having structs when there is no data returned
@@ -178,12 +179,6 @@ impl Context {
             "Container type for all return fields from the `{name}` function with signature `{abi_signature}` and selector `0x{}`",
             hex::encode(&function.selector()[..])
         );
-        let abi_signature_doc = util::expand_doc(&doc);
-
-        let mut extra_derives = self.expand_extra_derives();
-        if can_derive_defaults(&function.inputs) {
-            extra_derives.extend(quote!(Default));
-        }
 
         let ethers_contract = ethers_contract_crate();
         // use the same derives as for events
@@ -201,7 +196,8 @@ impl Context {
 
         Ok(quote! {
             #[doc = #doc_str]
-            #[derive(Clone, Debug,Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
+            #[derive(Clone, Debug,Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
+            #derive_default
             pub #return_type_definition
         })
     }
@@ -443,7 +439,7 @@ impl Context {
 
         let selector_tokens = expand_selector(selector);
 
-        let contract_args = self.expand_contract_call_args(function);
+        let contract_args = self.expand_contract_call_args(function)?;
         let function_params =
             self.expand_input_params(function)?.into_iter().map(|(name, ty)| quote! { #name: #ty });
         let function_params = quote! { #( , #function_params )* };

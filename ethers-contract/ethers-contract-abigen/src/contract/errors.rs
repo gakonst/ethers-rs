@@ -59,13 +59,12 @@ impl Context {
             expand_data_struct(&error_name, &fields)
         };
 
-        let doc = format!(
+        let doc_str = format!(
             "Custom Error type `{}` with signature `{}` and selector `0x{}`",
             error.name,
             abi_signature,
             hex::encode(&error.selector()[..])
         );
-        let abi_signature_doc = util::expand_doc(&doc);
         let ethers_contract = ethers_contract_crate();
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);

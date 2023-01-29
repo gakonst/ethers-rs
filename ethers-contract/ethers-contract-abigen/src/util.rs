@@ -81,14 +81,6 @@ pub fn expand_input_name(index: usize, name: &str) -> TokenStream {
     quote! { #name }
 }
 
-/// Expands a doc string into an attribute token stream.
-pub fn expand_doc(s: &str) -> TokenStream {
-    let doc = Literal::string(s);
-    quote! {
-        #[doc = #doc]
-    }
-}
-
 pub fn expand_derives(derives: &[Path]) -> TokenStream {
     quote! {#(#derives),*}
 }
