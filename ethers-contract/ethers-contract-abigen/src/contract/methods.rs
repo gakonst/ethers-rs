@@ -121,13 +121,10 @@ impl Context {
 
         let function_name = &function.name;
         let abi_signature = function.abi_signature();
-        let doc = format!(
-            "Container type for all input parameters for the `{}` function with signature `{}` and selector `0x{}`",
-            function.name,
-            abi_signature,
+        let doc_str = format!(
+            "Container type for all input parameters for the `{function_name}` function with signature `{abi_signature}` and selector `0x{}`",
             hex::encode(&function.selector()[..])
         );
-        let abi_signature_doc = util::expand_doc(&doc);
 
         let mut extra_derives = self.expand_extra_derives();
         if util::can_derive_defaults(&function.inputs) {
@@ -137,7 +134,7 @@ impl Context {
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
-            #abi_signature_doc
+            #[doc = #doc_str]
             #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthCall, #ethers_contract::EthDisplay, #extra_derives)]
             #[ethcall( name = #function_name, abi = #abi_signature )]
             pub #call_type_definition
@@ -166,13 +163,10 @@ impl Context {
             expand_data_struct(&struct_name, &fields)
         };
         let abi_signature = function.abi_signature();
-        let doc = format!(
-            "Container type for all return fields from the `{}` function with signature `{}` and selector `0x{}`",
-            function.name,
-            abi_signature,
+        let doc_str = format!(
+            "Container type for all return fields from the `{name}` function with signature `{abi_signature}` and selector `0x{}`",
             hex::encode(&function.selector()[..])
         );
-        let abi_signature_doc = util::expand_doc(&doc);
 
         let mut extra_derives = self.expand_extra_derives();
         if can_derive_defaults(&function.inputs) {
@@ -182,7 +176,7 @@ impl Context {
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
-            #abi_signature_doc
+            #[doc = #doc_str]
             #[derive(Clone, Debug,Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
             pub #return_type_definition
         })
@@ -419,30 +413,28 @@ impl Context {
         function: &Function,
         alias: Option<MethodAlias>,
     ) -> Result<TokenStream> {
-        let ethers_contract = ethers_contract_crate();
+        let name = &function.name;
+        let function_name = expand_function_name(function, alias.as_ref());
+        let selector = function.selector();
 
-        let name = expand_function_name(function, alias.as_ref());
-        let selector = expand_selector(function.selector());
+        let selector_tokens = expand_selector(selector);
 
-        let contract_args = self.expand_contract_call_args(function)?;
+        let contract_args = self.expand_contract_call_args(function);
         let function_params =
             self.expand_input_params(function)?.into_iter().map(|(name, ty)| quote! { #name: #ty });
         let function_params = quote! { #( , #function_params )* };
 
         let outputs = self.expand_outputs(function)?;
 
-        let result = quote! { #ethers_contract::builders::ContractCall<M, #outputs> };
+        let doc_str =
+            format!("Calls the contract's `{name}` (0x{}) function", hex::encode(selector));
 
-        let doc = util::expand_doc(&format!(
-            "Calls the contract's `{}` (0x{}) function",
-            function.name,
-            hex::encode(function.selector())
-        ));
+        let ethers_contract = ethers_contract_crate();
+
         Ok(quote! {
-
-            #doc
-            pub fn #name(&self #function_params) -> #result {
-                self.0.method_hash(#selector, #contract_args)
+            #[doc = #doc_str]
+            pub fn #function_name(&self #function_params) -> #ethers_contract::builders::ContractCall<M, #outputs> {
+                self.0.method_hash(#selector_tokens, #contract_args)
                     .expect("method not found (this should never happen)")
             }
         })
@@ -453,9 +445,10 @@ impl Context {
     ///
     /// In case of overloaded functions we would follow rust's general
     /// convention of suffixing the function name with _with
-    // The first function or the function with the least amount of arguments should
-    // be named as in the ABI, the following functions suffixed with _with_ +
-    // additional_params[0].name + (_and_(additional_params[1+i].name))*
+    ///
+    /// The first function or the function with the least amount of arguments should
+    /// be named as in the ABI, the following functions suffixed with _with_ +
+    /// additional_params[0].name + (_and_(additional_params[1+i].name))*
     fn get_method_aliases(&self) -> Result<BTreeMap<String, MethodAlias>> {
         let mut aliases = self.method_aliases.clone();
 

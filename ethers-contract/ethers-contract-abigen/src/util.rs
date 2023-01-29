@@ -1,7 +1,7 @@
 use ethers_core::abi::{Param, ParamType};
 use eyre::Result;
 use inflector::Inflector;
-use proc_macro2::{Ident, Literal, Span, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use std::path::{Path, PathBuf};
 
@@ -80,14 +80,6 @@ pub fn expand_input_name(index: usize, name: &str) -> TokenStream {
     quote! { #name }
 }
 
-/// Expands a doc string into an attribute token stream.
-pub fn expand_doc(s: &str) -> TokenStream {
-    let doc = Literal::string(s);
-    quote! {
-        #[doc = #doc]
-    }
-}
-
 /// Perform a blocking HTTP GET request and return the contents of the response as a String.
 #[cfg(all(feature = "online", not(target_arch = "wasm32")))]
 pub fn http_get(url: impl reqwest::IntoUrl) -> Result<String> {
@@ -162,13 +154,16 @@ pub fn json_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
         .collect()
 }
 
-/// rust-std derives `Default` automatically only for arrays len <= 32
+/// Returns whether all the given parameters can derive [`Default`].
 ///
-/// Returns whether the corresponding struct can derive `Default`
+/// rust-std derives `Default` automatically only for arrays len <= 32
 pub fn can_derive_defaults<'a>(params: impl IntoIterator<Item = &'a Param>) -> bool {
     params.into_iter().map(|param| &param.kind).all(can_derive_default)
 }
 
+/// Returns whether the given type can derive [`Default`].
+///
+/// rust-std derives `Default` automatically only for arrays len <= 32
 pub fn can_derive_default(param: &ParamType) -> bool {
     const MAX_SUPPORTED_LEN: usize = 32;
     match param {
@@ -183,6 +178,21 @@ pub fn can_derive_default(param: &ParamType) -> bool {
         ParamType::Tuple(params) => params.iter().all(can_derive_default),
         _ => true,
     }
+}
+
+/// Returns the formatted Solidity ABI signature.
+pub fn abi_signature<'a, N, T>(name: N, types: T) -> String
+where
+    N: std::fmt::Display,
+    T: IntoIterator<Item = &'a ParamType>,
+{
+    let types = abi_signature_types(types);
+    format!("`{name}({types})`")
+}
+
+/// Returns the Solidity stringified ABI types joined by a single comma.
+pub fn abi_signature_types<'a, T: IntoIterator<Item = &'a ParamType>>(types: T) -> String {
+    types.into_iter().map(ToString::to_string).collect::<Vec<_>>().join(",")
 }
 
 #[cfg(test)]

@@ -71,7 +71,7 @@ impl Context {
         Ok(quote! {
             #[doc = #doc_str]
             #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthError, #ethers_contract::EthDisplay, #extra_derives)]
-            #[etherror( name = #error_name, abi = #abi_signature )]
+            #[etherror(name = #error_name, abi = #abi_signature)]
             pub #data_type_definition
         })
     }

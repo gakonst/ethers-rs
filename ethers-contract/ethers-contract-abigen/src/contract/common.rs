@@ -75,7 +75,7 @@ pub(crate) fn imports(name: &str) -> TokenStream {
         #![allow(dead_code)]
         #![allow(clippy::type_complexity)]
         #![allow(unused_imports)]
-        #doc
+        #![doc = #doc_str]
 
         use std::sync::Arc;
         use #ethers_core::{
