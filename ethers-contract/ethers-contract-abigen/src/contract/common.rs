@@ -122,6 +122,7 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
         let bytecode = bytecode.iter().copied().map(|byte| Literal::u8_unsuffixed(byte));
         let bytecode_name = cx.inline_bytecode_ident();
         quote! {
+            #[rustfmt::skip]
             const __BYTECODE: &[u8] = &[ #( #bytecode ),* ];
 
             #[doc = "The bytecode of the contract."]
