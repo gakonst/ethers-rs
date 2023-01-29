@@ -255,7 +255,7 @@ where
 impl<B, M, D> IntoFuture for FunctionCall<B, M, D>
 where
     Self: 'static,
-    B: Borrow<M>,
+    B: Borrow<M> + Send + Sync,
     M: Middleware,
     D: Detokenize + Send + Sync,
 {
