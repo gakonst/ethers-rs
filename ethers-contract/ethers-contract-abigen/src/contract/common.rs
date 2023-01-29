@@ -158,37 +158,54 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
     }
 }
 
-/// Expands to the tuple struct definition
-pub(crate) fn expand_data_tuple(
+pub(crate) fn expand_struct(
     name: &Ident,
-    params: &[(TokenStream, TokenStream)],
+    fields: &[(TokenStream, TokenStream)],
+    is_tuple: bool,
 ) -> TokenStream {
-    let fields = params
-        .iter()
-        .map(|(_, ty)| {
-            quote! {
-            pub #ty }
-        })
-        .collect::<Vec<_>>();
-
-    if fields.is_empty() {
-        quote! { struct #name; }
-    } else {
-        quote! { struct #name( #( #fields ),* ); }
-    }
+    _expand_struct(name, fields.iter().map(|(a, b)| (a, b, false)), is_tuple)
 }
 
-/// Expands to a struct definition with named fields
-pub(crate) fn expand_data_struct(
+pub(crate) fn expand_event_struct(
     name: &Ident,
-    params: &[(TokenStream, TokenStream)],
+    fields: &[(TokenStream, TokenStream, bool)],
+    is_tuple: bool,
 ) -> TokenStream {
-    let fields = params
-        .iter()
-        .map(|(name, ty)| {
-            quote! { pub #name: #ty }
-        })
-        .collect::<Vec<_>>();
+    _expand_struct(name, fields.iter().map(|(a, b, c)| (a, b, *c)), is_tuple)
+}
 
-    quote! { struct #name { #( #fields, )* } }
+fn _expand_struct<'a>(
+    name: &Ident,
+    fields: impl IntoIterator<Item = (&'a TokenStream, &'a TokenStream, bool)>,
+    is_tuple: bool,
+) -> TokenStream {
+    let fields = fields.into_iter();
+    let (lower, upper) = fields.size_hint();
+    let fields = if lower == 0 || upper == Some(0) {
+        // unit struct
+        quote!(;)
+    } else if is_tuple {
+        // tuple struct
+        let fields = fields.map(|(_, ty, indexed)| {
+            let indexed = indexed_attribute(indexed);
+            quote!(#indexed pub #ty)
+        });
+        quote!(( #( #fields ),* );)
+    } else {
+        // struct
+        let fields = fields.map(|(field, ty, indexed)| {
+            let indexed = indexed_attribute(indexed);
+            quote!(#indexed pub #field: #ty)
+        });
+        quote!({ #( #fields, )* })
+    };
+    quote!(struct #name #fields)
+}
+
+fn indexed_attribute(indexed: bool) -> Option<TokenStream> {
+    if indexed {
+        Some(quote!(#[ethevent(indexed)]))
+    } else {
+        None
+    }
 }

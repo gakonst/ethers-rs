@@ -1,10 +1,10 @@
-use std::collections::{btree_map::Entry, BTreeMap, HashMap, HashSet};
+//! Methods expansion
 
-use super::{types, util, Context};
-use crate::{
-    contract::common::{expand_data_struct, expand_data_tuple, expand_param_type, expand_params},
-    util::can_derive_defaults,
+use super::{
+    common::{expand_param_type, expand_params, expand_struct},
+    types, Context,
 };
+use crate::util;
 use ethers_core::{
     abi::{Function, FunctionExt, Param, ParamType},
     macros::{ethers_contract_crate, ethers_core_crate},
@@ -14,6 +14,7 @@ use eyre::{Context as _, Result};
 use inflector::Inflector;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
+use std::collections::{btree_map::Entry, BTreeMap, HashMap, HashSet};
 use syn::Ident;
 
 /// The maximum amount of overloaded functions that are attempted to auto aliased with their param
@@ -34,7 +35,7 @@ impl Context {
             .map(|function| {
                 let signature = function.abi_signature();
                 self.expand_function(function, aliases.get(&signature).cloned())
-                    .with_context(|| format!("error expanding function '{signature}'"))
+                    .wrap_err_with(|| eyre::eyre!("error expanding function '{signature}'"))
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -111,17 +112,13 @@ impl Context {
         function: &Function,
         alias: Option<&MethodAlias>,
     ) -> Result<TokenStream> {
-        let call_name = expand_call_struct_name(function, alias);
+        let struct_name = expand_call_struct_name(function, alias);
+
         let fields = self.expand_input_params(function)?;
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = function.inputs.iter().all(|input| input.name.is_empty());
-        let call_type_definition = if all_anonymous_fields {
-            // expand to a tuple struct
-            expand_data_tuple(&call_name, &fields)
-        } else {
-            // expand to a struct
-            expand_data_struct(&call_name, &fields)
-        };
+        let call_type_definition = expand_struct(&struct_name, &fields, all_anonymous_fields);
+
         let function_name = &function.name;
         let abi_signature = function.abi_signature();
         let doc = format!(
@@ -133,7 +130,7 @@ impl Context {
         let abi_signature_doc = util::expand_doc(&doc);
 
         let mut extra_derives = self.expand_extra_derives();
-        if can_derive_defaults(&function.inputs) {
+        if util::can_derive_defaults(&function.inputs) {
             extra_derives.extend(quote!(Default));
         }
 

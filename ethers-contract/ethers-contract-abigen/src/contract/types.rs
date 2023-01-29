@@ -1,3 +1,5 @@
+//! Types expansion
+
 use ethers_core::{abi::ParamType, macros::ethers_core_crate};
 use eyre::{bail, Result};
 use proc_macro2::{Literal, TokenStream};

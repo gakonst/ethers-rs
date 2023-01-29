@@ -1,8 +1,7 @@
-//! Methods for expanding structs
-use crate::{
-    contract::{types, Context},
-    util,
-};
+//! Structs expansion
+
+use super::{common::expand_struct, types, Context};
+use crate::util;
 use ethers_core::{
     abi::{
         struct_def::{FieldDeclaration, FieldType, StructFieldType, StructType},
@@ -51,17 +50,17 @@ impl Context {
     /// Generates the type definition for the name that matches the given identifier
     fn generate_internal_struct(&self, id: &str) -> Result<TokenStream> {
         let sol_struct =
-            self.internal_structs.structs.get(id).ok_or_else(|| eyre!("struct not found"))?;
+            self.internal_structs.structs.get(id).ok_or_else(|| eyre!("Struct not found"))?;
         let struct_name = self
             .internal_structs
             .rust_type_names
             .get(id)
-            .ok_or_else(|| eyre!("No types found for {}", id))?;
+            .ok_or_else(|| eyre!("No types found for {id}"))?;
         let tuple = self
             .internal_structs
             .struct_tuples
             .get(id)
-            .ok_or_else(|| eyre!("No types found for {}", id))?
+            .ok_or_else(|| eyre!("No types found for {id}"))?
             .clone();
         self.expand_internal_struct(struct_name, sol_struct, tuple)
     }
@@ -95,33 +94,22 @@ impl Context {
                 FieldType::Elementary(ty) => types::expand(ty)?,
                 FieldType::Struct(struct_ty) => expand_struct_type(struct_ty),
                 FieldType::Mapping(_) => {
-                    eyre::bail!("Mapping types in struct `{}` are not supported {:?}", name, field)
+                    eyre::bail!("Mapping types in struct `{name}` are not supported")
                 }
             };
 
-            if is_tuple {
-                fields.push(quote!(pub #ty));
+            let field_name = if is_tuple {
+                TokenStream::new()
             } else {
                 let field_name = util::safe_ident(&field.name().to_snake_case());
-                fields.push(quote! { pub #field_name: #ty });
-            }
+                quote!(#field_name)
+            };
+            fields.push((field_name, ty));
         }
 
         let name = util::ident(name);
 
-        let struct_def = if is_tuple {
-            quote! {
-                pub struct #name(
-                    #( #fields ),*
-                );
-            }
-        } else {
-            quote! {
-                pub struct #name {
-                    #( #fields ),*
-                }
-            }
-        };
+        let struct_def = expand_struct(&name, &fields, is_tuple);
 
         let sig = match tuple {
             ParamType::Tuple(ref tokens) if !tokens.is_empty() => {
@@ -135,16 +123,17 @@ impl Context {
         let extra_derives = self.expand_extra_derives();
 
         let ethers_contract = ethers_contract_crate();
+
         Ok(quote! {
             #[doc = #doc_str]
             #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
-            #struct_def
+            pub #struct_def
         })
     }
 
     fn generate_human_readable_struct(&self, name: &str) -> Result<TokenStream> {
         let sol_struct =
-            self.abi_parser.structs.get(name).ok_or_else(|| eyre!("struct not found"))?;
+            self.abi_parser.structs.get(name).ok_or_else(|| eyre!("Struct `{name}` not found"))?;
         let mut fields = Vec::with_capacity(sol_struct.fields().len());
         let mut param_types = Vec::with_capacity(sol_struct.fields().len());
         for field in sol_struct.fields() {
@@ -164,14 +153,14 @@ impl Context {
                         .abi_parser
                         .struct_tuples
                         .get(name)
-                        .ok_or_else(|| eyre!("No types found for {}", name))?
+                        .ok_or_else(|| eyre!("No types found for {name}"))?
                         .clone();
                     let tuple = ParamType::Tuple(tuple);
 
                     param_types.push(struct_ty.as_param(tuple));
                 }
                 FieldType::Mapping(_) => {
-                    eyre::bail!("Mapping types in struct `{}` are not supported {:?}", name, field)
+                    eyre::bail!("Mapping types in struct `{name}` are not supported")
                 }
             }
         }

@@ -1,7 +1,9 @@
-//! derive error bindings
+//! Custom errors expansion
 
-use super::{util, Context};
-use crate::contract::common::{expand_data_struct, expand_data_tuple, expand_params};
+use super::{
+    common::{expand_params, expand_struct},
+    util, Context,
+};
 use ethers_core::{
     abi::{ethabi::AbiError, ErrorExt},
     macros::{ethers_contract_crate, ethers_core_crate},
@@ -52,13 +54,7 @@ impl Context {
 
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = error.inputs.iter().all(|input| input.name.is_empty());
-        let data_type_definition = if all_anonymous_fields {
-            // expand to a tuple struct
-            expand_data_tuple(&error_name, &fields)
-        } else {
-            // expand to a struct
-            expand_data_struct(&error_name, &fields)
-        };
+        let data_type_definition = expand_struct(&error_struct_name, &fields, all_anonymous_fields);
 
         let doc_str = format!(
             "Custom Error type `{error_name}` with signature `{abi_signature}` and selector `0x{}`",
