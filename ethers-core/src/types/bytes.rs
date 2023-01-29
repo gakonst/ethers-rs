@@ -16,31 +16,62 @@ pub struct Bytes(
     pub  bytes::Bytes,
 );
 
-fn bytes_to_hex(b: &Bytes) -> String {
-    hex::encode(b.0.as_ref())
+impl Bytes {
+    /// Creates a new empty `Bytes`.
+    ///
+    /// This will not allocate and the returned `Bytes` handle will be empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ethers_core::types::Bytes;
+    ///
+    /// let b = Bytes::new();
+    /// assert_eq!(&b[..], b"");
+    /// ```
+    #[inline]
+    pub const fn new() -> Self {
+        Self(bytes::Bytes::new())
+    }
+
+    /// Creates a new `Bytes` from a static slice.
+    ///
+    /// The returned `Bytes` will point directly to the static slice. There is
+    /// no allocating or copying.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ethers_core::types::Bytes;
+    ///
+    /// let b = Bytes::from_static(b"hello");
+    /// assert_eq!(&b[..], b"hello");
+    /// ```
+    #[inline]
+    pub const fn from_static(bytes: &'static [u8]) -> Self {
+        Self(bytes::Bytes::from_static(bytes))
+    }
+
+    fn hex_encode(&self) -> String {
+        hex::encode(self.0.as_ref())
+    }
 }
 
 impl Debug for Bytes {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "Bytes(0x{})", bytes_to_hex(self))
+        write!(f, "Bytes(0x{})", self.hex_encode())
     }
 }
 
 impl Display for Bytes {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "0x{}", bytes_to_hex(self))
+        write!(f, "0x{}", self.hex_encode())
     }
 }
 
 impl LowerHex for Bytes {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "0x{}", bytes_to_hex(self))
-    }
-}
-
-impl Bytes {
-    pub fn to_vec(&self) -> Vec<u8> {
-        self.as_ref().to_vec()
+        write!(f, "0x{}", self.hex_encode())
     }
 }
 
