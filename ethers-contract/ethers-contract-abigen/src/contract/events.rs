@@ -215,24 +215,28 @@ impl Context {
 
     /// Expands into a single method for contracting an event stream.
     fn expand_filter(&self, event: &Event) -> TokenStream {
-        let ethers_contract = ethers_contract_crate();
-        let alias = self.event_aliases.get(&event.abi_signature()).cloned();
+        let name = &event.name;
+        let sig = event.abi_signature();
+        let alias = self.event_aliases.get(&sig).cloned();
 
-        let name = if let Some(id) = alias.clone() {
-            util::safe_ident(&format!("{}_filter", id.to_string().to_snake_case()))
-        } else {
-            util::safe_ident(&format!("{}_filter", event.name.to_snake_case()))
+        // append `filter` to disambiguate with potentially conflicting function names
+        let function_name = {
+            let name = if let Some(ref id) = alias {
+                id.to_string().to_snake_case()
+            } else {
+                name.to_snake_case()
+            };
+            util::safe_ident(&format!("{name}_filter"))
         };
+        let struct_name = event_struct_name(name, alias);
 
-        // append `filter` to disambiguate with potentially conflicting
-        // function names
+        let doc_str = format!("Gets the contract's `{name}` event");
 
-        let result = event_struct_name(&event.name, alias);
+        let ethers_contract = ethers_contract_crate();
 
-        let doc = util::expand_doc(&format!("Gets the contract's `{}` event", event.name));
         quote! {
-            #doc
-            pub fn #name(&self) -> #ethers_contract::builders::Event<M, #result> {
+            #[doc = #doc_str]
+            pub fn #function_name(&self) -> #ethers_contract::builders::Event<M, #struct_name> {
                 self.0.event()
             }
         }
@@ -262,7 +266,7 @@ impl Context {
 
         Ok(quote! {
             #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #extra_derives)]
-            #[ethevent( name = #event_abi_name, abi = #abi_signature )]
+            #[ethevent(name = #name, abi = #abi_signature)]
             pub #data_type_definition
         })
     }
