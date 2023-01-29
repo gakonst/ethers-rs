@@ -52,10 +52,10 @@ impl Context {
     }
 
     /// Returns all deploy (constructor) implementations
-    pub(crate) fn deployment_methods(&self) -> TokenStream {
+    pub(crate) fn deployment_methods(&self) -> Option<TokenStream> {
         if self.contract_bytecode.is_none() {
             // don't generate deploy if no bytecode
-            return quote! {}
+            return None
         }
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
@@ -70,7 +70,7 @@ impl Context {
             #bytecode_name.clone().into()
         };
 
-        let deploy = quote! {
+        let tokens = quote! {
             /// Constructs the general purpose `Deployer` instance based on the provided constructor arguments and sends it.
             /// Returns a new instance of a deployer that returns an instance of this contract after sending the transaction
             ///
@@ -94,7 +94,7 @@ impl Context {
             ///    let msg = greeter_contract.greet().call().await.unwrap();
             /// # }
             /// ```
-            pub fn deploy<T: #ethers_core::abi::Tokenize >(client: ::std::sync::Arc<M>, constructor_args: T) -> ::std::result::Result<#ethers_contract::builders::ContractDeployer<M, Self>, #ethers_contract::ContractError<M>> {
+            pub fn deploy<T: #ethers_core::abi::Tokenize>(client: ::std::sync::Arc<M>, constructor_args: T) -> ::core::result::Result<#ethers_contract::builders::ContractDeployer<M, Self>, #ethers_contract::ContractError<M>> {
                let factory = #ethers_contract::ContractFactory::new(#get_abi, #get_bytecode, client);
                let deployer = factory.deploy(constructor_args)?;
                let deployer = #ethers_contract::ContractDeployer::new(deployer);
@@ -103,7 +103,7 @@ impl Context {
 
         };
 
-        deploy
+        Some(tokens)
     }
 
     /// Expands to the corresponding struct type based on the inputs of the given function
@@ -260,19 +260,23 @@ impl Context {
     }
 
     /// Expands all return structs
-    fn expand_return_structs(&self, aliases: BTreeMap<String, MethodAlias>) -> Result<TokenStream> {
-        let mut struct_defs = Vec::new();
+    fn expand_return_structs(
+        &self,
+        aliases: BTreeMap<String, MethodAlias>,
+    ) -> Result<Option<TokenStream>> {
+        let mut struct_defs = Vec::with_capacity(self.abi.functions.len());
         for function in self.abi.functions.values().flatten() {
             let signature = function.abi_signature();
             let alias = aliases.get(&signature);
             struct_defs.push(self.expand_return_struct(function, alias)?);
         }
 
-        let struct_def_tokens = quote! {
-            #(#struct_defs)*
-        };
-
-        Ok(struct_def_tokens)
+        if struct_defs.is_empty() {
+            Ok(None)
+        } else {
+            let tokens = quote!( #( #struct_defs )* );
+            Ok(Some(tokens))
+        }
     }
 
     /// The name ident of the calls enum
@@ -308,43 +312,35 @@ impl Context {
             outputs.push(ty);
         }
 
-        let return_ty = match outputs.len() {
-            0 => quote! { () },
-            1 => outputs[0].clone(),
-            _ => {
-                quote! { (#( #outputs ),*) }
-            }
-        };
-        Ok(return_ty)
+        Ok(expand_args(outputs))
     }
 
     /// Expands the arguments for the call that eventually calls the contract
-    fn expand_contract_call_args(&self, fun: &Function) -> Result<TokenStream> {
-        let mut call_args = Vec::with_capacity(fun.inputs.len());
-        for (idx, param) in fun.inputs.iter().enumerate() {
-            let name = util::expand_input_name(idx, &param.name);
-            let call_arg = match param.kind {
-                // this is awkward edge case where the function inputs are a single struct
-                // we need to force this argument into a tuple so it gets expanded to `((#name,))`
-                // this is currently necessary because internally `flatten_tokens` is called which
-                // removes the outermost `tuple` level and since `((#name))` is not
-                // a rust tuple it doesn't get wrapped into another tuple that will be peeled off by
-                // `flatten_tokens`
-                ParamType::Tuple(_) if fun.inputs.len() == 1 => {
-                    // make sure the tuple gets converted to `Token::Tuple`
-                    quote! {(#name,)}
+    fn expand_contract_call_args(&self, fun: &Function) -> TokenStream {
+        let call_args = fun
+            .inputs
+            .iter()
+            .enumerate()
+            .map(|(idx, param)| {
+                let name = util::expand_input_name(idx, &param.name);
+                match param.kind {
+                    // this is awkward edge case where the function inputs are a single struct
+                    // we need to force this argument into a tuple so it gets expanded to
+                    // `((#name,))` this is currently necessary because
+                    // internally `flatten_tokens` is called which removes the
+                    // outermost `tuple` level and since `((#name))` is not
+                    // a rust tuple it doesn't get wrapped into another tuple that will be peeled
+                    // off by `flatten_tokens`
+                    ParamType::Tuple(_) if fun.inputs.len() == 1 => {
+                        // make sure the tuple gets converted to `Token::Tuple`
+                        quote!((#name,))
+                    }
+                    _ => name,
                 }
-                _ => name,
-            };
-            call_args.push(call_arg);
-        }
-        let call_args = match call_args.len() {
-            0 => quote! { () },
-            1 => quote! { #( #call_args )* },
-            _ => quote! { ( #(#call_args, )* ) },
-        };
+            })
+            .collect::<Vec<_>>();
 
-        Ok(call_args)
+        expand_args(call_args)
     }
 
     /// returns the Tokenstream for the corresponding rust type of the param
@@ -705,6 +701,14 @@ fn expand_call_struct_variant_name(function: &Function, alias: Option<&MethodAli
         alias.struct_name.clone()
     } else {
         util::safe_ident(&util::safe_pascal_case(&function.name))
+    }
+}
+
+fn expand_args(mut args: Vec<TokenStream>) -> TokenStream {
+    match args.len() {
+        0 => quote!(()),
+        1 => args.pop().unwrap(),
+        _ => quote!(( #( #args ),* )),
     }
 }
 
