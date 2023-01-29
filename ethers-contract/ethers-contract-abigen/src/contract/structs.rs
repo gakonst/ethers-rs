@@ -166,13 +166,16 @@ impl Context {
 
         let name = util::ident(name);
 
-        let extra_derives = self.expand_extra_derives();
+        let mut extra_derives = self.expand_extra_derives();
+        if param_types.iter().all(util::can_derive_default) {
+            extra_derives.extend(quote!(Default))
+        }
 
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
             #[doc = #abi_signature]
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
             pub struct #name {
                 #( #fields ),*
             }
