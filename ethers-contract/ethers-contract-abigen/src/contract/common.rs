@@ -8,7 +8,7 @@ use ethers_core::{
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 
-/// Expands to the `name : type` pairs for the params
+/// Expands to the `name, type` pairs for the params
 pub(crate) fn expand_params<'a, F>(
     params: &[Param],
     resolve_tuple: F,
@@ -127,29 +127,40 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
     };
 
     quote! {
-        // Inline ABI declaration
-        #abi_parse
+        // Lazy ABI
+        #abi
 
+        // Lazy Bytecode, if present
         #bytecode
 
         // Struct declaration
         pub struct #name<M>(#ethers_contract::Contract<M>);
 
-        impl<M> Clone for #name<M> {
+        // Manual implementation since `M` is stored in `Arc<M>` and does not need to be `Clone`
+        impl<M> ::core::clone::Clone for #name<M> {
             fn clone(&self) -> Self {
-                #name(self.0.clone())
+                Self(::core::clone::Clone::clone(&self.0))
             }
         }
 
-        // Deref to the inner contract in order to access more specific functions functions
-        impl<M> std::ops::Deref for #name<M> {
+        // Deref to the inner contract to have access to all its methods
+        impl<M> ::core::ops::Deref for #name<M> {
             type Target = #ethers_contract::Contract<M>;
 
-            fn deref(&self) -> &Self::Target { &self.0 }
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
         }
 
-        impl<M> std::fmt::Debug for #name<M> {
-            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        impl<M> ::core::ops::DerefMut for #name<M> {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.0
+            }
+        }
+
+        // `<name>(<address>)`
+        impl<M> ::core::fmt::Debug for #name<M> {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                 f.debug_tuple(stringify!(#name))
                     .field(&self.address())
                     .finish()

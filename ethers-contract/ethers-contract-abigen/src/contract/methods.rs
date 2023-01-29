@@ -211,16 +211,18 @@ impl Context {
         let tokens = quote! {
             #struct_def_tokens
 
-           #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
+            #[doc = "Container type for all of the contract's call "]
+            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
             pub enum #enum_name {
-                #(#variant_names(#struct_names)),*
+                #( #variant_names(#struct_names), )*
             }
 
             impl #ethers_core::abi::AbiDecode for #enum_name {
-                fn decode(data: impl AsRef<[u8]>) -> ::std::result::Result<Self, #ethers_core::abi::AbiError> {
+                fn decode(data: impl AsRef<[u8]>) -> ::core::result::Result<Self, #ethers_core::abi::AbiError> {
+                    let data = data.as_ref();
                     #(
-                        if let Ok(decoded) = <#struct_names as #ethers_core::abi::AbiDecode>::decode(data.as_ref()) {
-                            return Ok(#enum_name::#variant_names(decoded))
+                        if let Ok(decoded) = <#struct_names as #ethers_core::abi::AbiDecode>::decode(data) {
+                            return Ok(Self::#variant_names(decoded))
                         }
                     )*
                     Err(#ethers_core::abi::Error::InvalidData.into())
@@ -231,26 +233,26 @@ impl Context {
                 fn encode(self) -> Vec<u8> {
                     match self {
                         #(
-                            #enum_name::#variant_names(element) => element.encode()
-                        ),*
+                            Self::#variant_names(element) => #ethers_core::abi::AbiEncode::encode(element),
+                        )*
                     }
                 }
             }
 
-            impl ::std::fmt::Display for #enum_name {
-                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            impl ::core::fmt::Display for #enum_name {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     match self {
                         #(
-                            #enum_name::#variant_names(element) => element.fmt(f)
-                        ),*
+                            Self::#variant_names(element) => ::core::fmt::Display::fmt(element, f),
+                        )*
                     }
                 }
             }
 
             #(
-                impl ::std::convert::From<#struct_names> for #enum_name {
-                    fn from(var: #struct_names) -> Self {
-                        #enum_name::#variant_names(var)
+                impl ::core::convert::From<#struct_names> for #enum_name {
+                    fn from(value: #struct_names) -> Self {
+                        Self::#variant_names(value)
                     }
                 }
             )*
@@ -644,7 +646,7 @@ impl Context {
 
 fn expand_selector(selector: Selector) -> TokenStream {
     let bytes = selector.iter().copied().map(Literal::u8_unsuffixed);
-    quote! { [#( #bytes ),*] }
+    quote!([ #( #bytes ),* ])
 }
 
 /// Represents the aliases to use when generating method related elements

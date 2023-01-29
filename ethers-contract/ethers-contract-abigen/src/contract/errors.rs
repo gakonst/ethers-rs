@@ -32,12 +32,9 @@ impl Context {
         };
 
         Ok(quote! {
-            // HERE
             #( #data_types )*
 
             #errors_enum_decl
-
-            // HERE end
         })
     }
 
@@ -105,50 +102,51 @@ impl Context {
         let ethers_contract = ethers_contract_crate();
 
         quote! {
+            #[doc = "Container type for all of the contract's custom errors"]
             #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
             pub enum #enum_name {
-                #(#variants(#variants)),*
+                #( #variants(#variants), )*
             }
 
-        impl  #ethers_core::abi::AbiDecode for #enum_name {
-            fn decode(data: impl AsRef<[u8]>) -> ::std::result::Result<Self, #ethers_core::abi::AbiError> {
-                 #(
-                    if let Ok(decoded) = <#variants as #ethers_core::abi::AbiDecode>::decode(data.as_ref()) {
-                        return Ok(#enum_name::#variants(decoded))
+            impl #ethers_core::abi::AbiDecode for #enum_name {
+                fn decode(data: impl AsRef<[u8]>) -> ::core::result::Result<Self, #ethers_core::abi::AbiError> {
+                    let data = data.as_ref();
+                    #(
+                        if let Ok(decoded) = <#variants as #ethers_core::abi::AbiDecode>::decode(data) {
+                            return Ok(Self::#variants(decoded))
+                        }
+                    )*
+                    Err(#ethers_core::abi::Error::InvalidData.into())
+                }
+            }
+
+            impl #ethers_core::abi::AbiEncode for #enum_name {
+                fn encode(self) -> ::std::vec::Vec<u8> {
+                    match self {
+                        #(
+                            Self::#variants(element) => #ethers_core::abi::AbiEncode::encode(element),
+                        )*
                     }
-                )*
-                Err(#ethers_core::abi::Error::InvalidData.into())
-            }
-        }
-
-         impl  #ethers_core::abi::AbiEncode for #enum_name {
-            fn encode(self) -> Vec<u8> {
-                match self {
-                    #(
-                        #enum_name::#variants(element) => element.encode()
-                    ),*
                 }
             }
-        }
 
-        impl ::std::fmt::Display for #enum_name {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                match self {
-                    #(
-                        #enum_name::#variants(element) => element.fmt(f)
-                    ),*
+            impl ::core::fmt::Display for #enum_name {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                    match self {
+                        #(
+                            Self::#variants(element) => ::core::fmt::Display::fmt(element, f)
+                        ),*
+                    }
                 }
             }
-        }
 
-        #(
-            impl ::std::convert::From<#variants> for #enum_name {
-                fn from(var: #variants) -> Self {
-                    #enum_name::#variants(var)
+            #(
+                impl ::core::convert::From<#variants> for #enum_name {
+                    fn from(value: #variants) -> Self {
+                        Self::#variants(value)
+                    }
                 }
-            }
-        )*
-
+            )*
         }
     }
 }

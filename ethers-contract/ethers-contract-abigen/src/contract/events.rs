@@ -70,17 +70,15 @@ impl Context {
         let enum_name = self.expand_event_enum_name();
 
         quote! {
+            #[doc = "Container type for all of the contract's events"]
             #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
             pub enum #enum_name {
-                #(#variants(#variants)),*
+                #( #variants(#variants), )*
             }
 
-             impl #ethers_contract::EthLogDecode for #enum_name {
-                fn decode_log(log: &#ethers_core::abi::RawLog) -> ::std::result::Result<Self, #ethers_core::abi::Error>
-                where
-                    Self: Sized,
-                {
-                     #(
+            impl #ethers_contract::EthLogDecode for #enum_name {
+                fn decode_log(log: &#ethers_core::abi::RawLog) -> ::core::result::Result<Self, #ethers_core::abi::Error> {
+                    #(
                         if let Ok(decoded) = #variants::decode_log(log) {
                             return Ok(#enum_name::#variants(decoded))
                         }
@@ -89,15 +87,23 @@ impl Context {
                 }
             }
 
-            impl ::std::fmt::Display for #enum_name {
-                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            impl ::core::fmt::Display for #enum_name {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     match self {
                         #(
-                            #enum_name::#variants(element) => element.fmt(f)
-                        ),*
+                            Self::#variants(element) => ::core::fmt::Display::fmt(element, f),
+                        )*
                     }
                 }
             }
+
+            #(
+                impl ::core::convert::From<#variants> for #enum_name {
+                    fn from(value: #variants) -> Self {
+                        Self::#variants(value)
+                    }
+                }
+            )*
         }
     }
 
