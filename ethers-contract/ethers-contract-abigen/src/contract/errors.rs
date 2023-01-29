@@ -88,6 +88,7 @@ impl Context {
 
     /// Generate an enum with a variant for each event
     fn expand_errors_enum(&self) -> TokenStream {
+        let enum_name = self.expand_error_enum_name();
         let variants = self
             .abi
             .errors
@@ -98,14 +99,13 @@ impl Context {
             })
             .collect::<Vec<_>>();
 
+        let extra_derives = self.expand_extra_derives();
+
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
 
-        let extra_derives = self.expand_extra_derives();
-        let enum_name = self.expand_error_enum_name();
-
         quote! {
-           #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
+            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
             pub enum #enum_name {
                 #(#variants(#variants)),*
             }

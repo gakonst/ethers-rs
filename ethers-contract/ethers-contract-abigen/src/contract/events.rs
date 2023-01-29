@@ -124,7 +124,7 @@ impl Context {
             };
 
             quote! {
-                /// Returns an [`Event`](#ethers_contract::builders::Event) builder for all events of this contract
+                /// Returns an [`Event`](#ethers_contract::builders::Event) builder for all the events of this contract.
                 pub fn events(&self) -> #ethers_contract::builders::Event<M, #ty> {
                     self.0.event_with_filter(Default::default())
                 }

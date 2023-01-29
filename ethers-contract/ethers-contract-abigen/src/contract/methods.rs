@@ -147,21 +147,19 @@ impl Context {
         function: &Function,
         alias: Option<&MethodAlias>,
     ) -> Result<TokenStream> {
-        let struct_name = expand_return_struct_name(function, alias);
-        let fields = self.expand_output_params(function)?;
         // no point in having structs when there is no data returned
         if function.outputs.is_empty() {
             return Ok(TokenStream::new())
         }
+
+        let name = &function.name;
+
+        let struct_name = expand_return_struct_name(function, alias);
+        let fields = self.expand_output_params(function)?;
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = function.outputs.iter().all(|output| output.name.is_empty());
-        let return_type_definition = if all_anonymous_fields {
-            // expand to a tuple struct
-            expand_data_tuple(&struct_name, &fields)
-        } else {
-            // expand to a struct
-            expand_data_struct(&struct_name, &fields)
-        };
+        let return_type_definition = expand_struct(&struct_name, &fields, all_anonymous_fields);
+
         let abi_signature = function.abi_signature();
         let doc_str = format!(
             "Container type for all return fields from the `{name}` function with signature `{abi_signature}` and selector `0x{}`",
@@ -169,7 +167,7 @@ impl Context {
         );
 
         let mut extra_derives = self.expand_extra_derives();
-        if can_derive_defaults(&function.inputs) {
+        if util::can_derive_defaults(&function.inputs) {
             extra_derives.extend(quote!(Default));
         }
 
