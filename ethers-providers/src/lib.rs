@@ -595,12 +595,15 @@ pub trait Middleware: Sync + Send + Debug {
     }
 
     /// Executes the given call and returns a number of possible traces for it
-    async fn debug_trace_call<T: Into<TypedTransaction> + Send + Sync>(
+    async fn debug_trace_call<
+        T: Into<TypedTransaction> + Send + Sync,
+        R: Serialize + DeserializeOwned + Debug + Send,
+    >(
         &self,
         req: T,
         block: Option<BlockId>,
         trace_options: GethDebugTracingCallOptions,
-    ) -> Result<GethTrace, ProviderError> {
+    ) -> Result<R, ProviderError> {
         self.inner().debug_trace_call(req, block, trace_options).await.map_err(FromErr::from)
     }
 

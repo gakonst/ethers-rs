@@ -1121,12 +1121,15 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     }
 
     /// Executes the given call and returns a number of possible traces for it
-    async fn debug_trace_call<T: Into<TypedTransaction> + Send + Sync>(
+    async fn debug_trace_call<
+        T: Into<TypedTransaction> + Send + Sync,
+        R: Serialize + DeserializeOwned + Debug + Send,
+    >(
         &self,
         req: T,
         block: Option<BlockId>,
         trace_options: GethDebugTracingCallOptions,
-    ) -> Result<GethTrace, ProviderError> {
+    ) -> Result<R, ProviderError> {
         let req = req.into();
         let req = utils::serialize(&req);
         let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));

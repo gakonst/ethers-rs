@@ -2,6 +2,7 @@ use crate::{
     types::{Bytes, H256, U256},
     utils::from_int_or_hex,
 };
+use ethabi::Address;
 use serde::{Deserialize, Serialize, Serializer};
 use std::collections::BTreeMap;
 
@@ -39,14 +40,42 @@ pub struct StructLog {
     pub storage: Option<BTreeMap<H256, H256>>,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallTrace {
+    #[serde(rename = "type")]
+    type_: String,
+    from: Address,
+    to: Address,
+    value: String,
+    gas: U256,
+    #[serde(rename = "gasUsed")]
+    gas_used: U256,
+    input: String,
+    output: String,
+    error: Option<String>,
+    #[serde(rename = "revertReason")]
+    revert_reason: Option<String>,
+    #[serde(default)]
+    calls: Vec<CallTrace>,
+}
+
+fn call_tracer_serialize<S>(s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    s.serialize_str("callTracer")
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
 /// Available built-in tracers
 ///
 /// See <https://geth.ethereum.org/docs/developers/evm-tracing/built-in-tracers>
 pub enum GethDebugTracerType {
     /// callTracer (native)
-    #[serde(rename = "callTracer")]
+    #[serde(serialize_with = "call_tracer_serialize")]
     CallTracer,
+    JSTracer(String),
 }
 
 /// Bindings for additional `debug_traceTransaction` options
