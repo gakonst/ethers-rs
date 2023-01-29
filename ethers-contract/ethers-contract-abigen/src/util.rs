@@ -1,7 +1,7 @@
 use ethers_core::abi::{Param, ParamType};
 use eyre::Result;
 use inflector::Inflector;
-use proc_macro2::{Ident, Literal, Span, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use std::path::PathBuf;
 use syn::{Ident as SynIdent, Path};
@@ -167,13 +167,16 @@ pub fn json_files(root: impl AsRef<std::path::Path>) -> Vec<PathBuf> {
         .collect()
 }
 
-/// rust-std derives `Default` automatically only for arrays len <= 32
+/// Returns whether all the given parameters can derive [`Default`].
 ///
-/// Returns whether the corresponding struct can derive `Default`
-pub fn can_derive_defaults(params: &[Param]) -> bool {
-    params.iter().map(|param| &param.kind).all(can_derive_default)
+/// rust-std derives `Default` automatically only for arrays len <= 32
+pub fn can_derive_defaults<'a>(params: impl IntoIterator<Item = &'a Param>) -> bool {
+    params.into_iter().map(|param| &param.kind).all(can_derive_default)
 }
 
+/// Returns whether the given type can derive [`Default`].
+///
+/// rust-std derives `Default` automatically only for arrays len <= 32
 pub fn can_derive_default(param: &ParamType) -> bool {
     const MAX_SUPPORTED_LEN: usize = 32;
     match param {
@@ -188,6 +191,21 @@ pub fn can_derive_default(param: &ParamType) -> bool {
         ParamType::Tuple(params) => params.iter().all(can_derive_default),
         _ => true,
     }
+}
+
+/// Returns the formatted Solidity ABI signature.
+pub fn abi_signature<'a, N, T>(name: N, types: T) -> String
+where
+    N: std::fmt::Display,
+    T: IntoIterator<Item = &'a ParamType>,
+{
+    let types = abi_signature_types(types);
+    format!("`{name}({types})`")
+}
+
+/// Returns the Solidity stringified ABI types joined by a single comma.
+pub fn abi_signature_types<'a, T: IntoIterator<Item = &'a ParamType>>(types: T) -> String {
+    types.into_iter().map(ToString::to_string).collect::<Vec<_>>().join(",")
 }
 
 #[cfg(test)]

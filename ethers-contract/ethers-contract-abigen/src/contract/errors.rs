@@ -73,9 +73,9 @@ impl Context {
         let error_name = &error.name;
 
         Ok(quote! {
-             #abi_signature_doc
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthError, #ethers_contract::EthDisplay, #derives)]
-            #[etherror( name = #error_name, abi = #abi_signature )]
+            #[doc = #doc_str]
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthError, #ethers_contract::EthDisplay, #derives)]
+            #[etherror(name = #error_name, abi = #abi_signature)]
             pub #data_type_definition
         })
     }

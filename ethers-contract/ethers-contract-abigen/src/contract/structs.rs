@@ -128,6 +128,13 @@ impl Context {
         } else {
             "".to_string()
         };
+        let struct_def = expand_struct(&name, &fields, is_tuple);
+
+        let sig = match tuple {
+            ParamType::Tuple(ref types) if !types.is_empty() => util::abi_signature_types(types),
+            _ => String::new(),
+        };
+        let doc_str = format!("`{name}({sig})`");
 
         let abi_signature = format!("{name}({sig})",);
 
@@ -178,13 +185,7 @@ impl Context {
             }
         }
 
-        let abi_signature = format!(
-            "{}({})",
-            name,
-            param_types.iter().map(|kind| kind.to_string()).collect::<Vec<_>>().join(","),
-        );
-
-        let abi_signature_doc = util::expand_doc(&format!("`{abi_signature}`"));
+        let abi_signature = util::abi_signature(name, &param_types);
 
         let name = util::ident(name);
 
