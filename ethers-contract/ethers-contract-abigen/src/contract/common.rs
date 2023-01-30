@@ -1,11 +1,9 @@
-use super::{util, Context};
-
-use crate::contract::types;
+use super::{types, util, Context};
 use ethers_core::{
     abi::{Param, ParamType},
     macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
 };
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 
 /// Expands to the `name : type` pairs for the params
@@ -87,49 +85,56 @@ pub(crate) fn imports(name: &str) -> TokenStream {
     }
 }
 
-/// Generates the static `Abi` constants and the contract struct
+/// Generates the token stream for the contract's ABI, bytecode and struct declarations.
 pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
     let name = &cx.contract_ident;
-    let abi = &cx.abi_str;
-
-    let abi_name = cx.inline_abi_ident();
 
     let ethers_core = ethers_core_crate();
     let ethers_contract = ethers_contract_crate();
 
-    let abi_parse = if !cx.human_readable {
+    let abi = {
+        let abi_name = cx.inline_abi_ident();
+        let abi = &cx.abi_str;
+        let (doc_str, parse) = if cx.human_readable {
+            // Human readable: use abi::parse_abi_str
+            let doc_str = "The parsed human-readable ABI of the contract.";
+            let parse = quote!(#ethers_core::abi::parse_abi_str(__ABI));
+            (doc_str, parse)
+        } else {
+            // JSON ABI: use serde_json::from_str
+            let doc_str = "The parsed JSON ABI of the contract.";
+            let parse = quote!(#ethers_core::utils::__serde_json::from_str(__ABI));
+            (doc_str, parse)
+        };
+
         quote! {
             #[rustfmt::skip]
             const __ABI: &str = #abi;
 
-            /// The parsed JSON-ABI of the contract.
-            pub static #abi_name: #ethers_contract::Lazy<#ethers_core::abi::Abi> = #ethers_contract::Lazy::new(|| #ethers_core::utils::__serde_json::from_str(__ABI)
-                                              .expect("invalid abi"));
-        }
-    } else {
-        quote! {
-            /// The parsed human readable ABI of the contract.
-            pub static #abi_name: #ethers_contract::Lazy<#ethers_core::abi::Abi> = #ethers_contract::Lazy::new(|| #ethers_core::abi::parse_abi_str(#abi)
-                                                .expect("invalid abi"));
+            // This never fails as we are parsing the ABI in this macro
+            #[doc = #doc_str]
+            pub static #abi_name: #ethers_contract::Lazy<#ethers_core::abi::Abi> =
+                #ethers_contract::Lazy::new(|| #parse.expect("ABI is always valid"));
         }
     };
 
-    let bytecode = if let Some(ref bytecode) = cx.contract_bytecode {
+    let bytecode = cx.contract_bytecode.as_ref().map(|bytecode| {
+        let bytecode = bytecode.iter().copied().map(Literal::u8_unsuffixed);
         let bytecode_name = cx.inline_bytecode_ident();
-        let hex_bytecode = format!("{bytecode}");
         quote! {
-            /// Bytecode of the #name contract
-            pub static #bytecode_name: #ethers_contract::Lazy<#ethers_core::types::Bytes> = #ethers_contract::Lazy::new(|| #hex_bytecode.parse()
-                                                .expect("invalid bytecode"));
+            #[rustfmt::skip]
+            const __BYTECODE: &[u8] = &[ #( #bytecode ),* ];
+
+            #[doc = "The bytecode of the contract."]
+            pub static #bytecode_name: #ethers_core::types::Bytes = #ethers_core::types::Bytes::from_static(__BYTECODE);
         }
-    } else {
-        quote! {}
-    };
+    });
 
     quote! {
-        // Inline ABI declaration
-        #abi_parse
+        // The `Lazy` ABI
+        #abi
 
+        // The static Bytecode, if present
         #bytecode
 
         // Struct declaration
