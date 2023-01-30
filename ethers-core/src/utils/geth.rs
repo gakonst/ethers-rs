@@ -602,7 +602,12 @@ mod tests {
             .data_dir(temp_dir_path)
             .spawn();
 
-        assert!(geth.clique_private_key().is_some());
+        let clique_private_key = geth.clique_private_key().clone();
+
+        drop(geth);
+        temp_dir.close().unwrap();
+
+        assert!(clique_private_key.is_some());
     }
 
     #[test]
@@ -617,7 +622,12 @@ mod tests {
             .data_dir(temp_dir_path)
             .spawn();
 
-        assert!(geth.genesis().is_some());
+        let genesis = geth.genesis().clone();
+
+        drop(geth);
+        temp_dir.close().unwrap();
+
+        assert!(genesis.is_some());
     }
 
     #[test]
@@ -632,6 +642,11 @@ mod tests {
             .data_dir(temp_dir_path)
             .spawn();
 
-        assert!(geth.p2p_port().is_some());
+        let p2p_port = geth.p2p_port();
+
+        drop(geth);
+        temp_dir.close().unwrap();
+
+        assert!(p2p_port.is_some());
     }
 }
