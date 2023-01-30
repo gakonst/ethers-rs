@@ -1,3 +1,4 @@
+use ethabi::RawLog;
 // Adapted from https://github.com/tomusdrw/rust-web3/blob/master/src/types/log.rs
 use crate::types::{Address, Bytes, H256, U256, U64};
 use serde::{Deserialize, Serialize};
@@ -65,6 +66,12 @@ impl rlp::Encodable for Log {
         s.append(&self.address);
         s.append_list(&self.topics);
         s.append(&self.data.0);
+    }
+}
+
+impl From<Log> for RawLog {
+    fn from(val: Log) -> Self {
+        (val.topics, val.data.to_vec()).into()
     }
 }
 
