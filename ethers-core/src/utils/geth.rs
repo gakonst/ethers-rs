@@ -619,4 +619,19 @@ mod tests {
 
         assert!(geth.genesis().is_some());
     }
+
+    #[test]
+    fn clique_p2p_configured() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir_path = temp_dir.path().to_path_buf();
+
+        let private_key = SigningKey::random(&mut rand::thread_rng());
+        let geth = Geth::new()
+            .set_clique_private_key(private_key)
+            .chain_id(1337u64)
+            .data_dir(temp_dir_path)
+            .spawn();
+
+        assert!(geth.p2p_port().is_some());
+    }
 }
