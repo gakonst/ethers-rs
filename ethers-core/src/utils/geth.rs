@@ -48,6 +48,8 @@ pub struct GethInstance {
     ipc: Option<PathBuf>,
     data_dir: Option<PathBuf>,
     p2p_port: Option<u16>,
+    genesis: Option<Genesis>,
+    clique_private_key: Option<SigningKey>,
 }
 
 impl GethInstance {
@@ -79,6 +81,16 @@ impl GethInstance {
     /// Returns the path to this instances' data directory
     pub fn data_dir(&self) -> &Option<PathBuf> {
         &self.data_dir
+    }
+
+    /// Returns the genesis configuration used to conifugre this instance
+    pub fn genesis(&self) -> &Option<Genesis> {
+        &self.genesis
+    }
+
+    /// Returns the private key used to configure clique on this instance
+    pub fn clique_private_key(&self) -> &Option<SigningKey> {
+        &self.clique_private_key
     }
 
     /// Takes the stderr contained in the child process.
@@ -186,9 +198,9 @@ pub struct Geth {
     data_dir: Option<PathBuf>,
     chain_id: Option<u64>,
     insecure_unlock: bool,
-    pub genesis: Option<Genesis>,
+    genesis: Option<Genesis>,
     mode: GethMode,
-    pub clique_private_key: Option<SigningKey>,
+    clique_private_key: Option<SigningKey>,
 }
 
 impl Geth {
@@ -515,7 +527,15 @@ impl Geth {
 
         child.stderr = Some(reader.into_inner());
 
-        GethInstance { pid: child, port, ipc: self.ipc_path, data_dir: self.data_dir, p2p_port }
+        GethInstance {
+            pid: child,
+            port,
+            ipc: self.ipc_path,
+            data_dir: self.data_dir,
+            p2p_port,
+            genesis: self.genesis,
+            clique_private_key: self.clique_private_key,
+        }
     }
 }
 
@@ -568,5 +588,35 @@ mod tests {
         temp_dir.close().unwrap();
 
         assert!(p2p_port.is_none());
+    }
+
+    #[test]
+    fn clique_private_key_configured() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir_path = temp_dir.path().to_path_buf();
+
+        let private_key = SigningKey::random(&mut rand::thread_rng());
+        let geth = Geth::new()
+            .set_clique_private_key(private_key)
+            .chain_id(1337u64)
+            .data_dir(temp_dir_path)
+            .spawn();
+
+        assert!(geth.clique_private_key().is_some());
+    }
+
+    #[test]
+    fn clique_genesis_configured() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir_path = temp_dir.path().to_path_buf();
+
+        let private_key = SigningKey::random(&mut rand::thread_rng());
+        let geth = Geth::new()
+            .set_clique_private_key(private_key)
+            .chain_id(1337u64)
+            .data_dir(temp_dir_path)
+            .spawn();
+
+        assert!(geth.genesis().is_some());
     }
 }
