@@ -675,6 +675,7 @@ impl fmt::Display for BlockNumber {
 #[cfg(not(feature = "celo"))]
 mod tests {
     use super::*;
+    use crate::types::{Transaction, TxHash};
 
     #[test]
     fn can_parse_eip1898_block_ids() {
@@ -921,6 +922,7 @@ mod tests {
 #[cfg(feature = "celo")]
 mod celo_tests {
     use super::*;
+    use crate::types::Transaction;
 
     #[test]
     fn block_without_snark_data() {
