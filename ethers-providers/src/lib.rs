@@ -513,7 +513,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         private_key: Bytes,
         passphrase: String,
-    ) -> Result<Address, ProviderError> {
+    ) -> Result<Address, Self::Error> {
         self.inner().import_raw_key(private_key, passphrase).await.map_err(FromErr::from)
     }
 
@@ -522,7 +522,7 @@ pub trait Middleware: Sync + Send + Debug {
         account: T,
         passphrase: String,
         duration: Option<u64>,
-    ) -> Result<bool, ProviderError> {
+    ) -> Result<bool, Self::Error> {
         self.inner().unlock_account(account, passphrase, duration).await.map_err(FromErr::from)
     }
 
@@ -590,7 +590,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         tx_hash: TxHash,
         trace_options: GethDebugTracingOptions,
-    ) -> Result<GethTrace, ProviderError> {
+    ) -> Result<GethTrace, Self::Error> {
         self.inner().debug_trace_transaction(tx_hash, trace_options).await.map_err(FromErr::from)
     }
 
@@ -600,7 +600,7 @@ pub trait Middleware: Sync + Send + Debug {
         req: T,
         block: Option<BlockId>,
         trace_options: GethDebugTracingCallOptions,
-    ) -> Result<GethTrace, ProviderError> {
+    ) -> Result<GethTrace, Self::Error> {
         self.inner().debug_trace_call(req, block, trace_options).await.map_err(FromErr::from)
     }
 
