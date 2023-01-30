@@ -545,7 +545,7 @@ impl FromStr for BlockId {
     }
 }
 
-/// An block number or tag.
+/// A block number or tag.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub enum BlockNumber {
     /// Latest block
