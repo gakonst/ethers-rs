@@ -123,22 +123,18 @@ impl Context {
             }
         };
 
-        let sig = if let ParamType::Tuple(ref tokens) = tuple {
-            tokens.iter().map(|kind| kind.to_string()).collect::<Vec<_>>().join(",")
-        } else {
-            "".to_string()
+        let sig = match tuple {
+            ParamType::Tuple(ref types) if !types.is_empty() => util::abi_signature_types(types),
+            _ => String::new(),
         };
-
-        let abi_signature = format!("{name}({sig})",);
-
-        let abi_signature_doc = util::expand_doc(&format!("`{abi_signature}`"));
+        let doc_str = format!("`{name}({sig})`");
 
         // use the same derives as for events
         let derives = util::expand_derives(&self.event_derives);
 
         let ethers_contract = ethers_contract_crate();
         Ok(quote! {
-            #abi_signature_doc
+            #[doc = #doc_str]
             #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
             #struct_def
         })
@@ -178,13 +174,7 @@ impl Context {
             }
         }
 
-        let abi_signature = format!(
-            "{}({})",
-            name,
-            param_types.iter().map(|kind| kind.to_string()).collect::<Vec<_>>().join(","),
-        );
-
-        let abi_signature_doc = util::expand_doc(&format!("`{abi_signature}`"));
+        let abi_signature = util::abi_signature(name, &param_types);
 
         let name = util::ident(name);
 
@@ -195,7 +185,7 @@ impl Context {
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
-            #abi_signature_doc
+            #[doc = #abi_signature]
             #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
             pub struct #name {
                 #( #fields ),*

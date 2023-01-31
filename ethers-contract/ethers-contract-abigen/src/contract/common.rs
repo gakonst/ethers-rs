@@ -62,7 +62,7 @@ where
 }
 
 pub(crate) fn imports(name: &str) -> TokenStream {
-    let doc = util::expand_doc(&format!("{name} was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs"));
+    let doc_str = format!("{name} was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs");
 
     let ethers_core = ethers_core_crate();
     let ethers_providers = ethers_providers_crate();
@@ -73,7 +73,7 @@ pub(crate) fn imports(name: &str) -> TokenStream {
         #![allow(dead_code)]
         #![allow(clippy::type_complexity)]
         #![allow(unused_imports)]
-        #doc
+        #![doc = #doc_str]
 
         use std::sync::Arc;
         use #ethers_core::{
