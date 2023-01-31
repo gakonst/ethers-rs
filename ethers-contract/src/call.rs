@@ -72,17 +72,11 @@ pub enum ContractError<M: Middleware> {
     ContractNotDeployed,
 }
 
-/// `ContractCall` is a [`FunctionCall`] object with an `Arc` middleware.
+/// `ContractCall` is a [`FunctionCall`] object with an [`Arc`] middleware.
 /// This type alias exists to preserve backwards compatibility with
-/// non-abstract Contracts.
-///
-/// This type alias is deprecated, and its name may be used for the
-/// [`FunctionCall`] struct in the future. We recommend migrating code to
-/// explicitly use [`FunctionCall`] instead of relying on this type alias.
+/// less-abstract Contracts.
 ///
 /// For full usage docs, see [`FunctionCall`].
-// #[deprecated = "ContractCall has been replaced with FunctionCall. Future versions may remove or
-// repurpose this type alias."]
 pub type ContractCall<M, D> = FunctionCall<std::sync::Arc<M>, M, D>;
 
 #[derive(Debug)]

@@ -18,15 +18,9 @@ use ethers_core::types::TransactionRequest;
 
 /// `Contract` is a [`ContractInstance`] object with an `Arc` middleware.
 /// This type alias exists to preserve backwards compatibility with
-/// non-abstract Contracts.
-///
-/// This type alias is deprecated, and its name may be used for the
-/// [`ContractInstance`] struct in the future. We recommend migrating code to
-/// explicitly use [`ContractInstance`] instead of relying on this type alias.
+/// less-abstract Contracts.
 ///
 /// For full usage docs, see [`ContractInstance`].
-// #[deprecated = "Contract has been replaced with ContractInstance. Future versions may remove or
-// repurpose this type alias."]
 pub type Contract<M> = ContractInstance<std::sync::Arc<M>, M>;
 
 /// A Contract is an abstraction of an executable program on the Ethereum Blockchain.
@@ -327,6 +321,38 @@ where
     B: Clone + Borrow<M>,
     M: Middleware,
 {
+    fn method_func<T: Tokenize, D: Detokenize>(
+        &self,
+        function: &Function,
+        args: T,
+    ) -> Result<FunctionCall<B, M, D>, AbiError> {
+        let data = encode_function_data(function, args)?;
+
+        #[cfg(feature = "legacy")]
+        let tx = TransactionRequest {
+            to: Some(self.address.into()),
+            data: Some(data),
+            ..Default::default()
+        };
+        #[cfg(not(feature = "legacy"))]
+        let tx = Eip1559TransactionRequest {
+            to: Some(self.address.into()),
+            data: Some(data),
+            ..Default::default()
+        };
+
+        let tx = tx.into();
+
+        Ok(FunctionCall {
+            tx,
+            client: self.client.clone(),
+            block: None,
+            function: function.to_owned(),
+            datatype: PhantomData,
+            _m: self._m,
+        })
+    }
+
     /// Returns a transaction builder for the selected function signature. This should be
     /// preferred if there are overloaded functions in your smart contract
     pub fn method_hash<T: Tokenize, D: Detokenize>(
@@ -354,41 +380,6 @@ where
         // get the function
         let function = self.base_contract.abi.function(name)?;
         self.method_func(function, args)
-    }
-
-    fn method_func<T: Tokenize, D: Detokenize>(
-        &self,
-        function: &Function,
-        args: T,
-    ) -> Result<FunctionCall<B, M, D>, AbiError>
-    where
-        B: Clone,
-    {
-        let data = encode_function_data(function, args)?;
-
-        #[cfg(feature = "legacy")]
-        let tx = TransactionRequest {
-            to: Some(self.address.into()),
-            data: Some(data),
-            ..Default::default()
-        };
-        #[cfg(not(feature = "legacy"))]
-        let tx = Eip1559TransactionRequest {
-            to: Some(self.address.into()),
-            data: Some(data),
-            ..Default::default()
-        };
-
-        let tx = tx.into();
-
-        Ok(FunctionCall {
-            tx,
-            client: self.client.clone(),
-            block: None,
-            function: function.to_owned(),
-            datatype: PhantomData,
-            _m: self._m,
-        })
     }
 
     /// Returns a new contract instance at `address`.
