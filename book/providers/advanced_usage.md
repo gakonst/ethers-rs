@@ -2,7 +2,7 @@
 
 ## `CallBuilder`
 
-The `CallBuilder` is an enum to help create complex calls. `CallBuilder` implements `[RawCall](https://docs.rs/ethers/latest/ethers/providers/call_raw/trait.RawCall.html)` methods for overriding parameters to the `eth_call`rpc method.
+The `CallBuilder` is an enum to help create complex calls. `CallBuilder` implements [`RawCall`](https://docs.rs/ethers/latest/ethers/providers/call_raw/trait.RawCall.html) methods for overriding parameters to the `eth_call` rpc method.
 
 Lets take a quick look at how to use the `CallBuilder`.
 
