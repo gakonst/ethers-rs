@@ -292,6 +292,7 @@ where
     /// Returns a new contract instance using the provided client
     ///
     /// Clones `self` internally
+    #[must_use]
     pub fn connect<N>(&self, client: Arc<N>) -> ContractInstance<Arc<N>, N>
     where
         N: Middleware,
