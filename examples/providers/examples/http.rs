@@ -1,13 +1,12 @@
+//! The Http transport is used to send JSON-RPC requests over HTTP to an Ethereum node.
+//! This is the most basic connection to a node.
+
 use ethers::prelude::*;
 use reqwest::header::{HeaderMap, HeaderValue};
 use std::sync::Arc;
 
 const RPC_URL: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
 
-/// The Http transport is used to send JSON-RPC requests over Http to an
-/// Ethereum node. It allows you to perform various actions on the Ethereum blockchain, such as
-/// reading and writing data, sending transactions, and more. To use the Http transport, you will
-/// need to create a new `Provider` instance as described in this example.
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     create_instance().await?;
