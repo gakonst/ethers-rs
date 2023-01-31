@@ -14,6 +14,7 @@
   - [Quorum](./providers/quorum.md)
   - [Retry](./providers/retry.md)
   - [RW](./providers/rw.md)
+  - [Custom](./providers/custom.md)
   - [Advanced Usage](./providers/advanced_usage.md)
 - [Middleware](./middleware/middleware.md)
   - [Builder](./middleware/builder.md)
@@ -87,4 +88,3 @@
     - [Deploy contracts]()
     - [Fork]() 
     - [Testing]()
-
