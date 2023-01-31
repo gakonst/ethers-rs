@@ -1,5 +1,5 @@
-//! Example usage for the `QuorumProvider` that requests multiple backends and only returns
-//! a value if the configured `Quorum` was reached.
+//! The `QuorumProvider` sends a request to multiple backends and only returns a value
+//! if the configured `Quorum` was reached.
 
 use ethers::{
     core::utils::Anvil,
