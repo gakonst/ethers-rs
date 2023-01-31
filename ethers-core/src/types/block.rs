@@ -1,9 +1,7 @@
-// Taken from <https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs>
+// Modified from <https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs>
+
 use crate::types::{Address, Bloom, Bytes, Transaction, TxHash, H256, U256, U64};
 use chrono::{DateTime, TimeZone, Utc};
-#[cfg(not(feature = "celo"))]
-use core::cmp::Ordering;
-
 use serde::{
     de::{MapAccess, Visitor},
     ser::SerializeStruct,
@@ -13,6 +11,7 @@ use std::{fmt, fmt::Formatter, str::FromStr};
 use thiserror::Error;
 
 /// The block type returned from RPC calls.
+///
 /// This is generic over a `TX` type which will be either the hash or the full transaction,
 /// i.e. `Block<TxHash>` or `Block<Transaction>`.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -142,6 +141,8 @@ impl<TX> Block<TX> {
     /// Reference: <https://eips.ethereum.org/EIPS/eip-1559>
     #[cfg(not(feature = "celo"))]
     pub fn next_block_base_fee(&self) -> Option<U256> {
+        use core::cmp::Ordering;
+
         let target_usage = self.gas_target();
         let base_fee_per_gas = self.base_fee_per_gas?;
 
@@ -397,10 +398,10 @@ impl From<Block<Transaction>> for Block<TxHash> {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
-#[cfg(feature = "celo")]
 /// Commit-reveal data for generating randomness in the
 /// [Celo protocol](https://docs.celo.org/celo-codebase/protocol/identity/randomness)
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[cfg(feature = "celo")]
 pub struct Randomness {
     /// The committed randomness for that block
     pub committed: Bytes,
@@ -408,9 +409,9 @@ pub struct Randomness {
     pub revealed: Bytes,
 }
 
+/// SNARK-friendly epoch block signature and bitmap
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[cfg(feature = "celo")]
-/// SNARK-friendly epoch block signature and bitmap
 pub struct EpochSnarkData {
     /// The bitmap showing which validators signed on the epoch block
     pub bitmap: Bytes,
@@ -418,8 +419,8 @@ pub struct EpochSnarkData {
     pub signature: Bytes,
 }
 
+/// A [block hash](H256) or [block number](BlockNumber).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-/// A Block Hash or Block Number
 pub enum BlockId {
     // TODO: May want to expand this to include the requireCanonical field
     // <https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md>
@@ -530,7 +531,21 @@ impl<'de> Deserialize<'de> for BlockId {
     }
 }
 
-/// A block Number (or tag - "latest", "earliest", "pending")
+impl FromStr for BlockId {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.strip_prefix("0x").unwrap_or(s);
+        if s.len() == 64 {
+            let hash = s.parse::<H256>().map_err(|e| e.to_string());
+            hash.map(Self::Hash)
+        } else {
+            s.parse().map(Self::Number)
+        }
+    }
+}
+
+/// A block number or tag.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub enum BlockNumber {
     /// Latest block
@@ -624,15 +639,22 @@ impl FromStr for BlockNumber {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let block = match s {
-            "latest" => Self::Latest,
-            "finalized" => Self::Finalized,
-            "safe" => Self::Safe,
-            "earliest" => Self::Earliest,
-            "pending" => Self::Pending,
-            n => BlockNumber::Number(n.parse::<U64>().map_err(|err| err.to_string())?),
-        };
-        Ok(block)
+        match s {
+            "latest" => Ok(Self::Latest),
+            "finalized" => Ok(Self::Finalized),
+            "safe" => Ok(Self::Safe),
+            "earliest" => Ok(Self::Earliest),
+            "pending" => Ok(Self::Pending),
+            n => {
+                if let Ok(n) = n.parse::<U64>() {
+                    Ok(Self::Number(n))
+                } else if let Ok(n) = n.parse::<u64>() {
+                    Ok(Self::Number(n.into()))
+                } else {
+                    Err("Invalid block number".into())
+                }
+            }
+        }
     }
 }
 
