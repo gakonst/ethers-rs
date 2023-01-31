@@ -14,7 +14,6 @@
   - [Quorum](./providers/quorum.md)
   - [Retry](./providers/retry.md)
   - [RW](./providers/rw.md)
-  - [WebSocket](./providers/ws.md)
   - [Advanced Usage](./providers/advanced_usage.md)
 - [Middleware](./middleware/middleware.md)
   - [Builder](./middleware/builder.md)
