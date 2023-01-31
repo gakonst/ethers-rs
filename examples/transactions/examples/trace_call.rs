@@ -1,4 +1,11 @@
-use ethers::prelude::*;
+use ethers::{
+    core::types::GethDebugTracingOptions,
+    providers::{Http, Middleware, Provider},
+    types::{
+        Address, BlockId, Bytes, GethDebugBuiltInTracerType, GethDebugTracerType,
+        GethDebugTracingCallOptions, TransactionRequest,
+    },
+};
 use eyre::Result;
 use std::str::FromStr;
 
@@ -14,7 +21,9 @@ async fn main() -> Result<()> {
             tracing_options: GethDebugTracingOptions {
                 disable_storage: Some(true),
                 enable_memory: Some(false),
-                tracer: Some(GethDebugTracerType::CallTracer),
+                tracer: Some(GethDebugTracerType::BuiltInTracer(
+                    GethDebugBuiltInTracerType::CallTracer,
+                )),
                 ..Default::default()
             },
         };
