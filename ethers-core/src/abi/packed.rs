@@ -126,8 +126,8 @@ fn encode_token(token: &Token, out: &mut Vec<u8>, in_array: bool) {
         FixedBytes(bytes) => {
             out.extend_from_slice(bytes);
             if in_array {
-                let ref mut remaining = vec![0; 32 - bytes.len()];
-                out.append(remaining);
+                let mut remaining = vec![0; 32 - bytes.len()];
+                out.append(&mut remaining);
             }
         }
 
