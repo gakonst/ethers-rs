@@ -1,7 +1,7 @@
 //! Create a custom data transport to use with a Provider.
 
 use async_trait::async_trait;
-use ethers::prelude::*;
+use ethers::{core::utils::Anvil, prelude::*};
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 use thiserror::Error;
@@ -103,8 +103,11 @@ impl PubsubClient for WsOrIpc {
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
+    // Spawn Anvil
+    let anvil = Anvil::new().block_time(1u64).spawn();
+
     // Connect to our transport
-    let transport = WsOrIpc::connect("ws://localhost:8546").await?;
+    let transport = WsOrIpc::connect(&anvil.ws_endpoint()).await?;
 
     // Wrap the transport in a provider
     let provider = Provider::new(transport);
@@ -113,7 +116,7 @@ async fn main() -> eyre::Result<()> {
     let block_number = provider.get_block_number().await?;
     println!("Current block: {block_number}");
 
-    let mut subscription = provider.subscribe_blocks().await?;
+    let mut subscription = provider.subscribe_blocks().await?.take(3);
     while let Some(block) = subscription.next().await {
         println!("New block: {:?}", block.number);
     }
