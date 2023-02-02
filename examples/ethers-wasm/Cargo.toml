@@ -20,7 +20,7 @@ default = ["console_error_panic_hook"]
 [dependencies]
 ethers = { path = "../..", version = "1.0.0", features = ["abigen", "legacy", "ws"] }
 
-wasm-bindgen-futures = "0.4.33"
+wasm-bindgen-futures = "0.4.34"
 wasm-bindgen = { version = "0.2.83", features = ["serde-serialize"] }
 
 serde = { version = "1.0.144", features = ["derive"] }
