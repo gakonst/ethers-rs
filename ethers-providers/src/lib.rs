@@ -778,14 +778,7 @@ pub mod test_provider {
     use std::{convert::TryFrom, iter::Cycle, slice::Iter, sync::Mutex};
 
     // List of infura keys to rotate through so we don't get rate limited
-    const INFURA_KEYS: &[&str] = &[
-        "6770454bc6ea42c58aac12978531b93f",
-        "7a8769b798b642f6933f2ed52042bd70",
-        "631fd9a6539644088297dc605d35fff3",
-        "16a8be88795540b9b3903d8de0f7baa5",
-        "f4a0bdad42674adab5fc0ac077ffab2b",
-        "5c812e02193c4ba793f8c214317582bd",
-    ];
+    const INFURA_KEYS: &[&str] = &["15e8aaed6f894d63a0f6a0206c006cdd"];
 
     pub static MAINNET: Lazy<TestProvider> =
         Lazy::new(|| TestProvider::new(INFURA_KEYS, "mainnet"));
