@@ -45,4 +45,4 @@ web-sys = { version = "0.3.61", features = ["console"] }
 hex = "0.4.3"
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.33"
+wasm-bindgen-test = "0.3.34"
