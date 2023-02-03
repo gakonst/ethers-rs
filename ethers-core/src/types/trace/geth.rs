@@ -70,11 +70,35 @@ pub enum GethTraceFrame {
     CallTracer(CallFrame),
 }
 
+impl From<DefaultFrame> for GethTraceFrame {
+    fn from(value: DefaultFrame) -> Self {
+        GethTraceFrame::Default(value)
+    }
+}
+
+impl From<CallFrame> for GethTraceFrame {
+    fn from(value: CallFrame) -> Self {
+        GethTraceFrame::CallTracer(value)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum GethTrace {
     Known(GethTraceFrame),
     Unknown(Value),
+}
+
+impl From<GethTraceFrame> for GethTrace {
+    fn from(value: GethTraceFrame) -> Self {
+        GethTrace::Known(value)
+    }
+}
+
+impl From<Value> for GethTrace {
+    fn from(value: Value) -> Self {
+        GethTrace::Unknown(value)
+    }
 }
 
 /// Available built-in tracers
