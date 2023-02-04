@@ -4,6 +4,7 @@
 
 ### Unreleased
 
+- Add `abi::encode_packed` [#2104](https://github.com/gakonst/ethers-rs/pull/2104)
 - Add support for custom JavaScript tracer to `debug_traceCall` and `debug_traceTransaction` [#2064](https://github.com/gakonst/ethers-rs/pull/2064)
 - Add a `Send` bound to the `IntoFuture` implementation of `ContractCall` [#2083](https://github.com/gakonst/ethers-rs/pull/2083)
 - Bump [`svm-rs`](https://github.com/roynalnaruto/svm-rs) dependency to fix conflicts with Rust Crytpo packages [#2051](https://github.com/gakonst/ethers-rs/pull/2051)
