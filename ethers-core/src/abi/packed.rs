@@ -19,10 +19,13 @@ pub enum EncodePackedError {
 /// - dynamic types are encoded in-place and without the length;
 /// - array elements are padded, but still encoded in-place.
 ///
+/// Since this encoding is ambiguous, there is no decoding function.
+///
 /// Note that this function has the same behaviour as its [Solidity counterpart][ref], and
 /// thus structs as well as nested arrays are not supported.
 ///
-/// Since the encoding is ambiguous, there is no decoding function.
+/// `Uint` and `Int` tokens will be encoded using the least number of bits, so no padding will be
+/// added by default.
 ///
 /// [ref]: https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
 ///
@@ -33,21 +36,19 @@ pub enum EncodePackedError {
 /// ```
 /// # use ethers_core::abi::{Token, encode_packed};
 /// # use ethers_core::types::{Address, H256};
-/// # use ethers_core::utils::keccak256;
-///
+/// # use ethers_core::utils;
 /// let factory: Address = "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f".parse()?;
 ///
 /// let token_a: Address = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48".parse()?;
 /// let token_b: Address = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2".parse()?;
-/// let encoded = encode_packed(&[Token::Address(token_a), Token::Address(token_b)])?;
-/// let salt = keccak256(encoded);
+/// let encoded = utils::encode_packed(&[Token::Address(token_a), Token::Address(token_b)])?;
+/// let salt = utils::keccak256(encoded);
 ///
 /// let init_code_hash: H256 = "0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f".parse()?;
 ///
-/// let pair = ethers_core::utils::get_create2_address_from_hash(factory, salt, init_code_hash);
+/// let pair = utils::get_create2_address_from_hash(factory, salt, init_code_hash);
 /// let weth_usdc = "0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc".parse()?;
 /// assert_eq!(pair, weth_usdc);
-///
 /// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 pub fn encode_packed(tokens: &[Token]) -> Result<Vec<u8>, EncodePackedError> {
@@ -112,10 +113,10 @@ fn encode_token(token: &Token, out: &mut Vec<u8>, in_array: bool) {
             out.extend_from_slice(&addr.0)
         }
         Int(n) | Uint(n) => {
-            // TODO: Different (u)int* padding
             let mut buf = [0; 32];
             n.to_big_endian(&mut buf);
-            out.extend_from_slice(&buf);
+            let start = if in_array { 0 } else { 32 - ((n.bits() + 7) / 8) };
+            out.extend_from_slice(&buf[start..32]);
         }
         Bool(b) => {
             if in_array {
@@ -337,7 +338,7 @@ mod tests {
         let mut uint = [0u8; 32];
         uint[31] = 4;
         let encoded = encode(&[Token::Uint(uint.into())]);
-        let expected = hex!("0000000000000000000000000000000000000000000000000000000000000004");
+        let expected = hex!("04");
         assert_eq!(encoded, expected);
     }
 
@@ -346,7 +347,7 @@ mod tests {
         let mut int = [0u8; 32];
         int[31] = 4;
         let encoded = encode(&[Token::Int(int.into())]);
-        let expected = hex!("0000000000000000000000000000000000000000000000000000000000000004");
+        let expected = hex!("04");
         assert_eq!(encoded, expected);
     }
 
@@ -382,10 +383,10 @@ mod tests {
 
         let expected = hex!(
             "
-			0000000000000000000000000000000000000000000000000000000000000005
+			05
             131a3afc00d1b1e3461b955e53fc866dcf303b3eb9f4c16f89e388930f48134b
 			131a3afc00d1b1e3461b955e53fc866dcf303b3eb9f4c16f89e388930f48134b
-			0000000000000000000000000000000000000000000000000000000000000003
+			03
             131a3afc00d1b1e3461b955e53fc866dcf303b3eb9f4c16f89e388930f48134b
 			131a3afc00d1b1e3461b955e53fc866dcf303b3eb9f4c16f89e388930f48134b
 		"
@@ -407,11 +408,11 @@ mod tests {
 
         let expected = hex!(
             "
-			0000000000000000000000000000000000000000000000000000000000000001
+			01
 			6761766f66796f726b
-			0000000000000000000000000000000000000000000000000000000000000002
-			0000000000000000000000000000000000000000000000000000000000000003
-			0000000000000000000000000000000000000000000000000000000000000004
+			02
+			03
+			04
 			0000000000000000000000000000000000000000000000000000000000000005
 			0000000000000000000000000000000000000000000000000000000000000006
 			0000000000000000000000000000000000000000000000000000000000000007
