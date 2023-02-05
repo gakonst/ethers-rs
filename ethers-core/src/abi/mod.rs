@@ -26,6 +26,9 @@ pub use human_readable::{
 mod raw;
 pub use raw::{AbiObject, Component, Item, JsonAbi, RawAbi};
 
+mod packed;
+pub use packed::{encode_packed, EncodePackedError};
+
 mod sealed {
     use ethabi::{Event, Function};
 
