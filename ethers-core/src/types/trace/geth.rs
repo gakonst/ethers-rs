@@ -60,6 +60,12 @@ pub struct AccountState {
     pub storage: Option<BTreeMap<H256, H256>>,
 }
 
+// https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/native/noop.go#L35
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NoopFrame(BTreeMap<Null, Null>);
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
+struct Null;
+
 // https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/native/call.go#L37
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallFrame {
@@ -87,6 +93,7 @@ pub struct CallFrame {
 #[serde(untagged)]
 pub enum GethTraceFrame {
     Default(DefaultFrame),
+    NoopTracer(NoopFrame),
     FourByteTracer(FourByteFrame),
     CallTracer(CallFrame),
     PreStateTracer(PreStateFrame),
@@ -113,6 +120,12 @@ impl From<CallFrame> for GethTraceFrame {
 impl From<PreStateFrame> for GethTraceFrame {
     fn from(value: PreStateFrame) -> Self {
         GethTraceFrame::PreStateTracer(value)
+    }
+}
+
+impl From<NoopFrame> for GethTraceFrame {
+    fn from(value: NoopFrame) -> Self {
+        GethTraceFrame::NoopTracer(value)
     }
 }
 
@@ -146,6 +159,8 @@ pub enum GethDebugBuiltInTracerType {
     CallTracer,
     #[serde(rename = "prestateTracer")]
     PreStateTracer,
+    #[serde(rename = "noopTracer")]
+    NoopTracer,
 }
 
 /// Available tracers
