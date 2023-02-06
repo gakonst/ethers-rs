@@ -1,5 +1,13 @@
+mod call;
+mod four_byte;
+mod noop;
+mod pre_state;
+
+pub use self::{
+    call::CallFrame, four_byte::FourByteFrame, noop::NoopFrame, pre_state::PreStateFrame,
+};
 use crate::{
-    types::{Address, Bytes, NameOrAddress, H256, U256},
+    types::{Bytes, H256, U256},
     utils::from_int_or_hex,
 };
 use serde::{Deserialize, Serialize};
@@ -38,55 +46,6 @@ pub struct StructLog {
     pub stack: Option<Vec<U256>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub storage: Option<BTreeMap<H256, H256>>,
-}
-
-// https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/native/4byte.go#L50
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FourByteFrame(pub BTreeMap<String, u64>);
-
-// https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/native/prestate.go#L36
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PreStateFrame(pub BTreeMap<Address, AccountState>);
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct AccountState {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub balance: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub code: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub nonce: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub storage: Option<BTreeMap<H256, H256>>,
-}
-
-// https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/native/noop.go#L35
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct NoopFrame(BTreeMap<Null, Null>);
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord)]
-struct Null;
-
-// https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/native/call.go#L37
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CallFrame {
-    #[serde(rename = "type")]
-    pub typ: String,
-    pub from: Address,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub to: Option<NameOrAddress>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub value: Option<U256>,
-    #[serde(deserialize_with = "from_int_or_hex")]
-    pub gas: U256,
-    #[serde(deserialize_with = "from_int_or_hex", rename = "gasUsed")]
-    pub gas_used: U256,
-    pub input: Bytes,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub output: Option<Bytes>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub calls: Option<Vec<CallFrame>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
