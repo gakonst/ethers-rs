@@ -40,6 +40,10 @@ pub struct StructLog {
     pub storage: Option<BTreeMap<H256, H256>>,
 }
 
+// https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/native/4byte.go#L50
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FourByteFrame(pub BTreeMap<String, u64>);
+
 // https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/native/call.go#L37
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CallFrame {
@@ -67,12 +71,19 @@ pub struct CallFrame {
 #[serde(untagged)]
 pub enum GethTraceFrame {
     Default(DefaultFrame),
+    FourByteTracer(FourByteFrame),
     CallTracer(CallFrame),
 }
 
 impl From<DefaultFrame> for GethTraceFrame {
     fn from(value: DefaultFrame) -> Self {
         GethTraceFrame::Default(value)
+    }
+}
+
+impl From<FourByteFrame> for GethTraceFrame {
+    fn from(value: FourByteFrame) -> Self {
+        GethTraceFrame::FourByteTracer(value)
     }
 }
 
@@ -106,6 +117,8 @@ impl From<Value> for GethTrace {
 /// See <https://geth.ethereum.org/docs/developers/evm-tracing/built-in-tracers>
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub enum GethDebugBuiltInTracerType {
+    #[serde(rename = "4byteTracer")]
+    FourByteTracer,
     #[serde(rename = "callTracer")]
     CallTracer,
 }
