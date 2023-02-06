@@ -4,7 +4,10 @@ mod noop;
 mod pre_state;
 
 pub use self::{
-    call::CallFrame, four_byte::FourByteFrame, noop::NoopFrame, pre_state::PreStateFrame,
+    call::{CallConfig, CallFrame},
+    four_byte::FourByteFrame,
+    noop::NoopFrame,
+    pre_state::PreStateFrame,
 };
 use crate::{
     types::{Bytes, H256, U256},
@@ -122,6 +125,12 @@ pub enum GethDebugBuiltInTracerType {
     NoopTracer,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum GethDebugBuiltInTracerConfig {
+    CallTracer(CallConfig),
+}
+
 /// Available tracers
 ///
 /// See <https://geth.ethereum.org/docs/developers/evm-tracing/built-in-tracers> and <https://geth.ethereum.org/docs/developers/evm-tracing/custom-tracer>
@@ -133,6 +142,16 @@ pub enum GethDebugTracerType {
 
     /// custom JS tracer
     JsTracer(String),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum GethDebugTracerConfig {
+    /// built-in tracer
+    BuiltInTracer(GethDebugBuiltInTracerConfig),
+
+    /// custom JS tracer
+    JsTracer(Value),
 }
 
 /// Bindings for additional `debug_traceTransaction` options
@@ -151,6 +170,10 @@ pub struct GethDebugTracingOptions {
     pub enable_return_data: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tracer: Option<GethDebugTracerType>,
+    /// tracerConfig is slated for Geth v1.11.0
+    /// See <https://github.com/ethereum/go-ethereum/issues/26513>
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tracer_config: Option<GethDebugTracerConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout: Option<String>,
 }
