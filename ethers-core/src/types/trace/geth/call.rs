@@ -14,9 +14,9 @@ pub struct CallFrame {
     pub to: Option<NameOrAddress>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<U256>,
-    #[serde(deserialize_with = "from_int_or_hex")]
+    #[serde(default, deserialize_with = "from_int_or_hex")]
     pub gas: U256,
-    #[serde(deserialize_with = "from_int_or_hex", rename = "gasUsed")]
+    #[serde(default, deserialize_with = "from_int_or_hex", rename = "gasUsed")]
     pub gas_used: U256,
     pub input: Bytes,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -53,6 +53,12 @@ mod tests {
     use super::*;
     use crate::types::*;
 
+    // See <https://github.com/ethereum/go-ethereum/tree/master/eth/tracers/internal/tracetest/testdata>
+    const DEFAULT: &str = include!("./test_data/call_tracer/default.rs");
+    const LEGACY: &str = include!("./test_data/call_tracer/legacy.rs");
+    const ONLY_TOP_CALL: &str = include!("./test_data/call_tracer/only_top_call.rs");
+    const WITH_LOG: &str = include!("./test_data/call_tracer/with_log.rs");
+
     #[test]
     fn test_serialize_call_trace() {
         let mut opts = GethDebugTracingCallOptions::default();
@@ -68,5 +74,13 @@ mod tests {
             serde_json::to_string(&opts).unwrap(),
             r#"{"disableStorage":false,"tracer":"callTracer","tracerConfig":{"onlyTopCall":true,"withLog":true}}"#
         );
+    }
+
+    #[test]
+    fn test_deserialize_call_trace() {
+        let _trace: CallFrame = serde_json::from_str(DEFAULT).unwrap();
+        let _trace: CallFrame = serde_json::from_str(LEGACY).unwrap();
+        let _trace: CallFrame = serde_json::from_str(ONLY_TOP_CALL).unwrap();
+        let _trace: CallFrame = serde_json::from_str(WITH_LOG).unwrap();
     }
 }
