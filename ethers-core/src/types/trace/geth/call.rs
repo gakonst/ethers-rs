@@ -81,6 +81,7 @@ mod tests {
         let _trace: CallFrame = serde_json::from_str(DEFAULT).unwrap();
         let _trace: CallFrame = serde_json::from_str(LEGACY).unwrap();
         let _trace: CallFrame = serde_json::from_str(ONLY_TOP_CALL).unwrap();
-        let _trace: CallFrame = serde_json::from_str(WITH_LOG).unwrap();
+        let trace: CallFrame = serde_json::from_str(WITH_LOG).unwrap();
+        let _logs = trace.logs.unwrap();
     }
 }

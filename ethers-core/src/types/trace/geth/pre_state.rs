@@ -66,8 +66,16 @@ mod tests {
 
     #[test]
     fn test_deserialize_pre_state_trace() {
-        let _trace: PreStateFrame = serde_json::from_str(DEFAULT).unwrap();
+        let trace: PreStateFrame = serde_json::from_str(DEFAULT).unwrap();
+        match trace {
+            PreStateFrame::Default(PreStateMode(_)) => {}
+            _ => unreachable!(),
+        }
         let _trace: PreStateFrame = serde_json::from_str(LEGACY).unwrap();
-        let _trace: PreStateFrame = serde_json::from_str(DIFF_MODE).unwrap();
+        let trace: PreStateFrame = serde_json::from_str(DIFF_MODE).unwrap();
+        match trace {
+            PreStateFrame::Diff(DiffMode { pre: _pre, post: _post }) => {}
+            _ => unreachable!(),
+        }
     }
 }
