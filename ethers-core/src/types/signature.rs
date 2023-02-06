@@ -40,8 +40,8 @@ pub enum SignatureError {
 
 /// Recovery message data.
 ///
-/// The message data can either be a binary message rst hashed
-/// according to EIP-191 and then recovered based on the signathat is fiture or a
+/// The message data can either be a binary message that is first hashed
+/// according to EIP-191 and then recovered based on the signature or a
 /// precomputed hash.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RecoveryMessage {
