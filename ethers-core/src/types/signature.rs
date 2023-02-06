@@ -17,8 +17,6 @@ use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt, str::FromStr};
 use thiserror::Error;
 
-use super::transaction::eip712::Eip712;
-
 /// An error involving a signature.
 #[derive(Debug, Error)]
 pub enum SignatureError {
@@ -42,8 +40,8 @@ pub enum SignatureError {
 
 /// Recovery message data.
 ///
-/// The message data can either be a binary message that is first hashed
-/// according to EIP-191 and then recovered based on the signature or a
+/// The message data can either be a binary message rst hashed
+/// according to EIP-191 and then recovered based on the signathat is fiture or a
 /// precomputed hash.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RecoveryMessage {
@@ -68,6 +66,22 @@ impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let sig = <[u8; 65]>::from(self);
         write!(f, "{}", hex::encode(&sig[..]))
+    }
+}
+
+#[cfg(feature = "eip712")]
+impl Signature {
+    /// Recovers the ethereum address which was used to sign a given EIP712
+    /// typed data payload.
+    ///
+    /// Recovery signature data uses 'Electrum' notation, this means the `v`
+    /// value is expected to be either `27` or `28`.
+    pub fn recover_typed_data<T>(&self, payload: T) -> Result<Address, SignatureError>
+    where
+        T: super::transaction::eip712::Eip712,
+    {
+        let encoded = payload.encode_eip712().map_err(|_| SignatureError::RecoveryError)?;
+        self.recover(encoded)
     }
 }
 
@@ -111,19 +125,6 @@ impl Signature {
         debug_assert_eq!(public_key[0], 0x04);
         let hash = crate::utils::keccak256(&public_key[1..]);
         Ok(Address::from_slice(&hash[12..]))
-    }
-
-    /// Recovers the ethereum address which was used to sign a given EIP712
-    /// typed data payload.
-    ///
-    /// Recovery signature data uses 'Electrum' notation, this means the `v`
-    /// value is expected to be either `27` or `28`.
-    pub fn recover_typed_data<T>(&self, payload: T) -> Result<Address, SignatureError>
-    where
-        T: Eip712,
-    {
-        let encoded = payload.encode_eip712().map_err(|_| SignatureError::RecoveryError)?;
-        self.recover(encoded)
     }
 
     /// Retrieves the recovery signature.
