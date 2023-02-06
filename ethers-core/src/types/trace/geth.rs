@@ -7,7 +7,7 @@ pub use self::{
     call::{CallConfig, CallFrame},
     four_byte::FourByteFrame,
     noop::NoopFrame,
-    pre_state::PreStateFrame,
+    pre_state::{PreStateConfig, PreStateFrame},
 };
 use crate::{
     types::{Bytes, H256, U256},
@@ -129,6 +129,7 @@ pub enum GethDebugBuiltInTracerType {
 #[serde(untagged)]
 pub enum GethDebugBuiltInTracerConfig {
     CallTracer(CallConfig),
+    PreStateTracer(PreStateConfig),
 }
 
 /// Available tracers
