@@ -1,6 +1,6 @@
 //! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
 
-use crate::errors::is_blocked_by_cloudflare_response;
+use crate::errors::{is_blocked_by_cloudflare_response, is_cloudflare_security_challenge};
 use contract::ContractMetadata;
 use errors::EtherscanError;
 use ethers_core::{
@@ -209,6 +209,8 @@ impl Client {
             error!(target: "etherscan", ?res, "Failed to deserialize response: {}", err);
             if is_blocked_by_cloudflare_response(res) {
                 EtherscanError::BlockedByCloudflare
+            } else if is_cloudflare_security_challenge(res) {
+                EtherscanError::CloudFlareSecurityChallenge
             } else {
                 EtherscanError::Serde(err)
             }
