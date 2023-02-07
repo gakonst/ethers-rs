@@ -355,6 +355,12 @@ pub enum QuorumError {
     NoQuorumReached { values: Vec<Value>, errors: Vec<ProviderError> },
 }
 
+impl crate::ClientError for QuorumError {
+    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
+        None
+    }
+}
+
 impl From<QuorumError> for ProviderError {
     fn from(src: QuorumError) -> Self {
         ProviderError::JsonRpcClientError(Box::new(src))

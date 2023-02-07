@@ -113,8 +113,8 @@ impl FromErr<ProviderError> for ProviderError {
 /// An error thrown when making a call to the provider
 pub enum ProviderError {
     /// An internal error in the JSON RPC Client
-    #[error(transparent)]
-    JsonRpcClientError(#[from] Box<dyn std::error::Error + Send + Sync>),
+    #[error("{0}")]
+    JsonRpcClientError(Box<dyn crate::ClientError + Send + Sync>),
 
     /// An error during ENS name resolution
     #[error("ens name not found: {0}")]
@@ -144,6 +144,16 @@ pub enum ProviderError {
 
     #[error("Attempted to sign a transaction with no available signer. Hint: did you mean to use a SignerMiddleware?")]
     SignerUnavailable,
+}
+
+impl crate::ClientError for ProviderError {
+    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
+        if let ProviderError::JsonRpcClientError(err) = self {
+            err.as_error_response()
+        } else {
+            None
+        }
+    }
 }
 
 /// Types of filters supported by the JSON-RPC.

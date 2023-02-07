@@ -58,6 +58,16 @@ impl From<ClientError> for ProviderError {
     }
 }
 
+impl crate::ClientError for ClientError {
+    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
+        if let ClientError::JsonRpcError(err) = self {
+            Some(err)
+        } else {
+            None
+        }
+    }
+}
+
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl JsonRpcClient for Provider {

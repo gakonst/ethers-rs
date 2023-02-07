@@ -491,6 +491,16 @@ impl From<IpcError> for ProviderError {
     }
 }
 
+impl crate::ClientError for IpcError {
+    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
+        if let IpcError::JsonRpcError(err) = self {
+            Some(err)
+        } else {
+            None
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

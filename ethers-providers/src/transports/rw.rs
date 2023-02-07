@@ -68,9 +68,9 @@ impl<Read, Write> RwClient<Read, Write> {
 pub enum RwClientError<Read, Write>
 where
     Read: JsonRpcClient,
-    <Read as JsonRpcClient>::Error: Sync + Send + 'static,
+    <Read as JsonRpcClient>::Error: crate::ClientError + Sync + Send + 'static,
     Write: JsonRpcClient,
-    <Write as JsonRpcClient>::Error: Sync + Send + 'static,
+    <Write as JsonRpcClient>::Error: crate::ClientError + Sync + Send + 'static,
 {
     /// Thrown if the _read_ request failed
     #[error(transparent)]
@@ -80,6 +80,20 @@ where
     Write(Write::Error),
 }
 
+impl<Read, Write> crate::ClientError for RwClientError<Read, Write>
+where
+    Read: JsonRpcClient,
+    <Read as JsonRpcClient>::Error: crate::ClientError + Sync + Send + 'static,
+    Write: JsonRpcClient,
+    <Write as JsonRpcClient>::Error: crate::ClientError + Sync + Send + 'static,
+{
+    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
+        match self {
+            RwClientError::Read(e) => e.as_error_response(),
+            RwClientError::Write(e) => e.as_error_response(),
+        }
+    }
+}
 impl<Read, Write> From<RwClientError<Read, Write>> for ProviderError
 where
     Read: JsonRpcClient + 'static,
