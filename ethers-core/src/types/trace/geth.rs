@@ -1,5 +1,16 @@
+mod call;
+mod four_byte;
+mod noop;
+mod pre_state;
+
+pub use self::{
+    call::{CallConfig, CallFrame},
+    four_byte::FourByteFrame,
+    noop::NoopFrame,
+    pre_state::{PreStateConfig, PreStateFrame},
+};
 use crate::{
-    types::{Address, Bytes, NameOrAddress, H256, U256},
+    types::{Bytes, H256, U256},
     utils::from_int_or_hex,
 };
 use serde::{Deserialize, Serialize};
@@ -40,34 +51,14 @@ pub struct StructLog {
     pub storage: Option<BTreeMap<H256, H256>>,
 }
 
-// https://github.com/ethereum/go-ethereum/blob/a9ef135e2dd53682d106c6a2aede9187026cc1de/eth/tracers/native/call.go#L37
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct CallFrame {
-    #[serde(rename = "type")]
-    pub typ: String,
-    pub from: Address,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub to: Option<NameOrAddress>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub value: Option<U256>,
-    #[serde(deserialize_with = "from_int_or_hex")]
-    pub gas: U256,
-    #[serde(deserialize_with = "from_int_or_hex", rename = "gasUsed")]
-    pub gas_used: U256,
-    pub input: Bytes,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub output: Option<Bytes>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub calls: Option<Vec<CallFrame>>,
-}
-
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum GethTraceFrame {
     Default(DefaultFrame),
+    NoopTracer(NoopFrame),
+    FourByteTracer(FourByteFrame),
     CallTracer(CallFrame),
+    PreStateTracer(PreStateFrame),
 }
 
 impl From<DefaultFrame> for GethTraceFrame {
@@ -76,9 +67,27 @@ impl From<DefaultFrame> for GethTraceFrame {
     }
 }
 
+impl From<FourByteFrame> for GethTraceFrame {
+    fn from(value: FourByteFrame) -> Self {
+        GethTraceFrame::FourByteTracer(value)
+    }
+}
+
 impl From<CallFrame> for GethTraceFrame {
     fn from(value: CallFrame) -> Self {
         GethTraceFrame::CallTracer(value)
+    }
+}
+
+impl From<PreStateFrame> for GethTraceFrame {
+    fn from(value: PreStateFrame) -> Self {
+        GethTraceFrame::PreStateTracer(value)
+    }
+}
+
+impl From<NoopFrame> for GethTraceFrame {
+    fn from(value: NoopFrame) -> Self {
+        GethTraceFrame::NoopTracer(value)
     }
 }
 
@@ -106,8 +115,21 @@ impl From<Value> for GethTrace {
 /// See <https://geth.ethereum.org/docs/developers/evm-tracing/built-in-tracers>
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 pub enum GethDebugBuiltInTracerType {
+    #[serde(rename = "4byteTracer")]
+    FourByteTracer,
     #[serde(rename = "callTracer")]
     CallTracer,
+    #[serde(rename = "prestateTracer")]
+    PreStateTracer,
+    #[serde(rename = "noopTracer")]
+    NoopTracer,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum GethDebugBuiltInTracerConfig {
+    CallTracer(CallConfig),
+    PreStateTracer(PreStateConfig),
 }
 
 /// Available tracers
@@ -121,6 +143,16 @@ pub enum GethDebugTracerType {
 
     /// custom JS tracer
     JsTracer(String),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum GethDebugTracerConfig {
+    /// built-in tracer
+    BuiltInTracer(GethDebugBuiltInTracerConfig),
+
+    /// custom JS tracer
+    JsTracer(Value),
 }
 
 /// Bindings for additional `debug_traceTransaction` options
@@ -139,6 +171,10 @@ pub struct GethDebugTracingOptions {
     pub enable_return_data: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tracer: Option<GethDebugTracerType>,
+    /// tracerConfig is slated for Geth v1.11.0
+    /// See <https://github.com/ethereum/go-ethereum/issues/26513>
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tracer_config: Option<GethDebugTracerConfig>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout: Option<String>,
 }
