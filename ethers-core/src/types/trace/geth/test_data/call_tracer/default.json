@@ -1,4 +1,4 @@
-r#"{
+{
     "calls": [
         {
             "from": "0x3b873a919aa0512d5a0f09e6dcceaa4a6727fafe",
@@ -18,4 +18,4 @@ r#"{
     "to": "0x3b873a919aa0512d5a0f09e6dcceaa4a6727fafe",
     "type": "CALL",
     "value": "0x0"
-}"#
+}

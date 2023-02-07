@@ -55,9 +55,9 @@ mod tests {
     use crate::types::*;
 
     // See <https://github.com/ethereum/go-ethereum/tree/master/eth/tracers/internal/tracetest/testdata>
-    const DEFAULT: &str = include!("./test_data/pre_state_tracer/default.rs");
-    const LEGACY: &str = include!("./test_data/pre_state_tracer/legacy.rs");
-    const DIFF_MODE: &str = include!("./test_data/pre_state_tracer/diff_mode.rs");
+    const DEFAULT: &str = include_str!("./test_data/pre_state_tracer/default.json");
+    const LEGACY: &str = include_str!("./test_data/pre_state_tracer/legacy.json");
+    const DIFF_MODE: &str = include_str!("./test_data/pre_state_tracer/diff_mode.json");
 
     #[test]
     fn test_serialize_pre_state_trace() {

@@ -1,4 +1,4 @@
-r#"{
+{
     "0x0024f658a46fbb89d8ac105e98d7ac7cbbaf27c5": {
         "balance": "0x0",
         "code": "0x",
@@ -22,4 +22,4 @@ r#"{
         "nonce": 29072,
         "storage": {}
     }
-}"#
+}

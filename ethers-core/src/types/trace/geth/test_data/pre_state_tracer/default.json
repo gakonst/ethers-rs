@@ -1,4 +1,4 @@
-r#"{
+{
     "0x082d4cdf07f386ffa9258f52a5c49db4ac321ec6": {
         "balance": "0xc820f93200f4000",
         "nonce": 94
@@ -17,4 +17,4 @@ r#"{
         "balance": "0xb3d0ac5cb94df6f6b0",
         "nonce": 1
     }
-}"#
+}
