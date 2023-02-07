@@ -1,4 +1,7 @@
-use crate::types::{Address, H256};
+use crate::{
+    types::{Address, H256, U256},
+    utils::from_int_or_hex_opt,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -21,12 +24,20 @@ pub struct DiffMode {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AccountState {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub balance: Option<String>,
+    #[serde(
+        default,
+        deserialize_with = "from_int_or_hex_opt",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub balance: Option<U256>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub nonce: Option<u64>,
+    #[serde(
+        default,
+        deserialize_with = "from_int_or_hex_opt",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub nonce: Option<U256>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub storage: Option<BTreeMap<H256, H256>>,
 }
