@@ -107,6 +107,12 @@ pub enum MockError {
     EmptyResponses,
 }
 
+impl crate::ClientError for MockError {
+    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
+        None
+    }
+}
+
 impl From<MockError> for ProviderError {
     fn from(src: MockError) -> Self {
         ProviderError::JsonRpcClientError(Box::new(src))

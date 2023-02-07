@@ -1,5 +1,5 @@
 mod common;
-pub use common::Authorization;
+pub use common::{Authorization, JsonRpcError};
 
 mod http;
 pub use self::http::{ClientError as HttpClientError, Provider as Http};

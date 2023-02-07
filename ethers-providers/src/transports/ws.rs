@@ -496,6 +496,16 @@ pub enum ClientError {
     RequestError(#[from] http::Error),
 }
 
+impl crate::ClientError for ClientError {
+    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
+        if let ClientError::JsonRpcError(err) = self {
+            Some(err)
+        } else {
+            None
+        }
+    }
+}
+
 impl From<ClientError> for ProviderError {
     fn from(src: ClientError) -> Self {
         ProviderError::JsonRpcClientError(Box::new(src))

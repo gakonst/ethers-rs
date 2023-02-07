@@ -63,6 +63,10 @@ pub(crate) type PinBoxFut<'a, T> = Pin<Box<dyn Future<Output = Result<T, Provide
 pub(crate) type PinBoxFut<'a, T> =
     Pin<Box<dyn Future<Output = Result<T, ProviderError>> + Send + 'a>>;
 
+pub trait ClientError: std::error::Error + std::fmt::Display + Debug + Send + Sync {
+    fn as_error_response(&self) -> Option<&transports::JsonRpcError>;
+}
+
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 #[auto_impl(&, Box, Arc)]
@@ -70,7 +74,7 @@ pub(crate) type PinBoxFut<'a, T> =
 /// JSON-RPC provider.
 pub trait JsonRpcClient: Debug + Send + Sync {
     /// A JSON-RPC Error
-    type Error: Error + Into<ProviderError>;
+    type Error: Into<ProviderError> + ClientError;
 
     /// Sends a request with the provided JSON-RPC and parameters serialized as JSON
     async fn request<T, R>(&self, method: &str, params: T) -> Result<R, Self::Error>
