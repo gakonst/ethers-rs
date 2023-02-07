@@ -37,7 +37,7 @@ pub type ContractFactory<M> = DeploymentTxFactory<Arc<M>, M>;
 ///
 /// Currently, we recommend using the [`ContractDeployer`] type alias.
 #[derive(Debug)]
-#[must_use = "Deployer does nothing unless you `send` it"]
+#[must_use = "DeploymentTx does nothing unless you `send` it"]
 pub struct ContractDeploymentTx<B, M, C> {
     /// the actual deployer, exposed for overriding the defaults
     pub deployer: Deployer<B, M>,
@@ -56,15 +56,21 @@ where
     }
 }
 
+impl<B, M, C> From<Deployer<B, M>> for ContractDeploymentTx<B, M, C> {
+    fn from(deployer: Deployer<B, M>) -> Self {
+        Self { deployer, _contract: PhantomData }
+    }
+}
+
 impl<B, M, C> ContractDeploymentTx<B, M, C>
 where
     B: Borrow<M> + Clone,
     M: Middleware,
     C: From<ContractInstance<B, M>>,
 {
-    /// Create a new instance of this [ContractDeployment]
+    /// Create a new instance of this from a deployer.
     pub fn new(deployer: Deployer<B, M>) -> Self {
-        Self { deployer, _contract: Default::default() }
+        Self { deployer, _contract: PhantomData }
     }
 
     /// Sets the number of confirmations to wait for the contract deployment transaction
