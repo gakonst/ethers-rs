@@ -15,7 +15,7 @@ mod error;
 pub use error::EthError;
 
 mod factory;
-pub use factory::{ContractDeployer, ContractFactory};
+pub use factory::{ContractDeployer, ContractDeploymentTx, ContractFactory, DeploymentTxFactory};
 
 mod event;
 pub use event::{EthEvent, Event};

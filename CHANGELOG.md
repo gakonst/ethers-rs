@@ -299,6 +299,8 @@
 
 ### Unreleased
 
+- Make `Factory` objects generic over the borrow trait, to allow non-arc mware
+  [#2103](https://github.com/gakonst/ethers-rs/pull/2103)
 - Make `Contract` objects generic over the borrow trait, to allow non-arc mware
   [#2082](https://github.com/gakonst/ethers-rs/pull/2082)
 - Return pending transaction from `Multicall::send`
