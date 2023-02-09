@@ -38,7 +38,7 @@ use futures_util::{lock::Mutex, try_join};
 use std::{
     collections::VecDeque,
     convert::TryFrom,
-    fmt::{Debug, Display},
+    fmt::Debug,
     str::FromStr,
     sync::Arc,
     time::Duration,
