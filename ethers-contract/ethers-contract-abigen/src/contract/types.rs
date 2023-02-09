@@ -131,9 +131,10 @@ fn expand_event_input(
     }
 }
 
-/// Expands to the `name, type` pairs for the params
-pub fn expand_params<'a, F: Fn(&str) -> Option<&'a str>>(
-    params: &[Param],
+/// Expands `params` to `(name, type)` tokens pairs, while resolving tuples' types using the given
+/// function.
+pub fn expand_params<'a, 'b, F: Fn(&'a Param) -> Option<&'b str>>(
+    params: &'a [Param],
     resolve_tuple: F,
 ) -> Result<Vec<(TokenStream, TokenStream)>> {
     params
@@ -141,30 +142,30 @@ pub fn expand_params<'a, F: Fn(&str) -> Option<&'a str>>(
         .enumerate()
         .map(|(idx, param)| {
             // NOTE: Params can be unnamed.
-            expand_resolved(&param.kind, param.internal_type.as_deref(), |s| resolve_tuple(s))
+            expand_resolved(&param.kind, &param, &resolve_tuple)
                 .map(|ty| (util::expand_input_name(idx, &param.name), ty))
         })
         .collect()
 }
 
-/// Expands a ParamType Solidity type to its Rust equivalent, while resolving a tuple's type using
+/// Expands a ParamType Solidity type to its Rust equivalent, while resolving tuples' types using
 /// the given function.
-fn expand_resolved<'a, F: Fn(&str) -> Option<&'a str>>(
-    kind: &ParamType,
-    internal_type: Option<&str>,
-    resolve_tuple: F,
+fn expand_resolved<'a, 'b, F: Fn(&'a Param) -> Option<&'b str>>(
+    kind: &'a ParamType,
+    param: &'a Param,
+    resolve_tuple: &F,
 ) -> Result<TokenStream> {
     match kind {
         ParamType::Array(ty) => {
-            let ty = expand_resolved(ty, internal_type, resolve_tuple)?;
+            let ty = expand_resolved(ty, param, resolve_tuple)?;
             Ok(quote!(::std::vec::Vec<#ty>))
         }
         ParamType::FixedArray(ty, size) => {
-            let ty = expand_resolved(ty, internal_type, resolve_tuple)?;
+            let ty = expand_resolved(ty, param, resolve_tuple)?;
             let size = Literal::usize_unsuffixed(*size);
             Ok(quote!([#ty; #size]))
         }
-        ParamType::Tuple(_) => match internal_type.and_then(resolve_tuple) {
+        ParamType::Tuple(_) => match resolve_tuple(param) {
             Some(ty) => {
                 let ty = util::ident(ty);
                 Ok(quote!(#ty))
