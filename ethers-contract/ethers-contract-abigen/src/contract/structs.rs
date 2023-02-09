@@ -174,16 +174,12 @@ impl Context {
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
-                    #[doc = #abi_signature]
-        <<<<<<< HEAD
-                    #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
-        =======
-                    #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
-        >>>>>>> master
-                    pub struct #name {
-                        #( #fields ),*
-                    }
-                })
+            #[doc = #abi_signature]
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
+            pub struct #name {
+                #( #fields ),*
+            }
+        })
     }
 
     /// Expand all structs parsed from the human readable ABI
