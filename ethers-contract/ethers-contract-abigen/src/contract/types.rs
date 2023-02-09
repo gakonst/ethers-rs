@@ -129,7 +129,7 @@ pub fn expand_params<'a, 'b, F: Fn(&'a Param) -> Option<&'b str>>(
         .enumerate()
         .map(|(idx, param)| {
             // NOTE: Params can be unnamed.
-            expand_resolved(&param.kind, &param, &resolve_tuple)
+            expand_resolved(&param.kind, param, &resolve_tuple)
                 .map(|ty| (util::expand_input_name(idx, &param.name), ty))
         })
         .collect()
