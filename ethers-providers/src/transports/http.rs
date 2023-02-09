@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use reqwest::{header::HeaderValue, Client, Error as ReqwestError};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
+    fmt::Debug,
     str::FromStr,
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -28,11 +29,16 @@ use super::common::{Authorization, JsonRpcError, Request, Response};
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug)]
 pub struct Provider {
     id: AtomicU64,
     client: Client,
     url: Url,
+}
+
+impl Debug for Provider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Http {{ id: {:?}, url: {} }}", self.id, self.url)
+    }
 }
 
 #[derive(Error, Debug)]

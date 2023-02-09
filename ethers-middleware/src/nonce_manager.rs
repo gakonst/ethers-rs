@@ -1,17 +1,20 @@
 use async_trait::async_trait;
 use ethers_core::types::{transaction::eip2718::TypedTransaction, *};
 use ethers_providers::{FromErr, Middleware, PendingTransaction};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::{
+    fmt::Debug,
+    sync::atomic::{AtomicBool, AtomicU64, Ordering},
+};
 use thiserror::Error;
 
 #[derive(Debug)]
 /// Middleware used for calculating nonces locally, useful for signing multiple
 /// consecutive transactions without waiting for them to hit the mempool
 pub struct NonceManagerMiddleware<M> {
-    inner: M,
     initialized: AtomicBool,
     nonce: AtomicU64,
     address: Address,
+    inner: M,
 }
 
 impl<M> NonceManagerMiddleware<M>

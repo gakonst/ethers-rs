@@ -401,8 +401,8 @@ impl<'a, T> Future for QuorumRequest<'a, T> {
 /// The configuration of a provider for the `QuorumProvider`
 #[derive(Debug, Clone)]
 pub struct WeightedProvider<T> {
-    inner: T,
     weight: u64,
+    inner: T,
 }
 
 impl<T> WeightedProvider<T> {

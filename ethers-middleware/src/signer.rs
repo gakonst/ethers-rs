@@ -62,9 +62,9 @@ use thiserror::Error;
 ///
 /// [`Signer`]: ethers_signers::Signer
 pub struct SignerMiddleware<M, S> {
-    pub(crate) inner: M,
     pub(crate) signer: S,
     pub(crate) address: Address,
+    pub(crate) inner: M,
 }
 
 impl<M: Middleware, S: Signer> FromErr<M::Error> for SignerMiddlewareError<M, S> {

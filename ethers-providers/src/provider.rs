@@ -36,7 +36,12 @@ use url::{ParseError, Url};
 use ethers_core::types::Chain;
 use futures_util::{lock::Mutex, try_join};
 use std::{
-    collections::VecDeque, convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration,
+    collections::VecDeque,
+    convert::TryFrom,
+    fmt::{Debug, Display},
+    str::FromStr,
+    sync::Arc,
+    time::Duration,
 };
 use tracing::trace;
 use tracing_futures::Instrument;
@@ -86,7 +91,7 @@ impl FromStr for NodeClient {
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Provider<P> {
     inner: P,
     ens: Option<Address>,
@@ -107,6 +112,16 @@ impl<P> AsRef<P> for Provider<P> {
 impl FromErr<ProviderError> for ProviderError {
     fn from(src: ProviderError) -> Self {
         src
+    }
+}
+
+impl<P: Debug> Debug for Provider<P> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Provider {{ ens: {:?}, interval: {:?}, from: {:?}, inner: {:?} }}",
+            self.ens, self.interval, self.from, self.inner
+        )
     }
 }
 
