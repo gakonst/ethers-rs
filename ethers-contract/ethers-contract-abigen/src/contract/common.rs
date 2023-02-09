@@ -1,65 +1,7 @@
-use super::{types, util, Context};
-use ethers_core::{
-    abi::{Param, ParamType},
-    macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
-};
+use super::Context;
+use ethers_core::macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate};
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
-
-/// Expands to the `name : type` pairs for the params
-pub(crate) fn expand_params<'a, F>(
-    params: &[Param],
-    resolve_tuple: F,
-) -> eyre::Result<Vec<(TokenStream, TokenStream)>>
-where
-    F: Fn(&str) -> Option<&'a str>,
-{
-    params
-        .iter()
-        .enumerate()
-        .map(|(idx, param)| {
-            let name = util::expand_input_name(idx, &param.name);
-            let ty = expand_param_type(param, &param.kind, |s| resolve_tuple(s))?;
-            Ok((name, ty))
-        })
-        .collect()
-}
-
-/// returns the Tokenstream for the corresponding rust type
-pub(crate) fn expand_param_type<'a, F>(
-    param: &Param,
-    kind: &ParamType,
-    resolve_tuple: F,
-) -> eyre::Result<TokenStream>
-where
-    F: Fn(&str) -> Option<&'a str>,
-{
-    match kind {
-        ParamType::Array(ty) => {
-            let ty = expand_param_type(param, ty, resolve_tuple)?;
-            Ok(quote! {
-                ::std::vec::Vec<#ty>
-            })
-        }
-        ParamType::FixedArray(ty, size) => {
-            let ty = expand_param_type(param, ty, resolve_tuple)?;
-            let size = *size;
-            Ok(quote! {[#ty; #size]})
-        }
-        ParamType::Tuple(_) => {
-            let ty = if let Some(rust_struct_name) =
-                param.internal_type.as_ref().and_then(|s| resolve_tuple(s.as_str()))
-            {
-                let ident = util::ident(rust_struct_name);
-                quote! {#ident}
-            } else {
-                types::expand(kind)?
-            };
-            Ok(ty)
-        }
-        _ => types::expand(kind),
-    }
-}
 
 pub(crate) fn imports(name: &str) -> TokenStream {
     let doc_str = format!("{name} was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs");

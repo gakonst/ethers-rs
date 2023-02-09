@@ -1,7 +1,7 @@
 use super::{types, util, Context};
 use crate::util::can_derive_defaults;
 use ethers_core::{
-    abi::{Event, EventExt},
+    abi::{Event, EventExt, Param},
     macros::{ethers_contract_crate, ethers_core_crate},
 };
 use eyre::Result;
