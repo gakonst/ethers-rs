@@ -1,15 +1,16 @@
+//! `MockProvider` is a mock Ethereum provider that can be used for testing purposes.
+//! It allows to simulate Ethereum state and behavior, by explicitly instructing
+//! provider's responses on client requests.
+//!
+//! This can be useful for testing code that relies on providers without the need to
+//! connect to a real network or spend real Ether. It also allows to test code in a
+//! deterministic manner, as you can control the state and behavior of the provider.
+//!
+//! In these examples we use the common Arrange, Act, Assert (AAA) test approach.
+//! It is a useful pattern for well-structured, understandable and maintainable tests.
+
 use ethers::prelude::*;
 
-/// `MockProvider` is a mock Ethereum provider that can be used for testing purposes.
-/// It allows to simulate Ethereum state and behavior, by explicitly instructing
-/// provider's responses on client requests.
-///
-/// This can be useful for testing code that relies on providers without the need to
-/// connect to a real network or spend real Ether. It also allows to test code in a
-/// deterministic manner, as you can control the state and behavior of the provider.
-///
-/// In these examples we use the common Arrange, Act, Assert (AAA) test approach.
-/// It is a useful pattern for well-structured, understandable and maintainable tests.
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     mocked_block_number().await?;

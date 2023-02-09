@@ -238,7 +238,7 @@ where
     async fn request<A, R>(&self, method: &str, params: A) -> Result<R, Self::Error>
     where
         A: Debug + Serialize + Send + Sync,
-        R: DeserializeOwned,
+        R: DeserializeOwned + Send,
     {
         // Helper type that caches the `params` value across several retries
         // This is necessary because the wrapper provider is supposed to skip he `params` if it's of

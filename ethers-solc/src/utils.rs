@@ -473,7 +473,7 @@ pub fn create_parent_dir_all(file: impl AsRef<Path>) -> Result<(), SolcError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::resolver::Node;
+
     use solang_parser::pt::SourceUnitPart;
     use std::{
         collections::HashSet,
@@ -516,7 +516,7 @@ contract A {}
 
         assert!(!non_existing.exists());
 
-        let found = Node::read(&non_existing).unwrap_err();
+        let found = crate::resolver::Node::read(&non_existing).unwrap_err();
         matches!(found, SolcError::ResolveCaseSensitiveFileName { .. });
     }
 

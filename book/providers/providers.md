@@ -1,9 +1,22 @@
 # Providers
 
-Providers play a central role in `ethers-rs`, enabling you to establish asynchronous [Ethereum JSON-RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC) compliant clients.
+A Provider is an abstraction of a connection to the Ethereum network, providing a concise, consistent interface to standard Ethereum node functionality.
 
-Providers let your program connect to a node to get data, interact with smart contracts, listen to the mempool and much more. There are a few different types of default providers that are built into the library. The default providers are `Http`,`WS`,`Ipc`,`RWClient`,`Quorum`,`Mock` and `RetryClient`. In addition to all of these options, you can also create your own custom provider, which we will walk through later in this chapter. For now let take a look at what the `Provider` actually looks like.
+This is achieved through the [`Middleware` trait][middleware], which provides the interface for the [Ethereum JSON-RPC API](https://ethereum.github.io/execution-apis/api-documentation) and other helpful methods, explained in more detail in [the Middleware chapter](../middleware/middleware.md), and the [`Provider`][provider] struct, which implements `Middleware`.
 
+## Data transports
+
+A [`Provider`][provider] wraps a generic data transport `P`, through which all JSON-RPC API calls are routed.
+
+Ethers provides concrete transport implementations for [HTTP](./http.md), [WebSockets](./ws.md), and [IPC](./ipc.md), as well as higher level transports which wrap a single or multiple transports. Of course, it is also possible to [define custom data transports](./custom.md).
+
+Transports implement the [`JsonRpcClient`](https://docs.rs/ethers/latest/ethers/providers/trait.JsonRpcClient.html) trait, which defines a `request` method, used for sending data to the underlying Ethereum node using [JSON-RPC](https://www.jsonrpc.org/specification).
+
+Transports can optionally implement the [`PubsubClient`](https://docs.rs/ethers/latest/ethers/providers/trait.PubsubClient.html) trait, if they support the [Publish-subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern), like `Websockets` and `IPC`. This is a [supertrait](https://doc.rust-lang.org/book/ch19-03-advanced-traits.html#using-supertraits-to-require-one-traits-functionality-within-another-trait) of `JsonRpcClient`. It defines the `subscribe` and `unsubscribe` methods.
+
+## The Provider type
+
+This is the definition of the [`Provider`][provider] type:
 
 ```rust
 #[derive(Clone, Debug)]
@@ -12,18 +25,17 @@ pub struct Provider<P> {
     ens: Option<Address>,
     interval: Option<Duration>,
     from: Option<Address>,
-    /// Node client hasn't been checked yet= `None`
-    /// Unsupported node client = `Some(None)`
-    /// Supported node client = `Some(Some(NodeClient))`
-    _node_client: Arc<Mutex<Option<NodeClient>>>,
+    node_client: Arc<Mutex<Option<NodeClient>>>,
 }
 ```
 
-
-The `Provider` struct defines a generic type `P` that can be any type that implements the [`JsonRpcClient` trait](https://docs.rs/ethers/latest/ethers/providers/trait.JsonRpcClient.html). The `inner` field stores the type that implements the `JsonRpcClient` type, allowing the Provider to make RPC calls to the node. The `ens` field is an optional value that specifies the ENS address for the provider's default sender. The `interval` field is an optional value that defines the polling interval when for streams (subscribing to logs, block headers, etc.). The `from` field is an optional type that allows you to set a default "from" address when constructing transactions and making calls. Lastly, the `_node_client` field is another optional value that allows the user to specify the node they are using to access node specific API calls. 
-
-
-Note that all providers implement the [`Middleware` trait](https://docs.rs/ethers/latest/ethers/providers/trait.Middleware.html), which gives every provider access to [commonly used methods](https://docs.rs/ethers/latest/ethers/providers/struct.Provider.html#impl-Middleware-for-Provider%3CP%3E) to interact with the node. Later in this chapter, we will go over these methods and examples for how to use them in detail. Additionally, `Middleware` will be covered extensively in a later chapter.
+-   `inner`: stores the generic data transport, which sends the requests;
+-   `ens`: optional override for the default ENS registry address;
+-   `interval`: optional value that defines the polling interval for `watch_*` streams;
+-   `from`: optional address that sets a default `from` address when constructing calls and transactions;
+-   `node_client`: the type of node the provider is connected to, like Geth, Erigon, etc.
 
 Now that you have a basis for what the `Provider` type actually is, the next few sections will walk through each implementation of the `Provider`, starting with the HTTP provider.
 
+[middleware]: https://docs.rs/ethers/latest/ethers/providers/trait.Middleware.html
+[provider]: https://docs.rs/ethers/latest/ethers/providers/struct.Provider.html

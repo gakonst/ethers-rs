@@ -175,7 +175,7 @@ impl Context {
 
         Ok(quote! {
             #[doc = #doc_str]
-            #[derive(Clone, Debug,Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
             pub #return_type_definition
         })
     }

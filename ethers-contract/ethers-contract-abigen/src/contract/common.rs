@@ -1,11 +1,9 @@
-use super::{util, Context};
-
-use crate::contract::types;
+use super::{types, util, Context};
 use ethers_core::{
     abi::{Param, ParamType},
     macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
 };
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Literal, TokenStream};
 use quote::quote;
 
 /// Expands to the `name, type` pairs for the params
@@ -121,9 +119,10 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
     };
 
     let bytecode = cx.contract_bytecode.as_ref().map(|bytecode| {
-        let bytecode = bytecode.iter().copied().map(|byte| Literal::u8_unsuffixed(byte));
+        let bytecode = bytecode.iter().copied().map(Literal::u8_unsuffixed);
         let bytecode_name = cx.inline_bytecode_ident();
         quote! {
+            #[rustfmt::skip]
             const __BYTECODE: &[u8] = &[ #( #bytecode ),* ];
 
             #[doc = "The bytecode of the contract."]

@@ -1,16 +1,17 @@
+//! The RetryClient is a type that wraps around a JsonRpcClient and automatically retries failed
+//! requests using an exponential backoff and filtering based on a RetryPolicy. It presents as a
+//! JsonRpcClient, but with additional functionality for retrying requests.
+//!
+//! The RetryPolicy can be customized for specific applications and endpoints, mainly to handle
+//! rate-limiting errors. In addition to the RetryPolicy, errors caused by connectivity issues such
+//! as timed out connections or responses in the 5xx range can also be retried separately.
+
 use ethers::prelude::*;
 use reqwest::Url;
 use std::time::Duration;
 
 const RPC_URL: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
 
-/// The RetryClient is a type that wraps around a JsonRpcClient and automatically retries failed
-/// requests using an exponential backoff and filtering based on a RetryPolicy. It presents as a
-/// JsonRpcClient, but with additional functionality for retrying requests.
-///
-/// The RetryPolicy can be customized for specific applications and endpoints, mainly to handle
-/// rate-limiting errors. In addition to the RetryPolicy, errors caused by connectivity issues such
-/// as timed out connections or responses in the 5xx range can also be retried separately.
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     let provider = Http::new(Url::parse(RPC_URL)?);

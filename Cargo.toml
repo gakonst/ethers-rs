@@ -123,7 +123,7 @@ serde = { version = "1.0.124", features = ["derive"] }
 serde_json = "1.0.64"
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread"] }
 hex = "0.4.3"
-bytes = "1.3.0"
+bytes = "1.4.0"
 
 # profile for the wasm example
 [profile.release.package.ethers-wasm]

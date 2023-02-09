@@ -1,9 +1,8 @@
 # Advanced Usage
 
-
 ## `CallBuilder`
 
-The `CallBuilder` is an enum to help create complex calls. `CallBuilder` implements `[RawCall](https://docs.rs/ethers/latest/ethers/providers/call_raw/trait.RawCall.html)`  methods for overriding parameters to the `eth_call`rpc method.
+The `CallBuilder` is an enum to help create complex calls. `CallBuilder` implements [`RawCall`](https://docs.rs/ethers/latest/ethers/providers/call_raw/trait.RawCall.html) methods for overriding parameters to the `eth_call` rpc method.
 
 Lets take a quick look at how to use the `CallBuilder`.
 
@@ -72,7 +71,6 @@ async fn main() -> eyre::Result<()> {
 ```
 
 Let's look at how to use the state override set. In short, the state override set is an optional address-to-state mapping, where each entry specifies some state to be ephemerally overridden prior to executing the call. The state override set allows you to override an account's balance, an account's nonce, the code at a given address, the entire state of an account's storage or an individual slot in an account's storage. Note that the state override set is not a default feature and is not available on every node.
-
 
 ```rust
 use ethers::{

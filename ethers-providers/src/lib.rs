@@ -76,7 +76,7 @@ pub trait JsonRpcClient: Debug + Send + Sync {
     async fn request<T, R>(&self, method: &str, params: T) -> Result<R, Self::Error>
     where
         T: Debug + Serialize + Send + Sync,
-        R: DeserializeOwned;
+        R: DeserializeOwned + Send;
 }
 
 pub trait FromErr<T> {
@@ -513,7 +513,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         private_key: Bytes,
         passphrase: String,
-    ) -> Result<Address, ProviderError> {
+    ) -> Result<Address, Self::Error> {
         self.inner().import_raw_key(private_key, passphrase).await.map_err(FromErr::from)
     }
 
@@ -522,7 +522,7 @@ pub trait Middleware: Sync + Send + Debug {
         account: T,
         passphrase: String,
         duration: Option<u64>,
-    ) -> Result<bool, ProviderError> {
+    ) -> Result<bool, Self::Error> {
         self.inner().unlock_account(account, passphrase, duration).await.map_err(FromErr::from)
     }
 
@@ -590,7 +590,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         tx_hash: TxHash,
         trace_options: GethDebugTracingOptions,
-    ) -> Result<GethTrace, ProviderError> {
+    ) -> Result<GethTrace, Self::Error> {
         self.inner().debug_trace_transaction(tx_hash, trace_options).await.map_err(FromErr::from)
     }
 
@@ -600,7 +600,7 @@ pub trait Middleware: Sync + Send + Debug {
         req: T,
         block: Option<BlockId>,
         trace_options: GethDebugTracingCallOptions,
-    ) -> Result<GethTrace, ProviderError> {
+    ) -> Result<GethTrace, Self::Error> {
         self.inner().debug_trace_call(req, block, trace_options).await.map_err(FromErr::from)
     }
 
@@ -778,14 +778,7 @@ pub mod test_provider {
     use std::{convert::TryFrom, iter::Cycle, slice::Iter, sync::Mutex};
 
     // List of infura keys to rotate through so we don't get rate limited
-    const INFURA_KEYS: &[&str] = &[
-        "6770454bc6ea42c58aac12978531b93f",
-        "7a8769b798b642f6933f2ed52042bd70",
-        "631fd9a6539644088297dc605d35fff3",
-        "16a8be88795540b9b3903d8de0f7baa5",
-        "f4a0bdad42674adab5fc0ac077ffab2b",
-        "5c812e02193c4ba793f8c214317582bd",
-    ];
+    const INFURA_KEYS: &[&str] = &["15e8aaed6f894d63a0f6a0206c006cdd"];
 
     pub static MAINNET: Lazy<TestProvider> =
         Lazy::new(|| TestProvider::new(INFURA_KEYS, "mainnet"));

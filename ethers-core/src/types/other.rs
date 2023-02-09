@@ -1,7 +1,10 @@
 //! Support for capturing other fields
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::Map;
-use std::{collections::BTreeMap, ops::Deref};
+use std::{
+    collections::BTreeMap,
+    ops::{Deref, DerefMut},
+};
 
 /// A type that is supposed to capture additional fields that are not native to ethereum but included in ethereum adjacent networks, for example fields the [optimism `eth_getTransactionByHash` request](https://docs.alchemy.com/alchemy/apis/optimism/eth-gettransactionbyhash) returns additional fields that this type will capture
 ///
@@ -135,6 +138,12 @@ impl Deref for OtherFields {
     #[inline]
     fn deref(&self) -> &BTreeMap<String, serde_json::Value> {
         self.as_ref()
+    }
+}
+
+impl DerefMut for OtherFields {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
     }
 }
 
