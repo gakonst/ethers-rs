@@ -72,7 +72,9 @@ impl Context {
 
     /// Expands to the `name : type` pairs of the function's outputs
     fn expand_error_params(&self, error: &AbiError) -> Result<Vec<(TokenStream, TokenStream)>> {
-        types::expand_params(&error.inputs, |s| self.internal_structs.get_struct_type(s))
+        types::expand_params(&error.inputs, |p| {
+            p.internal_type.as_deref().and_then(|s| self.internal_structs.get_struct_type(s))
+        })
     }
 
     /// The name ident of the errors enum

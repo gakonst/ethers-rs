@@ -285,21 +285,17 @@ impl Context {
 
     /// Expands to the `name : type` pairs of the function's inputs
     fn expand_input_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
-        fun.inputs
-            .iter()
-            .enumerate()
-            .map(|(idx, param)| {
-                let name = util::expand_input_name(idx, &param.name);
-                let ty = self.expand_input_param_type(fun, &param.name, &param.kind)?;
-                Ok((name, ty))
-            })
-            .collect()
+        types::expand_params(&fun.inputs, |p| {
+            self.internal_structs.get_function_input_struct_type(&fun.name, &p.name)
+        })
     }
 
     /// Expands to the `name: type` pairs of the function's outputs
     fn expand_output_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
-        types::expand_params(&fun.outputs, |s| {
-            self.internal_structs.get_function_output_struct_type(&fun.name, s)
+        types::expand_params(&fun.outputs, |p| {
+            p.internal_type
+                .as_deref()
+                .and_then(|s| self.internal_structs.get_function_output_struct_type(&fun.name, s))
         })
     }
 
@@ -327,52 +323,6 @@ impl Context {
             0 => quote!(()),
             1 => call_args.next().unwrap(),
             _ => quote!(( #( #call_args ),* )),
-        }
-    }
-
-    /// returns the Tokenstream for the corresponding rust type of the param
-    fn expand_input_param_type(
-        &self,
-        fun: &Function,
-        param: &str,
-        kind: &ParamType,
-    ) -> Result<TokenStream> {
-        let ethers_core = ethers_core_crate();
-        match kind {
-            ParamType::Array(ty) => {
-                let ty = self.expand_input_param_type(fun, param, ty)?;
-                Ok(quote! {
-                    ::std::vec::Vec<#ty>
-                })
-            }
-            ParamType::FixedArray(ty, size) => {
-                let ty = match **ty {
-                    ParamType::Uint(size) => {
-                        if size / 8 == 1 {
-                            // this prevents type ambiguity with `FixedBytes`
-                            quote! { #ethers_core::types::Uint8}
-                        } else {
-                            self.expand_input_param_type(fun, param, ty)?
-                        }
-                    }
-                    _ => self.expand_input_param_type(fun, param, ty)?,
-                };
-
-                let size = *size;
-                Ok(quote! {[#ty; #size]})
-            }
-            ParamType::Tuple(_) => {
-                let ty = if let Some(rust_struct_name) =
-                    self.internal_structs.get_function_input_struct_type(&fun.name, param)
-                {
-                    let ident = util::ident(rust_struct_name);
-                    quote! {#ident}
-                } else {
-                    types::expand(kind)?
-                };
-                Ok(ty)
-            }
-            _ => types::expand(kind),
         }
     }
 
