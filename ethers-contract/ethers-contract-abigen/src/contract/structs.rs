@@ -92,7 +92,7 @@ impl Context {
         for field in sol_struct.fields() {
             let ty = match field.r#type() {
                 FieldType::Elementary(ty) => types::expand(ty)?,
-                FieldType::Struct(struct_ty) => expand_struct_type(struct_ty),
+                FieldType::Struct(struct_ty) => types::expand_struct_type(struct_ty),
                 FieldType::Mapping(_) => {
                     eyre::bail!("Mapping types in struct `{name}` are not supported")
                 }
@@ -142,7 +142,7 @@ impl Context {
                     fields.push(quote! { pub #field_name: #ty });
                 }
                 FieldType::Struct(struct_ty) => {
-                    let ty = expand_struct_type(struct_ty);
+                    let ty = types::expand_struct_type(struct_ty);
                     fields.push(quote! { pub #field_name: #ty });
 
                     let name = struct_ty.name();
@@ -579,24 +579,6 @@ fn struct_type_projections(name: &str) -> Vec<String> {
     let mut iter = id.rsplit('.');
     iter.next();
     iter.rev().map(str::to_string).collect()
-}
-
-/// Expands to the rust struct type
-fn expand_struct_type(struct_ty: &StructFieldType) -> TokenStream {
-    match struct_ty {
-        StructFieldType::Type(ty) => {
-            let ty = util::ident(ty.name());
-            quote! {#ty}
-        }
-        StructFieldType::Array(ty) => {
-            let ty = expand_struct_type(ty);
-            quote! {::std::vec::Vec<#ty>}
-        }
-        StructFieldType::FixedArray(ty, size) => {
-            let ty = expand_struct_type(ty);
-            quote! { [#ty; #size]}
-        }
-    }
 }
 
 #[cfg(test)]
