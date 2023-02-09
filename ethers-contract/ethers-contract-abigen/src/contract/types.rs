@@ -7,7 +7,7 @@ use ethers_core::{
 };
 use eyre::{bail, Result};
 use proc_macro2::{Literal, TokenStream};
-use quote::quote;
+use quote::{quote, ToTokens};
 
 /// Expands a ParamType Solidity type to its Rust equivalent.
 pub fn expand(kind: &ParamType) -> Result<TokenStream> {
@@ -36,26 +36,16 @@ pub fn expand(kind: &ParamType) -> Result<TokenStream> {
         },
         ParamType::Bool => Ok(quote!(bool)),
         ParamType::String => Ok(quote!(::std::string::String)),
-        ParamType::Array(ty) => {
-            let ty = expand(ty)?;
-            Ok(quote!(::std::vec::Vec<#ty>))
-        }
-        ParamType::FixedBytes(n) => {
-            // TODO(nlordell): what is the performance impact of returning large
-            //   `FixedBytes` and `FixedArray`s with `web3`?
-            let size = Literal::usize_unsuffixed(*n);
-            Ok(quote!([u8; #size]))
-        }
+        ParamType::Array(ty) => Ok(array(expand(ty)?, None)),
+        ParamType::FixedBytes(n) => Ok(array(quote!(u8), Some(*n))),
         ParamType::FixedArray(ty, n) => {
-            // TODO(nlordell): see above
             let ty = match **ty {
                 // this prevents type ambiguity with `FixedBytes`
                 // see: https://github.com/gakonst/ethers-rs/issues/1636
                 ParamType::Uint(size) if size / 8 == 1 => quote!(#ethers_core::types::Uint8),
                 _ => expand(ty)?,
             };
-            let size = Literal::usize_unsuffixed(*n);
-            Ok(quote!([#ty; #size]))
+            Ok(array(ty, Some(*n)))
         }
         ParamType::Tuple(members) => {
             eyre::ensure!(!members.is_empty(), "Tuple must have at least 1 member");
@@ -114,11 +104,8 @@ fn expand_event_input(
                 Some(ty) => {
                     let ty = util::ident(ty);
                     match kind {
-                        ParamType::Array(_) => Ok(quote!(::std::vec::Vec<#ty>)),
-                        ParamType::FixedArray(_, size) => {
-                            let size = Literal::usize_unsuffixed(*size);
-                            Ok(quote!([#ty; #size]))
-                        }
+                        ParamType::Array(_) => Ok(array(ty, None)),
+                        ParamType::FixedArray(_, size) => Ok(array(ty, Some(*size))),
                         ParamType::Tuple(_) => Ok(quote!(#ty)),
                         _ => unreachable!(),
                     }
@@ -156,14 +143,9 @@ fn expand_resolved<'a, 'b, F: Fn(&'a Param) -> Option<&'b str>>(
     resolve_tuple: &F,
 ) -> Result<TokenStream> {
     match kind {
-        ParamType::Array(ty) => {
-            let ty = expand_resolved(ty, param, resolve_tuple)?;
-            Ok(quote!(::std::vec::Vec<#ty>))
-        }
+        ParamType::Array(ty) => Ok(array(expand_resolved(ty, param, resolve_tuple)?, None)),
         ParamType::FixedArray(ty, size) => {
-            let ty = expand_resolved(ty, param, resolve_tuple)?;
-            let size = Literal::usize_unsuffixed(*size);
-            Ok(quote!([#ty; #size]))
+            Ok(array(expand_resolved(ty, param, resolve_tuple)?, Some(*size)))
         }
         ParamType::Tuple(_) => match resolve_tuple(param) {
             Some(ty) => {
@@ -183,13 +165,18 @@ pub fn expand_struct_type(struct_ty: &StructFieldType) -> TokenStream {
             let ty = util::ident(ty.name());
             quote!(#ty)
         }
-        StructFieldType::Array(ty) => {
-            let ty = expand_struct_type(ty);
-            quote!(::std::vec::Vec<#ty>)
-        }
-        StructFieldType::FixedArray(ty, size) => {
-            let ty = expand_struct_type(ty);
+        StructFieldType::Array(ty) => array(expand_struct_type(ty), None),
+        StructFieldType::FixedArray(ty, size) => array(expand_struct_type(ty), Some(*size)),
+    }
+}
+
+/// Expands `ty` into a Rust array or vector.
+fn array<T: ToTokens>(ty: T, size: Option<usize>) -> TokenStream {
+    match size {
+        Some(size) => {
+            let size = Literal::usize_unsuffixed(size);
             quote!([#ty; #size])
         }
+        None => quote!(::std::vec::Vec<#ty>),
     }
 }
