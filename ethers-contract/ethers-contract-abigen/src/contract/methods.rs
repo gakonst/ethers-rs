@@ -1,9 +1,6 @@
 //! Methods expansion
 
-use super::{
-    common::{expand_param_type, expand_params, expand_struct},
-    types, Context,
-};
+use super::{common::expand_struct, types, Context};
 use crate::util;
 use ethers_core::{
     abi::{Function, FunctionExt, Param, ParamType},
@@ -299,50 +296,38 @@ impl Context {
             .collect()
     }
 
-    /// Expands to the `name : type` pairs of the function's outputs
+    /// Expands to the `name: type` pairs of the function's outputs
     fn expand_output_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
-        expand_params(&fun.outputs, |s| {
+        types::expand_params(&fun.outputs, |s| {
             self.internal_structs.get_function_output_struct_type(&fun.name, s)
         })
     }
 
-    /// Expands to the return type of a function
-    fn expand_outputs(&self, fun: &Function) -> Result<TokenStream> {
-        let mut outputs = Vec::with_capacity(fun.outputs.len());
-        for param in fun.outputs.iter() {
-            let ty = self.expand_output_param_type(fun, param, &param.kind)?;
-            outputs.push(ty);
-        }
-
-        Ok(expand_args(outputs))
-    }
-
     /// Expands the arguments for the call that eventually calls the contract
     fn expand_contract_call_args(&self, fun: &Function) -> TokenStream {
-        let call_args = fun
-            .inputs
-            .iter()
-            .enumerate()
-            .map(|(idx, param)| {
-                let name = util::expand_input_name(idx, &param.name);
-                match param.kind {
-                    // this is awkward edge case where the function inputs are a single struct
-                    // we need to force this argument into a tuple so it gets expanded to
-                    // `((#name,))` this is currently necessary because
-                    // internally `flatten_tokens` is called which removes the
-                    // outermost `tuple` level and since `((#name))` is not
-                    // a rust tuple it doesn't get wrapped into another tuple that will be peeled
-                    // off by `flatten_tokens`
-                    ParamType::Tuple(_) if fun.inputs.len() == 1 => {
-                        // make sure the tuple gets converted to `Token::Tuple`
-                        quote!((#name,))
-                    }
-                    _ => name,
+        let mut call_args = fun.inputs.iter().enumerate().map(|(idx, param)| {
+            let name = util::expand_input_name(idx, &param.name);
+            match param.kind {
+                // this is awkward edge case where the function inputs are a single struct
+                // we need to force this argument into a tuple so it gets expanded to
+                // `((#name,))` this is currently necessary because
+                // internally `flatten_tokens` is called which removes the
+                // outermost `tuple` level and since `((#name))` is not
+                // a rust tuple it doesn't get wrapped into another tuple that will be peeled
+                // off by `flatten_tokens`
+                ParamType::Tuple(_) if fun.inputs.len() == 1 => {
+                    // make sure the tuple gets converted to `Token::Tuple`
+                    quote!((#name,))
                 }
-            })
-            .collect::<Vec<_>>();
+                _ => name,
+            }
+        });
 
-        expand_args(call_args)
+        match fun.inputs.len() {
+            0 => quote!(()),
+            1 => call_args.next().unwrap(),
+            _ => quote!(( #( #call_args ),* )),
+        }
     }
 
     /// returns the Tokenstream for the corresponding rust type of the param
@@ -391,18 +376,6 @@ impl Context {
         }
     }
 
-    /// returns the TokenStream for the corresponding rust type of the output param
-    fn expand_output_param_type(
-        &self,
-        fun: &Function,
-        param: &Param,
-        kind: &ParamType,
-    ) -> Result<TokenStream> {
-        expand_param_type(param, kind, |s| {
-            self.internal_structs.get_function_output_struct_type(&fun.name, s)
-        })
-    }
-
     /// Expands a single function with the given alias
     fn expand_function(
         &self,
@@ -420,7 +393,17 @@ impl Context {
             self.expand_input_params(function)?.into_iter().map(|(name, ty)| quote! { #name: #ty });
         let function_params = quote! { #( , #function_params )* };
 
-        let outputs = self.expand_outputs(function)?;
+        let outputs = {
+            let mut out = self.expand_output_params(function)?;
+            match out.len() {
+                0 => quote!(()),
+                1 => out.pop().unwrap().1,
+                _ => {
+                    let iter = out.into_iter().map(|(_, ty)| ty);
+                    quote!(( #( #iter ),* ))
+                }
+            }
+        };
 
         let doc_str =
             format!("Calls the contract's `{name}` (0x{}) function", hex::encode(selector));
@@ -703,14 +686,6 @@ fn expand_call_struct_variant_name(function: &Function, alias: Option<&MethodAli
         alias.struct_name.clone()
     } else {
         util::safe_ident(&util::safe_pascal_case(&function.name))
-    }
-}
-
-fn expand_args(mut args: Vec<TokenStream>) -> TokenStream {
-    match args.len() {
-        0 => quote!(()),
-        1 => args.pop().unwrap(),
-        _ => quote!(( #( #args ),* )),
     }
 }
 
