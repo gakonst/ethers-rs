@@ -2,7 +2,7 @@
 
 use crate::{util, InternalStructs};
 use ethers_core::{
-    abi::{Event, EventParam, Param, ParamType},
+    abi::{struct_def::StructFieldType, Event, EventParam, Param, ParamType},
     macros::ethers_core_crate,
 };
 use eyre::{bail, Result};
@@ -173,5 +173,23 @@ fn expand_resolved<'a, 'b, F: Fn(&'a Param) -> Option<&'b str>>(
             None => expand(kind),
         },
         _ => expand(kind),
+    }
+}
+
+/// Expands to the Rust struct type.
+pub fn expand_struct_type(struct_ty: &StructFieldType) -> TokenStream {
+    match struct_ty {
+        StructFieldType::Type(ty) => {
+            let ty = util::ident(ty.name());
+            quote!(#ty)
+        }
+        StructFieldType::Array(ty) => {
+            let ty = expand_struct_type(ty);
+            quote!(::std::vec::Vec<#ty>)
+        }
+        StructFieldType::FixedArray(ty, size) => {
+            let ty = expand_struct_type(ty);
+            quote!([#ty; #size])
+        }
     }
 }
