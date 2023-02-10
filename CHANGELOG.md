@@ -114,6 +114,7 @@
   Added `twos_complement` function for I256.
 - [#1934](https://github.com/gakonst/ethers-rs/pull/1934) Allow 16 calls in multicall.
 - [#1941](https://github.com/gakonst/ethers-rs/pull/1941) Add `add_calls` and `call_array` for `Multicall`.
+- Added basic event log filtering example.
 
 ## ethers-contract-abigen
 
