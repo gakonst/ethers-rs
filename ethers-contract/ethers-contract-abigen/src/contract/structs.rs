@@ -596,7 +596,7 @@ fn struct_type_projections(name: &str) -> Vec<String> {
 fn expand_struct_type(struct_ty: &StructFieldType) -> TokenStream {
     match struct_ty {
         StructFieldType::Type(ty) => {
-            let ty = util::ident(ty.name());
+            let ty = util::ident(&ty.name().to_pascal_case());
             quote! {#ty}
         }
         StructFieldType::Array(ty) => {
