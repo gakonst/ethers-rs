@@ -1860,7 +1860,7 @@ fn can_parse_doc() {
 
     let contract = r#"
 // SPDX-License-Identifier: GPL-3.0-only
-pragma solidity ^0.8.0;
+pragma solidity 0.8.17;
 
 /// @title Not an ERC20.
 /// @author Notadev
