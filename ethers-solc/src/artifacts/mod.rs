@@ -1018,6 +1018,8 @@ pub struct ModelCheckerSettings {
     pub timeout: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub targets: Option<Vec<ModelCheckerTarget>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invariants: Option<Vec<ModelCheckerInvariant>>,
 }
 
 /// Which model checker engine to run.
@@ -1100,6 +1102,36 @@ impl FromStr for ModelCheckerTarget {
             "outOfBounds" => Ok(ModelCheckerTarget::OutOfBounds),
             "balance" => Ok(ModelCheckerTarget::Balance),
             s => Err(format!("Unknown model checker target: {s}")),
+        }
+    }
+}
+
+/// Which model checker invariants to check.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ModelCheckerInvariant {
+    Contract,
+    Reentrancy,
+}
+
+impl fmt::Display for ModelCheckerInvariant {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let string = match self {
+            ModelCheckerInvariant::Contract => "contract",
+            ModelCheckerInvariant::Reentrancy => "reentrancy",
+        };
+        write!(f, "{string}")
+    }
+}
+
+impl FromStr for ModelCheckerInvariant {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "contract" => Ok(ModelCheckerInvariant::Contract),
+            "reentrancy" => Ok(ModelCheckerInvariant::Reentrancy),
+            s => Err(format!("Unknown model checker invariant: {s}")),
         }
     }
 }
