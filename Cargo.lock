@@ -4027,9 +4027,9 @@ dependencies = [
 
 [[package]]
 name = "solang-parser"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e9653f278d9531b60f042c29732bb835d519943f4167b1e5684c7e820dd9fec"
+checksum = "58feb14d4002859db0b744b0915840bae403b8a5675efded3e8adddb6beb85b2"
 dependencies = [
  "itertools",
  "lalrpop",

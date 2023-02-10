@@ -42,7 +42,7 @@ mod dsproxyfactory_mod {
         types::*,
     };
     use ethers_providers::Middleware;
-    #[doc = "DsProxyFactory was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs"]
+    #[doc = "DsProxyFactory was auto-generated with ethers-rs Abigen. More information at: <https://github.com/gakonst/ethers-rs>"]
     use std::sync::Arc;
 
     pub static DSPROXYFACTORY_ABI: Lazy<Abi> = Lazy::new(|| {
