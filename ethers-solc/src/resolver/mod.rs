@@ -455,17 +455,20 @@ impl Graph {
             all_nodes: &mut HashMap<usize, (PathBuf, Source)>,
             sources: &mut Sources,
             edges: &[Vec<usize>],
-            num_input_files: usize,
+            processed_sources: &mut HashSet<usize>,
         ) {
+            // iterate over all dependencies not processed yet
             for dep in edges[idx].iter().copied() {
-                // we only process nodes that were added as part of the resolve step because input
-                // nodes are handled separately
-                if dep >= num_input_files {
-                    // library import
-                    if let Some((path, source)) = all_nodes.remove(&dep) {
-                        sources.insert(path, source);
-                        insert_imports(dep, all_nodes, sources, edges, num_input_files);
-                    }
+                // keep track of processed dependencies, if the dep was already in the set we have
+                // processed it already
+                if !processed_sources.insert(dep) {
+                    continue
+                }
+
+                // library import
+                if let Some((path, source)) = all_nodes.get(&dep).cloned() {
+                    sources.insert(path, source);
+                    insert_imports(dep, all_nodes, sources, edges, processed_sources);
                 }
             }
         }
@@ -480,17 +483,21 @@ impl Graph {
         // determine the `Sources` set for each solc version
         for (version, input_node_indices) in versioned_nodes {
             let mut sources = Sources::new();
+
+            // all input nodes will be processed
+            let mut processed_sources = input_node_indices.iter().copied().collect();
+
             // we only process input nodes (from sources, tests for example)
             for idx in input_node_indices {
                 // insert the input node in the sources set and remove it from the available set
-                let (path, source) = all_nodes.remove(&idx).expect("node is preset. qed");
+                let (path, source) = all_nodes.get(&idx).cloned().expect("node is preset. qed");
                 sources.insert(path, source);
                 insert_imports(
                     idx,
                     &mut all_nodes,
                     &mut sources,
                     &edges.edges,
-                    edges.num_input_files,
+                    &mut processed_sources,
                 );
             }
             versioned_sources.insert(version, sources);
