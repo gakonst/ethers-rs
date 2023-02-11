@@ -909,6 +909,6 @@ mod tests {
     ///// helpers
 
     fn source(version: &str) -> Source {
-        Source { content: format!("pragma solidity {version};\n") }
+        Source::new(format!("pragma solidity {version};\n"))
     }
 }

@@ -11,6 +11,7 @@ use std::{
     fmt, fs,
     path::{Path, PathBuf},
     str::FromStr,
+    sync::Arc,
 };
 use tracing::warn;
 use yansi::Paint;
@@ -1195,16 +1196,29 @@ pub struct DocLibraries {
     pub libs: BTreeMap<String, serde_json::Value>,
 }
 
+/// Content of a solidity file
+///
+/// This contains the actual source code of a file
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Source {
-    pub content: String,
+    /// Content of the file
+    ///
+    /// This is an `Arc` because it may be cloned. If the [Graph](crate::resolver::Graph) of the
+    /// project contains multiple conflicting versions then the same [Source] may be required by
+    /// conflicting versions and needs to be duplicated.
+    pub content: Arc<String>,
 }
 
 impl Source {
-    /// Reads the file content
+    /// Creates a new instance of [Source] with the given content.
+    pub fn new(content: impl Into<String>) -> Self {
+        Self { content: Arc::new(content.into()) }
+    }
+
+    /// Reads the file's content
     pub fn read(file: impl AsRef<Path>) -> Result<Self, SolcIoError> {
         let file = file.as_ref();
-        Ok(Self { content: fs::read_to_string(file).map_err(|err| SolcIoError::new(err, file))? })
+        Ok(Self::new(fs::read_to_string(file).map_err(|err| SolcIoError::new(err, file))?))
     }
 
     /// Recursively finds all source files under the given dir path and reads them all
@@ -1254,7 +1268,7 @@ impl Source {
     /// Generate a non-cryptographically secure checksum of the file's content
     pub fn content_hash(&self) -> String {
         let mut hasher = md5::Md5::new();
-        hasher.update(&self.content);
+        hasher.update(self);
         let result = hasher.finalize();
         hex::encode(result)
     }
@@ -1270,11 +1284,9 @@ impl Source {
     /// async version of `Self::read`
     pub async fn async_read(file: impl AsRef<Path>) -> Result<Self, SolcIoError> {
         let file = file.as_ref();
-        Ok(Self {
-            content: tokio::fs::read_to_string(file)
-                .await
-                .map_err(|err| SolcIoError::new(err, file))?,
-        })
+        Ok(Self::new(
+            tokio::fs::read_to_string(file).await.map_err(|err| SolcIoError::new(err, file))?,
+        ))
     }
 
     /// Finds all source files under the given dir path and reads them all
@@ -1303,6 +1315,12 @@ impl Source {
 impl AsRef<str> for Source {
     fn as_ref(&self) -> &str {
         &self.content
+    }
+}
+
+impl AsRef<[u8]> for Source {
+    fn as_ref(&self) -> &[u8] {
+        self.content.as_bytes()
     }
 }
 
