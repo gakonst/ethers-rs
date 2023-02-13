@@ -58,7 +58,7 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> TokenStream {
         }
     };
 
-    if let Some((attribute_name,_)) = attributes.name {
+    if let Some((attribute_name, _)) = attributes.name {
         event.name = attribute_name;
     }
 
