@@ -1,6 +1,6 @@
 use super::common::Params;
 use crate::{
-    provider::ProviderError,
+    errors::ProviderError,
     transports::common::{JsonRpcError, Request, Response},
     JsonRpcClient, PubsubClient,
 };
@@ -491,7 +491,7 @@ impl From<IpcError> for ProviderError {
     }
 }
 
-impl crate::TransportError for IpcError {
+impl crate::RpcError for IpcError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         if let IpcError::JsonRpcError(err) = self {
             Some(err)

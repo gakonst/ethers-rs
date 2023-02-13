@@ -2,7 +2,7 @@
 //! with an exponential backoff.
 
 use super::{common::JsonRpcError, http::ClientError};
-use crate::{provider::ProviderError, JsonRpcClient};
+use crate::{errors::ProviderError, JsonRpcClient};
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
@@ -50,7 +50,7 @@ pub trait RetryPolicy<E>: Send + Sync + Debug {
 pub struct RetryClient<T>
 where
     T: JsonRpcClient,
-    T::Error: crate::TransportError + Sync + Send + 'static,
+    T::Error: crate::RpcError + Sync + Send + 'static,
 {
     inner: T,
     requests_enqueued: AtomicU32,
@@ -209,7 +209,7 @@ pub enum RetryClientError {
     TimerError,
 }
 
-impl crate::TransportError for RetryClientError {
+impl crate::RpcError for RetryClientError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         if let RetryClientError::ProviderError(err) = self {
             err.as_error_response()

@@ -2,7 +2,7 @@ use ethers_core::types::{
     transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
     Address, BlockId, Bytes, Chain, Signature, TransactionRequest, U256,
 };
-use ethers_providers::{maybe, FromErr, Middleware, PendingTransaction};
+use ethers_providers::{maybe, Middleware, MiddlewareError, PendingTransaction};
 use ethers_signers::Signer;
 use std::convert::TryFrom;
 
@@ -67,12 +67,6 @@ pub struct SignerMiddleware<M, S> {
     pub(crate) address: Address,
 }
 
-impl<M: Middleware, S: Signer> FromErr<M::Error> for SignerMiddlewareError<M, S> {
-    fn from(src: M::Error) -> SignerMiddlewareError<M, S> {
-        SignerMiddlewareError::MiddlewareError(src)
-    }
-}
-
 #[derive(Error, Debug)]
 /// Error thrown when the client interacts with the blockchain
 pub enum SignerMiddlewareError<M: Middleware, S: Signer> {
@@ -99,6 +93,21 @@ pub enum SignerMiddlewareError<M: Middleware, S: Signer> {
     /// Thrown if the signer's chain_id is different than the chain_id of the transaction
     #[error("specified chain_id is different than the signer's chain_id")]
     DifferentChainID,
+}
+
+impl<M: Middleware, S: Signer> MiddlewareError for SignerMiddlewareError<M, S> {
+    type Inner = M::Error;
+
+    fn from_err(src: M::Error) -> Self {
+        SignerMiddlewareError::MiddlewareError(src)
+    }
+
+    fn as_inner(&self) -> Option<&Self::Inner> {
+        match self {
+            SignerMiddlewareError::MiddlewareError(e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 // Helper functions for locally signing transactions

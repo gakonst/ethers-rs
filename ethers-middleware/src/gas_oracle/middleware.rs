@@ -1,7 +1,7 @@
 use super::{GasOracle, GasOracleError};
 use async_trait::async_trait;
 use ethers_core::types::{transaction::eip2718::TypedTransaction, *};
-use ethers_providers::{FromErr, Middleware, PendingTransaction};
+use ethers_providers::{Middleware, MiddlewareError as METrait, PendingTransaction};
 use thiserror::Error;
 
 /// Middleware used for fetching gas prices over an API instead of `eth_gasPrice`.
@@ -33,9 +33,18 @@ pub enum MiddlewareError<M: Middleware> {
     UnsupportedTxType,
 }
 
-impl<M: Middleware> FromErr<M::Error> for MiddlewareError<M> {
-    fn from(src: M::Error) -> MiddlewareError<M> {
+impl<M: Middleware> METrait for MiddlewareError<M> {
+    type Inner = M::Error;
+
+    fn from_err(src: M::Error) -> MiddlewareError<M> {
         MiddlewareError::MiddlewareError(src)
+    }
+
+    fn as_inner(&self) -> Option<&Self::Inner> {
+        match self {
+            MiddlewareError::MiddlewareError(e) => Some(e),
+            _ => None,
+        }
     }
 }
 
@@ -86,7 +95,7 @@ where
             }
         };
 
-        self.inner().fill_transaction(tx, block).await.map_err(FromErr::from)
+        self.inner().fill_transaction(tx, block).await.map_err(METrait::from_err)
     }
 
     async fn get_gas_price(&self) -> Result<U256, Self::Error> {

@@ -1,5 +1,5 @@
 use ethers_core::types::{transaction::eip2718::TypedTransaction, BlockId};
-use ethers_providers::{FromErr, Middleware, PendingTransaction};
+use ethers_providers::{Middleware, MiddlewareError, PendingTransaction};
 
 use async_trait::async_trait;
 use std::fmt::Debug;
@@ -52,12 +52,6 @@ pub struct PolicyMiddleware<M, P> {
     pub(crate) policy: P,
 }
 
-impl<M: Middleware, P: Policy> FromErr<M::Error> for PolicyMiddlewareError<M, P> {
-    fn from(src: M::Error) -> PolicyMiddlewareError<M, P> {
-        PolicyMiddlewareError::MiddlewareError(src)
-    }
-}
-
 impl<M, P> PolicyMiddleware<M, P>
 where
     M: Middleware,
@@ -78,6 +72,21 @@ pub enum PolicyMiddlewareError<M: Middleware, P: Policy> {
     /// Thrown when an internal middleware errors
     #[error(transparent)]
     MiddlewareError(M::Error),
+}
+
+impl<M: Middleware, P: Policy> MiddlewareError for PolicyMiddlewareError<M, P> {
+    type Inner = M::Error;
+
+    fn from_err(src: M::Error) -> Self {
+        PolicyMiddlewareError::MiddlewareError(src)
+    }
+
+    fn as_inner(&self) -> Option<&Self::Inner> {
+        match self {
+            PolicyMiddlewareError::MiddlewareError(e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
