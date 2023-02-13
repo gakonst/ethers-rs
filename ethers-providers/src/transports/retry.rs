@@ -50,7 +50,7 @@ pub trait RetryPolicy<E>: Send + Sync + Debug {
 pub struct RetryClient<T>
 where
     T: JsonRpcClient,
-    T::Error: crate::ClientError + Sync + Send + 'static,
+    T::Error: crate::TransportError + Sync + Send + 'static,
 {
     inner: T,
     requests_enqueued: AtomicU32,
@@ -209,7 +209,7 @@ pub enum RetryClientError {
     TimerError,
 }
 
-impl crate::ClientError for RetryClientError {
+impl crate::TransportError for RetryClientError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         if let RetryClientError::ProviderError(err) = self {
             err.as_error_response()

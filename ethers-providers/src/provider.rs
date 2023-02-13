@@ -114,7 +114,7 @@ impl FromErr<ProviderError> for ProviderError {
 pub enum ProviderError {
     /// An internal error in the JSON RPC Client
     #[error("{0}")]
-    JsonRpcClientError(Box<dyn crate::ClientError + Send + Sync>),
+    JsonRpcClientError(Box<dyn crate::TransportError + Send + Sync>),
 
     /// An error during ENS name resolution
     #[error("ens name not found: {0}")]
@@ -146,7 +146,7 @@ pub enum ProviderError {
     SignerUnavailable,
 }
 
-impl crate::ClientError for ProviderError {
+impl crate::TransportError for ProviderError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         if let ProviderError::JsonRpcClientError(err) = self {
             err.as_error_response()
