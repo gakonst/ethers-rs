@@ -572,10 +572,7 @@ impl Solc {
 #[cfg(feature = "async")]
 impl Solc {
     /// Convenience function for compiling all sources under the given path
-    pub async fn async_compile_source<T: Serialize>(
-        &self,
-        path: impl AsRef<Path>,
-    ) -> Result<CompilerOutput> {
+    pub async fn async_compile_source(&self, path: impl AsRef<Path>) -> Result<CompilerOutput> {
         self.async_compile(&CompilerInput::with_sources(Source::async_read_all_from(path).await?))
             .await
     }
