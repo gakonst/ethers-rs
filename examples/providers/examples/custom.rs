@@ -23,7 +23,7 @@ pub enum WsOrIpcError {
     Ipc(#[from] IpcError),
 }
 
-impl TransportError for WsOrIpcError {
+impl RpcError for WsOrIpcError {
     fn as_error_response(&self) -> Option<&ethers::providers::JsonRpcError> {
         match self {
             WsOrIpcError::Ws(e) => e.as_error_response(),

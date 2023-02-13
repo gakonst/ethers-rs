@@ -1,6 +1,6 @@
 use super::common::{Params, Response};
 use crate::{
-    provider::ProviderError,
+    errors::ProviderError,
     transports::common::{JsonRpcError, Request},
     JsonRpcClient, PubsubClient,
 };
@@ -496,7 +496,7 @@ pub enum ClientError {
     RequestError(#[from] http::Error),
 }
 
-impl crate::TransportError for ClientError {
+impl crate::RpcError for ClientError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         if let ClientError::JsonRpcError(err) = self {
             Some(err)

@@ -7,7 +7,7 @@ pub use linear::LinearGasPrice;
 
 use async_trait::async_trait;
 use ethers_core::types::{BlockId, TransactionRequest, TxHash, U256};
-use ethers_providers::{interval, FromErr, Middleware, PendingTransaction, StreamExt};
+use ethers_providers::{interval, Middleware, MiddlewareError, PendingTransaction, StreamExt};
 use futures_util::lock::Mutex;
 use instant::Instant;
 use std::{pin::Pin, sync::Arc};
@@ -238,9 +238,18 @@ where
 }
 
 // Boilerplate
-impl<M: Middleware> FromErr<M::Error> for GasEscalatorError<M> {
-    fn from(src: M::Error) -> GasEscalatorError<M> {
+impl<M: Middleware> MiddlewareError for GasEscalatorError<M> {
+    type Inner = M::Error;
+
+    fn from_err(src: M::Error) -> GasEscalatorError<M> {
         GasEscalatorError::MiddlewareError(src)
+    }
+
+    fn as_inner(&self) -> Option<&Self::Inner> {
+        match self {
+            GasEscalatorError::MiddlewareError(e) => Some(e),
+            _ => None,
+        }
     }
 }
 

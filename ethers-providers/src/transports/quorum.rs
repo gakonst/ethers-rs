@@ -1,4 +1,4 @@
-use crate::{provider::ProviderError, JsonRpcClient, PubsubClient};
+use crate::{errors::ProviderError, JsonRpcClient, PubsubClient};
 use async_trait::async_trait;
 use ethers_core::types::{U256, U64};
 use futures_core::Stream;
@@ -355,7 +355,7 @@ pub enum QuorumError {
     NoQuorumReached { values: Vec<Value>, errors: Vec<ProviderError> },
 }
 
-impl crate::TransportError for QuorumError {
+impl crate::RpcError for QuorumError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         None
     }

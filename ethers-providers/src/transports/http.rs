@@ -1,7 +1,7 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
 use super::common::{Authorization, JsonRpcError, Request, Response};
-use crate::{provider::ProviderError, JsonRpcClient};
+use crate::{errors::ProviderError, JsonRpcClient};
 use async_trait::async_trait;
 use reqwest::{header::HeaderValue, Client, Error as ReqwestError};
 use serde::{de::DeserializeOwned, Serialize};
@@ -58,7 +58,7 @@ impl From<ClientError> for ProviderError {
     }
 }
 
-impl crate::TransportError for ClientError {
+impl crate::RpcError for ClientError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         if let ClientError::JsonRpcError(err) = self {
             Some(err)

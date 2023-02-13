@@ -1,7 +1,7 @@
 //! A [JsonRpcClient] implementation that serves as a wrapper around two different [JsonRpcClient]
 //! and uses a dedicated client for read and the other for write operations
 
-use crate::{provider::ProviderError, JsonRpcClient};
+use crate::{errors::ProviderError, JsonRpcClient};
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
@@ -68,9 +68,9 @@ impl<Read, Write> RwClient<Read, Write> {
 pub enum RwClientError<Read, Write>
 where
     Read: JsonRpcClient,
-    <Read as JsonRpcClient>::Error: crate::TransportError + Sync + Send + 'static,
+    <Read as JsonRpcClient>::Error: crate::RpcError + Sync + Send + 'static,
     Write: JsonRpcClient,
-    <Write as JsonRpcClient>::Error: crate::TransportError + Sync + Send + 'static,
+    <Write as JsonRpcClient>::Error: crate::RpcError + Sync + Send + 'static,
 {
     /// Thrown if the _read_ request failed
     #[error(transparent)]
@@ -80,12 +80,12 @@ where
     Write(Write::Error),
 }
 
-impl<Read, Write> crate::TransportError for RwClientError<Read, Write>
+impl<Read, Write> crate::RpcError for RwClientError<Read, Write>
 where
     Read: JsonRpcClient,
-    <Read as JsonRpcClient>::Error: crate::TransportError + Sync + Send + 'static,
+    <Read as JsonRpcClient>::Error: crate::RpcError + Sync + Send + 'static,
     Write: JsonRpcClient,
-    <Write as JsonRpcClient>::Error: crate::TransportError + Sync + Send + 'static,
+    <Write as JsonRpcClient>::Error: crate::RpcError + Sync + Send + 'static,
 {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         match self {

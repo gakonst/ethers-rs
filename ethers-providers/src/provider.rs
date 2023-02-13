@@ -1,10 +1,12 @@
 use crate::{
     call_raw::CallBuilder,
-    ens, erc, maybe,
+    ens, erc,
+    errors::ProviderError,
+    maybe,
     pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
-    FromErr, Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MockProvider,
-    NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
+    Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MiddlewareError,
+    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient, SyncingStatus,
 };
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "ws"))]
@@ -35,7 +37,6 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::VecDeque, convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration,
 };
-use thiserror::Error;
 use tracing::trace;
 use tracing_futures::Instrument;
 use url::{ParseError, Url};
@@ -100,59 +101,6 @@ pub struct Provider<P> {
 impl<P> AsRef<P> for Provider<P> {
     fn as_ref(&self) -> &P {
         &self.inner
-    }
-}
-
-impl FromErr<ProviderError> for ProviderError {
-    fn from(src: ProviderError) -> Self {
-        src
-    }
-}
-
-#[derive(Debug, Error)]
-/// An error thrown when making a call to the provider
-pub enum ProviderError {
-    /// An internal error in the JSON RPC Client
-    #[error("{0}")]
-    JsonRpcClientError(Box<dyn crate::TransportError + Send + Sync>),
-
-    /// An error during ENS name resolution
-    #[error("ens name not found: {0}")]
-    EnsError(String),
-
-    /// Invalid reverse ENS name
-    #[error("reverse ens name not pointing to itself: {0}")]
-    EnsNotOwned(String),
-
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-
-    #[error(transparent)]
-    HexError(#[from] hex::FromHexError),
-
-    #[error(transparent)]
-    HTTPError(#[from] reqwest::Error),
-
-    #[error("custom error: {0}")]
-    CustomError(String),
-
-    #[error("unsupported RPC")]
-    UnsupportedRPC,
-
-    #[error("unsupported node client")]
-    UnsupportedNodeClient,
-
-    #[error("Attempted to sign a transaction with no available signer. Hint: did you mean to use a SignerMiddleware?")]
-    SignerUnavailable,
-}
-
-impl crate::TransportError for ProviderError {
-    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
-        if let ProviderError::JsonRpcClientError(err) = self {
-            err.as_error_response()
-        } else {
-            None
-        }
     }
 }
 
@@ -678,7 +626,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         _tx: &TypedTransaction,
         _from: Address,
     ) -> Result<Signature, Self::Error> {
-        Err(ProviderError::SignerUnavailable).map_err(FromErr::from)
+        Err(ProviderError::SignerUnavailable).map_err(MiddlewareError::from_err)
     }
 
     ////// Contract state
@@ -1760,7 +1708,7 @@ pub fn is_local_endpoint(url: &str) -> bool {
 /// ```
 #[cfg(feature = "dev-rpc")]
 pub mod dev_rpc {
-    use crate::{FromErr, Middleware, ProviderError};
+    use crate::{Middleware, MiddlewareError, ProviderError};
     use async_trait::async_trait;
     use ethers_core::types::U256;
     use thiserror::Error;
@@ -1793,9 +1741,18 @@ pub mod dev_rpc {
         }
     }
 
-    impl<M: Middleware> FromErr<M::Error> for DevRpcMiddlewareError<M> {
-        fn from(src: M::Error) -> DevRpcMiddlewareError<M> {
+    impl<M: Middleware> MiddlewareError for DevRpcMiddlewareError<M> {
+        type Inner = M::Error;
+
+        fn from_err(src: M::Error) -> DevRpcMiddlewareError<M> {
             DevRpcMiddlewareError::MiddlewareError(src)
+        }
+
+        fn as_inner(&self) -> Option<&Self::Inner> {
+            match self {
+                DevRpcMiddlewareError::MiddlewareError(e) => Some(e),
+                _ => None,
+            }
         }
     }
 

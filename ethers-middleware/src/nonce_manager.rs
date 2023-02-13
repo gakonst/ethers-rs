@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use ethers_core::types::{transaction::eip2718::TypedTransaction, *};
-use ethers_providers::{FromErr, Middleware, PendingTransaction};
+use ethers_providers::{Middleware, MiddlewareError, PendingTransaction};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use thiserror::Error;
 
@@ -40,7 +40,7 @@ where
                 .inner
                 .get_transaction_count(self.address, block)
                 .await
-                .map_err(FromErr::from)?;
+                .map_err(MiddlewareError::from_err)?;
             self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
             self.initialized.store(true, Ordering::SeqCst);
             Ok(nonce)
@@ -60,7 +60,7 @@ where
                 .inner
                 .get_transaction_count(self.address, block)
                 .await
-                .map_err(FromErr::from)?;
+                .map_err(MiddlewareError::from_err)?;
             self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
             self.initialized.store(true, Ordering::SeqCst);
         }
@@ -77,9 +77,17 @@ pub enum NonceManagerError<M: Middleware> {
     MiddlewareError(M::Error),
 }
 
-impl<M: Middleware> FromErr<M::Error> for NonceManagerError<M> {
-    fn from(src: M::Error) -> Self {
+impl<M: Middleware> MiddlewareError for NonceManagerError<M> {
+    type Inner = M::Error;
+
+    fn from_err(src: M::Error) -> Self {
         NonceManagerError::MiddlewareError(src)
+    }
+
+    fn as_inner(&self) -> Option<&Self::Inner> {
+        match self {
+            NonceManagerError::MiddlewareError(e) => Some(e),
+        }
     }
 }
 
@@ -106,7 +114,7 @@ where
             tx.set_nonce(self.get_transaction_count_with_manager(block).await?);
         }
 
-        Ok(self.inner().fill_transaction(tx, block).await.map_err(FromErr::from)?)
+        Ok(self.inner().fill_transaction(tx, block).await.map_err(MiddlewareError::from_err)?)
     }
 
     /// Signs and broadcasts the transaction. The optional parameter `block` can be passed so that
@@ -132,10 +140,10 @@ where
                     // was a nonce mismatch
                     self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
                     tx.set_nonce(nonce);
-                    self.inner.send_transaction(tx, block).await.map_err(FromErr::from)
+                    self.inner.send_transaction(tx, block).await.map_err(MiddlewareError::from_err)
                 } else {
                     // propagate the error otherwise
-                    Err(FromErr::from(err))
+                    Err(MiddlewareError::from_err(err))
                 }
             }
         }

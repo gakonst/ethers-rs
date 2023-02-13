@@ -107,7 +107,7 @@ pub enum MockError {
     EmptyResponses,
 }
 
-impl crate::TransportError for MockError {
+impl crate::RpcError for MockError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         None
     }
