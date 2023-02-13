@@ -5,7 +5,7 @@ use ethers::{
         utils::{parse_units, Anvil},
     },
     middleware::MiddlewareBuilder,
-    providers::{FromErr, Http, Middleware, PendingTransaction, Provider},
+    providers::{Http, Middleware, MiddlewareError, PendingTransaction, Provider},
     signers::{LocalWallet, Signer},
 };
 use thiserror::Error;
@@ -98,7 +98,7 @@ where
         println!("Raised transaction gas: {raised_gas:?} wei");
 
         // Dispatch the call to the inner layer
-        self.inner().send_transaction(tx, block).await.map_err(FromErr::from)
+        self.inner().send_transaction(tx, block).await.map_err(MiddlewareError::from_err)
     }
 }
 
@@ -122,9 +122,18 @@ pub enum GasMiddlewareError<M: Middleware> {
     NoGasSetForTransaction,
 }
 
-impl<M: Middleware> FromErr<M::Error> for GasMiddlewareError<M> {
-    fn from(src: M::Error) -> Self {
+impl<M: Middleware> MiddlewareError for GasMiddlewareError<M> {
+    type Inner = M::Error;
+
+    fn from_err(src: M::Error) -> Self {
         GasMiddlewareError::MiddlewareError(src)
+    }
+
+    fn as_inner(&self) -> Option<&Self::Inner> {
+        match self {
+            GasMiddlewareError::MiddlewareError(e) => Some(e),
+            _ => None,
+        }
     }
 }
 
