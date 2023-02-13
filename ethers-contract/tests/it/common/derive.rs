@@ -647,3 +647,25 @@ fn can_use_human_readable_error() {
 
     assert_etherror::<MyError>();
 }
+
+// <https://github.com/gakonst/ethers-rs/issues/2142>
+#[test]
+fn derives_abi_name() {
+    #[derive(Debug, EthEvent)]
+    #[ethevent(abi = "Transfer(address,address,uint256)")]
+    struct Erc20TransferEvent {
+        #[ethevent(indexed, name = "_from")]
+        from: Address,
+        #[ethevent(indexed, name = "_to")]
+        to: Address,
+        #[ethevent(name = "_value")]
+        value: U256,
+    }
+
+    assert_eq!(Erc20TransferEvent::abi_signature(), "Transfer(address,address,uint256)");
+
+    assert_eq!(
+        Erc20TransferEvent::signature(),
+        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".parse().unwrap()
+    );
+}
