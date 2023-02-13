@@ -250,6 +250,23 @@ mod tests {
     }
 
     #[test]
+    fn parse_hive_clique_smoke_genesis() {
+        let geth_genesis = r#"
+        {
+          "difficulty": "0x1",
+          "gasLimit": "0x400000",
+          "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000658bdf435d810c91414ec09147daa6db624063790000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+          "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "nonce": "0x0",
+          "timestamp": "0x5c51a607",
+          "alloc": {}
+        }
+        "#;
+
+        let _genesis: Genesis = serde_json::from_str(geth_genesis).unwrap();
+    }
+
+    #[test]
     fn parse_hive_rpc_genesis() {
         let geth_genesis = r#"
         {
