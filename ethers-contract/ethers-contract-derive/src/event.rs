@@ -4,7 +4,7 @@ use ethers_contract_abigen::Source;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
-    parse::Error, spanned::Spanned as _, AttrStyle, Data, DeriveInput, Field, Fields, Lit, Meta,
+    parse::Error, spanned::Spanned, AttrStyle, Data, DeriveInput, Field, Fields, Lit, Meta,
     NestedMeta,
 };
 
@@ -44,8 +44,9 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, E
                     }
                     Err(source_err) => {
                         // Return both error messages
-                        let message = format!("Failed parsing ABI: {parse_err} ({source_err})");
-                        Err(Error::new(span, message))
+                        let mut error = Error::new(span, parse_err);
+                        error.combine(Error::new(span, source_err));
+                        Err(error)
                     }
                 }
             }
@@ -100,7 +101,7 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, E
         }
     };
 
-    let tokenize_impl = abi_ty::derive_tokenizeable_impl(&input);
+    let tokenize_impl = abi_ty::derive_tokenizeable_impl(&input)?;
 
     Ok(quote! {
         #tokenize_impl
