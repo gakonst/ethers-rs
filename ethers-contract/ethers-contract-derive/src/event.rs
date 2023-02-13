@@ -18,41 +18,42 @@ use crate::{abi_ty, utils};
 
 /// Generates the `EthEvent` trait support
 pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, Error> {
-    // the ethers crates to use
-    let core_crate = ethers_core_crate();
-    let contract_crate = ethers_contract_crate();
-
     let name = &input.ident;
     let attributes = parse_event_attributes(&input)?;
 
     let event_name = attributes.name.map(|(s, _)| s).unwrap_or_else(|| input.ident.to_string());
 
     let mut event = if let Some((src, span)) = attributes.abi {
-        // try to parse as solidity event
-        if let Ok(event) = HumanReadableParser::parse_event(&src) {
-            event
-        } else {
-            match src.parse::<Source>().and_then(|s| s.get()) {
-                Ok(abi) => {
-                    // try to derive the signature from the abi from the parsed abi
-                    // TODO(mattsse): this will fail for events that contain other non
-                    // elementary types in their abi  because the parser
-                    // doesn't know how to substitute the types
-                    //  this could be mitigated by getting the ABI of each non elementary type
-                    // at runtime  and computing the the signature as
-                    // `static Lazy::...`
-                    match HumanReadableParser::parse_event(&abi) {
-                        Ok(event) => event,
-                        Err(err) => return Err(Error::new(span, err)),
+        // try to parse as a Solidity event
+        match HumanReadableParser::parse_event(&src) {
+            Ok(event) => Ok(event),
+            Err(parse_err) => {
+                match src.parse::<Source>().and_then(|s| s.get()) {
+                    Ok(abi) => {
+                        // try to derive the signature from the abi from the parsed abi
+                        // TODO(mattsse): this will fail for events that contain other non
+                        // elementary types in their abi because the parser
+                        // doesn't know how to substitute the types.
+                        // This could be mitigated by getting the ABI of each non elementary type
+                        // at runtime and computing the the signature as a Lazy static.
+                        match HumanReadableParser::parse_event(&abi) {
+                            Ok(event) => Ok(event),
+                            // Ignore parse_err since this is a valid [Source]
+                            Err(err) => Err(Error::new(span, err)),
+                        }
+                    }
+                    Err(source_err) => {
+                        // Return both error messages
+                        let message = format!("Failed parsing ABI: {parse_err} ({source_err})");
+                        Err(Error::new(span, message))
                     }
                 }
-                Err(err) => return Err(Error::new(span, err)),
             }
         }
     } else {
         // try to determine the abi from the fields
-        derive_abi_event_from_fields(&input)?
-    };
+        derive_abi_event_from_fields(&input)
+    }?;
 
     event.name = event_name.clone();
     if let Some((anon, _)) = attributes.anonymous.as_ref() {
@@ -61,24 +62,27 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, E
 
     let decode_log_impl = derive_decode_from_log_impl(&input, &event)?;
 
-    let (abi, hash) = (event.abi_signature(), event.signature());
+    let (abi, event_sig) = (event.abi_signature(), event.signature());
 
     let signature = if let Some((hash, _)) = attributes.signature_hash {
         utils::signature(&hash)
     } else {
-        utils::signature(hash.as_bytes())
+        utils::signature(event_sig.as_bytes())
     };
 
     let anon = attributes.anonymous.map(|(b, _)| b).unwrap_or_default();
 
+    let ethers_core = ethers_core_crate();
+    let ethers_contract = ethers_contract_crate();
+
     let ethevent_impl = quote! {
-        impl #contract_crate::EthEvent for #name {
+        impl #ethers_contract::EthEvent for #name {
 
             fn name() -> ::std::borrow::Cow<'static, str> {
                 #event_name.into()
             }
 
-            fn signature() -> #core_crate::types::H256 {
+            fn signature() -> #ethers_core::types::H256 {
                 #signature
             }
 
@@ -86,7 +90,7 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, E
                 #abi.into()
             }
 
-            fn decode_log(log: &#core_crate::abi::RawLog) -> ::std::result::Result<Self, #core_crate::abi::Error> where Self: Sized {
+            fn decode_log(log: &#ethers_core::abi::RawLog) -> ::std::result::Result<Self, #ethers_core::abi::Error> where Self: Sized {
                 #decode_log_impl
             }
 
@@ -121,7 +125,7 @@ fn derive_decode_from_log_impl(
     input: &DeriveInput,
     event: &Event,
 ) -> Result<proc_macro2::TokenStream, Error> {
-    let core_crate = ethers_core_crate();
+    let ethers_core = ethers_core_crate();
 
     let fields: Vec<_> = match input.data {
         Data::Struct(ref data) => match data.fields {
@@ -204,16 +208,16 @@ fn derive_decode_from_log_impl(
             },
             quote! {
                 if topic_tokens.len() != topics.len() {
-                    return Err(#core_crate::abi::Error::InvalidData);
+                    return Err(#ethers_core::abi::Error::InvalidData);
                 }
             },
         )
     } else {
         (
             quote! {
-                let event_signature = topics.get(0).ok_or(#core_crate::abi::Error::InvalidData)?;
+                let event_signature = topics.get(0).ok_or(#ethers_core::abi::Error::InvalidData)?;
                 if event_signature != &Self::signature() {
-                    return Err(#core_crate::abi::Error::InvalidData);
+                    return Err(#ethers_core::abi::Error::InvalidData);
                 }
             },
             quote! {
@@ -221,7 +225,7 @@ fn derive_decode_from_log_impl(
             },
             quote! {
                 if topic_tokens.len() != topics.len() - 1 {
-                    return Err(#core_crate::abi::Error::InvalidData);
+                    return Err(#ethers_core::abi::Error::InvalidData);
                 }
             },
         )
@@ -235,9 +239,9 @@ fn derive_decode_from_log_impl(
         .all(|(idx, f)| f.index == idx)
     {
         quote! {
-            let topic_tokens = #core_crate::abi::decode(&topic_types, &flat_topics)?;
+            let topic_tokens = #ethers_core::abi::decode(&topic_types, &flat_topics)?;
             #topic_tokens_len_check
-            let data_tokens = #core_crate::abi::decode(&data_types, data)?;
+            let data_tokens = #ethers_core::abi::decode(&data_types, data)?;
             let tokens:Vec<_> = topic_tokens.into_iter().chain(data_tokens.into_iter()).collect();
         }
     } else {
@@ -250,16 +254,16 @@ fn derive_decode_from_log_impl(
         });
 
         quote! {
-            let mut topic_tokens = #core_crate::abi::decode(&topic_types, &flat_topics)?;
+            let mut topic_tokens = #ethers_core::abi::decode(&topic_types, &flat_topics)?;
             #topic_tokens_len_check
-            let mut data_tokens = #core_crate::abi::decode(&data_types, &data)?;
+            let mut data_tokens = #ethers_core::abi::decode(&data_types, &data)?;
             let mut tokens = Vec::with_capacity(topics.len() + data_tokens.len());
             #( tokens.push(#swap_tokens); )*
         }
     };
     Ok(quote! {
 
-        let #core_crate::abi::RawLog {data, topics} = log;
+        let #ethers_core::abi::RawLog {data, topics} = log;
 
         #signature_check
 
@@ -270,7 +274,7 @@ fn derive_decode_from_log_impl(
 
         #tokens_init
 
-        #core_crate::abi::Tokenizable::from_token(#core_crate::abi::Token::Tuple(tokens)).map_err(|_|#core_crate::abi::Error::InvalidData)
+        #ethers_core::abi::Tokenizable::from_token(#ethers_core::abi::Token::Tuple(tokens)).map_err(|_|#ethers_core::abi::Error::InvalidData)
     })
 }
 
