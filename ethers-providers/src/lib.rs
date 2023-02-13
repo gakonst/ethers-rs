@@ -99,11 +99,12 @@ where
 ///
 /// Writing a middleware is as simple as:
 /// 1. implementing the [`inner`](crate::Middleware::inner) method to point to the next layer in the
-/// "middleware onion", 2. implementing the [`FromErr`](crate::FromErr) trait on your middleware's
+/// "middleware onion", 2. implementing the
+/// [`MiddlewareError`](crate::MiddlewareError) trait on your middleware's
 /// error type 3. implementing any of the methods you want to override
 ///
-/// ```rust
-/// use ethers_providers::{Middleware, FromErr};
+/// ```
+/// use ethers_providers::{Middleware, MiddlewareError};
 /// use ethers_core::types::{U64, TransactionRequest, U256, transaction::eip2718::TypedTransaction, BlockId};
 /// use thiserror::Error;
 /// use async_trait::async_trait;
@@ -119,9 +120,18 @@ where
 ///     // Add your middleware's specific errors here
 /// }
 ///
-/// impl<M: Middleware> FromErr<M::Error> for MyError<M> {
-///     fn from(src: M::Error) -> MyError<M> {
+/// impl<M: Middleware> MiddlewareError for MyError<M> {
+///     type Inner = M::Error;
+///
+///     fn from_err(src: M::Error) -> MyError<M> {
 ///         MyError::MiddlewareError(src)
+///     }
+///
+///     fn as_inner(&self) -> Option<&Self::Inner> {
+///         match self {
+///             MyError::MiddlewareError(e) => Some(e),
+///             _ => None,
+///         }
 ///     }
 /// }
 ///
