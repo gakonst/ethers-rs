@@ -58,7 +58,7 @@ impl From<ClientError> for ProviderError {
     }
 }
 
-impl crate::ClientError for ClientError {
+impl crate::TransportError for ClientError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         if let ClientError::JsonRpcError(err) = self {
             Some(err)

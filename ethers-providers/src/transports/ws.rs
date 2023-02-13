@@ -463,7 +463,7 @@ pub enum ClientError {
     #[error("{0}")]
     ChannelError(String),
 
-    #[error(transparent)]
+    #[error("{0}")]
     Canceled(#[from] oneshot::Canceled),
 
     /// Remote server sent a Close message
@@ -472,7 +472,7 @@ pub enum ClientError {
     WsClosed(CloseFrame<'static>),
 
     /// Remote server sent a Close message
-    #[error("Websocket closed with info")]
+    #[error("Websocket closed")]
     #[cfg(target_arch = "wasm32")]
     WsClosed,
 
@@ -496,7 +496,7 @@ pub enum ClientError {
     RequestError(#[from] http::Error),
 }
 
-impl crate::ClientError for ClientError {
+impl crate::TransportError for ClientError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         if let ClientError::JsonRpcError(err) = self {
             Some(err)

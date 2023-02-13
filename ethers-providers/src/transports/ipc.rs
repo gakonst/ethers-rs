@@ -491,7 +491,7 @@ impl From<IpcError> for ProviderError {
     }
 }
 
-impl crate::ClientError for IpcError {
+impl crate::TransportError for IpcError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         if let IpcError::JsonRpcError(err) = self {
             Some(err)
