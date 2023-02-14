@@ -7,7 +7,7 @@ use ethers_core::{
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::{parse::Error, spanned::Spanned as _, AttrStyle, DeriveInput, Lit, Meta, NestedMeta};
+use syn::{parse::Error, spanned::Spanned, AttrStyle, DeriveInput, Lit, Meta, NestedMeta};
 
 /// All the attributes the `EthCall`/`EthError` macro supports
 #[derive(Default)]
@@ -20,7 +20,7 @@ pub struct EthCalllikeAttributes {
 pub fn parse_calllike_attributes(
     input: &DeriveInput,
     attr_name: &str,
-) -> Result<EthCalllikeAttributes, TokenStream> {
+) -> Result<EthCalllikeAttributes, Error> {
     let mut result = EthCalllikeAttributes::default();
     for a in input.attrs.iter() {
         if let AttrStyle::Outer = a.style {
@@ -33,15 +33,13 @@ pub fn parse_calllike_attributes(
                                     return Err(Error::new(
                                         path.span(),
                                         format!("unrecognized {attr_name} parameter"),
-                                    )
-                                    .to_compile_error())
+                                    ))
                                 }
                                 Meta::List(meta) => {
                                     return Err(Error::new(
                                         meta.path.span(),
                                         format!("unrecognized {attr_name} parameter"),
-                                    )
-                                    .to_compile_error())
+                                    ))
                                 }
                                 Meta::NameValue(meta) => {
                                     if meta.path.is_ident("name") {
@@ -53,15 +51,13 @@ pub fn parse_calllike_attributes(
                                                 return Err(Error::new(
                                                     meta.span(),
                                                     "name already specified",
-                                                )
-                                                .to_compile_error())
+                                                ))
                                             }
                                         } else {
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "name must be a string",
-                                            )
-                                            .to_compile_error())
+                                            ))
                                         }
                                     } else if meta.path.is_ident("abi") {
                                         if let Lit::Str(ref lit_str) = meta.lit {
@@ -72,22 +68,19 @@ pub fn parse_calllike_attributes(
                                                 return Err(Error::new(
                                                     meta.span(),
                                                     "abi already specified",
-                                                )
-                                                .to_compile_error())
+                                                ))
                                             }
                                         } else {
                                             return Err(Error::new(
                                                 meta.span(),
                                                 "abi must be a string",
-                                            )
-                                            .to_compile_error())
+                                            ))
                                         }
                                     } else {
                                         return Err(Error::new(
                                             meta.span(),
                                             format!("unrecognized {attr_name} parameter"),
-                                        )
-                                        .to_compile_error())
+                                        ))
                                     }
                                 }
                             }
@@ -105,7 +98,7 @@ pub fn derive_decode_impl_with_abi_type(
     input: &DeriveInput,
     trait_ident: Ident,
 ) -> Result<TokenStream, Error> {
-    let datatypes_array = utils::derive_abi_parameters_array(input, &trait_ident.to_string())?;
+    let datatypes_array = utils::abi_parameters_array(input, &trait_ident.to_string())?;
     Ok(derive_decode_impl(datatypes_array, trait_ident))
 }
 
@@ -117,18 +110,18 @@ pub fn derive_decode_impl_from_params(params: &[Param], trait_ident: Ident) -> T
 }
 
 pub fn derive_decode_impl(datatypes_array: TokenStream, trait_ident: Ident) -> TokenStream {
-    let core_crate = ethers_core_crate();
-    let contract_crate = ethers_contract_crate();
+    let ethers_core = ethers_core_crate();
+    let ethers_contract = ethers_contract_crate();
     let data_types_init = quote! {let data_types = #datatypes_array;};
 
     quote! {
         let bytes = bytes.as_ref();
-        if bytes.len() < 4 || bytes[..4] != <Self as #contract_crate::#trait_ident>::selector() {
-            return Err(#contract_crate::AbiError::WrongSelector);
+        if bytes.len() < 4 || bytes[..4] != <Self as #ethers_contract::#trait_ident>::selector() {
+            return Err(#ethers_contract::AbiError::WrongSelector);
         }
         #data_types_init
-        let data_tokens = #core_crate::abi::decode(&data_types, &bytes[4..])?;
-        Ok(<Self as #core_crate::abi::Tokenizable>::from_token( #core_crate::abi::Token::Tuple(data_tokens))?)
+        let data_tokens = #ethers_core::abi::decode(&data_types, &bytes[4..])?;
+        Ok(<Self as #ethers_core::abi::Tokenizable>::from_token(#ethers_core::abi::Token::Tuple(data_tokens))?)
     }
 }
 
@@ -137,25 +130,24 @@ pub fn derive_codec_impls(
     input: &DeriveInput,
     decode_impl: TokenStream,
     trait_ident: Ident,
-) -> TokenStream {
+) -> Result<TokenStream, Error> {
     // the ethers crates to use
-    let core_crate = ethers_core_crate();
-    let contract_crate = ethers_contract_crate();
+    let ethers_core = ethers_core_crate();
+    let ethers_contract = ethers_contract_crate();
     let struct_name = &input.ident;
 
     let codec_impl = quote! {
-
-        impl #core_crate::abi::AbiDecode for #struct_name {
-            fn decode(bytes: impl AsRef<[u8]>) -> ::std::result::Result<Self, #core_crate::abi::AbiError> {
+        impl #ethers_core::abi::AbiDecode for #struct_name {
+            fn decode(bytes: impl AsRef<[u8]>) -> ::std::result::Result<Self, #ethers_core::abi::AbiError> {
                 #decode_impl
             }
         }
 
-        impl #core_crate::abi::AbiEncode for #struct_name {
+        impl #ethers_core::abi::AbiEncode for #struct_name {
             fn encode(self) -> ::std::vec::Vec<u8> {
-                let tokens =  #core_crate::abi::Tokenize::into_tokens(self);
-                let selector = <Self as #contract_crate::#trait_ident>::selector();
-                let encoded = #core_crate::abi::encode(&tokens);
+                let tokens =  #ethers_core::abi::Tokenize::into_tokens(self);
+                let selector = <Self as #ethers_contract::#trait_ident>::selector();
+                let encoded = #ethers_core::abi::encode(&tokens);
                 selector
                     .iter()
                     .copied()
@@ -165,10 +157,10 @@ pub fn derive_codec_impls(
         }
 
     };
-    let tokenize_impl = abi_ty::derive_tokenizeable_impl(input);
+    let tokenize_impl = abi_ty::derive_tokenizeable_impl(input)?;
 
-    quote! {
+    Ok(quote! {
         #tokenize_impl
         #codec_impl
-    }
+    })
 }

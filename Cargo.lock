@@ -1392,6 +1392,7 @@ version = "1.0.2"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-core",
+ "eyre",
  "hex",
  "proc-macro2",
  "quote",
