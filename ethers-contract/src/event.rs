@@ -2,11 +2,22 @@
 
 use crate::{log::LogMeta, stream::EventStream, ContractError, EthLogDecode};
 use ethers_core::{
-    abi::{Address, Detokenize, RawLog},
+    abi::{Address, Detokenize, Error as AbiError, RawLog},
     types::{BlockNumber, Filter, Log, Topic, ValueOrArray, H256},
 };
 use ethers_providers::{FilterWatcher, Middleware, PubsubClient, SubscriptionStream};
-use std::{borrow::Cow, marker::PhantomData};
+use std::{
+    borrow::{Borrow, Cow},
+    marker::PhantomData,
+};
+
+/// Attempt to parse a log into a specific output type.
+pub fn parse_log<D>(log: Log) -> std::result::Result<D, AbiError>
+where
+    D: EthLogDecode,
+{
+    D::decode_log(&RawLog { topics: log.topics, data: log.data.to_vec() })
+}
 
 /// A trait for implementing event bindings
 pub trait EthEvent: Detokenize + Send + Sync {
@@ -31,12 +42,14 @@ pub trait EthEvent: Detokenize + Send + Sync {
     fn is_anonymous() -> bool;
 
     /// Returns an Event builder for the ethereum event represented by this types ABI signature.
-    fn new<M: Middleware>(filter: Filter, provider: &M) -> Event<M, Self>
+    fn new<B, M>(filter: Filter, provider: B) -> Event<B, M, Self>
     where
         Self: Sized,
+        B: Borrow<M>,
+        M: Middleware,
     {
         let filter = filter.event(&Self::abi_signature());
-        Event { filter, provider, datatype: PhantomData }
+        Event { filter, provider, datatype: PhantomData, _m: PhantomData }
     }
 }
 
@@ -53,16 +66,22 @@ impl<T: EthEvent> EthLogDecode for T {
 /// Helper for managing the event filter before querying or streaming its logs
 #[derive(Debug)]
 #[must_use = "event filters do nothing unless you `query` or `stream` them"]
-pub struct Event<'a, M, D> {
+pub struct Event<B, M, D> {
     /// The event filter's state
     pub filter: Filter,
-    pub(crate) provider: &'a M,
+    pub(crate) provider: B,
     /// Stores the event datatype
     pub(crate) datatype: PhantomData<D>,
+    pub(crate) _m: PhantomData<M>,
 }
 
 // TODO: Improve these functions
-impl<M, D: EthLogDecode> Event<'_, M, D> {
+impl<B, M, D> Event<B, M, D>
+where
+    B: Borrow<M>,
+    M: Middleware,
+    D: EthLogDecode,
+{
     /// Sets the filter's `from` block
     #[allow(clippy::wrong_self_convention)]
     pub fn from_block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
@@ -116,8 +135,9 @@ impl<M, D: EthLogDecode> Event<'_, M, D> {
     }
 }
 
-impl<'a, M, D> Event<'a, M, D>
+impl<B, M, D> Event<B, M, D>
 where
+    B: Borrow<M>,
     M: Middleware,
     D: EthLogDecode,
 {
@@ -161,40 +181,49 @@ where
     /// # }
     /// ```
     pub async fn stream(
-        &'a self,
+        &self,
     ) -> Result<
         // Wraps the FilterWatcher with a mapping to the event
-        EventStream<'a, FilterWatcher<'a, M::Provider, Log>, D, ContractError<M>>,
+        EventStream<'_, FilterWatcher<'_, M::Provider, Log>, D, ContractError<M>>,
         ContractError<M>,
     > {
-        let filter =
-            self.provider.watch(&self.filter).await.map_err(ContractError::MiddlewareError)?;
-        Ok(EventStream::new(filter.id, filter, Box::new(move |log| self.parse_log(log))))
+        let filter = self
+            .provider
+            .borrow()
+            .watch(&self.filter)
+            .await
+            .map_err(ContractError::MiddlewareError)?;
+        Ok(EventStream::new(filter.id, filter, Box::new(move |log| Ok(parse_log(log)?))))
     }
 
     /// As [`Self::stream`], but does not discard [`Log`] metadata.
     pub async fn stream_with_meta(
-        &'a self,
+        &self,
     ) -> Result<
         // Wraps the FilterWatcher with a mapping to the event
-        EventStream<'a, FilterWatcher<'a, M::Provider, Log>, (D, LogMeta), ContractError<M>>,
+        EventStream<'_, FilterWatcher<'_, M::Provider, Log>, (D, LogMeta), ContractError<M>>,
         ContractError<M>,
     > {
-        let filter =
-            self.provider.watch(&self.filter).await.map_err(ContractError::MiddlewareError)?;
+        let filter = self
+            .provider
+            .borrow()
+            .watch(&self.filter)
+            .await
+            .map_err(ContractError::MiddlewareError)?;
         Ok(EventStream::new(
             filter.id,
             filter,
             Box::new(move |log| {
                 let meta = LogMeta::from(&log);
-                Ok((self.parse_log(log)?, meta))
+                Ok((parse_log(log)?, meta))
             }),
         ))
     }
 }
 
-impl<'a, M, D> Event<'a, M, D>
+impl<B, M, D> Event<B, M, D>
 where
+    B: Borrow<M>,
     M: Middleware,
     <M as Middleware>::Provider: PubsubClient,
     D: EthLogDecode,
@@ -203,29 +232,31 @@ where
     ///
     /// See also [Self::stream()].
     pub async fn subscribe(
-        &'a self,
+        &self,
     ) -> Result<
         // Wraps the SubscriptionStream with a mapping to the event
-        EventStream<'a, SubscriptionStream<'a, M::Provider, Log>, D, ContractError<M>>,
+        EventStream<'_, SubscriptionStream<'_, M::Provider, Log>, D, ContractError<M>>,
         ContractError<M>,
     > {
         let filter = self
             .provider
+            .borrow()
             .subscribe_logs(&self.filter)
             .await
             .map_err(ContractError::MiddlewareError)?;
-        Ok(EventStream::new(filter.id, filter, Box::new(move |log| self.parse_log(log))))
+        Ok(EventStream::new(filter.id, filter, Box::new(move |log| Ok(parse_log(log)?))))
     }
 
     pub async fn subscribe_with_meta(
-        &'a self,
+        &self,
     ) -> Result<
         // Wraps the SubscriptionStream with a mapping to the event
-        EventStream<'a, SubscriptionStream<'a, M::Provider, Log>, (D, LogMeta), ContractError<M>>,
+        EventStream<'_, SubscriptionStream<'_, M::Provider, Log>, (D, LogMeta), ContractError<M>>,
         ContractError<M>,
     > {
         let filter = self
             .provider
+            .borrow()
             .subscribe_logs(&self.filter)
             .await
             .map_err(ContractError::MiddlewareError)?;
@@ -234,25 +265,30 @@ where
             filter,
             Box::new(move |log| {
                 let meta = LogMeta::from(&log);
-                Ok((self.parse_log(log)?, meta))
+                Ok((parse_log(log)?, meta))
             }),
         ))
     }
 }
 
-impl<M, D> Event<'_, M, D>
+impl<B, M, D> Event<B, M, D>
 where
+    B: Borrow<M>,
     M: Middleware,
     D: EthLogDecode,
 {
     /// Queries the blockchain for the selected filter and returns a vector of matching
     /// event logs
     pub async fn query(&self) -> Result<Vec<D>, ContractError<M>> {
-        let logs =
-            self.provider.get_logs(&self.filter).await.map_err(ContractError::MiddlewareError)?;
+        let logs = self
+            .provider
+            .borrow()
+            .get_logs(&self.filter)
+            .await
+            .map_err(ContractError::MiddlewareError)?;
         let events = logs
             .into_iter()
-            .map(|log| self.parse_log(log))
+            .map(|log| Ok(parse_log(log)?))
             .collect::<Result<Vec<_>, ContractError<M>>>()?;
         Ok(events)
     }
@@ -260,20 +296,20 @@ where
     /// Queries the blockchain for the selected filter and returns a vector of logs
     /// along with their metadata
     pub async fn query_with_meta(&self) -> Result<Vec<(D, LogMeta)>, ContractError<M>> {
-        let logs =
-            self.provider.get_logs(&self.filter).await.map_err(ContractError::MiddlewareError)?;
+        let logs = self
+            .provider
+            .borrow()
+            .get_logs(&self.filter)
+            .await
+            .map_err(ContractError::MiddlewareError)?;
         let events = logs
             .into_iter()
             .map(|log| {
                 let meta = LogMeta::from(&log);
-                let event = self.parse_log(log)?;
+                let event = parse_log(log)?;
                 Ok((event, meta))
             })
             .collect::<Result<_, ContractError<M>>>()?;
         Ok(events)
-    }
-
-    pub fn parse_log(&self, log: Log) -> Result<D, ContractError<M>> {
-        D::decode_log(&RawLog { topics: log.topics, data: log.data.to_vec() }).map_err(From::from)
     }
 }

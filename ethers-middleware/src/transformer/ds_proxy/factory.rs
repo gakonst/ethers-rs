@@ -98,13 +98,13 @@ mod dsproxyfactory_mod {
                 .expect("method not found (this should never happen)")
         }
         ///Gets the contract's `Created` event
-        pub fn created_filter(&self) -> Event<M, CreatedFilter> {
+        pub fn created_filter(&self) -> Event<Arc<M>, M, CreatedFilter> {
             self.0.event()
         }
 
         /// Returns an [`Event`](ethers_contract::builders::Event) builder for all events of this
         /// contract
-        pub fn events(&self) -> Event<M, CreatedFilter> {
+        pub fn events(&self) -> Event<Arc<M>, M, CreatedFilter> {
             self.0.event_with_filter(Default::default())
         }
     }
