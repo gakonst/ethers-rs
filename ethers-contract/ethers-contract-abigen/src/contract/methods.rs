@@ -1,10 +1,8 @@
-use std::collections::{btree_map::Entry, BTreeMap, HashMap, HashSet};
-
-use super::{types, util, Context};
-use crate::{
-    contract::common::{expand_data_struct, expand_data_tuple, expand_param_type, expand_params},
-    util::can_derive_defaults,
+use super::{
+    common::{expand_data_struct, expand_data_tuple},
+    types, Context,
 };
+use crate::util::{self, can_derive_defaults};
 use ethers_core::{
     abi::{Function, FunctionExt, Param, ParamType},
     macros::{ethers_contract_crate, ethers_core_crate},
@@ -14,6 +12,7 @@ use eyre::{Context as _, Result};
 use inflector::Inflector;
 use proc_macro2::{Literal, TokenStream};
 use quote::quote;
+use std::collections::{btree_map::Entry, BTreeMap, HashMap, HashSet};
 use syn::Ident;
 
 /// The maximum amount of overloaded functions that are attempted to auto aliased with their param
@@ -304,127 +303,45 @@ impl Context {
 
     /// Expands to the `name : type` pairs of the function's inputs
     fn expand_input_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
-        fun.inputs
-            .iter()
-            .enumerate()
-            .map(|(idx, param)| {
-                let name = util::expand_input_name(idx, &param.name);
-                let ty = self.expand_input_param_type(fun, &param.name, &param.kind)?;
-                Ok((name, ty))
-            })
-            .collect()
-    }
-
-    /// Expands to the `name : type` pairs of the function's outputs
-    fn expand_output_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
-        expand_params(&fun.outputs, |s| {
-            self.internal_structs.get_function_output_struct_type(&fun.name, s)
+        types::expand_params(&fun.inputs, |p| {
+            self.internal_structs.get_function_input_struct_type(&fun.name, &p.name)
         })
     }
 
-    /// Expands to the return type of a function
-    fn expand_outputs(&self, fun: &Function) -> Result<TokenStream> {
-        let mut outputs = Vec::with_capacity(fun.outputs.len());
-        for param in fun.outputs.iter() {
-            let ty = self.expand_output_param_type(fun, param, &param.kind)?;
-            outputs.push(ty);
-        }
-
-        let return_ty = match outputs.len() {
-            0 => quote! { () },
-            1 => outputs[0].clone(),
-            _ => {
-                quote! { (#( #outputs ),*) }
-            }
-        };
-        Ok(return_ty)
+    /// Expands to the `name: type` pairs of the function's outputs
+    fn expand_output_params(&self, fun: &Function) -> Result<Vec<(TokenStream, TokenStream)>> {
+        types::expand_params(&fun.outputs, |p| {
+            p.internal_type
+                .as_deref()
+                .and_then(|s| self.internal_structs.get_function_output_struct_type(&fun.name, s))
+        })
     }
 
     /// Expands the arguments for the call that eventually calls the contract
-    fn expand_contract_call_args(&self, fun: &Function) -> Result<TokenStream> {
-        let mut call_args = Vec::with_capacity(fun.inputs.len());
-        for (idx, param) in fun.inputs.iter().enumerate() {
+    fn expand_contract_call_args(&self, fun: &Function) -> TokenStream {
+        let mut call_args = fun.inputs.iter().enumerate().map(|(idx, param)| {
             let name = util::expand_input_name(idx, &param.name);
-            let call_arg = match param.kind {
+            match param.kind {
                 // this is awkward edge case where the function inputs are a single struct
-                // we need to force this argument into a tuple so it gets expanded to `((#name,))`
-                // this is currently necessary because internally `flatten_tokens` is called which
-                // removes the outermost `tuple` level and since `((#name))` is not
-                // a rust tuple it doesn't get wrapped into another tuple that will be peeled off by
-                // `flatten_tokens`
+                // we need to force this argument into a tuple so it gets expanded to
+                // `((#name,))` this is currently necessary because
+                // internally `flatten_tokens` is called which removes the
+                // outermost `tuple` level and since `((#name))` is not
+                // a rust tuple it doesn't get wrapped into another tuple that will be peeled
+                // off by `flatten_tokens`
                 ParamType::Tuple(_) if fun.inputs.len() == 1 => {
                     // make sure the tuple gets converted to `Token::Tuple`
-                    quote! {(#name,)}
+                    quote!((#name,))
                 }
                 _ => name,
-            };
-            call_args.push(call_arg);
+            }
+        });
+
+        match fun.inputs.len() {
+            0 => quote!(()),
+            1 => call_args.next().unwrap(),
+            _ => quote!(( #( #call_args ),* )),
         }
-        let call_args = match call_args.len() {
-            0 => quote! { () },
-            1 => quote! { #( #call_args )* },
-            _ => quote! { ( #(#call_args, )* ) },
-        };
-
-        Ok(call_args)
-    }
-
-    /// returns the Tokenstream for the corresponding rust type of the param
-    fn expand_input_param_type(
-        &self,
-        fun: &Function,
-        param: &str,
-        kind: &ParamType,
-    ) -> Result<TokenStream> {
-        let ethers_core = ethers_core_crate();
-        match kind {
-            ParamType::Array(ty) => {
-                let ty = self.expand_input_param_type(fun, param, ty)?;
-                Ok(quote! {
-                    ::std::vec::Vec<#ty>
-                })
-            }
-            ParamType::FixedArray(ty, size) => {
-                let ty = match **ty {
-                    ParamType::Uint(size) => {
-                        if size / 8 == 1 {
-                            // this prevents type ambiguity with `FixedBytes`
-                            quote! { #ethers_core::types::Uint8}
-                        } else {
-                            self.expand_input_param_type(fun, param, ty)?
-                        }
-                    }
-                    _ => self.expand_input_param_type(fun, param, ty)?,
-                };
-
-                let size = *size;
-                Ok(quote! {[#ty; #size]})
-            }
-            ParamType::Tuple(_) => {
-                let ty = if let Some(rust_struct_name) =
-                    self.internal_structs.get_function_input_struct_type(&fun.name, param)
-                {
-                    let ident = util::ident(rust_struct_name);
-                    quote! {#ident}
-                } else {
-                    types::expand(kind)?
-                };
-                Ok(ty)
-            }
-            _ => types::expand(kind),
-        }
-    }
-
-    /// returns the TokenStream for the corresponding rust type of the output param
-    fn expand_output_param_type(
-        &self,
-        fun: &Function,
-        param: &Param,
-        kind: &ParamType,
-    ) -> Result<TokenStream> {
-        expand_param_type(param, kind, |s| {
-            self.internal_structs.get_function_output_struct_type(&fun.name, s)
-        })
     }
 
     /// Expands a single function with the given alias
@@ -439,12 +356,22 @@ impl Context {
 
         let selector_tokens = expand_selector(selector);
 
-        let contract_args = self.expand_contract_call_args(function)?;
+        let contract_args = self.expand_contract_call_args(function);
         let function_params =
             self.expand_input_params(function)?.into_iter().map(|(name, ty)| quote! { #name: #ty });
         let function_params = quote! { #( , #function_params )* };
 
-        let outputs = self.expand_outputs(function)?;
+        let outputs = {
+            let mut out = self.expand_output_params(function)?;
+            match out.len() {
+                0 => quote!(()),
+                1 => out.pop().unwrap().1,
+                _ => {
+                    let iter = out.into_iter().map(|(_, ty)| ty);
+                    quote!(( #( #iter ),* ))
+                }
+            }
+        };
 
         let doc_str =
             format!("Calls the contract's `{name}` (0x{}) function", hex::encode(selector));

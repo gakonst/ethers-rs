@@ -1,12 +1,12 @@
 use super::{types, util, Context};
 use crate::util::can_derive_defaults;
 use ethers_core::{
-    abi::{Event, EventExt, EventParam, Param, ParamType},
+    abi::{Event, EventExt, Param},
     macros::{ethers_contract_crate, ethers_core_crate},
 };
 use eyre::Result;
 use inflector::Inflector;
-use proc_macro2::{Ident, Literal, TokenStream};
+use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use std::collections::BTreeMap;
 
@@ -136,85 +136,6 @@ impl Context {
         }
     }
 
-    /// Expands an event property type.
-    ///
-    /// Note that this is slightly different from expanding a Solidity type as
-    /// complex types like arrays and strings get emitted as hashes when they are
-    /// indexed.
-    /// If a complex types matches with a struct previously parsed by the internal structs,
-    /// we can replace it
-    fn expand_input_type(
-        &self,
-        event: &Event,
-        input: &EventParam,
-        idx: usize,
-    ) -> Result<TokenStream> {
-        let ethers_core = ethers_core_crate();
-        Ok(match (&input.kind, input.indexed) {
-            (ParamType::Array(_), true) => {
-                quote! { #ethers_core::types::H256 }
-            }
-            (ParamType::FixedArray(_, _), true) => {
-                quote! { #ethers_core::types::H256 }
-            }
-            (ParamType::Tuple(..), true) => {
-                quote! { #ethers_core::types::H256 }
-            }
-            (ParamType::Bytes, true) | (ParamType::String, true) => {
-                quote! { #ethers_core::types::H256 }
-            }
-            (ParamType::Tuple(_), false) => {
-                let ty = if let Some(rust_struct_name) =
-                    self.internal_structs.get_event_input_struct_type(&event.name, idx)
-                {
-                    let ident = util::ident(rust_struct_name);
-                    quote! {#ident}
-                } else {
-                    types::expand(&input.kind)?
-                };
-                ty
-            }
-            (ParamType::Array(_), _) => {
-                // represents an array of a struct
-                if let Some(rust_struct_name) =
-                    self.internal_structs.get_event_input_struct_type(&event.name, idx)
-                {
-                    let ty = util::ident(rust_struct_name);
-                    return Ok(quote! {::std::vec::Vec<#ty>})
-                }
-                types::expand(&input.kind)?
-            }
-            (ParamType::FixedArray(_, size), _) => {
-                // represents a fixed array of a struct
-                if let Some(rust_struct_name) =
-                    self.internal_structs.get_event_input_struct_type(&event.name, idx)
-                {
-                    let ty = util::ident(rust_struct_name);
-                    let size = Literal::usize_unsuffixed(*size);
-                    return Ok(quote! {[#ty; #size]})
-                }
-                types::expand(&input.kind)?
-            }
-            (kind, _) => types::expand(kind)?,
-        })
-    }
-
-    /// Expands the name-type pairs for the given inputs
-    fn expand_event_params(&self, event: &Event) -> Result<Vec<(TokenStream, TokenStream, bool)>> {
-        event
-            .inputs
-            .iter()
-            .enumerate()
-            .map(|(idx, input)| {
-                // NOTE: Events can contain nameless values.
-                let name = util::expand_input_name(idx, &input.name);
-                let ty = self.expand_input_type(event, input, idx)?;
-
-                Ok((name, ty, input.indexed))
-            })
-            .collect()
-    }
-
     /// Expands into a single method for contracting an event stream.
     fn expand_filter(&self, event: &Event) -> TokenStream {
         let name = &event.name;
@@ -251,7 +172,7 @@ impl Context {
 
         let event_name = event_struct_name(&event.name, sig);
 
-        let params = self.expand_event_params(event)?;
+        let params = types::expand_event_inputs(event, &self.internal_structs)?;
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = event.inputs.iter().all(|input| input.name.is_empty());
         let data_type_definition = if all_anonymous_fields {
@@ -355,6 +276,7 @@ mod tests {
     use super::*;
     use crate::Abigen;
     use ethers_core::abi::{EventParam, Hash, ParamType};
+    use proc_macro2::Literal;
 
     /// Expands a 256-bit `Hash` into a literal representation that can be used with
     /// quasi-quoting for code generation. We do this to avoid allocating at runtime
@@ -445,7 +367,7 @@ mod tests {
         };
 
         let cx = test_context();
-        let params = cx.expand_event_params(&event).unwrap();
+        let params = types::expand_event_inputs(&event, &cx.internal_structs).unwrap();
         let name = event_struct_name(&event.name, None);
         let definition = expand_data_struct(&name, &params);
 
@@ -469,7 +391,7 @@ mod tests {
         };
 
         let cx = test_context_with_alias("Foo(bool,address)", "FooAliased");
-        let params = cx.expand_event_params(&event).unwrap();
+        let params = types::expand_event_inputs(&event, &cx.internal_structs).unwrap();
         let alias = Some(util::ident("FooAliased"));
         let name = event_struct_name(&event.name, alias);
         let definition = expand_data_struct(&name, &params);
@@ -494,7 +416,7 @@ mod tests {
         };
 
         let cx = test_context();
-        let params = cx.expand_event_params(&event).unwrap();
+        let params = types::expand_event_inputs(&event, &cx.internal_structs).unwrap();
         let name = event_struct_name(&event.name, None);
         let definition = expand_data_tuple(&name, &params);
 
@@ -515,7 +437,7 @@ mod tests {
         };
 
         let cx = test_context_with_alias("Foo(bool,address)", "FooAliased");
-        let params = cx.expand_event_params(&event).unwrap();
+        let params = types::expand_event_inputs(&event, &cx.internal_structs).unwrap();
         let alias = Some(util::ident("FooAliased"));
         let name = event_struct_name(&event.name, alias);
         let definition = expand_data_tuple(&name, &params);

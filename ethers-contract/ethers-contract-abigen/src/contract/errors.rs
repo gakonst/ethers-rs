@@ -1,7 +1,9 @@
 //! derive error bindings
 
-use super::{util, Context};
-use crate::contract::common::{expand_data_struct, expand_data_tuple, expand_params};
+use super::{
+    common::{expand_data_struct, expand_data_tuple},
+    types, util, Context,
+};
 use ethers_core::{
     abi::{ethabi::AbiError, ErrorExt},
     macros::{ethers_contract_crate, ethers_core_crate},
@@ -81,7 +83,9 @@ impl Context {
 
     /// Expands to the `name : type` pairs of the function's outputs
     fn expand_error_params(&self, error: &AbiError) -> Result<Vec<(TokenStream, TokenStream)>> {
-        expand_params(&error.inputs, |s| self.internal_structs.get_struct_type(s))
+        types::expand_params(&error.inputs, |p| {
+            p.internal_type.as_deref().and_then(|s| self.internal_structs.get_struct_type(s))
+        })
     }
 
     /// The name ident of the errors enum
