@@ -243,11 +243,12 @@ where
     /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
     /// This function operates in a static context, then it does not require a `self`
     /// to reference to instantiate an [`Event`](crate::builders::Event) builder.
-    pub fn event_of_type<D: EthEvent>(client: &M) -> Event<M, D> {
+    pub fn event_of_type<D: EthEvent>(client: B) -> Event<B, M, D> {
         Event {
             provider: client,
             filter: Filter::new().event(&D::abi_signature()),
             datatype: PhantomData,
+            _m: PhantomData,
         }
     }
 }
@@ -260,27 +261,6 @@ where
     /// Creates a new contract from the provided client, abi and address
     pub fn new(address: impl Into<Address>, abi: impl Into<BaseContract>, client: B) -> Self {
         Self { base_contract: abi.into(), client, address: address.into(), _m: PhantomData }
-    }
-
-    /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
-    pub fn event<D: EthEvent>(&self) -> Event<M, D> {
-        self.event_with_filter(Filter::new().event(&D::abi_signature()))
-    }
-
-    /// Returns an [`Event`](crate::builders::Event) builder with the provided filter.
-    pub fn event_with_filter<D: EthLogDecode>(&self, filter: Filter) -> Event<M, D> {
-        Event {
-            provider: self.client.borrow(),
-            filter: filter.address(ValueOrArray::Value(self.address)),
-            datatype: PhantomData,
-        }
-    }
-
-    /// Returns an [`Event`](crate::builders::Event) builder with the provided name.
-    pub fn event_for_name<D: EthLogDecode>(&self, name: &str) -> Result<Event<M, D>, Error> {
-        // get the event's full name
-        let event = self.base_contract.abi.event(name)?;
-        Ok(self.event_with_filter(Filter::new().event(&event.abi_signature())))
     }
 
     /// Returns a new contract instance using the provided client
@@ -321,6 +301,28 @@ where
     B: Clone + Borrow<M>,
     M: Middleware,
 {
+    /// Returns an [`Event`](crate::builders::Event) builder with the provided filter.
+    pub fn event_with_filter<D: EthLogDecode>(&self, filter: Filter) -> Event<B, M, D> {
+        Event {
+            provider: self.client.clone(),
+            filter: filter.address(ValueOrArray::Value(self.address)),
+            datatype: PhantomData,
+            _m: PhantomData,
+        }
+    }
+
+    /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
+    pub fn event<D: EthEvent>(&self) -> Event<B, M, D> {
+        self.event_with_filter(Filter::new().event(&D::abi_signature()))
+    }
+
+    /// Returns an [`Event`](crate::builders::Event) builder with the provided name.
+    pub fn event_for_name<D: EthLogDecode>(&self, name: &str) -> Result<Event<B, M, D>, Error> {
+        // get the event's full name
+        let event = self.base_contract.abi.event(name)?;
+        Ok(self.event_with_filter(Filter::new().event(&event.abi_signature())))
+    }
+
     fn method_func<T: Tokenize, D: Detokenize>(
         &self,
         function: &Function,

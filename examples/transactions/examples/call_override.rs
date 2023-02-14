@@ -10,12 +10,27 @@ use ethers::{
     },
 };
 use eyre::Result;
-use std::sync::Arc;
+use std::{
+    process::{Command, Stdio},
+    sync::Arc,
+};
 
 abigen!(Greeter, "ethers-contract/tests/solidity-contracts/greeter.json",);
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    match geth_version() {
+        e @ Ok(false) | e @ Err(_) => {
+            eprint!("Error spawning geth, skipping example");
+            if let Err(e) = e {
+                eprint!(": {e}");
+            }
+            eprintln!();
+            return Ok(())
+        }
+        Ok(true) => {}
+    }
+
     let geth = Geth::new().spawn();
     let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
     let client = Arc::new(provider);
@@ -74,4 +89,14 @@ fn encode_string_for_storage(s: &str) -> H256 {
     bytes.resize(31, 0);
     bytes.push(len as u8 * 2);
     H256::from_slice(&bytes)
+}
+
+fn geth_version() -> Result<bool> {
+    Command::new("geth")
+        .arg("version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .map_err(Into::into)
 }

@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // Build an Event by type. We are not tied to a contract instance. We use builder functions to
     // refine the event filter
-    let event = Contract::event_of_type::<AnswerUpdatedFilter>(&client)
+    let event = Contract::event_of_type::<AnswerUpdatedFilter>(client)
         .from_block(16022082)
         .address(ValueOrArray::Array(vec![
             PRICE_FEED_1.parse()?,

@@ -21,8 +21,6 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, E
     let name = &input.ident;
     let attributes = parse_event_attributes(&input)?;
 
-    let event_name = attributes.name.map(|(s, _)| s).unwrap_or_else(|| input.ident.to_string());
-
     let mut event = if let Some((src, span)) = attributes.abi {
         // try to parse as a Solidity event
         match HumanReadableParser::parse_event(&src) {
@@ -56,7 +54,10 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, E
         derive_abi_event_from_fields(&input)
     }?;
 
-    event.name = event_name.clone();
+    if let Some((attribute_name, _)) = attributes.name {
+        event.name = attribute_name;
+    }
+
     if let Some((anon, _)) = attributes.anonymous.as_ref() {
         event.anonymous = *anon;
     }
@@ -72,6 +73,10 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, E
     };
 
     let anon = attributes.anonymous.map(|(b, _)| b).unwrap_or_default();
+    let event_name = &event.name;
+
+    let ethers_core = ethers_core_crate();
+    let ethers_contract = ethers_contract_crate();
 
     let ethers_core = ethers_core_crate();
     let ethers_contract = ethers_contract_crate();
@@ -282,7 +287,7 @@ fn derive_decode_from_log_impl(
 /// Determine the event's ABI by parsing the AST
 fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event, Error> {
     let event = Event {
-        name: "".to_string(),
+        name: input.ident.to_string(),
         inputs: utils::derive_abi_inputs_from_fields(input, "EthEvent")?
             .into_iter()
             .map(|(name, kind)| EventParam { name, kind, indexed: false })

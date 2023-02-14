@@ -410,7 +410,7 @@ mod eth_tests {
 
         let anvil = Anvil::new().spawn();
         let client = connect(&anvil, 0);
-        let event = ethers_contract::Contract::event_of_type::<AnswerUpdatedFilter>(&client);
+        let event = ethers_contract::Contract::event_of_type::<AnswerUpdatedFilter>(client);
         assert_eq!(event.filter, Filter::new().event(&AnswerUpdatedFilter::abi_signature()));
     }
 

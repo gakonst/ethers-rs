@@ -39,13 +39,18 @@ async fn blocknative() {
 
 async fn etherscan() {
     let chain = Chain::Mainnet;
-    let api_key: String = std::env::var("ETHERSCAN_API_KEY_ETHEREUM").expect("Provide an API key");
-    if let Ok(client) = Client::new(chain, api_key) {
-        let oracle = Etherscan::new(client).category(GasCategory::Fast);
-        match oracle.fetch().await {
-            Ok(gas_price) => println!("[Etherscan]: Gas price is {gas_price:?}"),
-            Err(e) => panic!("[Etherscan]: Cannot estimate gas: {e:?}"),
-        }
+    let client = match Client::new_from_env(chain) {
+        Ok(client) => client,
+        Err(_) => Client::builder()
+            .chain(chain)
+            .expect("Mainnet is valid")
+            .build()
+            .expect("Mainnet is valid"),
+    };
+    let oracle = Etherscan::new(client).category(GasCategory::Fast);
+    match oracle.fetch().await {
+        Ok(gas_price) => println!("[Etherscan]: Gas price is {gas_price:?}"),
+        Err(e) => panic!("[Etherscan]: Cannot estimate gas: {e:?}"),
     }
 }
 
