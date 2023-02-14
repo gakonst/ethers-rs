@@ -1610,6 +1610,9 @@ fn can_compile_model_checker_sample() {
         engine: Some(CHC),
         targets: None,
         timeout: Some(10000),
+        show_unproved: None,
+        div_mod_with_slacks: None,
+        solvers: None,
         invariants: None,
     });
     let compiled = project.compile().unwrap();
