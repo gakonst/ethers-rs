@@ -42,7 +42,7 @@ impl Contracts {
     }
 
     fn expand_contract(contract: ContractArgs) -> Result<(ExpandedContract, Context)> {
-        Ok(contract.into_builder()?.expand()?)
+        contract.into_builder()?.expand()
     }
 }
 
