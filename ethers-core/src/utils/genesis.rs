@@ -9,18 +9,22 @@ use serde::{Deserialize, Serialize};
 /// This represents the chain configuration, specifying the genesis block, header fields, and hard
 /// fork switch blocks.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", default)]
+#[serde(rename_all = "camelCase")]
 pub struct Genesis {
     /// The fork configuration for this network.
+    #[serde(default)]
     pub config: ChainConfig,
 
     /// The genesis header nonce.
+    #[serde(default)]
     pub nonce: U64,
 
     /// The genesis header timestamp.
+    #[serde(default)]
     pub timestamp: U64,
 
     /// The genesis header extra data.
+    #[serde(default)]
     pub extra_data: Bytes,
 
     /// The genesis header gas limit.
@@ -31,9 +35,11 @@ pub struct Genesis {
     pub difficulty: U256,
 
     /// The genesis header mix hash.
+    #[serde(default)]
     pub mix_hash: H256,
 
     /// The genesis header coinbase address.
+    #[serde(default)]
     pub coinbase: Address,
 
     /// The initial state of the genesis block.
@@ -42,19 +48,19 @@ pub struct Genesis {
     // The following fields are only included for tests, and should not be used in real genesis
     // blocks.
     /// The block number
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub number: Option<U64>,
 
     /// The block gas gasUsed
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub gas_used: Option<U64>,
 
     /// The block parent hash
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub parent_hash: Option<H256>,
 
     /// The base fee
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub base_fee_per_gas: Option<U256>,
 }
 
@@ -117,14 +123,17 @@ impl Genesis {
 
 /// An account in the state of the genesis block.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default)]
 pub struct GenesisAccount {
-    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "from_u64_or_hex_opt")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "from_u64_or_hex_opt",
+        default
+    )]
     pub nonce: Option<u64>,
     pub balance: U256,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", default)]
     pub code: Option<Bytes>,
-    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    #[serde(flatten, skip_serializing_if = "Option::is_none", default)]
     pub storage: Option<HashMap<H256, H256>>,
 }
 
