@@ -217,7 +217,10 @@ pub fn derive_eth_display(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(EthEvent, attributes(ethevent))]
 pub fn derive_abi_event(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    TokenStream::from(event::derive_eth_event_impl(input))
+    match event::derive_eth_event_impl(input) {
+        Ok(tokens) => TokenStream::from(tokens),
+        Err(err) => err.to_compile_error().into(),
+    }
 }
 
 /// Derives the `EthCall` and `Tokenizeable` trait for the labeled type.
