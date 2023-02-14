@@ -535,8 +535,7 @@ impl FromStr for BlockId {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.strip_prefix("0x").unwrap_or(s);
-        if s.len() == 64 {
+        if s.starts_with("0x") && s.len() == 66 {
             let hash = s.parse::<H256>().map_err(|e| e.to_string());
             hash.map(Self::Hash)
         } else {
@@ -645,15 +644,10 @@ impl FromStr for BlockNumber {
             "safe" => Ok(Self::Safe),
             "earliest" => Ok(Self::Earliest),
             "pending" => Ok(Self::Pending),
-            n => {
-                if let Ok(n) = n.parse::<U64>() {
-                    Ok(Self::Number(n))
-                } else if let Ok(n) = n.parse::<u64>() {
-                    Ok(Self::Number(n.into()))
-                } else {
-                    Err("Invalid block number".into())
-                }
-            }
+            // hex
+            n if n.starts_with("0x") => n.parse().map(Self::Number).map_err(|e| e.to_string()),
+            // decimal
+            n => n.parse::<u64>().map(|n| Self::Number(n.into())).map_err(|e| e.to_string()),
         }
     }
 }
