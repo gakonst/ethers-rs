@@ -38,6 +38,24 @@ pub struct Genesis {
 
     /// The initial state of the genesis block.
     pub alloc: HashMap<Address, GenesisAccount>,
+
+    // The following fields are only included for tests, and should not be used in real genesis
+    // blocks.
+    /// The block number
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub number: Option<U64>,
+
+    /// The block gas gasUsed
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gas_used: Option<U64>,
+
+    /// The block parent hash
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_hash: Option<H256>,
+
+    /// The base fee
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_fee_per_gas: Option<U256>,
 }
 
 impl Genesis {
@@ -236,7 +254,7 @@ pub struct CliqueConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::Genesis;
+    use super::{Genesis, H256};
 
     #[test]
     fn parse_hive_genesis() {
@@ -519,6 +537,12 @@ mod tests {
         }
         "#;
 
-        let _genesis: Genesis = serde_json::from_str(geth_genesis).unwrap();
+        let genesis: Genesis = serde_json::from_str(geth_genesis).unwrap();
+
+        // ensure the test fields are parsed correctly
+        assert_eq!(genesis.base_fee_per_gas, Some(1000000000.into()));
+        assert_eq!(genesis.number, Some(0.into()));
+        assert_eq!(genesis.gas_used, Some(0.into()));
+        assert_eq!(genesis.parent_hash, Some(H256::zero()));
     }
 }
