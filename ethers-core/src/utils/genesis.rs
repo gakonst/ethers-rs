@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use crate::{
     types::{Address, Bytes, H256, U256, U64},
-    utils::{from_int_or_hex, from_int_or_hex_opt},
+    utils::{from_int_or_hex, from_int_or_hex_opt, from_u64_or_hex_opt},
 };
 use serde::{Deserialize, Serialize};
 
 /// This represents the chain configuration, specifying the genesis block, header fields, and hard
 /// fork switch blocks.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 pub struct Genesis {
     /// The fork configuration for this network.
     pub config: ChainConfig,
@@ -99,8 +99,9 @@ impl Genesis {
 
 /// An account in the state of the genesis block.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct GenesisAccount {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "from_u64_or_hex_opt")]
     pub nonce: Option<u64>,
     pub balance: U256,
     #[serde(skip_serializing_if = "Option::is_none")]
