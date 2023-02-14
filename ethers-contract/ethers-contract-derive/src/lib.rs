@@ -41,6 +41,13 @@ pub(crate) mod utils;
 ///
 /// // npmjs
 /// abigen!(MyContract, "npm:@org/package@1.0.0/path/to/contract.json");
+///
+/// // Human readable ABI
+/// abigen!(MyContract, r"[
+///     function setValue(string)
+///     function getValue() external view returns (string)
+///     event ValueChanged(address indexed author, string oldValue, string newValue)
+/// ]");
 /// ```
 ///
 /// Note that Etherscan rate-limits requests to their API, to avoid this an
