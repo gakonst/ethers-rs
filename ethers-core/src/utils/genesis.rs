@@ -119,6 +119,7 @@ pub struct GenesisAccount {
 #[serde(default, rename_all = "camelCase")]
 pub struct ChainConfig {
     /// The network's chain ID.
+    #[serde(default = "one")]
     pub chain_id: u64,
 
     /// The homestead switch block (None = no fork, 0 = already homestead).
@@ -192,11 +193,9 @@ pub struct ChainConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shanghai_time: Option<u64>,
 
-    // TODO: change to cancunTime when <https://github.com/ethereum/go-ethereum/pull/26481> is
-    // merged in geth
-    /// Cancun hard fork block.
+    /// Cancun switch time.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cancun_block: Option<u64>,
+    pub cancun_time: Option<u64>,
 
     /// Total difficulty reached that triggers the merge consensus upgrade.
     #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "from_int_or_hex_opt")]
@@ -213,6 +212,12 @@ pub struct ChainConfig {
     /// Clique parameters.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub clique: Option<CliqueConfig>,
+}
+
+// used only for serde
+#[inline]
+const fn one() -> u64 {
+    1
 }
 
 /// Empty consensus configuration for proof-of-work networks.
