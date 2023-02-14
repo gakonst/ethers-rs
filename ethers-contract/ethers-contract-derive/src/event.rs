@@ -78,9 +78,6 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, E
     let ethers_core = ethers_core_crate();
     let ethers_contract = ethers_contract_crate();
 
-    let ethers_core = ethers_core_crate();
-    let ethers_contract = ethers_contract_crate();
-
     let ethevent_impl = quote! {
         impl #ethers_contract::EthEvent for #name {
 
