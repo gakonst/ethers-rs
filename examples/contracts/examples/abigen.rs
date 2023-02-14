@@ -32,10 +32,12 @@ async fn main() -> Result<()> {
 }
 
 fn rust_file_generation() -> Result<()> {
-    let base_dir = "./examples/contracts/examples/abi";
-    Abigen::new("IERC20", format!("{base_dir}/IERC20.json"))?
-        .generate()?
-        .write_to_file(format!("{base_dir}/ierc20.rs"))?;
+    let abi_source = "./examples/contracts/examples/abi/IERC20.json";
+    let out_file = std::env::temp_dir().join("ierc20.rs");
+    if out_file.exists() {
+        std::fs::remove_file(&out_file)?;
+    }
+    Abigen::new("IERC20", abi_source)?.generate()?.write_to_file(out_file)?;
     Ok(())
 }
 
