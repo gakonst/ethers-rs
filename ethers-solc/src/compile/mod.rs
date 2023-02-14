@@ -572,7 +572,7 @@ impl Solc {
 #[cfg(feature = "async")]
 impl Solc {
     /// Convenience function for compiling all sources under the given path
-    pub async fn async_compile_source<T: Serialize>(
+    pub async fn async_compile_source(
         &self,
         path: impl AsRef<Path>,
     ) -> Result<CompilerOutput> {
