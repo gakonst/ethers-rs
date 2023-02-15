@@ -23,11 +23,9 @@ pub use errors::{MiddlewareError, ProviderError, RpcError};
 mod stream;
 pub use futures_util::StreamExt;
 pub use stream::{
-    interval, FilterWatcher, TransactionStream, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL,
+    interval, tx_stream::TransactionStream, FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL,
+    DEFAULT_POLL_INTERVAL,
 };
-
-mod pubsub;
-pub use pubsub::{PubsubClient, SubscriptionStream};
 
 pub mod middleware;
 pub use middleware::*;

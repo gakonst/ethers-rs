@@ -4,7 +4,7 @@ use crate::{
     call_raw::CallBuilder,
     errors::ProviderError,
     ext::{ens, erc},
-    pubsub::{PubsubClient, SubscriptionStream},
+    rpc::pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
     utils::maybe,
     Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MiddlewareError,
