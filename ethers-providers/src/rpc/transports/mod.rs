@@ -1,4 +1,4 @@
-mod common;
+pub(crate) mod common;
 pub use common::{Authorization, JsonRpcError};
 
 mod http;

@@ -1,6 +1,8 @@
-use crate::{H256, U256};
 use enr::{k256::ecdsa::SigningKey, Enr};
-use ethers_core::utils::{from_int_or_hex, ChainConfig};
+use ethers_core::{
+    types::{H256, U256},
+    utils::{from_int_or_hex, ChainConfig},
+};
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
 

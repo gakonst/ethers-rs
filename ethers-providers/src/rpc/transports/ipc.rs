@@ -1,9 +1,4 @@
 use super::common::Params;
-use crate::{
-    errors::ProviderError,
-    transports::common::{JsonRpcError, Request, Response},
-    JsonRpcClient, PubsubClient,
-};
 use async_trait::async_trait;
 use bytes::{Buf, BytesMut};
 use ethers_core::types::U256;
@@ -30,6 +25,9 @@ use tokio::{
     runtime,
     sync::oneshot::{self, error::RecvError},
 };
+
+use super::common::{JsonRpcError, Request, Response};
+use crate::{errors::ProviderError, JsonRpcClient, PubsubClient};
 
 type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHasher64>>;
 

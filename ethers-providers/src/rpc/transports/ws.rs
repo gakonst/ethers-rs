@@ -1,9 +1,9 @@
-use super::common::{Params, Response};
 use crate::{
     errors::ProviderError,
-    transports::common::{JsonRpcError, Request},
+    rpc::transports::common::{JsonRpcError, Params, Request, Response},
     JsonRpcClient, PubsubClient,
 };
+
 use async_trait::async_trait;
 use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
