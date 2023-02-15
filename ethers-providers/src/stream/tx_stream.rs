@@ -145,3 +145,107 @@ where
         TransactionStream::new(self.provider, self, n)
     }
 }
+
+#[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
+mod tests {
+    use super::*;
+    use crate::{stream::tx_stream, Http, Ws};
+    use ethers_core::{
+        types::{Transaction, TransactionReceipt, TransactionRequest},
+        utils::Anvil,
+    };
+    use futures_util::{FutureExt, StreamExt};
+    use std::{collections::HashSet, convert::TryFrom, time::Duration};
+
+    #[tokio::test]
+    async fn can_stream_pending_transactions() {
+        let num_txs = 5;
+        let geth = Anvil::new().block_time(2u64).spawn();
+        let provider = Provider::<Http>::try_from(geth.endpoint())
+            .unwrap()
+            .interval(Duration::from_millis(1000));
+        let ws = Ws::connect(geth.ws_endpoint()).await.unwrap();
+        let ws_provider = Provider::new(ws);
+
+        let accounts = provider.get_accounts().await.unwrap();
+        let tx = TransactionRequest::new().from(accounts[0]).to(accounts[0]).value(1e18 as u64);
+
+        let mut sending = futures_util::future::join_all(
+            std::iter::repeat(tx.clone())
+                .take(num_txs)
+                .enumerate()
+                .map(|(nonce, tx)| tx.nonce(nonce))
+                .map(|tx| async {
+                    provider.send_transaction(tx, None).await.unwrap().await.unwrap().unwrap()
+                }),
+        )
+        .fuse();
+
+        let mut watch_tx_stream = provider
+            .watch_pending_transactions()
+            .await
+            .unwrap()
+            .transactions_unordered(num_txs)
+            .fuse();
+
+        let mut sub_tx_stream =
+            ws_provider.subscribe_pending_txs().await.unwrap().transactions_unordered(2).fuse();
+
+        let mut sent: Option<Vec<TransactionReceipt>> = None;
+        let mut watch_received: Vec<Transaction> = Vec::with_capacity(num_txs);
+        let mut sub_received: Vec<Transaction> = Vec::with_capacity(num_txs);
+
+        loop {
+            futures_util::select! {
+                txs = sending => {
+                    sent = Some(txs)
+                },
+                tx = watch_tx_stream.next() => watch_received.push(tx.unwrap().unwrap()),
+                tx = sub_tx_stream.next() => sub_received.push(tx.unwrap().unwrap()),
+            };
+            if watch_received.len() == num_txs && sub_received.len() == num_txs {
+                if let Some(ref sent) = sent {
+                    assert_eq!(sent.len(), watch_received.len());
+                    let sent_txs =
+                        sent.iter().map(|tx| tx.transaction_hash).collect::<HashSet<_>>();
+                    assert_eq!(sent_txs, watch_received.iter().map(|tx| tx.hash).collect());
+                    assert_eq!(sent_txs, sub_received.iter().map(|tx| tx.hash).collect());
+                    break
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn can_stream_transactions() {
+        let anvil = Anvil::new().block_time(2u64).spawn();
+        let provider =
+            Provider::<Http>::try_from(anvil.endpoint()).unwrap().with_sender(anvil.addresses()[0]);
+
+        let accounts = provider.get_accounts().await.unwrap();
+
+        let tx = TransactionRequest::new().from(accounts[0]).to(accounts[0]).value(1e18 as u64);
+        let txs = vec![tx.clone().nonce(0u64), tx.clone().nonce(1u64), tx.clone().nonce(2u64)];
+
+        let txs =
+            futures_util::future::join_all(txs.into_iter().map(|tx| async {
+                provider.send_transaction(tx, None).await.unwrap().await.unwrap()
+            }))
+            .await;
+
+        let stream = tx_stream::TransactionStream::new(
+            &provider,
+            futures_util::stream::iter(txs.iter().cloned().map(|tx| tx.unwrap().transaction_hash)),
+            10,
+        );
+        let res =
+            stream.collect::<Vec<_>>().await.into_iter().collect::<Result<Vec<_>, _>>().unwrap();
+
+        assert_eq!(res.len(), txs.len());
+        assert_eq!(
+            res.into_iter().map(|tx| tx.hash).collect::<HashSet<_>>(),
+            txs.into_iter().map(|tx| tx.unwrap().transaction_hash).collect()
+        );
+    }
+}
