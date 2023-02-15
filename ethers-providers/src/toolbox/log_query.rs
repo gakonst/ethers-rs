@@ -1,4 +1,4 @@
-use super::{JsonRpcClient, Middleware, PinBoxFut, Provider, ProviderError};
+use crate::{JsonRpcClient, Middleware, PinBoxFut, Provider, ProviderError};
 use ethers_core::types::{Filter, Log, U64};
 use futures_core::stream::Stream;
 use std::{
