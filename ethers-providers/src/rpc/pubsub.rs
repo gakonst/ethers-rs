@@ -1,6 +1,6 @@
-use crate::{JsonRpcClient, Middleware, Provider, TransactionStream};
+use crate::{JsonRpcClient, Middleware, Provider};
 
-use ethers_core::types::{TxHash, U256};
+use ethers_core::types::U256;
 
 use futures_util::stream::Stream;
 use pin_project::{pin_project, pinned_drop};
@@ -35,7 +35,7 @@ pub struct SubscriptionStream<'a, P: PubsubClient, R: DeserializeOwned> {
 
     loaded_elements: VecDeque<R>,
 
-    provider: &'a Provider<P>,
+    pub(crate) provider: &'a Provider<P>,
 
     #[pin]
     rx: P::NotificationStream,
@@ -112,20 +112,5 @@ where
         // getting populated. We need to call `unsubscribe` explicitly to cancel
         // the subscription
         let _ = (*self.provider).as_ref().unsubscribe(self.id);
-    }
-}
-
-impl<'a, P> SubscriptionStream<'a, P, TxHash>
-where
-    P: PubsubClient,
-{
-    /// Returns a stream that yields the `Transaction`s for the transaction hashes this stream
-    /// yields.
-    ///
-    /// This internally calls `Provider::get_transaction` with every new transaction.
-    /// No more than n futures will be buffered at any point in time, and less than n may also be
-    /// buffered depending on the state of each future.
-    pub fn transactions_unordered(self, n: usize) -> TransactionStream<'a, P, Self> {
-        TransactionStream::new(self.provider, self, n)
     }
 }
