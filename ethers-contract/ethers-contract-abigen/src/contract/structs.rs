@@ -569,7 +569,7 @@ fn struct_type_name(name: &str) -> &str {
 }
 
 /// `Pairing.G2Point` -> `Pairing.G2Point`
-pub fn struct_type_identifier(name: &str) -> &str {
+fn struct_type_identifier(name: &str) -> &str {
     name.trim_start_matches("struct ").split('[').next().unwrap()
 }
 

@@ -39,8 +39,7 @@ impl Context {
         let filter_methods = sorted_events
             .values()
             .flat_map(std::ops::Deref::deref)
-            .map(|event| self.expand_filter(event))
-            .collect::<Vec<_>>();
+            .map(|event| self.expand_filter(event));
 
         let events_method = self.expand_events_method();
 
@@ -113,7 +112,7 @@ impl Context {
     }
 
     /// Expands the `events` function that bundles all declared events of this contract
-    fn expand_events_method(&self) -> TokenStream {
+    fn expand_events_method(&self) -> Option<TokenStream> {
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
 
         let mut iter = sorted_events.values().flatten();
@@ -129,14 +128,14 @@ impl Context {
                 )
             };
 
-            quote! {
+            Some(quote! {
                 /// Returns an [`Event`](#ethers_contract::builders::Event) builder for all events of this contract
                 pub fn events(&self) -> #ethers_contract::builders::Event<Arc<M>, M, #ty> {
                     self.0.event_with_filter(Default::default())
                 }
-            }
+            })
         } else {
-            quote! {}
+            None
         }
     }
 

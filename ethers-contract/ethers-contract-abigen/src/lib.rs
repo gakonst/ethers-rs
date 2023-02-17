@@ -8,6 +8,7 @@
 //! [abigen]: https://docs.rs/ethers/latest/ethers/contract/macro.abigen.html
 
 #![deny(rustdoc::broken_intra_doc_links, missing_docs, unsafe_code)]
+#![warn(unreachable_pub)]
 
 #[cfg(test)]
 #[allow(missing_docs)]
@@ -25,6 +26,8 @@ pub mod multi;
 pub use multi::MultiAbigen;
 
 mod source;
+#[cfg(all(feature = "online", not(target_arch = "wasm32")))]
+pub use source::Explorer;
 pub use source::Source;
 
 mod util;

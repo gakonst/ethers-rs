@@ -22,11 +22,8 @@ impl Context {
             .collect::<Result<Vec<_>>>()?;
 
         // only expand an enum when multiple errors are present
-        let errors_enum_decl = if self.abi.errors.values().flatten().count() > 1 {
-            self.expand_errors_enum()
-        } else {
-            quote! {}
-        };
+        let errors_enum_decl =
+            if data_types.len() > 1 { Some(self.expand_errors_enum()) } else { None };
 
         Ok(quote! {
             #( #data_types )*

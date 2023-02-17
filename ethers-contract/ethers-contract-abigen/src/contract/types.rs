@@ -11,7 +11,7 @@ use proc_macro2::{Literal, TokenStream};
 use quote::{quote, ToTokens};
 
 /// Expands a ParamType Solidity type to its Rust equivalent.
-pub fn expand(kind: &ParamType) -> Result<TokenStream> {
+pub(crate) fn expand(kind: &ParamType) -> Result<TokenStream> {
     let ethers_core = ethers_core_crate();
 
     match kind {
@@ -58,7 +58,7 @@ pub fn expand(kind: &ParamType) -> Result<TokenStream> {
 }
 
 /// Expands the event's inputs.
-pub fn expand_event_inputs(
+pub(crate) fn expand_event_inputs(
     event: &Event,
     internal_structs: &InternalStructs,
 ) -> Result<Vec<(TokenStream, TokenStream, bool)>> {
@@ -121,7 +121,7 @@ fn expand_event_input(
 
 /// Expands `params` to `(name, type)` tokens pairs, while resolving tuples' types using the given
 /// function.
-pub fn expand_params<'a, 'b, F: Fn(&'a Param) -> Option<&'b str>>(
+pub(crate) fn expand_params<'a, 'b, F: Fn(&'a Param) -> Option<&'b str>>(
     params: &'a [Param],
     resolve_tuple: F,
 ) -> Result<Vec<(TokenStream, TokenStream)>> {
@@ -160,7 +160,7 @@ fn expand_resolved<'a, 'b, F: Fn(&'a Param) -> Option<&'b str>>(
 }
 
 /// Expands to the Rust struct type.
-pub fn expand_struct_type(struct_ty: &StructFieldType) -> TokenStream {
+pub(crate) fn expand_struct_type(struct_ty: &StructFieldType) -> TokenStream {
     match struct_ty {
         StructFieldType::Type(ty) => {
             let ty = util::ident(&ty.name().to_pascal_case());
