@@ -156,6 +156,23 @@ impl TryFrom<u8> for MulticallVersion {
     }
 }
 
+impl MulticallVersion {
+    #[inline]
+    pub fn is_v1(&self) -> bool {
+        matches!(self, Self::Multicall)
+    }
+
+    #[inline]
+    pub fn is_v2(&self) -> bool {
+        matches!(self, Self::Multicall2)
+    }
+
+    #[inline]
+    pub fn is_v3(&self) -> bool {
+        matches!(self, Self::Multicall3)
+    }
+}
+
 /// A Multicall is an abstraction for sending batched calls/transactions to the Ethereum blockchain.
 /// It stores an instance of the [`Multicall` smart contract](https://etherscan.io/address/0xcA11bde05977b3631167028862bE2a173976CA11#code)
 /// and the user provided list of transactions to be called or executed on chain.
@@ -731,86 +748,84 @@ impl<M: Middleware> Multicall<M> {
     /// [`ContractError<M>`]: crate::ContractError<M>
     pub async fn call_raw(&self) -> Result<Vec<Token>, M> {
         // Different call result types based on version
-        let tokens: Vec<Token> = match self.version {
-            MulticallVersion::Multicall => {
-                let call = self.as_aggregate();
-                let (_, return_data) = call.call().await?;
-                self.calls
-                    .iter()
-                    .zip(&return_data)
-                    .map(|(call, bytes)| {
-                        // Always return an empty Bytes token for calls that return no data
-                        if bytes.is_empty() {
-                            Ok(Token::Bytes(Default::default()))
-                        } else {
-                            let mut tokens = call
-                                .function
-                                .decode_output(bytes)
-                                .map_err(ContractError::DecodingError)?;
-                            Ok(match tokens.len() {
-                                0 => Token::Tuple(vec![]),
-                                1 => tokens.remove(0),
-                                _ => Token::Tuple(tokens),
-                            })
-                        }
-                    })
-                    .collect::<Result<Vec<Token>, M>>()?
-            }
+        match self.version {
+            MulticallVersion::Multicall => self.call_v1().await,
             // Same result type (`MulticallResult`)
-            v @ (MulticallVersion::Multicall2 | MulticallVersion::Multicall3) => {
-                let is_v2 = v == MulticallVersion::Multicall2;
-                let call = if is_v2 { self.as_try_aggregate() } else { self.as_aggregate_3() };
-                let return_data = ContractCall::call(&call).await?;
-                self.calls
-                    .iter()
-                    .zip(return_data.into_iter())
-                    .map(|(call, res)| {
-                        let bytes = &res.return_data;
-                        // Always return an empty Bytes token for calls that return no data
-                        let res_token: Token = if bytes.is_empty() {
-                            Token::Bytes(Default::default())
-                        } else if res.success {
-                            // Decode using call.function
-                            let mut res_tokens = call
-                                .function
-                                .decode_output(bytes)
-                                .map_err(ContractError::DecodingError)?;
-                            match res_tokens.len() {
-                                0 => Token::Tuple(vec![]),
-                                1 => res_tokens.remove(0),
-                                _ => Token::Tuple(res_tokens),
-                            }
-                        } else {
-                            // Call reverted
+            MulticallVersion::Multicall2 | MulticallVersion::Multicall3 => self.call_v2_v3().await,
+        }
+    }
 
-                            // v2: In the function call to `tryAggregate`, the `allow_failure` check
-                            // is done on a per-transaction basis, and we set this transaction-wide
-                            // check to true when *any* call is allowed to fail. If this is true
-                            // then a call that is not allowed to revert (`call.allow_failure`) may
-                            // still do so because of other calls that are in the same multicall
-                            // aggregate.
-                            if !call.allow_failure {
-                                return Err(MulticallError::IllegalRevert)
-                            }
-
-                            // Decode with "Error(string)" (0x08c379a0)
-                            if bytes.len() >= 4 && bytes[..4] == [0x08, 0xc3, 0x79, 0xa0] {
-                                Token::String(
-                                    String::decode(&bytes[4..]).map_err(ContractError::AbiError)?,
-                                )
-                            } else {
-                                Token::Bytes(bytes.to_vec())
-                            }
-                        };
-
-                        // (bool, (...))
-                        Ok(Token::Tuple(vec![Token::Bool(res.success), res_token]))
+    #[inline]
+    async fn call_v1(&self) -> Result<Vec<Token>, M> {
+        let call = self.as_aggregate();
+        let (_, return_data) = call.call().await?;
+        self.calls
+            .iter()
+            .zip(&return_data)
+            .map(|(call, bytes)| {
+                // Always return an empty Bytes token for calls that return no data
+                if bytes.is_empty() {
+                    Ok(Token::Bytes(Default::default()))
+                } else {
+                    let mut tokens =
+                        call.function.decode_output(bytes).map_err(ContractError::DecodingError)?;
+                    Ok(match tokens.len() {
+                        0 => Token::Tuple(vec![]),
+                        1 => tokens.pop().unwrap(),
+                        _ => Token::Tuple(tokens),
                     })
-                    .collect::<Result<Vec<Token>, M>>()?
-            }
-        };
+                }
+            })
+            .collect()
+    }
 
-        Ok(tokens)
+    #[inline]
+    async fn call_v2_v3(&self) -> Result<Vec<Token>, M> {
+        let call =
+            if self.version.is_v2() { self.as_try_aggregate() } else { self.as_aggregate_3() };
+        let return_data = ContractCall::call(&call).await?;
+        self.calls
+            .iter()
+            .zip(return_data.into_iter())
+            .map(|(call, res)| {
+                let bytes = &res.return_data;
+                // Always return an empty Bytes token for calls that return no data
+                let res_token: Token = if bytes.is_empty() {
+                    Token::Bytes(Default::default())
+                } else if res.success {
+                    // Decode using call.function
+                    let mut res_tokens =
+                        call.function.decode_output(bytes).map_err(ContractError::DecodingError)?;
+                    match res_tokens.len() {
+                        0 => Token::Tuple(vec![]),
+                        1 => res_tokens.pop().unwrap(),
+                        _ => Token::Tuple(res_tokens),
+                    }
+                } else {
+                    // Call reverted
+
+                    // v2: In the function call to `tryAggregate`, the `allow_failure` check
+                    // is done on a per-transaction basis, and we set this transaction-wide
+                    // check to true when *any* call is allowed to fail. If this is true
+                    // then a call that is not allowed to revert (`call.allow_failure`) may
+                    // still do so because of other calls that are in the same multicall
+                    // aggregate.
+                    if !call.allow_failure {
+                        return Err(MulticallError::IllegalRevert)
+                    }
+
+                    // Decode with "Error(string)" (0x08c379a0)
+                    if bytes.len() >= 4 && bytes[..4] == [0x08, 0xc3, 0x79, 0xa0] {
+                        Token::String(String::decode(&bytes[4..]).map_err(ContractError::AbiError)?)
+                    } else {
+                        Token::Bytes(bytes.to_vec())
+                    }
+                };
+
+                // (bool, (...))
+                Ok(Token::Tuple(vec![Token::Bool(res.success), res_token]))
+            })
+            .collect()
     }
 
     /// Signs and broadcasts a batch of transactions by using the Multicall contract as proxy,
@@ -943,13 +958,13 @@ impl<M: Middleware> Multicall<M> {
     /// Sets the block and legacy flags on a [ContractCall] if they were set on Multicall.
     fn set_call_flags<D: Detokenize>(&self, mut call: ContractCall<M, D>) -> ContractCall<M, D> {
         if let Some(block) = self.block {
-            call = call.block(block);
+            call.block = Some(block.into());
         }
 
         if self.legacy {
-            call = call.legacy();
+            call.legacy()
+        } else {
+            call
         }
-
-        call
     }
 }
