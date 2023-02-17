@@ -389,7 +389,7 @@ impl Geth {
             if is_clique {
                 use super::CliqueConfig;
                 // set up a clique config with an instant sealing period and short (8 block) epoch
-                let clique_config = CliqueConfig { period: 0, epoch: 8 };
+                let clique_config = CliqueConfig { period: Some(0), epoch: Some(8) };
                 genesis.config.clique = Some(clique_config);
 
                 // set the extraData field
