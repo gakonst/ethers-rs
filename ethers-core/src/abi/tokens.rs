@@ -1,11 +1,11 @@
 //! Contract Functions Output types.
-// Adapted from: [rust-web3](https://github.com/tomusdrw/rust-web3/blob/master/src/contract/tokens.rs)
-#![allow(clippy::all)]
+//!
+//! Adapted from [rust-web3](https://github.com/tomusdrw/rust-web3/blob/master/src/contract/tokens.rs).
+
 use crate::{
     abi::Token,
     types::{Address, Bytes, H256, I256, U128, U256},
 };
-
 use arrayvec::ArrayVec;
 use thiserror::Error;
 
@@ -395,8 +395,7 @@ impl<const N: usize> Tokenizable for [u8; N] {
                 Ok(arr)
             }
             other => {
-                Err(InvalidOutputType(format!("Expected `FixedBytes({})`, got {:?}", N, other))
-                    .into())
+                Err(InvalidOutputType(format!("Expected `FixedBytes({})`, got {:?}", N, other)))
             }
         }
     }
@@ -432,8 +431,7 @@ impl<T: TokenizableItem + Clone, const N: usize> Tokenizable for [T; N] {
                 }
             }
             other => {
-                Err(InvalidOutputType(format!("Expected `FixedArray({})`, got {:?}", N, other))
-                    .into())
+                Err(InvalidOutputType(format!("Expected `FixedArray({})`, got {:?}", N, other)))
             }
         }
     }
