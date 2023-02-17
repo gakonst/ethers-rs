@@ -74,7 +74,7 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
 
     let deployed_bytecode = cx.contract_deployed_bytecode.as_ref().map(|bytecode| {
         let bytecode = bytecode.iter().copied().map(Literal::u8_unsuffixed);
-        let bytecode_name = cx.inline_deployment_bytecode_ident();
+        let bytecode_name = cx.inline_deployed_bytecode_ident();
         quote! {
             #[rustfmt::skip]
             const __DEPLOYED_BYTECODE: &[u8] = &[ #( #bytecode ),* ];

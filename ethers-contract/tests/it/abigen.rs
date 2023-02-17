@@ -773,6 +773,10 @@ fn convert_uses_correct_abi() {
 #[test]
 fn generates_non_zero_bytecode() {
     abigen!(Greeter, "ethers-contract/tests/solidity-contracts/greeter_with_struct.json");
+    //check that the bytecode is not empty
     assert!(GREETER_BYTECODE.len() > 0);
-    assert!(GREETER_DEPLOYMENT_BYTECODE.len() > 0);
+    assert!(GREETER_DEPLOYED_BYTECODE.len() > 0);
+    //sanity check that the bytecode is not the same
+    assert_ne!(GREETER_BYTECODE, GREETER_DEPLOYED_BYTECODE);
+
 }

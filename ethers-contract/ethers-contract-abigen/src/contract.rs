@@ -321,9 +321,9 @@ impl Context {
         format_ident!("{}_BYTECODE", self.contract_name.to_uppercase())
     }
 
-    /// Name of the `Lazy` that stores the Bytecode.
-    pub(crate) fn inline_deployment_bytecode_ident(&self) -> Ident {
-        format_ident!("{}_DEPLOYMENT_BYTECODE", self.contract_name.to_uppercase())
+    /// Name of the `Lazy` that stores the Deployed Bytecode.
+    pub(crate) fn inline_deployed_bytecode_ident(&self) -> Ident {
+        format_ident!("{}_DEPLOYED_BYTECODE", self.contract_name.to_uppercase())
     }
 
     /// Returns a reference to the internal ABI struct mapping table.
