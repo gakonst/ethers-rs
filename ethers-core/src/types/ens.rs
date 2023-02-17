@@ -75,23 +75,7 @@ impl<'de> Deserialize<'de> for NameOrAddress {
     }
 }
 
-impl From<&str> for NameOrAddress {
-    fn from(s: &str) -> Self {
-        Self::from_str(s).unwrap()
-    }
-}
-
-impl From<String> for NameOrAddress {
-    fn from(s: String) -> Self {
-        Self::Name(s)
-    }
-}
-
-impl From<&String> for NameOrAddress {
-    fn from(s: &String) -> Self {
-        Self::Name(s.clone())
-    }
-}
+// Do not implement `From<String,&str>`
 
 impl From<Address> for NameOrAddress {
     fn from(s: Address) -> Self {
