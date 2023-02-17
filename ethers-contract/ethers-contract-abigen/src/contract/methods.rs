@@ -1,13 +1,7 @@
 //! Methods expansion
 
-use super::{
-    common::{expand_data_struct, expand_data_tuple, expand_struct},
-    types, Context,
-};
-use crate::{
-    util,
-    util::{self, can_derive_defaults},
-};
+use super::{common::expand_struct, types, Context};
+use crate::util;
 use ethers_core::{
     abi::{Function, FunctionExt, Param, ParamType},
     macros::{ethers_contract_crate, ethers_core_crate},

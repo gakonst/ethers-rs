@@ -3,7 +3,7 @@
 use super::{common::expand_event_struct, types, Context};
 use crate::util;
 use ethers_core::{
-    abi::{Event, EventExt, Param},
+    abi::{Event, EventExt},
     macros::{ethers_contract_crate, ethers_core_crate},
 };
 use eyre::Result;
