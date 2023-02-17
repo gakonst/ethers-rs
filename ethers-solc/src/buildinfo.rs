@@ -104,7 +104,7 @@ mod tests {
     fn build_info_serde() {
         let inputs = CompilerInput::with_sources(BTreeMap::from([(
             PathBuf::from("input.sol"),
-            Source { content: "".to_string() },
+            Source::new(""),
         )]));
         let output = CompilerOutput::default();
         let v: Version = "0.8.4+commit.c7e474f2".parse().unwrap();

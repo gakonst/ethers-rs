@@ -41,6 +41,8 @@ pub enum EtherscanError {
     BlockedByCloudflare,
     #[error("The Requested prompted a cloudflare captcha security challenge to review the security of your connection before proceeding.")]
     CloudFlareSecurityChallenge,
+    #[error("Received `Page not found` response. API server is likely down")]
+    PageNotFound,
 }
 
 /// etherscan/polyscan is protected by cloudflare, which can lead to html responses like `Sorry, you have been blocked` See also <https://community.cloudflare.com/t/sorry-you-have-been-blocked/110790>

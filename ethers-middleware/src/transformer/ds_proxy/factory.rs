@@ -42,7 +42,7 @@ mod dsproxyfactory_mod {
         types::*,
     };
     use ethers_providers::Middleware;
-    #[doc = "DsProxyFactory was auto-generated with ethers-rs Abigen. More information at: https://github.com/gakonst/ethers-rs"]
+    #[doc = "DsProxyFactory was auto-generated with ethers-rs Abigen. More information at: <https://github.com/gakonst/ethers-rs>"]
     use std::sync::Arc;
 
     pub static DSPROXYFACTORY_ABI: Lazy<Abi> = Lazy::new(|| {
@@ -98,13 +98,13 @@ mod dsproxyfactory_mod {
                 .expect("method not found (this should never happen)")
         }
         ///Gets the contract's `Created` event
-        pub fn created_filter(&self) -> Event<M, CreatedFilter> {
+        pub fn created_filter(&self) -> Event<Arc<M>, M, CreatedFilter> {
             self.0.event()
         }
 
         /// Returns an [`Event`](ethers_contract::builders::Event) builder for all events of this
         /// contract
-        pub fn events(&self) -> Event<M, CreatedFilter> {
+        pub fn events(&self) -> Event<Arc<M>, M, CreatedFilter> {
             self.0.event_with_filter(Default::default())
         }
     }

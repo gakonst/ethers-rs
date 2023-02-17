@@ -207,7 +207,9 @@ impl Client {
         let res = res.as_ref();
         let res: ResponseData<T> = serde_json::from_str(res).map_err(|err| {
             error!(target: "etherscan", ?res, "Failed to deserialize response: {}", err);
-            if is_blocked_by_cloudflare_response(res) {
+            if res == "Page not found" {
+                EtherscanError::PageNotFound
+            } else if is_blocked_by_cloudflare_response(res) {
                 EtherscanError::BlockedByCloudflare
             } else if is_cloudflare_security_challenge(res) {
                 EtherscanError::CloudFlareSecurityChallenge

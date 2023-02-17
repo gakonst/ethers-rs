@@ -114,11 +114,13 @@
   Added `twos_complement` function for I256.
 - [#1934](https://github.com/gakonst/ethers-rs/pull/1934) Allow 16 calls in multicall.
 - [#1941](https://github.com/gakonst/ethers-rs/pull/1941) Add `add_calls` and `call_array` for `Multicall`.
+- Added basic event log filtering example.
 
 ## ethers-contract-abigen
 
 ### Unreleased
 
+- Abigen now generates events with new `<B, M>` generic pattern [#2103](https://github.com/gakonst/ethers-rs/pull/2103)
 - Fix Cargo.toml generation issue that could cause dependency conflicts [#1852](https://github.com/gakonst/ethers-rs/pull/1852)
 - Use corresponding rust structs for event fields if they're solidity structs [#1674](https://github.com/gakonst/ethers-rs/pull/1674)
 - Add `ContractFilter` to filter contracts in `MultiAbigen` [#1564](https://github.com/gakonst/ethers-rs/pull/1564)
@@ -299,6 +301,8 @@
 
 ### Unreleased
 
+- (Breaking) Make `Event` objects generic over borrow & remove lifetime
+  [#2105](https://github.com/gakonst/ethers-rs/pull/2105)
 - Make `Factory` objects generic over the borrow trait, to allow non-arc mware
   [#2103](https://github.com/gakonst/ethers-rs/pull/2103)
 - Make `Contract` objects generic over the borrow trait, to allow non-arc mware

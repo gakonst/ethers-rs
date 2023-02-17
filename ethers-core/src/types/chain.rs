@@ -280,10 +280,7 @@ impl Chain {
             ArbitrumTestnet => {
                 ("https://api-testnet.arbiscan.io/api", "https://testnet.arbiscan.io")
             }
-            ArbitrumGoerli => (
-                "https://goerli-rollup-explorer.arbitrum.io/api",
-                "https://goerli-rollup-explorer.arbitrum.io",
-            ),
+            ArbitrumGoerli => ("https://api-goerli.arbiscan.io/api", "https://goerli.arbiscan.io"),
             ArbitrumNova => ("https://api-nova.arbiscan.io/api", "https://nova.arbiscan.io/"),
             Cronos => ("https://api.cronoscan.com/api", "https://cronoscan.com"),
             CronosTestnet => {

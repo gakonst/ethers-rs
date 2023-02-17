@@ -36,7 +36,7 @@ pub use rlp;
 /// Re-export hex
 pub use hex;
 
-use crate::types::{Address, ParseI256Error, I256, U256};
+use crate::types::{Address, ParseI256Error, I256, U256, U64};
 use elliptic_curve::sec1::ToEncodedPoint;
 use ethabi::ethereum_types::FromDecStrErr;
 use k256::{ecdsa::SigningKey, PublicKey as K256PublicKey};
@@ -487,6 +487,25 @@ where
     }
 }
 
+/// Deserializes the input into a U64, accepting both 0x-prefixed hex and decimal strings with
+/// arbitrary precision, defined by serde_json's [`Number`](serde_json::Number).
+pub fn from_u64_or_hex<'de, D>(deserializer: D) -> Result<U64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum IntOrHex {
+        Int(serde_json::Number),
+        Hex(String),
+    }
+
+    match IntOrHex::deserialize(deserializer)? {
+        IntOrHex::Hex(s) => U64::from_str(s.as_str()).map_err(serde::de::Error::custom),
+        IntOrHex::Int(n) => U64::from_dec_str(&n.to_string()).map_err(serde::de::Error::custom),
+    }
+}
+
 /// Deserializes the input into an `Option<U256>`, using [`from_int_or_hex`] to deserialize the
 /// inner value.
 pub fn from_int_or_hex_opt<'de, D>(deserializer: D) -> Result<Option<U256>, D::Error>
@@ -494,6 +513,15 @@ where
     D: Deserializer<'de>,
 {
     Ok(Some(from_int_or_hex(deserializer)?))
+}
+
+/// Deserializes the input into an `Option<u64>`, using [`from_u64_or_hex`] to deserialize the
+/// inner value.
+pub fn from_u64_or_hex_opt<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(Some(from_u64_or_hex(deserializer)?.as_u64()))
 }
 
 fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {

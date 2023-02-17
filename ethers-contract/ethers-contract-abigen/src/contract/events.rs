@@ -3,7 +3,7 @@
 use super::{common::expand_event_struct, types, Context};
 use crate::util;
 use ethers_core::{
-    abi::{Event, EventExt},
+    abi::{Event, EventExt, Param},
     macros::{ethers_contract_crate, ethers_core_crate},
 };
 use eyre::Result;
@@ -130,8 +130,8 @@ impl Context {
             };
 
             quote! {
-                /// Returns an [`Event`](#ethers_contract::builders::Event) builder for all the events of this contract.
-                pub fn events(&self) -> #ethers_contract::builders::Event<M, #ty> {
+                /// Returns an [`Event`](#ethers_contract::builders::Event) builder for all events of this contract
+                pub fn events(&self) -> #ethers_contract::builders::Event<Arc<M>, M, #ty> {
                     self.0.event_with_filter(Default::default())
                 }
             }
@@ -163,7 +163,7 @@ impl Context {
 
         quote! {
             #[doc = #doc_str]
-            pub fn #function_name(&self) -> #ethers_contract::builders::Event<M, #struct_name> {
+            pub fn #function_name(&self) -> #ethers_contract::builders::Event<Arc<M>, M, #struct_name> {
                 self.0.event()
             }
         }
@@ -273,7 +273,7 @@ mod tests {
             #[doc = "Gets the contract's `Transfer` event"]
             pub fn transfer_event_filter(
                 &self
-            ) -> ::ethers_contract::builders::Event<M, TransferEventFilter> {
+            ) -> ::ethers_contract::builders::Event<Arc<M>, M, TransferEventFilter> {
                 self.0.event()
             }
         });
@@ -292,7 +292,9 @@ mod tests {
         let cx = test_context();
         assert_quote!(cx.expand_filter(&event), {
             #[doc = "Gets the contract's `Transfer` event"]
-            pub fn transfer_filter(&self) -> ::ethers_contract::builders::Event<M, TransferFilter> {
+            pub fn transfer_filter(
+                &self,
+            ) -> ::ethers_contract::builders::Event<Arc<M>, M, TransferFilter> {
                 self.0.event()
             }
         });

@@ -22,7 +22,7 @@
     - [x] Events with meta
     - [ ] Methods
 - [ ] Events
-  - [ ] Logs and filtering
+  - [x] Logs and filtering
   - [ ] Solidity topics
 - [ ] Middleware
   - [x] Builder

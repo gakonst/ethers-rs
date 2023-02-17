@@ -8,14 +8,15 @@ use ethers_contract_abigen::{
     Abigen,
 };
 use ethers_core::abi::{Function, FunctionExt, Param, StateMutability};
+use eyre::Result;
 use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::ToTokens;
-use std::{collections::HashSet, error::Error};
+use std::collections::HashSet;
 use syn::{
     braced,
     ext::IdentExt,
     parenthesized,
-    parse::{Error as ParseError, Parse, ParseStream, Result as ParseResult},
+    parse::{Error, Parse, ParseStream, Result as ParseResult},
     Ident, LitStr, Path, Token,
 };
 
@@ -26,13 +27,13 @@ pub(crate) struct Contracts {
 }
 
 impl Contracts {
-    pub(crate) fn expand(self) -> ::std::result::Result<TokenStream2, syn::Error> {
+    pub(crate) fn expand(self) -> Result<TokenStream2, Error> {
         let mut expansions = Vec::with_capacity(self.inner.len());
 
         // expand all contracts
         for (span, contract) in self.inner {
-            let contract = Self::expand_contract(contract)
-                .map_err(|err| syn::Error::new(span, err.to_string()))?;
+            let contract =
+                Self::expand_contract(contract).map_err(|err| Error::new(span, err.to_string()))?;
             expansions.push(contract);
         }
 
@@ -40,10 +41,8 @@ impl Contracts {
         Ok(MultiExpansion::new(expansions).expand_inplace())
     }
 
-    fn expand_contract(
-        contract: ContractArgs,
-    ) -> Result<(ExpandedContract, Context), Box<dyn Error>> {
-        Ok(contract.into_builder()?.expand()?)
+    fn expand_contract(contract: ContractArgs) -> Result<(ExpandedContract, Context)> {
+        contract.into_builder()?.expand()
     }
 }
 
@@ -66,7 +65,7 @@ pub(crate) struct ContractArgs {
 }
 
 impl ContractArgs {
-    fn into_builder(self) -> Result<Abigen, Box<dyn Error>> {
+    fn into_builder(self) -> Result<Abigen> {
         let mut builder = Abigen::new(&self.name, &self.abi)?;
 
         for parameter in self.parameters.into_iter() {
@@ -151,13 +150,13 @@ impl Parse for Parameter {
                     let mut aliases = HashSet::new();
                     for method in parsed {
                         if !signatures.insert(method.signature.clone()) {
-                            return Err(ParseError::new(
+                            return Err(Error::new(
                                 method.span(),
                                 "duplicate method signature in `abigen!` macro invocation",
                             ))
                         }
                         if !aliases.insert(method.alias.clone()) {
-                            return Err(ParseError::new(
+                            return Err(Error::new(
                                 method.span(),
                                 "duplicate method alias in `abigen!` macro invocation",
                             ))
@@ -181,10 +180,7 @@ impl Parse for Parameter {
                 Parameter::Derives(derives)
             }
             _ => {
-                return Err(ParseError::new(
-                    name.span(),
-                    format!("unexpected named parameter `{name}`"),
-                ))
+                return Err(Error::new(name.span(), format!("unexpected named parameter `{name}`")))
             }
         };
 
@@ -211,7 +207,7 @@ impl Parse for Method {
                 .iter()
                 .map(|ident| {
                     let kind = serde_json::from_value(serde_json::json!(&ident.to_string()))
-                        .map_err(|err| ParseError::new(ident.span(), err))?;
+                        .map_err(|err| Error::new(ident.span(), err))?;
                     Ok(Param { name: "".into(), kind, internal_type: None })
                 })
                 .collect::<ParseResult<Vec<_>>>()?;

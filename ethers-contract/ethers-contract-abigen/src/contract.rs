@@ -56,7 +56,11 @@ impl ExpandedContract {
            // export all the created data types
             pub use #module::*;
 
-            #[allow(clippy::too_many_arguments, non_camel_case_types)]
+            #[allow(
+                clippy::too_many_arguments,
+                non_camel_case_types,
+                clippy::upper_case_acronyms
+            )]
             pub mod #module {
                 #imports
                 #contract

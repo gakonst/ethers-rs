@@ -21,7 +21,7 @@ const GETH_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
 const GETH_DIAL_LOOP_TIMEOUT: Duration = Duration::new(20, 0);
 
 /// The exposed APIs
-const API: &str = "eth,net,web3,txpool,admin,personal,miner";
+const API: &str = "eth,net,web3,txpool,admin,personal,miner,debug";
 
 /// The geth command
 const GETH: &str = "geth";

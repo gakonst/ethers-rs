@@ -41,6 +41,13 @@ pub(crate) mod utils;
 ///
 /// // npmjs
 /// abigen!(MyContract, "npm:@org/package@1.0.0/path/to/contract.json");
+///
+/// // Human readable ABI
+/// abigen!(MyContract, r"[
+///     function setValue(string)
+///     function getValue() external view returns (string)
+///     event ValueChanged(address indexed author, string oldValue, string newValue)
+/// ]");
 /// ```
 ///
 /// Note that Etherscan rate-limits requests to their API, to avoid this an
@@ -105,7 +112,11 @@ pub fn abigen(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(EthAbiType)]
 pub fn derive_abi_type(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    TokenStream::from(abi_ty::derive_tokenizeable_impl(&input))
+    match abi_ty::derive_tokenizeable_impl(&input) {
+        Ok(tokens) => tokens,
+        Err(err) => err.to_compile_error(),
+    }
+    .into()
 }
 
 /// Derives the `AbiEncode`, `AbiDecode` and traits for the labeled type.
@@ -167,9 +178,10 @@ pub fn derive_abi_codec(input: TokenStream) -> TokenStream {
 pub fn derive_eth_display(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     match display::derive_eth_display_impl(input) {
-        Ok(tokens) => TokenStream::from(tokens),
-        Err(err) => err.to_compile_error().into(),
+        Ok(tokens) => tokens,
+        Err(err) => err.to_compile_error(),
     }
+    .into()
 }
 
 /// Derives the `EthEvent` and `Tokenizeable` trait for the labeled type.
@@ -217,7 +229,11 @@ pub fn derive_eth_display(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(EthEvent, attributes(ethevent))]
 pub fn derive_abi_event(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    TokenStream::from(event::derive_eth_event_impl(input))
+    match event::derive_eth_event_impl(input) {
+        Ok(tokens) => tokens,
+        Err(err) => err.to_compile_error(),
+    }
+    .into()
 }
 
 /// Derives the `EthCall` and `Tokenizeable` trait for the labeled type.
@@ -281,7 +297,11 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(EthCall, attributes(ethcall))]
 pub fn derive_abi_call(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    TokenStream::from(call::derive_eth_call_impl(input))
+    match call::derive_eth_call_impl(input) {
+        Ok(tokens) => tokens,
+        Err(err) => err.to_compile_error(),
+    }
+    .into()
 }
 
 /// Derives the `EthError` and `Tokenizeable` trait for the labeled type.
@@ -318,5 +338,9 @@ pub fn derive_abi_call(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(EthError, attributes(etherror))]
 pub fn derive_abi_error(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    TokenStream::from(error::derive_eth_error_impl(input))
+    match error::derive_eth_error_impl(input) {
+        Ok(tokens) => tokens,
+        Err(err) => err.to_compile_error(),
+    }
+    .into()
 }

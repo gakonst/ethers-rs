@@ -6,6 +6,7 @@ use ethers_core::{
     macros::ethers_core_crate,
 };
 use eyre::{bail, Result};
+use inflector::Inflector;
 use proc_macro2::{Literal, TokenStream};
 use quote::{quote, ToTokens};
 
@@ -129,7 +130,7 @@ pub fn expand_params<'a, 'b, F: Fn(&'a Param) -> Option<&'b str>>(
         .enumerate()
         .map(|(idx, param)| {
             // NOTE: Params can be unnamed.
-            expand_resolved(&param.kind, &param, &resolve_tuple)
+            expand_resolved(&param.kind, param, &resolve_tuple)
                 .map(|ty| (util::expand_input_name(idx, &param.name), ty))
         })
         .collect()
@@ -162,7 +163,7 @@ fn expand_resolved<'a, 'b, F: Fn(&'a Param) -> Option<&'b str>>(
 pub fn expand_struct_type(struct_ty: &StructFieldType) -> TokenStream {
     match struct_ty {
         StructFieldType::Type(ty) => {
-            let ty = util::ident(ty.name());
+            let ty = util::ident(&ty.name().to_pascal_case());
             quote!(#ty)
         }
         StructFieldType::Array(ty) => array(expand_struct_type(ty), None),
