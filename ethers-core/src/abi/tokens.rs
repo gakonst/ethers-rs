@@ -39,9 +39,9 @@ impl<T: Tokenizable> Detokenize for T {
     }
 }
 
-/// Tokens conversion trait
+/// Convert types into [`Token`]s.
 pub trait Tokenize {
-    /// Convert to list of tokens
+    /// Converts `self` into a `Vec<Token>`.
     fn into_tokens(self) -> Vec<Token>;
 }
 
@@ -297,56 +297,6 @@ int_tokenizable!(u32, Uint);
 int_tokenizable!(u64, Uint);
 int_tokenizable!(u128, Uint);
 
-/// Marker trait for `Tokenizable` types that are can tokenized to and from a
-/// `Token::Array` and `Token:FixedArray`.
-pub trait TokenizableItem: Tokenizable {}
-
-macro_rules! tokenizable_item {
-    ($($type: ty,)*) => {
-        $(
-            impl TokenizableItem for $type {}
-        )*
-    };
-}
-
-tokenizable_item! {
-    Token, String, Address, H256, U256, I256, U128, bool, Vec<u8>,
-    i8, i16, i32, i64, i128, u16, u32, u64, u128, Bytes, bytes::Bytes,
-}
-
-macro_rules! impl_tokenizable_item_tuple {
-    ($( $ty:ident ),+ $(,)?) => {
-        impl<$( $ty ),+> TokenizableItem for ($( $ty, )+)
-        where
-            $(
-                $ty: Tokenizable,
-            )+
-        {}
-    }
-}
-
-impl_tokenizable_item_tuple!(A,);
-impl_tokenizable_item_tuple!(A, B,);
-impl_tokenizable_item_tuple!(A, B, C,);
-impl_tokenizable_item_tuple!(A, B, C, D,);
-impl_tokenizable_item_tuple!(A, B, C, D, E,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T,);
-impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U,);
-
 impl Tokenizable for Vec<u8> {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
@@ -356,6 +306,7 @@ impl Tokenizable for Vec<u8> {
             other => Err(InvalidOutputType(format!("Expected `bytes`, got {:?}", other))),
         }
     }
+
     fn into_token(self) -> Token {
         Token::Array(self.into_iter().map(Tokenizable::into_token).collect())
     }
@@ -375,8 +326,6 @@ impl<T: TokenizableItem> Tokenizable for Vec<T> {
         Token::Array(self.into_iter().map(Tokenizable::into_token).collect())
     }
 }
-
-impl<T: TokenizableItem> TokenizableItem for Vec<T> {}
 
 impl<const N: usize> Tokenizable for [u8; N] {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
@@ -404,8 +353,6 @@ impl<const N: usize> Tokenizable for [u8; N] {
         Token::FixedBytes(self.to_vec())
     }
 }
-
-impl<const N: usize> TokenizableItem for [u8; N] {}
 
 impl<T: TokenizableItem + Clone, const N: usize> Tokenizable for [T; N] {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
@@ -441,7 +388,61 @@ impl<T: TokenizableItem + Clone, const N: usize> Tokenizable for [T; N] {
     }
 }
 
+/// Marker trait for `Tokenizable` types that are can tokenized to and from a `Token::Array` and
+/// `Token:FixedArray`.
+pub trait TokenizableItem: Tokenizable {}
+
+macro_rules! tokenizable_item {
+    ($($type: ty,)*) => {
+        $(
+            impl TokenizableItem for $type {}
+        )*
+    };
+}
+
+tokenizable_item! {
+    Token, String, Address, H256, U256, I256, U128, bool, Vec<u8>,
+    i8, i16, i32, i64, i128, u16, u32, u64, u128, Bytes, bytes::Bytes,
+}
+
+impl<T: TokenizableItem> TokenizableItem for Vec<T> {}
+
+impl<const N: usize> TokenizableItem for [u8; N] {}
+
 impl<T: TokenizableItem + Clone, const N: usize> TokenizableItem for [T; N] {}
+
+macro_rules! impl_tokenizable_item_tuple {
+    ($( $ty:ident ),+ $(,)?) => {
+        impl<$( $ty ),+> TokenizableItem for ($( $ty, )+)
+        where
+            $(
+                $ty: Tokenizable,
+            )+
+        {}
+    }
+}
+
+impl_tokenizable_item_tuple!(A,);
+impl_tokenizable_item_tuple!(A, B,);
+impl_tokenizable_item_tuple!(A, B, C,);
+impl_tokenizable_item_tuple!(A, B, C, D,);
+impl_tokenizable_item_tuple!(A, B, C, D, E,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T,);
+impl_tokenizable_item_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U,);
 
 /// Helper for flattening non-nested tokens into their inner types;
 ///
