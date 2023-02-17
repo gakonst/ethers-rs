@@ -93,7 +93,15 @@ where
             RwClientError::Write(e) => e.as_error_response(),
         }
     }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            RwClientError::Read(e) => e.as_serde_error(),
+            RwClientError::Write(e) => e.as_serde_error(),
+        }
+    }
 }
+
 impl<Read, Write> From<RwClientError<Read, Write>> for ProviderError
 where
     Read: JsonRpcClient + 'static,

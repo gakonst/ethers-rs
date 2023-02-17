@@ -499,6 +499,13 @@ impl crate::RpcError for IpcError {
             None
         }
     }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            IpcError::JsonError(err) => Some(err),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

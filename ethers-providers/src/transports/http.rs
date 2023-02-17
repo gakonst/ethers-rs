@@ -66,6 +66,13 @@ impl crate::RpcError for ClientError {
             None
         }
     }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            ClientError::SerdeJson { err, .. } => Some(err),
+            _ => None,
+        }
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]

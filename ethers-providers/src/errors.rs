@@ -5,6 +5,8 @@ use crate::JsonRpcError;
 
 pub trait RpcError: Error + Debug + Send + Sync {
     fn as_error_response(&self) -> Option<&JsonRpcError>;
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error>;
 }
 
 pub trait MiddlewareError: Error + Sized + Send + Sync {
@@ -14,6 +16,9 @@ pub trait MiddlewareError: Error + Sized + Send + Sync {
 
     fn as_inner(&self) -> Option<&Self::Inner>;
 
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        self.as_inner()?.as_serde_error()
+    }
     fn as_provider_error(&self) -> Option<&ProviderError> {
         self.as_inner()?.as_provider_error()
     }
@@ -72,6 +77,14 @@ impl RpcError for ProviderError {
             None
         }
     }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            ProviderError::JsonRpcClientError(e) => e.as_serde_error(),
+            ProviderError::SerdeJson(e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 impl MiddlewareError for ProviderError {
@@ -79,6 +92,10 @@ impl MiddlewareError for ProviderError {
 
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         RpcError::as_error_response(self)
+    }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        RpcError::as_serde_error(self)
     }
 
     fn from_err(e: Self::Inner) -> Self {
