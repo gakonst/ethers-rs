@@ -769,3 +769,10 @@ fn convert_uses_correct_abi() {
     // is incorrectly using the `Foo` ABI internally).
     bar.bar().call();
 }
+
+#[test]
+fn generates_non_zero_bytecode() {
+    abigen!(Greeter, "ethers-contract/tests/solidity-contracts/greeter_with_struct.json");
+    assert!(GREETER_BYTECODE.len() > 0);
+    assert!(GREETER_DEPLOYMENT_BYTECODE.len() > 0);
+}
