@@ -507,7 +507,7 @@ impl crate::RpcError for ClientError {
 
     fn as_serde_error(&self) -> Option<&serde_json::Error> {
         match self {
-            ClientError::JsonError(err) => Some(&err),
+            ClientError::JsonError(err) => Some(err),
             _ => None,
         }
     }
