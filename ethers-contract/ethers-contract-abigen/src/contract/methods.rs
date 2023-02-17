@@ -120,7 +120,7 @@ impl Context {
         let abi_signature = function.abi_signature();
         let doc_str = format!(
             "Container type for all input parameters for the `{function_name}` function with signature `{abi_signature}` and selector `0x{}`",
-            hex::encode(&function.selector()[..])
+            hex::encode(function.selector())
         );
 
         let mut extra_derives = self.expand_extra_derives();
@@ -160,7 +160,7 @@ impl Context {
         let abi_signature = function.abi_signature();
         let doc_str = format!(
             "Container type for all return fields from the `{name}` function with signature `{abi_signature}` and selector `0x{}`",
-            hex::encode(&function.selector()[..])
+            hex::encode(function.selector())
         );
 
         let mut extra_derives = self.expand_extra_derives();
