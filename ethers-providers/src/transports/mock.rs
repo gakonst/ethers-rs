@@ -111,6 +111,13 @@ impl crate::RpcError for MockError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         None
     }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            MockError::SerdeJson(e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 impl From<MockError> for ProviderError {

@@ -359,6 +359,10 @@ impl crate::RpcError for QuorumError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
         None
     }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        None
+    }
 }
 
 impl From<QuorumError> for ProviderError {

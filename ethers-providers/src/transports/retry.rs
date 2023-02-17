@@ -217,6 +217,14 @@ impl crate::RpcError for RetryClientError {
             None
         }
     }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            RetryClientError::ProviderError(e) => e.as_serde_error(),
+            RetryClientError::SerdeJson(e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 impl std::fmt::Display for RetryClientError {
