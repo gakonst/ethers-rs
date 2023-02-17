@@ -30,6 +30,14 @@ impl RpcError for WsOrIpcError {
             WsOrIpcError::Ipc(e) => e.as_error_response(),
         }
     }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            WsOrIpcError::Ws(WsClientError::JsonError(e)) => Some(e),
+            WsOrIpcError::Ipc(IpcError::JsonError(e)) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 impl From<WsOrIpcError> for ProviderError {
