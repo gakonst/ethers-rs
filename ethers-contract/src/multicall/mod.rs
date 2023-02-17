@@ -7,14 +7,18 @@ use ethers_core::{
 use ethers_providers::{Middleware, PendingTransaction};
 use std::{convert::TryFrom, fmt, sync::Arc};
 
-pub mod multicall_contract;
-use multicall_contract::multicall_3::{
+/// The Multicall contract bindings. Auto-generated with `abigen`.
+pub mod contract {
+    ethers_contract_derive::abigen!(Multicall3, "src/multicall/multicall_abi.json");
+}
+
+use contract::multicall_3::{
     Call as Multicall1Call, Call3 as Multicall3Call, Call3Value as Multicall3CallValue,
     Result as MulticallResult,
 };
 
 // Export the contract interface
-pub use multicall_contract::multicall_3::Multicall3 as MulticallContract;
+pub use contract::multicall_3::Multicall3 as MulticallContract;
 
 /// The Multicall3 contract address that is deployed in [`MULTICALL_SUPPORTED_CHAIN_IDS`]:
 /// [`0xcA11bde05977b3631167028862bE2a173976CA11`](https://etherscan.io/address/0xcA11bde05977b3631167028862bE2a173976CA11)
@@ -101,6 +105,7 @@ pub enum MulticallError<M: Middleware> {
     IllegalRevert,
 }
 
+/// Type alias for `Result<T, MulticallError<M>>`
 pub type Result<T, M> = std::result::Result<T, MulticallError<M>>;
 
 /// Helper struct for managing calls to be made to the `function` in smart contract `target`
