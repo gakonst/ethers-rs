@@ -50,10 +50,9 @@ impl Context {
 
     /// Returns all deploy (constructor) implementations
     pub(crate) fn deployment_methods(&self) -> Option<TokenStream> {
-        if self.contract_bytecode.is_none() {
-            // don't generate deploy if no bytecode
-            return None
-        }
+        // don't generate deploy if no bytecode
+        self.contract_bytecode.as_ref()?;
+
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
 
@@ -67,14 +66,14 @@ impl Context {
             #bytecode_name.clone().into()
         };
 
-        let tokens = quote! {
+        Some(quote! {
             /// Constructs the general purpose `Deployer` instance based on the provided constructor arguments and sends it.
             /// Returns a new instance of a deployer that returns an instance of this contract after sending the transaction
             ///
             /// Notes:
-            /// 1. If there are no constructor arguments, you should pass `()` as the argument.
-            /// 1. The default poll duration is 7 seconds.
-            /// 1. The default number of confirmations is 1 block.
+            /// - If there are no constructor arguments, you should pass `()` as the argument.
+            /// - The default poll duration is 7 seconds.
+            /// - The default number of confirmations is 1 block.
             ///
             ///
             /// # Example
@@ -85,22 +84,22 @@ impl Context {
             ///
             /// ```ignore
             /// # async fn deploy<M: ethers::providers::Middleware>(client: ::std::sync::Arc<M>) {
-            ///     abigen!(Greeter,"../greeter.json");
+            ///     abigen!(Greeter, "../greeter.json");
             ///
             ///    let greeter_contract = Greeter::deploy(client, "Hello world!".to_string()).unwrap().send().await.unwrap();
             ///    let msg = greeter_contract.greet().call().await.unwrap();
             /// # }
             /// ```
-            pub fn deploy<T: #ethers_core::abi::Tokenize>(client: ::std::sync::Arc<M>, constructor_args: T) -> ::core::result::Result<#ethers_contract::builders::ContractDeployer<M, Self>, #ethers_contract::ContractError<M>> {
-               let factory = #ethers_contract::ContractFactory::new(#get_abi, #get_bytecode, client);
-               let deployer = factory.deploy(constructor_args)?;
-               let deployer = #ethers_contract::ContractDeployer::new(deployer);
-               Ok(deployer)
+            pub fn deploy<T: #ethers_core::abi::Tokenize>(
+                client: ::std::sync::Arc<M>,
+                constructor_args: T,
+            ) -> ::core::result::Result<#ethers_contract::builders::ContractDeployer<M, Self>, #ethers_contract::ContractError<M>> {
+                let factory = #ethers_contract::ContractFactory::new(#get_abi, #get_bytecode, client);
+                let deployer = factory.deploy(constructor_args)?;
+                let deployer = #ethers_contract::ContractDeployer::new(deployer);
+                Ok(deployer)
             }
-
-        };
-
-        Some(tokens)
+        })
     }
 
     /// Expands to the corresponding struct type based on the inputs of the given function
