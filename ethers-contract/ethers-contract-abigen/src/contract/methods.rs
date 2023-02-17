@@ -143,10 +143,10 @@ impl Context {
         &self,
         function: &Function,
         alias: Option<&MethodAlias>,
-    ) -> Result<TokenStream> {
+    ) -> Result<Option<TokenStream>> {
         // no point in having structs when there is no data returned
         if function.outputs.is_empty() {
-            return Ok(TokenStream::new())
+            return Ok(None)
         }
 
         let name = &function.name;
@@ -170,11 +170,11 @@ impl Context {
 
         let ethers_contract = ethers_contract_crate();
 
-        Ok(quote! {
+        Ok(Some(quote! {
             #[doc = #doc_str]
             #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
             pub #return_type_definition
-        })
+        }))
     }
 
     /// Expands all call structs
@@ -259,23 +259,18 @@ impl Context {
     }
 
     /// Expands all return structs
-    fn expand_return_structs(
-        &self,
-        aliases: BTreeMap<String, MethodAlias>,
-    ) -> Result<Option<TokenStream>> {
-        let mut struct_defs = Vec::with_capacity(self.abi.functions.len());
+    fn expand_return_structs(&self, aliases: BTreeMap<String, MethodAlias>) -> Result<TokenStream> {
+        let mut tokens = TokenStream::new();
         for function in self.abi.functions.values().flatten() {
             let signature = function.abi_signature();
             let alias = aliases.get(&signature);
-            struct_defs.push(self.expand_return_struct(function, alias)?);
+            match self.expand_return_struct(function, alias) {
+                Ok(Some(def)) => tokens.extend(def),
+                Ok(None) => {}
+                Err(e) => return Err(e),
+            }
         }
-
-        if struct_defs.is_empty() {
-            Ok(None)
-        } else {
-            let tokens = quote!( #( #struct_defs )* );
-            Ok(Some(tokens))
-        }
+        Ok(tokens)
     }
 
     /// The name ident of the calls enum
