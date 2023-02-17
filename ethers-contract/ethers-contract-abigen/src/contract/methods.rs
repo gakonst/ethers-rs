@@ -1,6 +1,6 @@
 //! Methods expansion
 
-use super::{common::expand_struct, types, Context};
+use super::{structs::expand_struct, types, Context};
 use crate::util;
 use ethers_core::{
     abi::{Function, FunctionExt, Param, ParamType},

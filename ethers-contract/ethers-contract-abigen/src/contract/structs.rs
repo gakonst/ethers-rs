@@ -1,6 +1,6 @@
 //! Structs expansion
 
-use super::{common::expand_struct, types, Context};
+use super::{types, Context};
 use crate::util;
 use ethers_core::{
     abi::{
@@ -14,6 +14,7 @@ use inflector::Inflector;
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::collections::{HashMap, VecDeque};
+use syn::Ident;
 
 impl Context {
     /// Generate corresponding types for structs parsed from a human readable ABI
@@ -581,16 +582,56 @@ fn struct_type_projections(name: &str) -> Vec<String> {
     iter.rev().map(str::to_string).collect()
 }
 
+pub(crate) fn expand_struct(
+    name: &Ident,
+    fields: &[(TokenStream, TokenStream)],
+    is_tuple: bool,
+) -> TokenStream {
+    _expand_struct(name, fields.iter().map(|(a, b)| (a, b, false)), is_tuple)
+}
+
+pub(crate) fn expand_event_struct(
+    name: &Ident,
+    fields: &[(TokenStream, TokenStream, bool)],
+    is_tuple: bool,
+) -> TokenStream {
+    _expand_struct(name, fields.iter().map(|(a, b, c)| (a, b, *c)), is_tuple)
+}
+
+fn _expand_struct<'a>(
+    name: &Ident,
+    fields: impl Iterator<Item = (&'a TokenStream, &'a TokenStream, bool)>,
+    is_tuple: bool,
+) -> TokenStream {
+    let fields = fields.map(|(field, ty, indexed)| {
+        (field, ty, if indexed { Some(quote!(#[ethevent(indexed)])) } else { None })
+    });
+    let fields = if let Some(0) = fields.size_hint().1 {
+        // unit struct
+        quote!(;)
+    } else if is_tuple {
+        // tuple struct
+        let fields = fields.map(|(_, ty, indexed)| quote!(#indexed pub #ty));
+        quote!(( #( #fields ),* );)
+    } else {
+        // struct
+        let fields = fields.map(|(field, ty, indexed)| quote!(#indexed pub #field: #ty));
+        quote!({ #( #fields, )* })
+    };
+
+    quote!(struct #name #fields)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn can_determine_structs() {
         const VERIFIER_ABI: &str =
             include_str!("../../../tests/solidity-contracts/verifier_abi.json");
         let abi = serde_json::from_str::<RawAbi>(VERIFIER_ABI).unwrap();
 
-        let internal = InternalStructs::new(abi);
-        dbg!(internal.rust_type_names);
+        let _internal = InternalStructs::new(abi);
     }
 }

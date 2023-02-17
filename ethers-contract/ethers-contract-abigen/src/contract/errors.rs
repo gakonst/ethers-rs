@@ -1,6 +1,6 @@
 //! Custom errors expansion
 
-use super::{common::expand_struct, types, util, Context};
+use super::{structs::expand_struct, types, util, Context};
 use ethers_core::{
     abi::{ethabi::AbiError, ErrorExt},
     macros::{ethers_contract_crate, ethers_core_crate},

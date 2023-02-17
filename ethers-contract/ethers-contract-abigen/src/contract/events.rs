@@ -1,6 +1,6 @@
 //! Events expansion
 
-use super::{common::expand_event_struct, types, Context};
+use super::{structs::expand_event_struct, types, Context};
 use crate::util;
 use ethers_core::{
     abi::{Event, EventExt},
@@ -129,9 +129,13 @@ impl Context {
             };
 
             Some(quote! {
-                /// Returns an [`Event`](#ethers_contract::builders::Event) builder for all events of this contract
-                pub fn events(&self) -> #ethers_contract::builders::Event<Arc<M>, M, #ty> {
-                    self.0.event_with_filter(Default::default())
+                /// Returns an `Event` builder for all the events of this contract.
+                pub fn events(&self) -> #ethers_contract::builders::Event<
+                    ::std::sync::Arc<M>,
+                    M,
+                    #ty,
+                > {
+                    self.0.event_with_filter(::core::default::Default::default())
                 }
             })
         } else {
@@ -162,7 +166,11 @@ impl Context {
 
         quote! {
             #[doc = #doc_str]
-            pub fn #function_name(&self) -> #ethers_contract::builders::Event<Arc<M>, M, #struct_name> {
+            pub fn #function_name(&self) -> #ethers_contract::builders::Event<
+                ::std::sync::Arc<M>,
+                M,
+                #struct_name
+            > {
                 self.0.event()
             }
         }
@@ -272,7 +280,11 @@ mod tests {
             #[doc = "Gets the contract's `Transfer` event"]
             pub fn transfer_event_filter(
                 &self
-            ) -> ::ethers_contract::builders::Event<Arc<M>, M, TransferEventFilter> {
+            ) -> ::ethers_contract::builders::Event<
+                ::std::sync::Arc<M>,
+                M,
+                TransferEventFilter,
+            > {
                 self.0.event()
             }
         });
@@ -293,7 +305,8 @@ mod tests {
             #[doc = "Gets the contract's `Transfer` event"]
             pub fn transfer_filter(
                 &self,
-            ) -> ::ethers_contract::builders::Event<Arc<M>, M, TransferFilter> {
+            ) -> ::ethers_contract::builders::Event<::std::sync::Arc<M>, M, TransferFilter>
+            {
                 self.0.event()
             }
         });
