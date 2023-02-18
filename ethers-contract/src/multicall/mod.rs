@@ -314,10 +314,18 @@ impl MulticallVersion {
 pub struct Multicall<M> {
     /// The Multicall contract interface.
     pub contract: MulticallContract<M>,
+
+    /// The version of which methods to use when making the contract call.
     pub version: MulticallVersion,
+
+    /// Whether to use a legacy or a EIP-1559 transaction.
     pub legacy: bool,
+
+    /// The `block` field of the Multicall aggregate call.
     pub block: Option<BlockNumber>,
-    pub calls: Vec<Call>,
+
+    /// The internal call vector.
+    calls: Vec<Call>,
 }
 
 // Manually implement Clone and Debug to avoid trait bounds.
