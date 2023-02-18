@@ -502,18 +502,15 @@ impl<M: Middleware> Multicall<M> {
         if data.is_none() && !call.function.outputs.is_empty() {
             return self
         }
-        match to {
-            Some(NameOrAddress::Address(target)) => {
-                let call = Call {
-                    target,
-                    data: data.unwrap_or_default(),
-                    value: value.unwrap_or_default(),
-                    allow_failure,
-                    function: call.function,
-                };
-                self.calls.push(call);
-            }
-            _ => {}
+        if let Some(NameOrAddress::Address(target)) = to {
+            let call = Call {
+                target,
+                data: data.unwrap_or_default(),
+                value: value.unwrap_or_default(),
+                allow_failure,
+                function: call.function,
+            };
+            self.calls.push(call);
         }
         self
     }
