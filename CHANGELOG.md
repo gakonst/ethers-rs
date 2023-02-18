@@ -236,6 +236,8 @@
 
 ### Unreleased
 
+- Add `MiddlewareError` and `RpcError` traits to support access to deeply nested
+  RPC errors [#2122](https://github.com/gakonst/ethers-rs/pull/2122)
 - Convert provider errors to arbitrary middleware errors
   [#1920](https://github.com/gakonst/ethers-rs/pull/1920)
 - Add a subset of the `admin` namespace
