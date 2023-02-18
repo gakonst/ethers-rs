@@ -29,12 +29,7 @@ impl Detokenize for () {
 
 impl<T: Tokenizable> Detokenize for T {
     fn from_tokens(mut tokens: Vec<Token>) -> Result<Self, InvalidOutputType> {
-        let token = match tokens.len() {
-            0 => Token::Tuple(vec![]),
-            1 => tokens.pop().unwrap(),
-            _ => Token::Tuple(tokens),
-        };
-
+        let token = if tokens.len() == 1 { tokens.pop().unwrap() } else { Token::Tuple(tokens) };
         Self::from_token(token)
     }
 }
