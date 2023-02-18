@@ -110,6 +110,9 @@ pub struct Context {
 
     /// Bytecode extracted from the abi string input, if present.
     contract_bytecode: Option<Bytes>,
+
+    /// Deployed bytecode extracted from the abi string input, if present.
+    contract_deployed_bytecode: Option<Bytes>,
 }
 
 impl Context {
@@ -193,6 +196,9 @@ impl Context {
         // holds the bytecode parsed from the abi_str, if present
         let mut contract_bytecode = None;
 
+        // holds the deployed bytecode parsed from the abi_str, if present
+        let mut contract_deployed_bytecode = None;
+
         let (abi, human_readable, abi_parser) = parse_abi(&abi_str).wrap_err_with(|| {
             eyre::eyre!("error parsing abi for contract: {}", args.contract_name)
         })?;
@@ -220,6 +226,7 @@ impl Context {
                     // part of the json object in the contract binding
                     abi_str = serde_json::to_string(&obj.abi)?;
                     contract_bytecode = obj.bytecode;
+                    contract_deployed_bytecode = obj.deployed_bytecode;
                     InternalStructs::new(obj.abi)
                 }
                 JsonAbi::Array(abi) => InternalStructs::new(abi),
@@ -291,6 +298,7 @@ impl Context {
             contract_ident,
             contract_name: args.contract_name,
             contract_bytecode,
+            contract_deployed_bytecode,
             method_aliases,
             error_aliases: Default::default(),
             event_derives,
@@ -311,6 +319,11 @@ impl Context {
     /// Name of the `Lazy` that stores the Bytecode.
     pub(crate) fn inline_bytecode_ident(&self) -> Ident {
         format_ident!("{}_BYTECODE", self.contract_name.to_uppercase())
+    }
+
+    /// Name of the `Lazy` that stores the Deployed Bytecode.
+    pub(crate) fn inline_deployed_bytecode_ident(&self) -> Ident {
+        format_ident!("{}_DEPLOYED_BYTECODE", self.contract_name.to_uppercase())
     }
 
     /// Returns a reference to the internal ABI struct mapping table.

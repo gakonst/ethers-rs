@@ -72,12 +72,27 @@ pub(crate) fn struct_declaration(cx: &Context) -> TokenStream {
         }
     });
 
+    let deployed_bytecode = cx.contract_deployed_bytecode.as_ref().map(|bytecode| {
+        let bytecode = bytecode.iter().copied().map(Literal::u8_unsuffixed);
+        let bytecode_name = cx.inline_deployed_bytecode_ident();
+        quote! {
+            #[rustfmt::skip]
+            const __DEPLOYED_BYTECODE: &[u8] = &[ #( #bytecode ),* ];
+
+            #[doc = "The deployed bytecode of the contract."]
+            pub static #bytecode_name: #ethers_core::types::Bytes = #ethers_core::types::Bytes::from_static(__DEPLOYED_BYTECODE);
+        }
+    });
+
     quote! {
         // The `Lazy` ABI
         #abi
 
         // The static Bytecode, if present
         #bytecode
+
+         // The static deployed Bytecode, if present
+         #deployed_bytecode
 
         // Struct declaration
         pub struct #name<M>(#ethers_contract::Contract<M>);
