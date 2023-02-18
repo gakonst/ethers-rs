@@ -778,5 +778,4 @@ fn generates_non_zero_bytecode() {
     assert!(GREETER_DEPLOYED_BYTECODE.len() > 0);
     //sanity check that the bytecode is not the same
     assert_ne!(GREETER_BYTECODE, GREETER_DEPLOYED_BYTECODE);
-
 }
