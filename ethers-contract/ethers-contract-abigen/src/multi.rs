@@ -1342,7 +1342,7 @@ contract Enum {
  [package]
         name = "ethers-contract"
         version = "1.0.0"
-        edition = "2018"
+        edition = "2021"
         rust-version = "1.64"
         authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
         license = "MIT OR Apache-2.0"
@@ -1388,7 +1388,7 @@ contract Enum {
  [package]
         name = "ethers-contract"
         version = "1.0.0"
-        edition = "2018"
+        edition = "2021"
         rust-version = "1.64"
         authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
         license = "MIT OR Apache-2.0"
@@ -1435,7 +1435,7 @@ contract Enum {
     [package]
         name = "ethers-contract"
         version = "1.0.0"
-        edition = "2018"
+        edition = "2021"
         rust-version = "1.64"
         authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
         license = "MIT OR Apache-2.0"
@@ -1482,7 +1482,7 @@ contract Enum {
     [package]
         name = "ethers-contract"
         version = "1.0.0"
-        edition = "2018"
+        edition = "2021"
         rust-version = "1.64"
         authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
         license = "MIT OR Apache-2.0"
