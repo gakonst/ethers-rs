@@ -114,6 +114,9 @@ pub struct Context {
 
     /// Bytecode extracted from the abi string input, if present.
     contract_bytecode: Option<Bytes>,
+
+    /// Deployed bytecode extracted from the abi string input, if present.
+    contract_deployed_bytecode: Option<Bytes>,
 }
 
 impl Context {
@@ -192,6 +195,9 @@ impl Context {
         // holds the bytecode parsed from the abi_str, if present
         let mut contract_bytecode = None;
 
+        // holds the deployed bytecode parsed from the abi_str, if present
+        let mut contract_deployed_bytecode = None;
+
         let (abi, human_readable, abi_parser) = parse_abi(&abi_str).wrap_err_with(|| {
             eyre::eyre!("error parsing abi for contract: {}", args.contract_name)
         })?;
@@ -219,6 +225,7 @@ impl Context {
                     // part of the json object in the contract binding
                     abi_str = serde_json::to_string(&obj.abi)?;
                     contract_bytecode = obj.bytecode;
+                    contract_deployed_bytecode = obj.deployed_bytecode;
                     InternalStructs::new(obj.abi)
                 }
                 JsonAbi::Array(abi) => InternalStructs::new(abi),
@@ -290,6 +297,7 @@ impl Context {
             contract_ident,
             contract_name: args.contract_name,
             contract_bytecode,
+            contract_deployed_bytecode,
             method_aliases,
             error_aliases: Default::default(),
             extra_derives,
@@ -310,6 +318,11 @@ impl Context {
     /// Name of the `Lazy` that stores the Bytecode.
     pub(crate) fn inline_bytecode_ident(&self) -> Ident {
         format_ident!("{}_BYTECODE", self.contract_name.to_uppercase())
+    }
+
+    /// Name of the `Lazy` that stores the Deployed Bytecode.
+    pub(crate) fn inline_deployed_bytecode_ident(&self) -> Ident {
+        format_ident!("{}_DEPLOYED_BYTECODE", self.contract_name.to_uppercase())
     }
 
     /// Returns a reference to the internal ABI struct mapping table.
@@ -364,15 +377,27 @@ impl Context {
 
         let bytecode = self.contract_bytecode.as_ref().map(|bytecode| {
         let bytecode = bytecode.iter().copied().map(Literal::u8_unsuffixed);
-        let bytecode_name = self.inline_bytecode_ident();
-        quote! {
-            #[rustfmt::skip]
-            const __BYTECODE: &[u8] = &[ #( #bytecode ),* ];
+            let bytecode_name = self.inline_bytecode_ident();
+            quote! {
+                #[rustfmt::skip]
+                const __BYTECODE: &[u8] = &[ #( #bytecode ),* ];
 
-            #[doc = "The bytecode of the contract."]
-            pub static #bytecode_name: #ethers_core::types::Bytes = #ethers_core::types::Bytes::from_static(__BYTECODE);
-        }
-    });
+                #[doc = "The bytecode of the contract."]
+                pub static #bytecode_name: #ethers_core::types::Bytes = #ethers_core::types::Bytes::from_static(__BYTECODE);
+            }
+        });
+
+        let deployed_bytecode = self.contract_deployed_bytecode.as_ref().map(|bytecode| {
+            let bytecode = bytecode.iter().copied().map(Literal::u8_unsuffixed);
+            let bytecode_name = self.inline_deployed_bytecode_ident();
+            quote! {
+                #[rustfmt::skip]
+                const __DEPLOYED_BYTECODE: &[u8] = &[ #( #bytecode ),* ];
+
+                #[doc = "The deployed bytecode of the contract."]
+                pub static #bytecode_name: #ethers_core::types::Bytes = #ethers_core::types::Bytes::from_static(__DEPLOYED_BYTECODE);
+            }
+        });
 
         quote! {
             // The `Lazy` ABI
@@ -380,6 +405,9 @@ impl Context {
 
             // The static Bytecode, if present
             #bytecode
+
+            // The static deployed Bytecode, if present
+            #deployed_bytecode
 
             // Struct declaration
             pub struct #name<M>(#ethers_contract::Contract<M>);
