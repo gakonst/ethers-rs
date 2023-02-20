@@ -114,6 +114,9 @@ pub enum Chain {
 
     Aurora = 1313161554,
     AuroraTestnet = 1313161555,
+
+    Canto = 7700,
+    CantoTestnet = 740,
 }
 
 // === impl Chain ===
@@ -220,7 +223,7 @@ impl Chain {
             BinanceSmartChain | BinanceSmartChainTestnet => 3_000,
             Avalanche | AvalancheFuji => 2_000,
             Fantom | FantomTestnet => 1_200,
-            Cronos | CronosTestnet => 5_700,
+            Cronos | CronosTestnet | Canto | CantoTestnet => 5_700,
             Evmos | EvmosTestnet => 1_900,
             Aurora | AuroraTestnet => 1_100,
             Oasis => 5_500,
@@ -320,6 +323,8 @@ impl Chain {
             CeloBaklava => {
                 ("https://explorer.celo.org/baklava", "https://explorer.celo.org/baklava/api")
             }
+            Canto => ("https://evm.explorer.canto.io/", "https://evm.explorer.canto.io/api"),
+            CantoTestnet => ("https://testnet-explorer.canto.neobase.one/", "https://testnet-explorer.canto.neobase.one/api"),
             AnvilHardhat | Dev | Morden | MoonbeamDev => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
@@ -363,7 +368,7 @@ impl Chain {
             // Unknown / not applicable, default to false for backwards compatibility
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
             Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
-            EvmosTestnet | Chiado | Aurora | AuroraTestnet => false,
+            EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet => false,
         }
     }
 }
