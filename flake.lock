@@ -88,6 +88,42 @@
         "type": "github"
       }
     },
+    "flake-utils_3": {
+      "locked": {
+        "lastModified": 1644229661,
+        "narHash": "sha256-1YdnJAsNy69bpcjuoKdOYQX0YxZBiCYZo4Twxerqv7k=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "3cecb5b042f7f209c56ffd8371b2711a290ec797",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "foundry": {
+      "inputs": {
+        "flake-utils": "flake-utils_3",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1676884188,
+        "narHash": "sha256-jaVDZcl+YfNkvdGrmWozrvuzOjW45Iuyx8HhR/kE7Bs=",
+        "owner": "shazow",
+        "repo": "foundry.nix",
+        "rev": "ff07b373aaea4d27e15c7291d344d9f92b614fc6",
+        "type": "github"
+      },
+      "original": {
+        "owner": "shazow",
+        "repo": "foundry.nix",
+        "type": "github"
+      }
+    },
     "gitignore": {
       "inputs": {
         "nixpkgs": [
@@ -245,6 +281,7 @@
         "devenv": "devenv",
         "fenix": "fenix",
         "flake-utils": "flake-utils_2",
+        "foundry": "foundry",
         "nixpkgs": "nixpkgs_2"
       }
     },
