@@ -28,7 +28,6 @@ pub(crate) fn derive_eth_display_impl(input: DeriveInput) -> Result<TokenStream,
             let idx = Index::from(i);
             quote!(#idx)
         });
-        eprintln!("{:?} => {:?}", field.ty, utils::find_parameter_type(&field.ty));
         if let Ok(param) = utils::find_parameter_type(&field.ty) {
             let ethers_core = ethers_core_crate();
             let hex_encode = quote!(#ethers_core::utils::hex::encode);

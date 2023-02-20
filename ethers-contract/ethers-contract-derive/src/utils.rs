@@ -368,7 +368,6 @@ mod tests {
                 Ok(ty) => assert_eq!(ty, *expected),
                 Err(e) => panic!("{e}: {ty:#?}\n{expected}"),
             }
-            assert_eq!(find_parameter_type(ty).unwrap(), *expected);
         }
     }
 }
