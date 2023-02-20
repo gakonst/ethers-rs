@@ -1,4 +1,8 @@
-use ethers_core::abi::{Param, ParamType};
+use crate::InternalStructs;
+use ethers_core::abi::{
+    struct_def::{FieldType, StructFieldType},
+    ParamType, SolStruct,
+};
 use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::{Ident, Span, TokenStream};
@@ -165,28 +169,158 @@ pub(crate) fn json_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
         .collect()
 }
 
-/// Returns whether all the given parameters can derive [`Default`].
+/// Returns whether all the given parameters can derive the builtin traits.
 ///
-/// rust-std derives `Default` automatically only for arrays len <= 32
-pub(crate) fn can_derive_defaults<'a>(params: impl IntoIterator<Item = &'a Param>) -> bool {
-    params.into_iter().map(|param| &param.kind).all(can_derive_default)
+/// The following traits are only implemented on tuples of arity 12 or less:
+///
+/// - [PartialEq](https://doc.rust-lang.org/stable/std/cmp/trait.PartialEq.html)
+/// - [Eq](https://doc.rust-lang.org/stable/std/cmp/trait.Eq.html)
+/// - [PartialOrd](https://doc.rust-lang.org/stable/std/cmp/trait.PartialOrd.html)
+/// - [Ord](https://doc.rust-lang.org/stable/std/cmp/trait.Ord.html)
+/// - [Debug](https://doc.rust-lang.org/stable/std/fmt/trait.Debug.html)
+/// - [Default](https://doc.rust-lang.org/stable/std/default/trait.Default.html)
+/// - [Hash](https://doc.rust-lang.org/stable/std/hash/trait.Hash.html)
+///
+/// while the `Default` trait is only implemented on arrays of length 32 or less.
+///
+/// Tuple reference: <https://doc.rust-lang.org/stable/std/primitive.tuple.html#trait-implementations-1>
+///
+/// Array reference: <https://doc.rust-lang.org/stable/std/primitive.array.html>
+///
+/// `derive_default` should be set to false when calling this for enums.
+pub(crate) fn derive_builtin_traits<'a>(
+    params: impl IntoIterator<Item = &'a ParamType>,
+    stream: &mut TokenStream,
+    mut derive_default: bool,
+    mut derive_others: bool,
+) {
+    for param in params {
+        derive_default &= can_derive_default(param);
+        derive_others &= can_derive_builtin_traits(param);
+    }
+    extend_derives(stream, derive_default, derive_others);
 }
 
-/// Returns whether the given type can derive [`Default`].
-///
-/// rust-std derives `Default` automatically only for arrays len <= 32
-pub(crate) fn can_derive_default(param: &ParamType) -> bool {
-    const MAX_SUPPORTED_LEN: usize = 32;
+/// This has to be a seperate function since a sol struct is converted into a tuple, but for
+/// deriving purposes it shouldn't count as one, so we recurse back the struct fields.
+pub(crate) fn derive_builtin_traits_struct<'a>(
+    structs: &InternalStructs,
+    sol_struct: &SolStruct,
+    params: &[ParamType],
+    stream: &mut TokenStream,
+) {
+    if sol_struct.fields().iter().any(|field| field.ty.is_struct()) {
+        let mut def = true;
+        let mut others = true;
+        _derive_builtin_traits_struct(structs, sol_struct, params, &mut def, &mut others);
+        extend_derives(stream, def, others);
+    } else {
+        derive_builtin_traits(params, stream, true, true);
+    }
+}
+
+fn _derive_builtin_traits_struct<'a>(
+    structs: &InternalStructs,
+    sol_struct: &SolStruct,
+    params: &[ParamType],
+    def: &mut bool,
+    others: &mut bool,
+) {
+    let fields = sol_struct.fields();
+    debug_assert_eq!(fields.len(), params.len());
+
+    for (field, ty) in fields.iter().zip(params) {
+        match &field.ty {
+            FieldType::Struct(s_ty) => {
+                // a tuple here is actually a sol struct so we skip it
+                if !matches!(ty, ParamType::Tuple(_)) {
+                    *def &= can_derive_default(ty);
+                    *others &= can_derive_builtin_traits(ty);
+                }
+                let id = s_ty.identifier();
+                // TODO: InternalStructs does not contain this field's ID if the struct and field
+                // are in 2 different modules, like in `can_generate_internal_structs_multiple`
+                if let Some(recursed_struct) = structs.structs.get(&id) {
+                    let recursed_params = get_struct_params(s_ty, ty);
+                    _derive_builtin_traits_struct(
+                        structs,
+                        recursed_struct,
+                        recursed_params,
+                        def,
+                        others,
+                    );
+                }
+            }
+
+            FieldType::Elementary(ty1) => {
+                debug_assert_eq!(ty, ty1);
+                *def &= can_derive_default(ty);
+                *others &= can_derive_builtin_traits(ty);
+            }
+
+            FieldType::Mapping(_) => unreachable!(),
+        }
+    }
+}
+
+fn get_struct_params<'a>(s_ty: &StructFieldType, ty: &'a ParamType) -> &'a [ParamType] {
+    match (s_ty, ty) {
+        (StructFieldType::Type(_), ParamType::Tuple(params)) => params,
+        (StructFieldType::Array(s_ty), ParamType::Array(ty)) => get_struct_params(s_ty, ty),
+        (StructFieldType::FixedArray(s_ty, _), ParamType::FixedArray(ty, _)) => {
+            get_struct_params(s_ty, ty)
+        }
+        _ => unreachable!(),
+    }
+}
+
+fn extend_derives(stream: &mut TokenStream, def: bool, others: bool) {
+    if def {
+        stream.extend(quote!(Default,))
+    }
+    if others {
+        stream.extend(quote!(Debug, PartialEq, Eq, Hash))
+    }
+}
+
+const MAX_SUPPORTED_ARRAY_LEN: usize = 32;
+const MAX_SUPPORTED_TUPLE_LEN: usize = 12;
+
+/// Whether the given type can derive the `Default` trait.
+fn can_derive_default(param: &ParamType) -> bool {
     match param {
-        ParamType::FixedBytes(len) => *len <= MAX_SUPPORTED_LEN,
+        ParamType::Array(ty) => can_derive_default(ty),
+        ParamType::FixedBytes(len) => *len <= MAX_SUPPORTED_ARRAY_LEN,
         ParamType::FixedArray(ty, len) => {
-            if *len > MAX_SUPPORTED_LEN {
+            if *len > MAX_SUPPORTED_ARRAY_LEN {
                 false
             } else {
                 can_derive_default(ty)
             }
         }
-        ParamType::Tuple(params) => params.iter().all(can_derive_default),
+        ParamType::Tuple(params) => {
+            if params.len() > MAX_SUPPORTED_TUPLE_LEN {
+                false
+            } else {
+                params.iter().all(can_derive_default)
+            }
+        }
+        _ => true,
+    }
+}
+
+/// Whether the given type can derive the builtin traits listed in [`derive_builtin_traits`], minus
+/// `Default`.
+fn can_derive_builtin_traits(param: &ParamType) -> bool {
+    match param {
+        ParamType::Array(ty) | ParamType::FixedArray(ty, _) => can_derive_builtin_traits(ty),
+        ParamType::Tuple(params) => {
+            if params.len() > MAX_SUPPORTED_TUPLE_LEN {
+                false
+            } else {
+                params.iter().all(can_derive_builtin_traits)
+            }
+        }
         _ => true,
     }
 }
@@ -211,12 +345,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn can_detect_non_default() {
-        let param = ParamType::FixedArray(Box::new(ParamType::Uint(64)), 128);
-        assert!(!can_derive_default(&param));
-
-        let param = ParamType::FixedArray(Box::new(ParamType::Uint(64)), 32);
+    fn can_detect_derives() {
+        // array
+        let param = ParamType::FixedArray(Box::new(ParamType::Uint(256)), 32);
         assert!(can_derive_default(&param));
+        assert!(can_derive_builtin_traits(&param));
+
+        let param = ParamType::FixedArray(Box::new(ParamType::Uint(256)), 33);
+        assert!(!can_derive_default(&param));
+        assert!(can_derive_builtin_traits(&param));
+
+        // tuple
+        let param = ParamType::Tuple(vec![ParamType::Uint(256); 12]);
+        assert!(can_derive_default(&param));
+        assert!(can_derive_builtin_traits(&param));
+
+        let param = ParamType::Tuple(vec![ParamType::Uint(256); 13]);
+        assert!(!can_derive_default(&param));
+        assert!(!can_derive_builtin_traits(&param));
     }
 
     #[test]

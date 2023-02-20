@@ -33,13 +33,24 @@ pub enum FieldType {
     ///
     /// Note: tuples will be treated as rust tuples
     Elementary(ParamType),
-    /// A non elementary type field, treated as user defined struct
+    /// A non elementary type field, treated as user-defined struct
     Struct(StructFieldType),
     /// Mapping
     Mapping(Box<MappingType>),
 }
 
 impl FieldType {
+    /// Whether this field is an elementary [`ParamType`].
+    pub fn is_elementary(&self) -> bool {
+        matches!(self, FieldType::Elementary(_))
+    }
+
+    /// Whether this field is a user-defined struct.
+    pub fn is_struct(&self) -> bool {
+        matches!(self, FieldType::Struct(_))
+    }
+
+    /// Whether this field is a mapping.
     pub fn is_mapping(&self) -> bool {
         matches!(self, FieldType::Mapping(_))
     }

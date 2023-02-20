@@ -14,10 +14,13 @@ use std::{
     sync::Arc,
 };
 
-fn assert_codec<T: AbiDecode + AbiEncode>() {}
-fn assert_tokenizeable<T: Tokenizable>() {}
-fn assert_call<T: AbiEncode + AbiDecode + Default + Tokenizable>() {}
-fn assert_event<T: EthEvent>() {}
+const fn assert_codec<T: AbiDecode + AbiEncode>() {}
+const fn assert_tokenizeable<T: Tokenizable>() {}
+const fn assert_call<T: AbiEncode + AbiDecode + Default + Tokenizable>() {}
+const fn assert_event<T: EthEvent>() {}
+const fn assert_clone<T: Clone>() {}
+const fn assert_default<T: Default>() {}
+const fn assert_builtin<T: std::fmt::Debug + PartialEq + Eq + std::hash::Hash>() {}
 
 #[test]
 fn can_gen_human_readable() {
@@ -636,8 +639,8 @@ async fn can_send_struct_param() {
 }
 
 #[test]
-fn can_gen_seaport() {
-    abigen!(Seaport, "./tests/solidity-contracts/seaport.json");
+fn can_gen_seaport_1_0() {
+    abigen!(Seaport, "./tests/solidity-contracts/seaport_1_0.json");
 
     assert_eq!(
         FulfillAdvancedOrderCall::abi_signature(),
@@ -656,6 +659,51 @@ fn can_gen_seaport() {
         consideration_index: U256::zero(),
         shortfall_amount: U256::zero(),
     });
+}
+
+#[test]
+fn can_gen_seaport_gt1_0() {
+    mod v1_1 {
+        use super::*;
+        abigen!(Seaport1, "./tests/solidity-contracts/seaport_1_1.json");
+    }
+
+    // (address,uint256,uint256,address,address,address,uint256
+    mod v1_2 {
+        use super::*;
+        abigen!(Seaport2, "./tests/solidity-contracts/seaport_1_2.json");
+    }
+
+    mod v1_3 {
+        use super::*;
+        abigen!(Seaport3, "./tests/solidity-contracts/seaport_1_3.json");
+    }
+
+    // tuples len <= 12
+    assert_clone::<v1_1::FulfillAdvancedOrderCall>();
+    assert_default::<v1_1::FulfillAdvancedOrderCall>();
+    assert_builtin::<v1_1::FulfillAdvancedOrderCall>();
+
+    assert_clone::<v1_2::FulfillAdvancedOrderCall>();
+    assert_default::<v1_2::FulfillAdvancedOrderCall>();
+    assert_builtin::<v1_2::FulfillAdvancedOrderCall>();
+
+    assert_clone::<v1_3::FulfillAdvancedOrderCall>();
+    assert_default::<v1_3::FulfillAdvancedOrderCall>();
+    assert_builtin::<v1_3::FulfillAdvancedOrderCall>();
+
+    // tuples len > 12
+    assert_clone::<v1_1::FulfillBasicOrderCall>();
+    // assert_default::<v1_1::FulfillBasicOrderCall>();
+    // assert_builtin::<v1_1::FulfillBasicOrderCall>();
+
+    assert_clone::<v1_2::FulfillBasicOrderCall>();
+    // assert_default::<v1_2::FulfillBasicOrderCall>();
+    // assert_builtin::<v1_2::FulfillBasicOrderCall>();
+
+    assert_clone::<v1_3::FulfillBasicOrderCall>();
+    // assert_default::<v1_3::FulfillBasicOrderCall>();
+    // assert_builtin::<v1_3::FulfillBasicOrderCall>();
 }
 
 #[test]

@@ -62,15 +62,25 @@ impl Context {
             })
             .collect::<Vec<_>>();
 
+        let enum_name = self.expand_event_enum_name();
+
+        let mut derives = self.expand_extra_derives();
+        let params = self
+            .abi
+            .events
+            .values()
+            .flatten()
+            .map(|err| &err.inputs)
+            .flatten()
+            .map(|param| &param.kind);
+        util::derive_builtin_traits(params, &mut derives, false, true);
+
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
 
-        let extra_derives = self.expand_extra_derives();
-        let enum_name = self.expand_event_enum_name();
-
         quote! {
             #[doc = "Container type for all of the contract's events"]
-            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
+            #[derive(Clone, #ethers_contract::EthAbiType, #derives)]
             pub enum #enum_name {
                 #( #variants(#variants), )*
             }
@@ -191,15 +201,14 @@ impl Context {
         let all_anonymous_fields = event.inputs.iter().all(|input| input.name.is_empty());
         let data_type_definition = expand_event_struct(&struct_name, &fields, all_anonymous_fields);
 
-        let mut extra_derives = self.expand_extra_derives();
-        if event.inputs.iter().map(|param| &param.kind).all(util::can_derive_default) {
-            extra_derives.extend(quote!(Default));
-        }
+        let mut derives = self.expand_extra_derives();
+        let params = event.inputs.iter().map(|param| &param.kind);
+        util::derive_builtin_traits(params, &mut derives, true, true);
 
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
-            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #extra_derives)]
+            #[derive(Clone, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #derives)]
             #[ethevent(name = #name, abi = #abi_signature)]
             pub #data_type_definition
         })
