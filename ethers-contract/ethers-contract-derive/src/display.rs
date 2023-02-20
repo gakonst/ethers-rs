@@ -95,6 +95,7 @@ fn fmt_params_tokens(
         ParamType::Array(ty) | ParamType::FixedArray(ty, _) => match &**ty {
             ParamType::Uint(8) => hex_encode_tokens(&ident, out, hex_encode),
             ParamType::Tuple(params) if params.len() > 12 => {
+                // TODO: Recurse this
                 let idx = (0..params.len()).map(|i| Index::from(i));
                 let tokens = quote! {
                     let mut list = f.debug_list();
