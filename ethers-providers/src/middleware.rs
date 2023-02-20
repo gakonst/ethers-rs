@@ -308,8 +308,6 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(MiddlewareError::from_err)
     }
 
-    #[allow(deprecated)]
-    #[deprecated = "Uncles are no longer part of the Ethereum Protocol. This method will be removed in a future version"]
     /// Gets the block uncle count at `block_hash_or_number`
     async fn get_uncle_count<T: Into<BlockId> + Send + Sync>(
         &self,
@@ -318,8 +316,6 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().get_uncle_count(block_hash_or_number).await.map_err(MiddlewareError::from_err)
     }
 
-    #[allow(deprecated)]
-    #[deprecated = "Uncles are no longer part of the Ethereum Protocol. This method will be removed in a future version"]
     /// Gets the block uncle at `block_hash_or_number` and `idx`
     async fn get_uncle<T: Into<BlockId> + Send + Sync>(
         &self,

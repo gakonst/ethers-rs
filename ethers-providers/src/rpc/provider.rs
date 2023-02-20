@@ -1358,7 +1358,7 @@ impl<'a> TryFrom<&'a String> for Provider<HttpProvider> {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Provider<RetryClient<HttpProvider>> {
-    /// Create a new [`RetryCient`] by connecting to the provided URL. Errors
+    /// Create a new [`RetryClient`] by connecting to the provided URL. Errors
     /// if `src` is not a valid URL
     pub fn new_client(src: &str, max_retry: u32, initial_backoff: u64) -> Result<Self, ParseError> {
         Ok(Provider::new(RetryClient::new(
