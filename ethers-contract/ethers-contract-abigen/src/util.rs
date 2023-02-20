@@ -3,35 +3,38 @@ use eyre::Result;
 use inflector::Inflector;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use std::path::PathBuf;
-use syn::{Ident as SynIdent, Path};
+use std::path::{Path, PathBuf};
 
-/// Expands a identifier string into a token.
-pub fn ident(name: &str) -> Ident {
+/// Creates a new Ident with the given string at [`Span::call_site`].
+///
+/// # Panics
+///
+/// If the input string is neither a keyword nor a legal variable name.
+pub(crate) fn ident(name: &str) -> Ident {
     Ident::new(name, Span::call_site())
 }
 
-/// Expands an identifier string into a token and appending `_` if the
-/// identifier is for a reserved keyword.
+/// Expands an identifier string into a token and appending `_` if the identifier is for a reserved
+/// keyword.
 ///
 /// Parsing keywords like `self` can fail, in this case we add an underscore.
-pub fn safe_ident(name: &str) -> Ident {
-    syn::parse_str::<SynIdent>(name).unwrap_or_else(|_| ident(&format!("{name}_")))
+pub(crate) fn safe_ident(name: &str) -> Ident {
+    syn::parse_str::<Ident>(name).unwrap_or_else(|_| ident(&format!("{name}_")))
 }
 
 ///  Converts a `&str` to `snake_case` `String` while respecting identifier rules
-pub fn safe_snake_case(ident: &str) -> String {
+pub(crate) fn safe_snake_case(ident: &str) -> String {
     safe_identifier_name(ident.to_snake_case())
 }
 
 ///  Converts a `&str` to `PascalCase` `String` while respecting identifier rules
-pub fn safe_pascal_case(ident: &str) -> String {
+pub(crate) fn safe_pascal_case(ident: &str) -> String {
     safe_identifier_name(ident.to_pascal_case())
 }
 
 /// respects identifier rules, such as, an identifier must not start with a numeric char
-fn safe_identifier_name(name: String) -> String {
-    if name.starts_with(|c: char| c.is_numeric()) {
+pub(crate) fn safe_identifier_name(name: String) -> String {
+    if name.starts_with(char::is_numeric) {
         format!("_{name}")
     } else {
         name
@@ -39,39 +42,46 @@ fn safe_identifier_name(name: String) -> String {
 }
 
 /// converts invalid rust module names to valid ones
-pub fn safe_module_name(name: &str) -> String {
+pub(crate) fn safe_module_name(name: &str) -> String {
     // handle reserve words used in contracts (eg Enum is a gnosis contract)
     safe_ident(&safe_snake_case(name)).to_string()
 }
 
 /// Expands an identifier as snakecase and preserve any leading or trailing underscores
-pub fn safe_snake_case_ident(name: &str) -> Ident {
+pub(crate) fn safe_snake_case_ident(name: &str) -> Ident {
     let i = name.to_snake_case();
     ident(&preserve_underscore_delim(&i, name))
 }
 
 /// Expands an identifier as pascal case and preserve any leading or trailing underscores
-pub fn safe_pascal_case_ident(name: &str) -> Ident {
+pub(crate) fn safe_pascal_case_ident(name: &str) -> Ident {
     let i = name.to_pascal_case();
     ident(&preserve_underscore_delim(&i, name))
 }
 
 /// Reapplies leading and trailing underscore chars to the ident
-/// Example `ident = "pascalCase"; alias = __pascalcase__` -> `__pascalCase__`
-pub fn preserve_underscore_delim(ident: &str, alias: &str) -> String {
-    alias
-        .chars()
-        .take_while(|c| *c == '_')
-        .chain(ident.chars())
-        .chain(alias.chars().rev().take_while(|c| *c == '_'))
-        .collect()
+///
+/// # Example
+///
+/// ```ignore
+/// # use ethers_contract_abigen::util::preserve_underscore_delim;
+/// assert_eq!(
+///   preserve_underscore_delim("pascalCase", "__pascalcase__"),
+///   "__pascalCase__"
+/// );
+/// ```
+pub(crate) fn preserve_underscore_delim(ident: &str, original: &str) -> String {
+    let is_underscore = |c: &char| *c == '_';
+    let pre = original.chars().take_while(is_underscore);
+    let post = original.chars().rev().take_while(is_underscore);
+    pre.chain(ident.chars()).chain(post).collect()
 }
 
 /// Expands a positional identifier string that may be empty.
 ///
 /// Note that this expands the parameter name with `safe_ident`, meaning that
 /// identifiers that are reserved keywords get `_` appended to them.
-pub fn expand_input_name(index: usize, name: &str) -> TokenStream {
+pub(crate) fn expand_input_name(index: usize, name: &str) -> TokenStream {
     let name_str = match name {
         "" => format!("p{index}"),
         n => n.to_snake_case(),
@@ -81,18 +91,14 @@ pub fn expand_input_name(index: usize, name: &str) -> TokenStream {
     quote! { #name }
 }
 
-pub fn expand_derives(derives: &[Path]) -> TokenStream {
-    quote! {#(#derives),*}
-}
-
 /// Perform a blocking HTTP GET request and return the contents of the response as a String.
 #[cfg(all(feature = "online", not(target_arch = "wasm32")))]
-pub fn http_get(url: impl reqwest::IntoUrl) -> Result<String> {
+pub(crate) fn http_get(url: impl reqwest::IntoUrl) -> Result<String> {
     Ok(reqwest::blocking::get(url)?.text()?)
 }
 
 /// Replaces any occurrences of env vars in the `raw` str with their value
-pub fn resolve_path(raw: &str) -> Result<PathBuf> {
+pub(crate) fn resolve_path(raw: &str) -> Result<PathBuf> {
     let mut unprocessed = raw;
     let mut resolved = String::new();
 
@@ -107,7 +113,7 @@ pub fn resolve_path(raw: &str) -> Result<PathBuf> {
                 unprocessed = rest;
             }
             None => {
-                eyre::bail!("Unable to parse a variable from \"{}\"", tail)
+                eyre::bail!("Unable to parse a variable from \"{tail}\"")
             }
         }
     }
@@ -149,7 +155,7 @@ fn take_while(s: &str, mut predicate: impl FnMut(char) -> bool) -> (&str, &str) 
 }
 
 /// Returns a list of absolute paths to all the json files under the root
-pub fn json_files(root: impl AsRef<std::path::Path>) -> Vec<PathBuf> {
+pub(crate) fn json_files(root: impl AsRef<Path>) -> Vec<PathBuf> {
     walkdir::WalkDir::new(root)
         .into_iter()
         .filter_map(Result::ok)
@@ -162,14 +168,14 @@ pub fn json_files(root: impl AsRef<std::path::Path>) -> Vec<PathBuf> {
 /// Returns whether all the given parameters can derive [`Default`].
 ///
 /// rust-std derives `Default` automatically only for arrays len <= 32
-pub fn can_derive_defaults<'a>(params: impl IntoIterator<Item = &'a Param>) -> bool {
+pub(crate) fn can_derive_defaults<'a>(params: impl IntoIterator<Item = &'a Param>) -> bool {
     params.into_iter().map(|param| &param.kind).all(can_derive_default)
 }
 
 /// Returns whether the given type can derive [`Default`].
 ///
 /// rust-std derives `Default` automatically only for arrays len <= 32
-pub fn can_derive_default(param: &ParamType) -> bool {
+pub(crate) fn can_derive_default(param: &ParamType) -> bool {
     const MAX_SUPPORTED_LEN: usize = 32;
     match param {
         ParamType::FixedBytes(len) => *len <= MAX_SUPPORTED_LEN,
@@ -186,7 +192,7 @@ pub fn can_derive_default(param: &ParamType) -> bool {
 }
 
 /// Returns the formatted Solidity ABI signature.
-pub fn abi_signature<'a, N, T>(name: N, types: T) -> String
+pub(crate) fn abi_signature<'a, N, T>(name: N, types: T) -> String
 where
     N: std::fmt::Display,
     T: IntoIterator<Item = &'a ParamType>,
@@ -196,7 +202,7 @@ where
 }
 
 /// Returns the Solidity stringified ABI types joined by a single comma.
-pub fn abi_signature_types<'a, T: IntoIterator<Item = &'a ParamType>>(types: T) -> String {
+pub(crate) fn abi_signature_types<'a, T: IntoIterator<Item = &'a ParamType>>(types: T) -> String {
     types.into_iter().map(ToString::to_string).collect::<Vec<_>>().join(",")
 }
 

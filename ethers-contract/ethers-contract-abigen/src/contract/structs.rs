@@ -1,8 +1,7 @@
-//! Methods for expanding structs
-use crate::{
-    contract::{types, Context},
-    util,
-};
+//! Structs expansion
+
+use super::{types, Context};
+use crate::util;
 use ethers_core::{
     abi::{
         struct_def::{FieldDeclaration, FieldType, StructFieldType, StructType},
@@ -15,6 +14,7 @@ use inflector::Inflector;
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::collections::{HashMap, VecDeque};
+use syn::Ident;
 
 impl Context {
     /// Generate corresponding types for structs parsed from a human readable ABI
@@ -51,17 +51,17 @@ impl Context {
     /// Generates the type definition for the name that matches the given identifier
     fn generate_internal_struct(&self, id: &str) -> Result<TokenStream> {
         let sol_struct =
-            self.internal_structs.structs.get(id).ok_or_else(|| eyre!("struct not found"))?;
+            self.internal_structs.structs.get(id).ok_or_else(|| eyre!("Struct not found"))?;
         let struct_name = self
             .internal_structs
             .rust_type_names
             .get(id)
-            .ok_or_else(|| eyre!("No types found for {}", id))?;
+            .ok_or_else(|| eyre!("No types found for {id}"))?;
         let tuple = self
             .internal_structs
             .struct_tuples
             .get(id)
-            .ok_or_else(|| eyre!("No types found for {}", id))?
+            .ok_or_else(|| eyre!("No types found for {id}"))?
             .clone();
         self.expand_internal_struct(struct_name, sol_struct, tuple)
     }
@@ -95,33 +95,22 @@ impl Context {
                 FieldType::Elementary(ty) => types::expand(ty)?,
                 FieldType::Struct(struct_ty) => types::expand_struct_type(struct_ty),
                 FieldType::Mapping(_) => {
-                    eyre::bail!("Mapping types in struct `{}` are not supported {:?}", name, field)
+                    eyre::bail!("Mapping types in struct `{name}` are not supported")
                 }
             };
 
-            if is_tuple {
-                fields.push(quote!(pub #ty));
+            let field_name = if is_tuple {
+                TokenStream::new()
             } else {
                 let field_name = util::safe_ident(&field.name().to_snake_case());
-                fields.push(quote! { pub #field_name: #ty });
-            }
+                quote!(#field_name)
+            };
+            fields.push((field_name, ty));
         }
 
         let name = util::ident(name);
 
-        let struct_def = if is_tuple {
-            quote! {
-                pub struct #name(
-                    #( #fields ),*
-                );
-            }
-        } else {
-            quote! {
-                pub struct #name {
-                    #( #fields ),*
-                }
-            }
-        };
+        let struct_def = expand_struct(&name, &fields, is_tuple);
 
         let sig = match tuple {
             ParamType::Tuple(ref types) if !types.is_empty() => util::abi_signature_types(types),
@@ -129,20 +118,20 @@ impl Context {
         };
         let doc_str = format!("`{name}({sig})`");
 
-        // use the same derives as for events
-        let derives = util::expand_derives(&self.event_derives);
+        let extra_derives = self.expand_extra_derives();
 
         let ethers_contract = ethers_contract_crate();
+
         Ok(quote! {
             #[doc = #doc_str]
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
-            #struct_def
+            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
+            pub #struct_def
         })
     }
 
     fn generate_human_readable_struct(&self, name: &str) -> Result<TokenStream> {
         let sol_struct =
-            self.abi_parser.structs.get(name).ok_or_else(|| eyre!("struct not found"))?;
+            self.abi_parser.structs.get(name).ok_or_else(|| eyre!("Struct `{name}` not found"))?;
         let mut fields = Vec::with_capacity(sol_struct.fields().len());
         let mut param_types = Vec::with_capacity(sol_struct.fields().len());
         for field in sol_struct.fields() {
@@ -162,14 +151,14 @@ impl Context {
                         .abi_parser
                         .struct_tuples
                         .get(name)
-                        .ok_or_else(|| eyre!("No types found for {}", name))?
+                        .ok_or_else(|| eyre!("No types found for {name}"))?
                         .clone();
                     let tuple = ParamType::Tuple(tuple);
 
                     param_types.push(struct_ty.as_param(tuple));
                 }
                 FieldType::Mapping(_) => {
-                    eyre::bail!("Mapping types in struct `{}` are not supported {:?}", name, field)
+                    eyre::bail!("Mapping types in struct `{name}` are not supported")
                 }
             }
         }
@@ -178,15 +167,16 @@ impl Context {
 
         let name = util::ident(name);
 
-        // use the same derives as for events
-        let derives = &self.event_derives;
-        let derives = quote! {#(#derives),*};
+        let mut extra_derives = self.expand_extra_derives();
+        if param_types.iter().all(util::can_derive_default) {
+            extra_derives.extend(quote!(Default))
+        }
 
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
             #[doc = #abi_signature]
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
             pub struct #name {
                 #( #fields ),*
             }
@@ -580,7 +570,7 @@ fn struct_type_name(name: &str) -> &str {
 }
 
 /// `Pairing.G2Point` -> `Pairing.G2Point`
-pub fn struct_type_identifier(name: &str) -> &str {
+fn struct_type_identifier(name: &str) -> &str {
     name.trim_start_matches("struct ").split('[').next().unwrap()
 }
 
@@ -592,16 +582,56 @@ fn struct_type_projections(name: &str) -> Vec<String> {
     iter.rev().map(str::to_string).collect()
 }
 
+pub(crate) fn expand_struct(
+    name: &Ident,
+    fields: &[(TokenStream, TokenStream)],
+    is_tuple: bool,
+) -> TokenStream {
+    _expand_struct(name, fields.iter().map(|(a, b)| (a, b, false)), is_tuple)
+}
+
+pub(crate) fn expand_event_struct(
+    name: &Ident,
+    fields: &[(TokenStream, TokenStream, bool)],
+    is_tuple: bool,
+) -> TokenStream {
+    _expand_struct(name, fields.iter().map(|(a, b, c)| (a, b, *c)), is_tuple)
+}
+
+fn _expand_struct<'a>(
+    name: &Ident,
+    fields: impl Iterator<Item = (&'a TokenStream, &'a TokenStream, bool)>,
+    is_tuple: bool,
+) -> TokenStream {
+    let fields = fields.map(|(field, ty, indexed)| {
+        (field, ty, if indexed { Some(quote!(#[ethevent(indexed)])) } else { None })
+    });
+    let fields = if let Some(0) = fields.size_hint().1 {
+        // unit struct
+        quote!(;)
+    } else if is_tuple {
+        // tuple struct
+        let fields = fields.map(|(_, ty, indexed)| quote!(#indexed pub #ty));
+        quote!(( #( #fields ),* );)
+    } else {
+        // struct
+        let fields = fields.map(|(field, ty, indexed)| quote!(#indexed pub #field: #ty));
+        quote!({ #( #fields, )* })
+    };
+
+    quote!(struct #name #fields)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn can_determine_structs() {
         const VERIFIER_ABI: &str =
             include_str!("../../../tests/solidity-contracts/verifier_abi.json");
         let abi = serde_json::from_str::<RawAbi>(VERIFIER_ABI).unwrap();
 
-        let internal = InternalStructs::new(abi);
-        dbg!(internal.rust_type_names);
+        let _internal = InternalStructs::new(abi);
     }
 }

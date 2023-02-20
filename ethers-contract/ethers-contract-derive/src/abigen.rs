@@ -21,9 +21,9 @@ use syn::{
 };
 
 /// A series of `ContractArgs` separated by `;`
-#[cfg_attr(test, derive(Debug))]
+#[derive(Clone, Debug)]
 pub(crate) struct Contracts {
-    inner: Vec<(Span, ContractArgs)>,
+    pub(crate) inner: Vec<(Span, ContractArgs)>,
 }
 
 impl Contracts {
@@ -57,7 +57,7 @@ impl Parse for Contracts {
 }
 
 /// Contract procedural macro arguments.
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ContractArgs {
     name: String,
     abi: String,
@@ -128,7 +128,7 @@ impl ParseInner for ContractArgs {
 }
 
 /// A single procedural macro parameter.
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[derive(Clone, Debug, PartialEq, Eq)]
 enum Parameter {
     Methods(Vec<Method>),
     Derives(Vec<String>),
@@ -189,7 +189,7 @@ impl Parse for Parameter {
 }
 
 /// An explicitely named contract method.
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct Method {
     signature: String,
     alias: String,

@@ -9,10 +9,14 @@ use url::Url;
 /// An [etherscan](https://etherscan.io)-like blockchain explorer.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Explorer {
+    /// <https://etherscan.io>
     #[default]
     Etherscan,
+    /// <https://bscscan.com>
     Bscscan,
+    /// <https://polygonscan.com>
     Polygonscan,
+    /// <https://snowtrace.io>
     Snowtrace,
 }
 

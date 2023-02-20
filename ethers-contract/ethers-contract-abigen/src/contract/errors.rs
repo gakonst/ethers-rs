@@ -1,9 +1,6 @@
-//! derive error bindings
+//! Custom errors expansion
 
-use super::{
-    common::{expand_data_struct, expand_data_tuple},
-    types, util, Context,
-};
+use super::{structs::expand_struct, types, util, Context};
 use ethers_core::{
     abi::{ethabi::AbiError, ErrorExt},
     macros::{ethers_contract_crate, ethers_core_crate},
@@ -25,57 +22,46 @@ impl Context {
             .collect::<Result<Vec<_>>>()?;
 
         // only expand an enum when multiple errors are present
-        let errors_enum_decl = if self.abi.errors.values().flatten().count() > 1 {
-            self.expand_errors_enum()
-        } else {
-            quote! {}
-        };
+        let errors_enum_decl =
+            if data_types.len() > 1 { Some(self.expand_errors_enum()) } else { None };
 
         Ok(quote! {
-            // HERE
             #( #data_types )*
 
             #errors_enum_decl
-
-            // HERE end
         })
     }
 
     /// Expands an ABI error into a single error data type. This can expand either
     /// into a structure or a tuple in the case where all error parameters are anonymous.
     fn expand_error(&self, error: &AbiError) -> Result<TokenStream> {
-        let sig = self.error_aliases.get(&error.abi_signature()).cloned();
+        let error_name = &error.name;
         let abi_signature = error.abi_signature();
 
-        let error_name = error_struct_name(&error.name, sig);
+        let alias_opt = self.error_aliases.get(&abi_signature).cloned();
+        let error_struct_name = error_struct_name(&error.name, alias_opt);
 
         let fields = self.expand_error_params(error)?;
 
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = error.inputs.iter().all(|input| input.name.is_empty());
-        let data_type_definition = if all_anonymous_fields {
-            // expand to a tuple struct
-            expand_data_tuple(&error_name, &fields)
-        } else {
-            // expand to a struct
-            expand_data_struct(&error_name, &fields)
-        };
+        let data_type_definition = expand_struct(&error_struct_name, &fields, all_anonymous_fields);
 
         let doc_str = format!(
-            "Custom Error type `{}` with signature `{}` and selector `0x{}`",
-            error.name,
-            abi_signature,
-            hex::encode(&error.selector()[..])
+            "Custom Error type `{error_name}` with signature `{abi_signature}` and selector `0x{}`",
+            hex::encode(error.selector())
         );
-        let ethers_contract = ethers_contract_crate();
-        // use the same derives as for events
-        let derives = util::expand_derives(&self.event_derives);
 
-        let error_name = &error.name;
+        let mut extra_derives = self.expand_extra_derives();
+        if util::can_derive_defaults(&error.inputs) {
+            extra_derives.extend(quote!(Default));
+        }
+
+        let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
             #[doc = #doc_str]
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthError, #ethers_contract::EthDisplay, #derives)]
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthError, #ethers_contract::EthDisplay, #extra_derives)]
             #[etherror(name = #error_name, abi = #abi_signature)]
             pub #data_type_definition
         })
@@ -95,6 +81,7 @@ impl Context {
 
     /// Generate an enum with a variant for each event
     fn expand_errors_enum(&self) -> TokenStream {
+        let enum_name = self.expand_error_enum_name();
         let variants = self
             .abi
             .errors
@@ -105,58 +92,57 @@ impl Context {
             })
             .collect::<Vec<_>>();
 
+        let extra_derives = self.expand_extra_derives();
+
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
 
-        // use the same derives as for events
-        let derives = util::expand_derives(&self.event_derives);
-        let enum_name = self.expand_error_enum_name();
-
         quote! {
-           #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #derives)]
+            #[doc = "Container type for all of the contract's custom errors"]
+            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
             pub enum #enum_name {
-                #(#variants(#variants)),*
+                #( #variants(#variants), )*
             }
 
-        impl  #ethers_core::abi::AbiDecode for #enum_name {
-            fn decode(data: impl AsRef<[u8]>) -> ::std::result::Result<Self, #ethers_core::abi::AbiError> {
-                 #(
-                    if let Ok(decoded) = <#variants as #ethers_core::abi::AbiDecode>::decode(data.as_ref()) {
-                        return Ok(#enum_name::#variants(decoded))
+            impl #ethers_core::abi::AbiDecode for #enum_name {
+                fn decode(data: impl AsRef<[u8]>) -> ::core::result::Result<Self, #ethers_core::abi::AbiError> {
+                    let data = data.as_ref();
+                    #(
+                        if let Ok(decoded) = <#variants as #ethers_core::abi::AbiDecode>::decode(data) {
+                            return Ok(Self::#variants(decoded))
+                        }
+                    )*
+                    Err(#ethers_core::abi::Error::InvalidData.into())
+                }
+            }
+
+            impl #ethers_core::abi::AbiEncode for #enum_name {
+                fn encode(self) -> ::std::vec::Vec<u8> {
+                    match self {
+                        #(
+                            Self::#variants(element) => #ethers_core::abi::AbiEncode::encode(element),
+                        )*
                     }
-                )*
-                Err(#ethers_core::abi::Error::InvalidData.into())
-            }
-        }
-
-         impl  #ethers_core::abi::AbiEncode for #enum_name {
-            fn encode(self) -> Vec<u8> {
-                match self {
-                    #(
-                        #enum_name::#variants(element) => element.encode()
-                    ),*
                 }
             }
-        }
 
-        impl ::std::fmt::Display for #enum_name {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                match self {
-                    #(
-                        #enum_name::#variants(element) => element.fmt(f)
-                    ),*
+            impl ::core::fmt::Display for #enum_name {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                    match self {
+                        #(
+                            Self::#variants(element) => ::core::fmt::Display::fmt(element, f)
+                        ),*
+                    }
                 }
             }
-        }
 
-        #(
-            impl ::std::convert::From<#variants> for #enum_name {
-                fn from(var: #variants) -> Self {
-                    #enum_name::#variants(var)
+            #(
+                impl ::core::convert::From<#variants> for #enum_name {
+                    fn from(value: #variants) -> Self {
+                        Self::#variants(value)
+                    }
                 }
-            }
-        )*
-
+            )*
         }
     }
 }

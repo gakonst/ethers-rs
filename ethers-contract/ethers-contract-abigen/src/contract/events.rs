@@ -1,7 +1,9 @@
-use super::{types, util, Context};
-use crate::util::can_derive_defaults;
+//! Events expansion
+
+use super::{structs::expand_event_struct, types, Context};
+use crate::util;
 use ethers_core::{
-    abi::{Event, EventExt, Param},
+    abi::{Event, EventExt},
     macros::{ethers_contract_crate, ethers_core_crate},
 };
 use eyre::Result;
@@ -21,11 +23,8 @@ impl Context {
             .collect::<Result<Vec<_>>>()?;
 
         // only expand enums when multiple events are present
-        let events_enum_decl = if sorted_events.values().flatten().count() > 1 {
-            self.expand_events_enum()
-        } else {
-            quote! {}
-        };
+        let events_enum_decl =
+            if data_types.len() > 1 { Some(self.expand_events_enum()) } else { None };
 
         Ok(quote! {
             #( #data_types )*
@@ -40,8 +39,7 @@ impl Context {
         let filter_methods = sorted_events
             .values()
             .flat_map(std::ops::Deref::deref)
-            .map(|event| self.expand_filter(event))
-            .collect::<Vec<_>>();
+            .map(|event| self.expand_filter(event));
 
         let events_method = self.expand_events_method();
 
@@ -67,22 +65,19 @@ impl Context {
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
 
-        // use the same derives as for events
-        let derives = util::expand_derives(&self.event_derives);
+        let extra_derives = self.expand_extra_derives();
         let enum_name = self.expand_event_enum_name();
 
         quote! {
-            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #derives)]
+            #[doc = "Container type for all of the contract's events"]
+            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
             pub enum #enum_name {
-                #(#variants(#variants)),*
+                #( #variants(#variants), )*
             }
 
-             impl #ethers_contract::EthLogDecode for #enum_name {
-                fn decode_log(log: &#ethers_core::abi::RawLog) -> ::std::result::Result<Self, #ethers_core::abi::Error>
-                where
-                    Self: Sized,
-                {
-                     #(
+            impl #ethers_contract::EthLogDecode for #enum_name {
+                fn decode_log(log: &#ethers_core::abi::RawLog) -> ::core::result::Result<Self, #ethers_core::abi::Error> {
+                    #(
                         if let Ok(decoded) = #variants::decode_log(log) {
                             return Ok(#enum_name::#variants(decoded))
                         }
@@ -91,15 +86,23 @@ impl Context {
                 }
             }
 
-            impl ::std::fmt::Display for #enum_name {
-                fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+            impl ::core::fmt::Display for #enum_name {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     match self {
                         #(
-                            #enum_name::#variants(element) => element.fmt(f)
-                        ),*
+                            Self::#variants(element) => ::core::fmt::Display::fmt(element, f),
+                        )*
                     }
                 }
             }
+
+            #(
+                impl ::core::convert::From<#variants> for #enum_name {
+                    fn from(value: #variants) -> Self {
+                        Self::#variants(value)
+                    }
+                }
+            )*
         }
     }
 
@@ -109,7 +112,7 @@ impl Context {
     }
 
     /// Expands the `events` function that bundles all declared events of this contract
-    fn expand_events_method(&self) -> TokenStream {
+    fn expand_events_method(&self) -> Option<TokenStream> {
         let sorted_events: BTreeMap<_, _> = self.abi.events.clone().into_iter().collect();
 
         let mut iter = sorted_events.values().flatten();
@@ -125,28 +128,35 @@ impl Context {
                 )
             };
 
-            quote! {
-                /// Returns an [`Event`](#ethers_contract::builders::Event) builder for all events of this contract
-                pub fn events(&self) -> #ethers_contract::builders::Event<Arc<M>, M, #ty> {
-                    self.0.event_with_filter(Default::default())
+            Some(quote! {
+                /// Returns an `Event` builder for all the events of this contract.
+                pub fn events(&self) -> #ethers_contract::builders::Event<
+                    ::std::sync::Arc<M>,
+                    M,
+                    #ty,
+                > {
+                    self.0.event_with_filter(::core::default::Default::default())
                 }
-            }
+            })
         } else {
-            quote! {}
+            None
         }
     }
 
     /// Expands into a single method for contracting an event stream.
     fn expand_filter(&self, event: &Event) -> TokenStream {
         let name = &event.name;
-        let alias = self.event_aliases.get(&event.abi_signature()).cloned();
+        let sig = event.abi_signature();
+        let alias = self.event_aliases.get(&sig).cloned();
 
-        // append `filter` to disambiguate with potentially conflicting
-        // function names
-        let function_name = if let Some(id) = alias.clone() {
-            util::safe_ident(&format!("{}_filter", id.to_string().to_snake_case()))
-        } else {
-            util::safe_ident(&format!("{}_filter", event.name.to_snake_case()))
+        // append `filter` to disambiguate with potentially conflicting function names
+        let function_name = {
+            let name = if let Some(ref id) = alias {
+                id.to_string().to_snake_case()
+            } else {
+                name.to_snake_case()
+            };
+            util::safe_ident(&format!("{name}_filter"))
         };
         let struct_name = event_struct_name(name, alias);
 
@@ -156,7 +166,11 @@ impl Context {
 
         quote! {
             #[doc = #doc_str]
-            pub fn #function_name(&self) -> #ethers_contract::builders::Event<Arc<M>, M, #struct_name> {
+            pub fn #function_name(&self) -> #ethers_contract::builders::Event<
+                ::std::sync::Arc<M>,
+                M,
+                #struct_name
+            > {
                 self.0.event()
             }
         }
@@ -166,49 +180,27 @@ impl Context {
     /// into a structure or a tuple in the case where all event parameters (topics
     /// and data) are anonymous.
     fn expand_event(&self, event: &Event) -> Result<TokenStream> {
-        let sig = self.event_aliases.get(&event.abi_signature()).cloned();
+        let name = &event.name;
         let abi_signature = event.abi_signature();
-        let event_abi_name = event.name.clone();
+        let alias = self.event_aliases.get(&abi_signature).cloned();
 
-        let event_name = event_struct_name(&event.name, sig);
+        let struct_name = event_struct_name(name, alias);
 
-        let params = types::expand_event_inputs(event, &self.internal_structs)?;
+        let fields = types::expand_event_inputs(event, &self.internal_structs)?;
         // expand as a tuple if all fields are anonymous
         let all_anonymous_fields = event.inputs.iter().all(|input| input.name.is_empty());
-        let data_type_definition = if all_anonymous_fields {
-            expand_data_tuple(&event_name, &params)
-        } else {
-            expand_data_struct(&event_name, &params)
-        };
+        let data_type_definition = expand_event_struct(&struct_name, &fields, all_anonymous_fields);
 
-        let derives = util::expand_derives(&self.event_derives);
-
-        // rust-std only derives default automatically for arrays len <= 32
-        // for large array types we skip derive(Default) <https://github.com/gakonst/ethers-rs/issues/1640>
-        let derive_default = if can_derive_defaults(
-            &event
-                .inputs
-                .iter()
-                .map(|param| Param {
-                    name: param.name.clone(),
-                    kind: param.kind.clone(),
-                    internal_type: None,
-                })
-                .collect::<Vec<_>>(),
-        ) {
-            quote! {
-                #[derive(Default)]
-            }
-        } else {
-            quote! {}
-        };
+        let mut extra_derives = self.expand_extra_derives();
+        if event.inputs.iter().map(|param| &param.kind).all(util::can_derive_default) {
+            extra_derives.extend(quote!(Default));
+        }
 
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
-            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #derives)]
-             #derive_default
-            #[ethevent( name = #event_abi_name, abi = #abi_signature )]
+            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthEvent, #ethers_contract::EthDisplay, #extra_derives)]
+            #[ethevent(name = #name, abi = #abi_signature)]
             pub #data_type_definition
         })
     }
@@ -229,46 +221,6 @@ fn event_struct_name(event_name: &str, alias: Option<Ident>) -> Ident {
 /// Returns the alias name for an event
 pub(crate) fn event_struct_alias(event_name: &str) -> Ident {
     util::ident(&event_name.to_pascal_case())
-}
-
-/// Expands an event data structure from its name-type parameter pairs. Returns
-/// a tuple with the type definition (i.e. the struct declaration) and
-/// construction (i.e. code for creating an instance of the event data).
-fn expand_data_struct(name: &Ident, params: &[(TokenStream, TokenStream, bool)]) -> TokenStream {
-    let fields = params
-        .iter()
-        .map(|(name, ty, indexed)| {
-            if *indexed {
-                quote! {
-                    #[ethevent(indexed)]
-                    pub #name: #ty
-                }
-            } else {
-                quote! { pub #name: #ty }
-            }
-        })
-        .collect::<Vec<_>>();
-
-    quote! { struct #name { #( #fields, )* } }
-}
-
-/// Expands an event data named tuple from its name-type parameter pairs.
-/// Returns a tuple with the type definition and construction.
-fn expand_data_tuple(name: &Ident, params: &[(TokenStream, TokenStream, bool)]) -> TokenStream {
-    let fields = params
-        .iter()
-        .map(|(_, ty, indexed)| {
-            if *indexed {
-                quote! {
-                #[ethevent(indexed)] pub #ty }
-            } else {
-                quote! {
-                pub #ty }
-            }
-        })
-        .collect::<Vec<_>>();
-
-    quote! { struct #name( #( #fields ),* ); }
 }
 
 #[cfg(test)]
@@ -328,7 +280,11 @@ mod tests {
             #[doc = "Gets the contract's `Transfer` event"]
             pub fn transfer_event_filter(
                 &self
-            ) -> ::ethers_contract::builders::Event<Arc<M>, M, TransferEventFilter> {
+            ) -> ::ethers_contract::builders::Event<
+                ::std::sync::Arc<M>,
+                M,
+                TransferEventFilter,
+            > {
                 self.0.event()
             }
         });
@@ -349,7 +305,8 @@ mod tests {
             #[doc = "Gets the contract's `Transfer` event"]
             pub fn transfer_filter(
                 &self,
-            ) -> ::ethers_contract::builders::Event<Arc<M>, M, TransferFilter> {
+            ) -> ::ethers_contract::builders::Event<::std::sync::Arc<M>, M, TransferFilter>
+            {
                 self.0.event()
             }
         });
@@ -369,7 +326,7 @@ mod tests {
         let cx = test_context();
         let params = types::expand_event_inputs(&event, &cx.internal_structs).unwrap();
         let name = event_struct_name(&event.name, None);
-        let definition = expand_data_struct(&name, &params);
+        let definition = expand_event_struct(&name, &params, false);
 
         assert_quote!(definition, {
             struct FooFilter {
@@ -394,7 +351,7 @@ mod tests {
         let params = types::expand_event_inputs(&event, &cx.internal_structs).unwrap();
         let alias = Some(util::ident("FooAliased"));
         let name = event_struct_name(&event.name, alias);
-        let definition = expand_data_struct(&name, &params);
+        let definition = expand_event_struct(&name, &params, false);
 
         assert_quote!(definition, {
             struct FooAliasedFilter {
@@ -418,7 +375,7 @@ mod tests {
         let cx = test_context();
         let params = types::expand_event_inputs(&event, &cx.internal_structs).unwrap();
         let name = event_struct_name(&event.name, None);
-        let definition = expand_data_tuple(&name, &params);
+        let definition = expand_event_struct(&name, &params, true);
 
         assert_quote!(definition, {
             struct FooFilter(pub bool, pub ::ethers_core::types::Address);
@@ -440,7 +397,7 @@ mod tests {
         let params = types::expand_event_inputs(&event, &cx.internal_structs).unwrap();
         let alias = Some(util::ident("FooAliased"));
         let name = event_struct_name(&event.name, alias);
-        let definition = expand_data_tuple(&name, &params);
+        let definition = expand_event_struct(&name, &params, true);
 
         assert_quote!(definition, {
             struct FooAliasedFilter(pub bool, pub ::ethers_core::types::Address);

@@ -205,9 +205,9 @@ fn derive_decode_from_log_impl(
     // decode
     let (signature_check, flat_topics_init, topic_tokens_len_check) = if event.anonymous {
         (
-            quote! {},
+            None,
             quote! {
-                  let flat_topics = topics.iter().flat_map(|t| t.as_ref().to_vec()).collect::<Vec<u8>>();
+                let flat_topics = topics.iter().flat_map(|t| t.as_ref().to_vec()).collect::<Vec<u8>>();
             },
             quote! {
                 if topic_tokens.len() != topics.len() {
@@ -217,12 +217,12 @@ fn derive_decode_from_log_impl(
         )
     } else {
         (
-            quote! {
+            Some(quote! {
                 let event_signature = topics.get(0).ok_or(#ethers_core::abi::Error::InvalidData)?;
                 if event_signature != &Self::signature() {
                     return Err(#ethers_core::abi::Error::InvalidData);
                 }
-            },
+            }),
             quote! {
                 let flat_topics = topics.iter().skip(1).flat_map(|t| t.as_ref().to_vec()).collect::<Vec<u8>>();
             },
