@@ -97,12 +97,15 @@ impl MockProvider {
 #[derive(Error, Debug)]
 /// Errors for the `MockProvider`
 pub enum MockError {
+    /// (De)Serialization error
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
 
-    #[error("empty responses array, please push some requests")]
+    /// Empty requests array
+    #[error("empty requests array, please push some requests")]
     EmptyRequests,
 
+    /// Empty responses array
     #[error("empty responses array, please push some responses")]
     EmptyResponses,
 }

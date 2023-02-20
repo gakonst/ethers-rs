@@ -46,7 +46,12 @@ pub enum ClientError {
 
     #[error("Deserialization Error: {err}. Response: {text}")]
     /// Serde JSON Error
-    SerdeJson { err: serde_json::Error, text: String },
+    SerdeJson {
+        /// Underlying error
+        err: serde_json::Error,
+        /// The contents of the HTTP response that could not be deserialized
+        text: String,
+    },
 }
 
 impl From<ClientError> for ProviderError {
@@ -80,8 +85,6 @@ impl crate::RpcError for ClientError {
 impl JsonRpcClient for Provider {
     type Error = ClientError;
 
-    /// Sends a POST request with the provided method and the params serialized as JSON
-    /// over HTTP
     async fn request<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         method: &str,

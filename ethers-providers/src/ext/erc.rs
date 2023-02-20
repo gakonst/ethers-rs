@@ -15,8 +15,11 @@ const IPFS_GATEWAY: &str = "https://ipfs.io/ipfs/";
 
 /// An ERC 721 or 1155 token
 pub struct ERCNFT {
+    /// Type of the NFT
     pub type_: ERCNFTType,
+    /// Address of the NFT contract
     pub contract: Address,
+    /// NFT ID in that contract
     pub id: [u8; 32],
 }
 
@@ -56,7 +59,9 @@ impl FromStr for ERCNFT {
 /// Supported ERCs
 #[derive(PartialEq, Eq)]
 pub enum ERCNFTType {
+    /// ERC721
     ERC721,
+    /// ERC1155
     ERC1155,
 }
 
@@ -72,7 +77,8 @@ impl FromStr for ERCNFTType {
 }
 
 impl ERCNFTType {
-    pub fn resolution_selector(&self) -> Selector {
+    /// Get the method selector
+    pub const fn resolution_selector(&self) -> Selector {
         match self {
             // tokenURI(uint256)
             ERCNFTType::ERC721 => [0xc8, 0x7b, 0x56, 0xdd],
@@ -85,6 +91,7 @@ impl ERCNFTType {
 /// ERC-1155 and ERC-721 metadata document.
 #[derive(Deserialize)]
 pub struct Metadata {
+    /// The URL of the image for the NFT
     pub image: String,
 }
 

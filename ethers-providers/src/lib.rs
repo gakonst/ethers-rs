@@ -3,6 +3,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![allow(clippy::type_complexity)]
 #![doc = include_str!("../README.md")]
+#![warn(missing_docs)]
 
 mod ext;
 pub use ext::*;
@@ -13,26 +14,29 @@ pub use rpc::*;
 mod toolbox;
 pub use toolbox::*;
 
-pub mod utils;
-pub use utils::*;
+/// Crate utilities and type aliases
+mod utils;
+pub use utils::{interval, maybe, EscalationPolicy};
 
 /// Errors
-pub mod errors;
+mod errors;
 pub use errors::{MiddlewareError, ProviderError, RpcError};
 
 mod stream;
 pub use futures_util::StreamExt;
 pub use stream::{
-    interval, tx_stream::TransactionStream, FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL,
-    DEFAULT_POLL_INTERVAL,
+    tx_stream::TransactionStream, FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL,
 };
 
-pub mod middleware;
-pub use middleware::*;
+mod middleware;
+#[cfg(feature = "celo")]
+pub use middleware::CeloMiddleware;
+pub use middleware::Middleware;
 
 #[allow(deprecated)]
 pub use test_provider::{GOERLI, MAINNET, ROPSTEN, SEPOLIA};
 
+#[allow(missing_docs)]
 /// Pre-instantiated Infura HTTP clients which rotate through multiple API keys
 /// to prevent rate limits
 pub mod test_provider {

@@ -42,17 +42,22 @@ use thiserror::Error;
 
 use std::fmt::Debug;
 
+/// `DevRpcMiddleware`
 #[derive(Clone, Debug)]
 pub struct DevRpcMiddleware<M>(M);
 
+/// DevRpcMiddleware Errors
 #[derive(Error, Debug)]
 pub enum DevRpcMiddlewareError<M: Middleware> {
+    /// Internal Middleware error
     #[error("{0}")]
     MiddlewareError(M::Error),
 
+    /// Internal Provider error
     #[error("{0}")]
     ProviderError(ProviderError),
 
+    /// Attempted to revert to unavailable snapshot
     #[error("Could not revert to snapshot")]
     NoSnapshot,
 }
@@ -93,15 +98,21 @@ where
 }
 
 impl<M: Middleware> DevRpcMiddleware<M> {
+    /// Instantiate a new `DevRpcMiddleware`
     pub fn new(inner: M) -> Self {
         Self(inner)
     }
 
-    // Ganache, Hardhat and Anvil increment snapshot ID even if no state has changed
+    /// Create a new snapshot on the DevRpc node. Return the Snapshot ID
+    ///
+    /// ### Note
+    ///
+    /// Ganache, Hardhat and Anvil increment snapshot ID even if no state has changed
     pub async fn snapshot(&self) -> Result<U256, DevRpcMiddlewareError<M>> {
         self.provider().request::<(), U256>("evm_snapshot", ()).await.map_err(From::from)
     }
 
+    /// Revert the state of the DevRpc node to the Snapshot, specified by its ID
     pub async fn revert_to_snapshot(&self, id: U256) -> Result<(), DevRpcMiddlewareError<M>> {
         let ok = self
             .provider()
@@ -115,6 +126,7 @@ impl<M: Middleware> DevRpcMiddleware<M> {
         }
     }
 }
+
 #[cfg(test)]
 // Celo blocks can not get parsed when used with Ganache
 #[cfg(not(feature = "celo"))]

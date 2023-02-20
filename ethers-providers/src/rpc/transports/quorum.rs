@@ -100,10 +100,13 @@ impl<T> QuorumProvider<T> {
         QuorumProviderBuilder::default()
     }
 
+    /// Instantiate a new `QuorumProvider` from a [`Quorum`] and a set of
+    /// providers
     pub fn new(quorum: Quorum, providers: impl IntoIterator<Item = WeightedProvider<T>>) -> Self {
         Self::builder().add_providers(providers).quorum(quorum).build()
     }
 
+    /// Return a reference to the weighted providers
     pub fn providers(&self) -> &[WeightedProvider<T>] {
         &self.providers
     }
@@ -113,6 +116,7 @@ impl<T> QuorumProvider<T> {
         self.quorum_weight
     }
 
+    /// Add a provider to the set
     pub fn add_provider(&mut self, provider: WeightedProvider<T>) {
         self.providers.push(provider);
         self.quorum_weight = self.quorum.weight(&self.providers)
@@ -342,6 +346,7 @@ impl<T> WeightedProvider<T> {
         Self::with_weight(inner, 1)
     }
 
+    /// Instantiate a `WeightedProvider` with a set weight
     pub fn with_weight(inner: T, weight: u64) -> Self {
         assert!(weight > 0);
         Self { inner, weight }
@@ -352,7 +357,13 @@ impl<T> WeightedProvider<T> {
 /// Error thrown when sending an HTTP request
 pub enum QuorumError {
     #[error("No Quorum reached.")]
-    NoQuorumReached { values: Vec<Value>, errors: Vec<ProviderError> },
+    /// NoQuorumReached
+    NoQuorumReached {
+        /// Returned responses
+        values: Vec<Value>,
+        /// Returned errors
+        errors: Vec<ProviderError>,
+    },
 }
 
 impl crate::RpcError for QuorumError {
@@ -371,9 +382,12 @@ impl From<QuorumError> for ProviderError {
     }
 }
 
+/// Wrapper trait for [`crate::JsonRpcClient`] that erases generics and is
+/// object-safe. This trait is not intended for outside implementation
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait JsonRpcClientWrapper: Send + Sync + Debug {
+    /// Make a request, as [`crate::JsonRpcClient`]
     async fn request(&self, method: &str, params: QuorumParams) -> Result<Value, ProviderError>;
 }
 type NotificationStream =

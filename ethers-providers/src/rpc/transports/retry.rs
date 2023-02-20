@@ -114,6 +114,7 @@ where
     }
 }
 
+/// Builder for a [`RetryClient`]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RetryClientBuilder {
     /// How many connection `TimedOut` should be retried.
@@ -201,11 +202,15 @@ impl Default for RetryClientBuilder {
 /// 3. Request timed out i.e. max retries were already made.
 #[derive(Error, Debug)]
 pub enum RetryClientError {
+    /// Internal provider error
     #[error(transparent)]
     ProviderError(ProviderError),
+    /// Timeout while making requests
     TimeoutError,
+    /// (De)Serialization error
     #[error(transparent)]
     SerdeJson(serde_json::Error),
+    /// TimerError (wasm only)
     TimerError,
 }
 

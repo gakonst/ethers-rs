@@ -186,11 +186,14 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
 /// Use to inject username and password or an auth token into requests
 #[derive(Clone, Debug)]
 pub enum Authorization {
+    /// HTTP Basic Auth
     Basic(String),
+    /// Bearer Auth
     Bearer(String),
 }
 
 impl Authorization {
+    /// Make a new basic auth
     pub fn basic(username: impl AsRef<str>, password: impl AsRef<str>) -> Self {
         let username = username.as_ref();
         let password = password.as_ref();
@@ -198,6 +201,7 @@ impl Authorization {
         Self::Basic(auth_secret)
     }
 
+    /// Make a new bearer auth
     pub fn bearer(token: impl Into<String>) -> Self {
         Self::Bearer(token.into())
     }

@@ -1,9 +1,12 @@
 #![allow(clippy::return_self_not_must_use)]
 
-use crate::{JsonRpcClient, Middleware, PinBoxFut, Provider};
+use crate::{
+    utils::{interval, PinBoxFut},
+    JsonRpcClient, Middleware, Provider,
+};
 use ethers_core::types::U256;
 use futures_core::stream::Stream;
-use futures_util::{stream, FutureExt, StreamExt};
+use futures_util::StreamExt;
 use pin_project::pin_project;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -13,16 +16,6 @@ use std::{
     time::Duration,
     vec::IntoIter,
 };
-
-#[cfg(not(target_arch = "wasm32"))]
-use futures_timer::Delay;
-#[cfg(target_arch = "wasm32")]
-use wasm_timer::Delay;
-
-// https://github.com/tomusdrw/rust-web3/blob/befcb2fb8f3ca0a43e3081f68886fa327e64c8e6/src/api/eth_filter.rs#L20
-pub fn interval(duration: Duration) -> impl Stream<Item = ()> + Send + Unpin {
-    stream::unfold((), move |_| Delay::new(duration).map(|_| Some(((), ())))).map(drop)
-}
 
 /// The default polling interval for filters and pending transactions
 pub const DEFAULT_POLL_INTERVAL: Duration = Duration::from_millis(7000);

@@ -1,6 +1,6 @@
 //! Overrides for the `eth_call` rpc method
 
-use crate::{JsonRpcClient, PinBoxFut, Provider, ProviderError};
+use crate::{utils::PinBoxFut, JsonRpcClient, Provider, ProviderError};
 use ethers_core::{
     types::{
         transaction::eip2718::TypedTransaction, Address, BlockId, BlockNumber, Bytes, H256, U256,
@@ -59,6 +59,7 @@ impl<P: fmt::Debug> fmt::Debug for CallBuilder<'_, P> {
 }
 
 impl<'a, P> CallBuilder<'a, P> {
+    /// Instantiate a new call builder based on `tx`
     pub fn new(provider: &'a Provider<P>, tx: &'a TypedTransaction) -> Self {
         Self::Build(Caller::new(provider, tx))
     }
@@ -125,6 +126,7 @@ pub struct Caller<'a, P> {
 }
 
 impl<'a, P> Caller<'a, P> {
+    /// Instantiate a new `Caller` based on `tx`
     pub fn new(provider: &'a Provider<P>, tx: &'a TypedTransaction) -> Self {
         Self { provider, input: CallInput::new(tx) }
     }
@@ -192,6 +194,7 @@ impl<T: fmt::Debug, F> fmt::Debug for Map<T, F> {
 }
 
 impl<T, F> Map<T, F> {
+    /// Instantiate a new map
     pub fn new(inner: T, f: F) -> Self {
         Self { inner, f }
     }
@@ -236,12 +239,16 @@ pub mod spoof {
     /// The state elements to override for a particular account.
     #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
     pub struct Account {
+        /// Account nonce
         #[serde(skip_serializing_if = "Option::is_none")]
         pub nonce: Option<U64>,
+        /// Account balance
         #[serde(skip_serializing_if = "Option::is_none")]
         pub balance: Option<U256>,
+        /// Account code
         #[serde(skip_serializing_if = "Option::is_none")]
         pub code: Option<Bytes>,
+        /// Account storage
         #[serde(flatten, skip_serializing_if = "Option::is_none")]
         pub storage: Option<Storage>,
     }
@@ -275,8 +282,10 @@ pub mod spoof {
     /// as a diff on the existing state.
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
     pub enum Storage {
+        /// State Diff
         #[serde(rename = "stateDiff")]
         Diff(HashMap<H256, H256>),
+        /// State override
         #[serde(rename = "state")]
         Replace(HashMap<H256, H256>),
     }

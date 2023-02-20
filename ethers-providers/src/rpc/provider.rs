@@ -17,8 +17,9 @@ use crate::Authorization;
 use crate::{HttpRateLimitRetryPolicy, RetryClient};
 
 #[cfg(feature = "celo")]
-use crate::CeloMiddleware;
-use crate::Middleware;
+pub use crate::CeloMiddleware;
+pub use crate::Middleware;
+
 use async_trait::async_trait;
 
 use ethers_core::{
@@ -43,12 +44,18 @@ use tracing::trace;
 use tracing_futures::Instrument;
 use url::{ParseError, Url};
 
+/// Node Clients
 #[derive(Copy, Clone)]
 pub enum NodeClient {
+    /// Geth
     Geth,
+    /// Erigon
     Erigon,
+    /// OpenEthereum
     OpenEthereum,
+    /// Nethermind
     Nethermind,
+    /// Besu
     Besu,
 }
 
@@ -151,11 +158,13 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 
     #[must_use]
+    /// Set the default sender on the provider
     pub fn with_sender(mut self, address: impl Into<Address>) -> Self {
         self.from = Some(address.into());
         self
     }
 
+    /// Make an RPC request via the internal connection, and return the result.
     pub async fn request<T, R>(&self, method: &str, params: T) -> Result<R, ProviderError>
     where
         T: Debug + Serialize + Send + Sync,
@@ -235,19 +244,6 @@ impl<P: JsonRpcClient> Provider<P> {
     }
 }
 
-#[cfg(feature = "celo")]
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl<P: JsonRpcClient> CeloMiddleware for Provider<P> {
-    async fn get_validators_bls_public_keys<T: Into<BlockId> + Send + Sync>(
-        &self,
-        block_id: T,
-    ) -> Result<Vec<String>, ProviderError> {
-        let block_id = utils::serialize(&block_id.into());
-        self.request("istanbul_getValidatorsBLSPublicKeys", [block_id]).await
-    }
-}
-
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<P: JsonRpcClient> Middleware for Provider<P> {
@@ -272,11 +268,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.from
     }
 
-    ////// Blockchain Status
-    //
-    // Functions for querying the state of the blockchain
-
-    /// Returns the current client version using the `web3_clientVersion` RPC.
     async fn client_version(&self) -> Result<String, Self::Error> {
         self.request("web3_clientVersion", ()).await
     }
@@ -337,12 +328,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok(())
     }
 
-    /// Gets the latest block number via the `eth_BlockNumber` API
     async fn get_block_number(&self) -> Result<U64, ProviderError> {
         self.request("eth_blockNumber", ()).await
     }
 
-    /// Gets the block at `block_hash_or_number` (transaction hashes only)
     async fn get_block<T: Into<BlockId> + Send + Sync>(
         &self,
         block_hash_or_number: T,
@@ -350,7 +339,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.get_block_gen(block_hash_or_number.into(), false).await
     }
 
-    /// Gets the block at `block_hash_or_number` (full transactions included)
     async fn get_block_with_txs<T: Into<BlockId> + Send + Sync>(
         &self,
         block_hash_or_number: T,
@@ -358,7 +346,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.get_block_gen(block_hash_or_number.into(), true).await
     }
 
-    /// Gets the block uncle count at `block_hash_or_number`
     async fn get_uncle_count<T: Into<BlockId> + Send + Sync>(
         &self,
         block_hash_or_number: T,
@@ -376,7 +363,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         })
     }
 
-    /// Gets the block uncle at `block_hash_or_number` and `idx`
     async fn get_uncle<T: Into<BlockId> + Send + Sync>(
         &self,
         block_hash_or_number: T,
@@ -396,7 +382,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         })
     }
 
-    /// Gets the transaction with `transaction_hash`
     async fn get_transaction<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
@@ -405,7 +390,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getTransactionByHash", [hash]).await
     }
 
-    /// Gets the transaction receipt with `transaction_hash`
     async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
@@ -414,10 +398,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getTransactionReceipt", [hash]).await
     }
 
-    /// Returns all receipts for a block.
-    ///
-    /// Note that this uses the `eth_getBlockReceipts` RPC, which is
-    /// non-standard and currently supported by Erigon.
     async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
         &self,
         block: T,
@@ -425,7 +405,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getBlockReceipts", [block.into()]).await
     }
 
-    /// Returns all receipts for that block. Must be done on a parity node.
     async fn parity_block_receipts<T: Into<BlockNumber> + Send + Sync>(
         &self,
         block: T,
@@ -433,13 +412,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("parity_getBlockReceipts", vec![block.into()]).await
     }
 
-    /// Gets the current gas price as estimated by the node
     async fn get_gas_price(&self) -> Result<U256, ProviderError> {
         self.request("eth_gasPrice", ()).await
     }
 
-    /// Gets a heuristic recommendation of max fee per gas and max priority fee per gas for
-    /// EIP-1559 compatible transactions.
     async fn estimate_eip1559_fees(
         &self,
         estimator: Option<fn(U256, Vec<Vec<U256>>) -> (U256, U256)>,
@@ -469,12 +445,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok((max_fee_per_gas, max_priority_fee_per_gas))
     }
 
-    /// Gets the accounts on the node
     async fn get_accounts(&self) -> Result<Vec<Address>, ProviderError> {
         self.request("eth_accounts", ()).await
     }
 
-    /// Returns the nonce of the address
     async fn get_transaction_count<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
@@ -490,7 +464,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getTransactionCount", [from, block]).await
     }
 
-    /// Returns the account's balance
     async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
@@ -506,29 +479,18 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getBalance", [from, block]).await
     }
 
-    /// Returns the currently configured chain id, a value used in replay-protected
-    /// transaction signing as introduced by EIP-155.
     async fn get_chainid(&self) -> Result<U256, ProviderError> {
         self.request("eth_chainId", ()).await
     }
 
-    /// Return current client syncing status. If IsFalse sync is over.
     async fn syncing(&self) -> Result<SyncingStatus, Self::Error> {
         self.request("eth_syncing", ()).await
     }
 
-    /// Returns the network version.
     async fn get_net_version(&self) -> Result<String, ProviderError> {
         self.request("net_version", ()).await
     }
 
-    ////// Contract Execution
-    //
-    // These are relatively low-level calls. The Contracts API should usually be used instead.
-
-    /// Sends the read-only (constant) transaction to a single Ethereum node and return the result
-    /// (as bytes) of executing it. This is free, since it does not change any state on the
-    /// blockchain.
     async fn call(
         &self,
         tx: &TypedTransaction,
@@ -539,10 +501,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_call", [tx, block]).await
     }
 
-    /// Sends a transaction to a single Ethereum node and return the estimated amount of gas
-    /// required (as a U256) to send it This is free, but only an estimate. Providing too little
-    /// gas will result in a transaction being rejected (while still consuming all provided
-    /// gas).
     async fn estimate_gas(
         &self,
         tx: &TypedTransaction,
@@ -569,8 +527,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_createAccessList", [tx, block]).await
     }
 
-    /// Sends the transaction to the entire Ethereum network and returns the transaction's hash
-    /// This will consume gas from the account that signed the transaction.
     async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         tx: T,
@@ -583,8 +539,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok(PendingTransaction::new(tx_hash, self))
     }
 
-    /// Send the raw RLP encoded transaction to the entire Ethereum network and returns the
-    /// transaction's hash This will consume gas from the account that signed the transaction.
     async fn send_raw_transaction<'a>(
         &'a self,
         tx: Bytes,
@@ -594,8 +548,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok(PendingTransaction::new(tx_hash, self))
     }
 
-    /// The JSON-RPC provider is at the bottom-most position in the middleware stack. Here we check
-    /// if it has the key for the sender address unlocked, as well as supports the `eth_sign` call.
     async fn is_signer(&self) -> bool {
         match self.from {
             Some(sender) => self.sign(vec![], &sender).await.is_ok(),
@@ -603,7 +555,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         }
     }
 
-    /// Signs data using a specific account. This account needs to be unlocked.
     async fn sign<T: Into<Bytes> + Send + Sync>(
         &self,
         data: T,
@@ -633,7 +584,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
     ////// Contract state
 
-    /// Returns an array (possibly empty) of logs that match the filter
     async fn get_logs(&self, filter: &Filter) -> Result<Vec<Log>, ProviderError> {
         self.request("eth_getLogs", [filter]).await
     }
@@ -642,7 +592,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         LogQuery::new(self, filter).with_page_size(page_size)
     }
 
-    /// Streams matching filter logs
     async fn watch<'a>(
         &'a self,
         filter: &Filter,
@@ -652,7 +601,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok(filter)
     }
 
-    /// Streams new block hashes
     async fn watch_blocks(&self) -> Result<FilterWatcher<'_, P, H256>, ProviderError> {
         let id = self.new_filter(FilterKind::NewBlocks).await?;
         let filter = FilterWatcher::new(id, self).interval(self.get_interval());
@@ -668,8 +616,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok(filter)
     }
 
-    /// Creates a filter object, based on filter options, to notify when the state changes (logs).
-    /// To check if the state has changed, call `get_filter_changes` with the filter id.
     async fn new_filter(&self, filter: FilterKind<'_>) -> Result<U256, ProviderError> {
         let (method, args) = match filter {
             FilterKind::NewBlocks => ("eth_newBlockFilter", vec![]),
@@ -680,7 +626,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request(method, args).await
     }
 
-    /// Uninstalls a filter
     async fn uninstall_filter<T: Into<U256> + Send + Sync>(
         &self,
         id: T,
@@ -689,19 +634,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_uninstallFilter", [id]).await
     }
 
-    /// Polling method for a filter, which returns an array of logs which occurred since last poll.
-    ///
-    /// This method must be called with one of the following return types, depending on the filter
-    /// type:
-    /// - `eth_newBlockFilter`: [`H256`], returns block hashes
-    /// - `eth_newPendingTransactionFilter`: [`H256`], returns transaction hashes
-    /// - `eth_newFilter`: [`Log`], returns raw logs
-    ///
-    /// If one of these types is not used, decoding will fail and the method will
-    /// return an error.
-    ///
-    /// [`H256`]: ethers_core::types::H256
-    /// [`Log`]: ethers_core::types::Log
     async fn get_filter_changes<T, R>(&self, id: T) -> Result<Vec<R>, ProviderError>
     where
         T: Into<U256> + Send + Sync,
@@ -711,7 +643,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getFilterChanges", [id]).await
     }
 
-    /// Get the storage of an address for a particular slot location
     async fn get_storage_at<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
@@ -737,7 +668,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok(H256::from_slice(&Vec::from_hex(value)?))
     }
 
-    /// Returns the deployed code at a given address
     async fn get_code<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         at: T,
@@ -753,8 +683,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getCode", [at, block]).await
     }
 
-    /// Returns the EIP-1186 proof response
-    /// <https://github.com/ethereum/EIPs/issues/1186>
     async fn get_proof<T: Into<NameOrAddress> + Send + Sync>(
         &self,
         from: T,
@@ -778,15 +706,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_mining", ()).await
     }
 
-    // Personal namespace
-    // NOTE: This will eventually need to be enabled by users explicitly because the personal
-    // namespace is being deprecated:
-    // Issue: https://github.com/ethereum/go-ethereum/issues/25948
-    // PR: https://github.com/ethereum/go-ethereum/pull/26390
-
-    /// Sends the given key to the node to be encrypted with the provided passphrase and stored.
-    ///
-    /// The key represents a secp256k1 private key and should be 32 bytes.
     async fn import_raw_key(
         &self,
         private_key: Bytes,
@@ -802,10 +721,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("personal_importRawKey", [private_key, passphrase]).await
     }
 
-    /// Prompts the node to decrypt the given account from its keystore.
-    ///
-    /// If the duration provided is `None`, then the account will be unlocked indefinitely.
-    /// Otherwise, the account will be unlocked for the provided number of seconds.
     async fn unlock_account<T: Into<Address> + Send + Sync>(
         &self,
         account: T,
@@ -818,88 +733,47 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("personal_unlockAccount", [account, passphrase, duration]).await
     }
 
-    // Admin namespace
-
-    /// Requests adding the given peer, returning a boolean representing whether or not the peer
-    /// was accepted for tracking.
     async fn add_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
         let enode_url = utils::serialize(&enode_url);
         self.request("admin_addPeer", [enode_url]).await
     }
 
-    /// Requests adding the given peer as a trusted peer, which the node will always connect to
-    /// even when its peer slots are full.
     async fn add_trusted_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
         let enode_url = utils::serialize(&enode_url);
         self.request("admin_addTrustedPeer", [enode_url]).await
     }
 
-    /// Returns general information about the node as well as information about the running p2p
-    /// protocols (e.g. `eth`, `snap`).
     async fn node_info(&self) -> Result<NodeInfo, Self::Error> {
         self.request("admin_nodeInfo", ()).await
     }
 
-    /// Returns the list of peers currently connected to the node.
     async fn peers(&self) -> Result<Vec<PeerInfo>, Self::Error> {
         self.request("admin_peers", ()).await
     }
 
-    /// Requests to remove the given peer, returning true if the enode was successfully parsed and
-    /// the peer was removed.
     async fn remove_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
         let enode_url = utils::serialize(&enode_url);
         self.request("admin_removePeer", [enode_url]).await
     }
 
-    /// Requests to remove the given peer, returning a boolean representing whether or not the
-    /// enode url passed was validated. A return value of `true` does not necessarily mean that the
-    /// peer was disconnected.
     async fn remove_trusted_peer(&self, enode_url: String) -> Result<bool, Self::Error> {
         let enode_url = utils::serialize(&enode_url);
         self.request("admin_removeTrustedPeer", [enode_url]).await
     }
 
-    // Miner namespace
-
-    /// Starts the miner with the given number of threads. If threads is nil, the number of workers
-    /// started is equal to the number of logical CPUs that are usable by this process. If mining
-    /// is already running, this method adjust the number of threads allowed to use and updates the
-    /// minimum price required by the transaction pool.
     async fn start_mining(&self, threads: Option<usize>) -> Result<(), Self::Error> {
         let threads = utils::serialize(&threads);
         self.request("miner_start", [threads]).await
     }
 
-    /// Stop terminates the miner, both at the consensus engine level as well as at the block
-    /// creation level.
     async fn stop_mining(&self) -> Result<(), Self::Error> {
         self.request("miner_stop", ()).await
     }
 
-    ////// Ethereum Naming Service
-    // The Ethereum Naming Service (ENS) allows easy to remember and use names to
-    // be assigned to Ethereum addresses. Any provider operation which takes an address
-    // may also take an ENS name.
-    //
-    // ENS also provides the ability for a reverse lookup, which determines the name for an address
-    // if it has been configured.
-
-    /// Returns the address that the `ens_name` resolves to (or None if not configured).
-    ///
-    /// # Panics
-    ///
-    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
-    /// an address. This should theoretically never happen.
     async fn resolve_name(&self, ens_name: &str) -> Result<Address, ProviderError> {
         self.query_resolver(ParamType::Address, ens_name, ens::ADDR_SELECTOR).await
     }
 
-    /// Returns the ENS name the `address` resolves to (or None if not configured).
-    /// # Panics
-    ///
-    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
-    /// a string. This should theoretically never happen.
     async fn lookup_address(&self, address: Address) -> Result<String, ProviderError> {
         let ens_name = ens::reverse_address(address);
         let domain: String =
@@ -912,25 +786,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         }
     }
 
-    /// Returns the avatar HTTP link of the avatar that the `ens_name` resolves to (or None
-    /// if not configured)
-    ///
-    /// # Example
-    /// ```no_run
-    /// # use ethers_providers::{Provider, Http as HttpProvider, Middleware};
-    /// # use std::convert::TryFrom;
-    /// # #[tokio::main(flavor = "current_thread")]
-    /// # async fn main() {
-    /// # let provider = Provider::<HttpProvider>::try_from("https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27").unwrap();
-    /// let avatar = provider.resolve_avatar("parishilton.eth").await.unwrap();
-    /// assert_eq!(avatar.to_string(), "https://i.imgur.com/YW3Hzph.jpg");
-    /// # }
-    /// ```
-    ///
-    /// # Panics
-    ///
-    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
-    /// a string. This should theoretically never happen.
     async fn resolve_avatar(&self, ens_name: &str) -> Result<Url, ProviderError> {
         let (field, owner) =
             try_join!(self.resolve_field(ens_name, "avatar"), self.resolve_name(ens_name))?;
@@ -990,25 +845,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         }
     }
 
-    /// Returns the URL (not necesserily HTTP) of the image behind a token.
-    ///
-    /// # Example
-    /// ```no_run
-    /// # use ethers_providers::{Provider, Http as HttpProvider, Middleware};
-    /// # use std::{str::FromStr, convert::TryFrom};
-    /// # #[tokio::main(flavor = "current_thread")]
-    /// # async fn main() {
-    /// # let provider = Provider::<HttpProvider>::try_from("https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27").unwrap();
-    /// let token = ethers_providers::erc::ERCNFT::from_str("erc721:0xc92ceddfb8dd984a89fb494c376f9a48b999aafc/9018").unwrap();
-    /// let token_image = provider.resolve_nft(token).await.unwrap();
-    /// assert_eq!(token_image.to_string(), "https://creature.mypinata.cloud/ipfs/QmNwj3aUzXfG4twV3no7hJRYxLLAWNPk6RrfQaqJ6nVJFa/9018.jpg");
-    /// # }
-    /// ```
-    ///
-    /// # Panics
-    ///
-    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
-    /// a string. This should theoretically never happen.
     async fn resolve_nft(&self, token: erc::ERCNFT) -> Result<Url, ProviderError> {
         let selector = token.type_.resolution_selector();
         let tx = TransactionRequest {
@@ -1030,12 +866,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Url::parse(&metadata.image).map_err(|e| ProviderError::CustomError(e.to_string()))
     }
 
-    /// Fetch a field for the `ens_name` (no None if not configured).
-    ///
-    /// # Panics
-    ///
-    /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
-    /// a string. This should theoretically never happen.
     async fn resolve_field(&self, ens_name: &str, field: &str) -> Result<String, ProviderError> {
         let field: String = self
             .query_resolver_parameters(
@@ -1048,28 +878,18 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         Ok(field)
     }
 
-    /// Returns the details of all transactions currently pending for inclusion in the next
-    /// block(s), as well as the ones that are being scheduled for future execution only.
-    /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_content)
     async fn txpool_content(&self) -> Result<TxpoolContent, ProviderError> {
         self.request("txpool_content", ()).await
     }
 
-    /// Returns a summary of all the transactions currently pending for inclusion in the next
-    /// block(s), as well as the ones that are being scheduled for future execution only.
-    /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_inspect)
     async fn txpool_inspect(&self) -> Result<TxpoolInspect, ProviderError> {
         self.request("txpool_inspect", ()).await
     }
 
-    /// Returns the number of transactions currently pending for inclusion in the next block(s), as
-    /// well as the ones that are being scheduled for future execution only.
-    /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_status)
     async fn txpool_status(&self) -> Result<TxpoolStatus, ProviderError> {
         self.request("txpool_status", ()).await
     }
 
-    /// Executes the given call and returns a number of possible traces for it
     async fn debug_trace_transaction(
         &self,
         tx_hash: TxHash,
@@ -1080,7 +900,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("debug_traceTransaction", [tx_hash, trace_options]).await
     }
 
-    /// Executes the given call and returns a number of possible traces for it
     async fn debug_trace_call<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         req: T,
@@ -1094,7 +913,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("debug_traceCall", [req, block, trace_options]).await
     }
 
-    /// Executes the given call and returns a number of possible traces for it
     async fn trace_call<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         req: T,
@@ -1108,7 +926,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("trace_call", [req, trace_type, block]).await
     }
 
-    /// Executes given calls and returns a number of possible traces for each call
     async fn trace_call_many<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         req: Vec<(T, Vec<TraceType>)>,
@@ -1121,7 +938,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("trace_callMany", [req, block]).await
     }
 
-    /// Traces a call to `eth_sendRawTransaction` without making the call, returning the traces
     async fn trace_raw_transaction(
         &self,
         data: Bytes,
@@ -1132,7 +948,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("trace_rawTransaction", [data, trace_type]).await
     }
 
-    /// Replays a transaction, returning the traces
     async fn trace_replay_transaction(
         &self,
         hash: H256,
@@ -1143,7 +958,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("trace_replayTransaction", [hash, trace_type]).await
     }
 
-    /// Replays all transactions in a block returning the requested traces for each transaction
     async fn trace_replay_block_transactions(
         &self,
         block: BlockNumber,
@@ -1154,19 +968,16 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("trace_replayBlockTransactions", [block, trace_type]).await
     }
 
-    /// Returns traces created at given block
     async fn trace_block(&self, block: BlockNumber) -> Result<Vec<Trace>, ProviderError> {
         let block = utils::serialize(&block);
         self.request("trace_block", [block]).await
     }
 
-    /// Return traces matching the given filter
     async fn trace_filter(&self, filter: TraceFilter) -> Result<Vec<Trace>, ProviderError> {
         let filter = utils::serialize(&filter);
         self.request("trace_filter", vec![filter]).await
     }
 
-    /// Returns trace at the given position
     async fn trace_get<T: Into<U64> + Send + Sync>(
         &self,
         hash: H256,
@@ -1178,7 +989,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("trace_get", vec![hash, index]).await
     }
 
-    /// Returns all traces of a given transaction
     async fn trace_transaction(&self, hash: H256) -> Result<Vec<Trace>, ProviderError> {
         let hash = utils::serialize(&hash);
         self.request("trace_transaction", vec![hash]).await
@@ -1418,19 +1228,20 @@ impl Provider<crate::Ws> {
         Ok(Self::new(ws))
     }
 
+    /// Direct connection to a websocket endpoint
+    #[cfg(target_arch = "wasm32")]
+    pub async fn connect(url: &str) -> Result<Self, ProviderError> {
+        let ws = crate::Ws::connect(url).await?;
+        Ok(Self::new(ws))
+    }
+
+    /// Connect to a WS RPC provider with authentication details
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn connect_with_auth(
         url: impl tokio_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
         auth: Authorization,
     ) -> Result<Self, ProviderError> {
         let ws = crate::Ws::connect_with_auth(url, auth).await?;
-        Ok(Self::new(ws))
-    }
-
-    /// Direct connection to a websocket endpoint
-    #[cfg(target_arch = "wasm32")]
-    pub async fn connect(url: &str) -> Result<Self, ProviderError> {
-        let ws = crate::Ws::connect(url).await?;
         Ok(Self::new(ws))
     }
 }
@@ -1547,6 +1358,8 @@ impl<'a> TryFrom<&'a String> for Provider<HttpProvider> {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Provider<RetryClient<HttpProvider>> {
+    /// Create a new [`RetryCient`] by connecting to the provided URL. Errors
+    /// if `src` is not a valid URL
     pub fn new_client(src: &str, max_retry: u32, initial_backoff: u64) -> Result<Self, ParseError> {
         Ok(Provider::new(RetryClient::new(
             HttpProvider::new(Url::parse(src)?),

@@ -469,16 +469,19 @@ pub enum IpcError {
     #[error(transparent)]
     IoError(#[from] io::Error),
 
+    /// Server responded to the request with a valid JSON-RPC error response
     #[error(transparent)]
-    /// Thrown if the response could not be parsed
     JsonRpcError(#[from] JsonRpcError),
 
+    /// Internal channel failed
     #[error("{0}")]
     ChannelError(String),
 
+    /// Listener for request result is gone
     #[error(transparent)]
     RequestCancelled(#[from] RecvError),
 
+    /// IPC server exited
     #[error("The IPC server has exited")]
     ServerExit,
 }

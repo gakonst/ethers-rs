@@ -66,6 +66,13 @@ where
         self.provider.unsubscribe(self.id).await
     }
 
+    /// Set the loaded elements buffer. This buffer contains logs waiting for
+    /// the consumer to read. Setting the buffer can be used to add logs
+    /// without receiving them from the RPC node
+    ///
+    /// ### Warning
+    ///
+    /// Setting the buffer will drop any logs in the current buffer.
     pub fn set_loaded_elements(&mut self, loaded_elements: VecDeque<R>) {
         self.loaded_elements = loaded_elements;
     }

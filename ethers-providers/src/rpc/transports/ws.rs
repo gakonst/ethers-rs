@@ -461,9 +461,11 @@ pub enum ClientError {
     TungsteniteError(#[from] WsError),
 
     #[error("{0}")]
+    /// Error in internal mpsc channel
     ChannelError(String),
 
     #[error("{0}")]
+    /// Error in internal oneshot channel
     Canceled(#[from] oneshot::Canceled),
 
     /// Remote server sent a Close message

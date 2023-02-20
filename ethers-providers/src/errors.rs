@@ -35,7 +35,7 @@ pub trait RpcError: Error + Debug + Send + Sync {
     ///
     /// ### Implementor's Note
     ///
-    /// When writing a stacked [`JsonRpcClient`] abstraction (e.g. a quorum
+    /// When writing a stacked [`crate::JsonRpcClient`] abstraction (e.g. a quorum
     /// provider or retrying provider), be sure to account for `serde_json`
     /// errors at your layer, as well as at lower layers.
     fn as_serde_error(&self) -> Option<&serde_json::Error>;
@@ -148,24 +148,31 @@ pub enum ProviderError {
     #[error("reverse ens name not pointing to itself: {0}")]
     EnsNotOwned(String),
 
+    /// Error in underlying lib `serde_json`
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
 
+    /// Error in underlying lib `hex`
     #[error(transparent)]
     HexError(#[from] hex::FromHexError),
 
+    /// Error in underlying lib `reqwest`
     #[error(transparent)]
     HTTPError(#[from] reqwest::Error),
 
+    /// Custom error from unknown source
     #[error("custom error: {0}")]
     CustomError(String),
 
+    /// RPC method is not supported by this provider
     #[error("unsupported RPC")]
     UnsupportedRPC,
 
+    /// Node is not supported by this provider
     #[error("unsupported node client")]
     UnsupportedNodeClient,
 
+    /// Signer is not available to this provider.
     #[error("Attempted to sign a transaction with no available signer. Hint: did you mean to use a SignerMiddleware?")]
     SignerUnavailable,
 }
