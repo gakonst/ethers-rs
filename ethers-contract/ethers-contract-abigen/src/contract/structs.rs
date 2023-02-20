@@ -62,12 +62,7 @@ impl Context {
             .struct_tuples
             .get(id)
             .ok_or_else(|| eyre!("No types found for {id}"))?;
-        let types = if let ParamType::Tuple(types) = tuple {
-            types
-        } else {
-            // should be unreachable
-            eyre::bail!("not a tuple");
-        };
+        let types = if let ParamType::Tuple(types) = tuple { types } else { unreachable!() };
         self.expand_internal_struct(struct_name, sol_struct, types)
     }
 
