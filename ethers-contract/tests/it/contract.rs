@@ -27,7 +27,7 @@ mod eth_tests {
     #[derive(Debug)]
     pub struct MwErr<M: Middleware>(M::Error);
 
-    impl<M: Middleware> MiddlewareError for MwErr<M>
+    impl<M> MiddlewareError for MwErr<M>
     where
         M: Middleware,
     {

@@ -1,5 +1,3 @@
-#![allow(clippy::return_self_not_must_use)]
-
 use crate::{
     utils::{interval, PinBoxFut},
     JsonRpcClient, Middleware, Provider,

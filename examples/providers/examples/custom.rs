@@ -7,12 +7,14 @@ use std::fmt::Debug;
 use thiserror::Error;
 use url::Url;
 
-/// First we must create an error type, and implement [`From`] for [`ProviderError`].
+/// First we must create an error type, and implement [`From`] for
+/// [`ProviderError`].
 ///
-/// Here we are using [`thiserror`](https://docs.rs/thiserror) to wrap [`WsClientError`]
-/// and [`IpcError`].
-/// This also provides a conversion implementation ([`From`]) for both, so we can use
-/// the [question mark operator](https://doc.rust-lang.org/rust-by-example/std/result/question_mark.html)
+/// Here we are using [`thiserror`](https://docs.rs/thiserror) to wrap
+/// [`WsClientError`] and [`IpcError`].
+///
+/// This also provides a conversion implementation ([`From`]) for both, so we
+/// can use the [question mark operator](https://doc.rust-lang.org/rust-by-example/std/result/question_mark.html)
 /// later on in our implementations.
 #[derive(Debug, Error)]
 pub enum WsOrIpcError {
@@ -23,6 +25,17 @@ pub enum WsOrIpcError {
     Ipc(#[from] IpcError),
 }
 
+/// In order to use our `WsOrIpcError` in the RPC client, we have to implement
+/// this trait.
+///
+/// [`RpcError`] helps other parts off the stack get access to common provider
+/// error cases. For example, any RPC connection may have a `serde_json` error,
+/// so we want to make those easily accessible, so we implement
+/// `as_serde_error()`
+///
+/// In addition, RPC requests may return JSON errors from the node, describing
+/// why the request failed. In order to make these accessible, we implement
+/// `as_error_response()`.
 impl RpcError for WsOrIpcError {
     fn as_error_response(&self) -> Option<&ethers::providers::JsonRpcError> {
         match self {
@@ -40,6 +53,8 @@ impl RpcError for WsOrIpcError {
     }
 }
 
+/// This implementation helps us convert our Error to the library's
+/// [`ProviderError`] so that we can use the `?` operator
 impl From<WsOrIpcError> for ProviderError {
     fn from(value: WsOrIpcError) -> Self {
         Self::JsonRpcClientError(Box::new(value))
