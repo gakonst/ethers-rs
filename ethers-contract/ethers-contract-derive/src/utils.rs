@@ -106,7 +106,7 @@ pub fn param_type_quote(kind: &ParamType) -> TokenStream {
 pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
     match ty {
         Type::Array(arr) => {
-            let ty = find_parameter_type(&*arr.elem)?;
+            let ty = find_parameter_type(&arr.elem)?;
             if let Expr::Lit(ref expr) = arr.len {
                 if let Lit::Int(ref len) = expr.lit {
                     if let Ok(size) = len.base10_parse::<usize>() {

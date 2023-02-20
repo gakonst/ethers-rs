@@ -203,7 +203,7 @@ pub(crate) fn derive_builtin_traits<'a>(
 
 /// This has to be a seperate function since a sol struct is converted into a tuple, but for
 /// deriving purposes it shouldn't count as one, so we recurse back the struct fields.
-pub(crate) fn derive_builtin_traits_struct<'a>(
+pub(crate) fn derive_builtin_traits_struct(
     structs: &InternalStructs,
     sol_struct: &SolStruct,
     params: &[ParamType],
@@ -219,7 +219,7 @@ pub(crate) fn derive_builtin_traits_struct<'a>(
     }
 }
 
-fn _derive_builtin_traits_struct<'a>(
+fn _derive_builtin_traits_struct(
     structs: &InternalStructs,
     sol_struct: &SolStruct,
     params: &[ParamType],

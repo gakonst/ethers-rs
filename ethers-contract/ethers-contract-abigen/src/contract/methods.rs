@@ -196,14 +196,8 @@ impl Context {
         }
 
         let mut derives = self.expand_extra_derives();
-        let params = self
-            .abi
-            .functions
-            .values()
-            .flatten()
-            .map(|f| &f.inputs)
-            .flatten()
-            .map(|param| &param.kind);
+        let params =
+            self.abi.functions.values().flatten().flat_map(|f| &f.inputs).map(|param| &param.kind);
         util::derive_builtin_traits(params, &mut derives, false, true);
 
         let enum_name = self.expand_calls_enum_name();

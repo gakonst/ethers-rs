@@ -92,14 +92,8 @@ impl Context {
             .collect::<Vec<_>>();
 
         let mut derives = self.expand_extra_derives();
-        let params = self
-            .abi
-            .errors
-            .values()
-            .flatten()
-            .map(|err| &err.inputs)
-            .flatten()
-            .map(|param| &param.kind);
+        let params =
+            self.abi.errors.values().flatten().flat_map(|err| &err.inputs).map(|param| &param.kind);
         util::derive_builtin_traits(params, &mut derives, false, true);
 
         let ethers_core = ethers_core_crate();
