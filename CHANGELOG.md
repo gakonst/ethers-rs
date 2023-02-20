@@ -238,6 +238,7 @@
 
 ### Unreleased
 
+- Re-organize the crate. #[2150](https://github.com/gakonst/ethers-rs/pull/2159)
 - Convert provider errors to arbitrary middleware errors
   [#1920](https://github.com/gakonst/ethers-rs/pull/1920)
 - Add a subset of the `admin` namespace
