@@ -2,7 +2,7 @@
 //! with an exponential backoff.
 
 use super::{common::JsonRpcError, http::ClientError};
-use crate::{provider::ProviderError, JsonRpcClient};
+use crate::{errors::ProviderError, JsonRpcClient};
 use async_trait::async_trait;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
@@ -50,7 +50,7 @@ pub trait RetryPolicy<E>: Send + Sync + Debug {
 pub struct RetryClient<T>
 where
     T: JsonRpcClient,
-    T::Error: Sync + Send + 'static,
+    T::Error: crate::RpcError + Sync + Send + 'static,
 {
     inner: T,
     requests_enqueued: AtomicU32,
@@ -114,6 +114,7 @@ where
     }
 }
 
+/// Builder for a [`RetryClient`]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RetryClientBuilder {
     /// How many connection `TimedOut` should be retried.
@@ -201,12 +202,34 @@ impl Default for RetryClientBuilder {
 /// 3. Request timed out i.e. max retries were already made.
 #[derive(Error, Debug)]
 pub enum RetryClientError {
+    /// Internal provider error
     #[error(transparent)]
     ProviderError(ProviderError),
+    /// Timeout while making requests
     TimeoutError,
+    /// (De)Serialization error
     #[error(transparent)]
     SerdeJson(serde_json::Error),
+    /// TimerError (wasm only)
     TimerError,
+}
+
+impl crate::RpcError for RetryClientError {
+    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
+        if let RetryClientError::ProviderError(err) = self {
+            err.as_error_response()
+        } else {
+            None
+        }
+    }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            RetryClientError::ProviderError(e) => e.as_serde_error(),
+            RetryClientError::SerdeJson(e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 impl std::fmt::Display for RetryClientError {

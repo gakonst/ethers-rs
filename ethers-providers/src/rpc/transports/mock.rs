@@ -97,14 +97,30 @@ impl MockProvider {
 #[derive(Error, Debug)]
 /// Errors for the `MockProvider`
 pub enum MockError {
+    /// (De)Serialization error
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
 
-    #[error("empty responses array, please push some requests")]
+    /// Empty requests array
+    #[error("empty requests array, please push some requests")]
     EmptyRequests,
 
+    /// Empty responses array
     #[error("empty responses array, please push some responses")]
     EmptyResponses,
+}
+
+impl crate::RpcError for MockError {
+    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
+        None
+    }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            MockError::SerdeJson(e) => Some(e),
+            _ => None,
+        }
+    }
 }
 
 impl From<MockError> for ProviderError {

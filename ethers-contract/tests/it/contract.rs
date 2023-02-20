@@ -13,7 +13,9 @@ mod eth_tests {
         utils::{keccak256, Anvil},
     };
     use ethers_derive_eip712::*;
-    use ethers_providers::{Http, Middleware, PendingTransaction, Provider, StreamExt};
+    use ethers_providers::{
+        Http, Middleware, MiddlewareError, PendingTransaction, Provider, StreamExt,
+    };
     use ethers_signers::{LocalWallet, Signer};
     use std::{convert::TryFrom, iter::FromIterator, sync::Arc, time::Duration};
 
@@ -24,12 +26,19 @@ mod eth_tests {
 
     #[derive(Debug)]
     pub struct MwErr<M: Middleware>(M::Error);
-    impl<M> ethers_providers::FromErr<M::Error> for MwErr<M>
+
+    impl<M> MiddlewareError for MwErr<M>
     where
         M: Middleware,
     {
-        fn from(src: M::Error) -> Self {
+        type Inner = M::Error;
+
+        fn from_err(src: M::Error) -> Self {
             Self(src)
+        }
+
+        fn as_inner(&self) -> Option<&Self::Inner> {
+            Some(&self.0)
         }
     }
 

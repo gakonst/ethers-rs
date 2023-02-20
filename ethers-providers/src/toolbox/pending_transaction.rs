@@ -1,4 +1,7 @@
-use crate::{stream::interval, JsonRpcClient, Middleware, PinBoxFut, Provider, ProviderError};
+use crate::{
+    utils::{interval, PinBoxFut},
+    JsonRpcClient, Middleware, Provider, ProviderError,
+};
 use ethers_core::types::{Transaction, TransactionReceipt, TxHash, U64};
 use futures_core::stream::Stream;
 use futures_util::stream::StreamExt;

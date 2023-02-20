@@ -1,9 +1,9 @@
-use super::common::{Params, Response};
 use crate::{
-    provider::ProviderError,
-    transports::common::{JsonRpcError, Request},
+    errors::ProviderError,
+    rpc::transports::common::{JsonRpcError, Params, Request, Response},
     JsonRpcClient, PubsubClient,
 };
+
 use async_trait::async_trait;
 use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
@@ -461,9 +461,11 @@ pub enum ClientError {
     TungsteniteError(#[from] WsError),
 
     #[error("{0}")]
+    /// Error in internal mpsc channel
     ChannelError(String),
 
-    #[error(transparent)]
+    #[error("{0}")]
+    /// Error in internal oneshot channel
     Canceled(#[from] oneshot::Canceled),
 
     /// Remote server sent a Close message
@@ -472,7 +474,7 @@ pub enum ClientError {
     WsClosed(CloseFrame<'static>),
 
     /// Remote server sent a Close message
-    #[error("Websocket closed with info")]
+    #[error("Websocket closed")]
     #[cfg(target_arch = "wasm32")]
     WsClosed,
 
@@ -494,6 +496,23 @@ pub enum ClientError {
     #[error(transparent)]
     #[cfg(not(target_arch = "wasm32"))]
     RequestError(#[from] http::Error),
+}
+
+impl crate::RpcError for ClientError {
+    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
+        if let ClientError::JsonRpcError(err) = self {
+            Some(err)
+        } else {
+            None
+        }
+    }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            ClientError::JsonError(err) => Some(err),
+            _ => None,
+        }
+    }
 }
 
 impl From<ClientError> for ProviderError {

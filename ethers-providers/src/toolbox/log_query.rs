@@ -1,4 +1,4 @@
-use super::{JsonRpcClient, Middleware, PinBoxFut, Provider, ProviderError};
+use crate::{utils::PinBoxFut, JsonRpcClient, Middleware, Provider, ProviderError};
 use ethers_core::types::{Filter, Log, U64};
 use futures_core::stream::Stream;
 use std::{
@@ -8,6 +8,9 @@ use std::{
 };
 use thiserror::Error;
 
+/// A log query provides streaming access to historical logs via a paginated
+/// request. For streaming access to future logs, use [`Middleware::watch`] or
+/// [`Middleware::subscribe_logs`]
 pub struct LogQuery<'a, P> {
     provider: &'a Provider<P>,
     filter: Filter,
@@ -29,6 +32,7 @@ impl<'a, P> LogQuery<'a, P>
 where
     P: JsonRpcClient,
 {
+    /// Instantiate a new `LogQuery`
     pub fn new(provider: &'a Provider<P>, filter: &Filter) -> Self {
         Self {
             provider,
@@ -56,10 +60,13 @@ macro_rules! rewake_with_new_state {
     };
 }
 
+/// Errors while querying for logs
 #[derive(Error, Debug)]
 pub enum LogQueryError<E> {
+    /// Error loading latest block
     #[error(transparent)]
     LoadLastBlockError(E),
+    /// Error loading logs from block range
     #[error(transparent)]
     LoadLogsError(E),
 }

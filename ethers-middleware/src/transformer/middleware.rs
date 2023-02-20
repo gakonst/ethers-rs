@@ -1,7 +1,7 @@
 use super::{Transformer, TransformerError};
 use async_trait::async_trait;
 use ethers_core::types::{transaction::eip2718::TypedTransaction, *};
-use ethers_providers::{FromErr, Middleware, PendingTransaction};
+use ethers_providers::{Middleware, MiddlewareError, PendingTransaction};
 use thiserror::Error;
 
 #[derive(Debug)]
@@ -33,9 +33,18 @@ pub enum TransformerMiddlewareError<M: Middleware> {
     MiddlewareError(M::Error),
 }
 
-impl<M: Middleware> FromErr<M::Error> for TransformerMiddlewareError<M> {
-    fn from(src: M::Error) -> TransformerMiddlewareError<M> {
+impl<M: Middleware> MiddlewareError for TransformerMiddlewareError<M> {
+    type Inner = M::Error;
+
+    fn from_err(src: M::Error) -> Self {
         TransformerMiddlewareError::MiddlewareError(src)
+    }
+
+    fn as_inner(&self) -> Option<&Self::Inner> {
+        match self {
+            TransformerMiddlewareError::MiddlewareError(e) => Some(e),
+            _ => None,
+        }
     }
 }
 

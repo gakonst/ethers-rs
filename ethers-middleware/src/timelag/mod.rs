@@ -6,7 +6,7 @@ use ethers_core::types::{
 use std::sync::Arc;
 use thiserror::Error;
 
-use ethers_providers::{FromErr, Middleware};
+use ethers_providers::{Middleware, MiddlewareError};
 
 type TimeLagResult<T, M> = Result<T, TimeLagError<M>>;
 
@@ -25,12 +25,20 @@ where
 }
 
 // Boilerplate
-impl<M: Middleware> FromErr<M::Error> for TimeLagError<M> {
-    fn from(src: M::Error) -> TimeLagError<M> {
+impl<M: Middleware> MiddlewareError for TimeLagError<M> {
+    type Inner = M::Error;
+
+    fn from_err(src: M::Error) -> Self {
         TimeLagError::MiddlewareError(src)
     }
-}
 
+    fn as_inner(&self) -> Option<&Self::Inner> {
+        match self {
+            TimeLagError::MiddlewareError(e) => Some(e),
+            _ => None,
+        }
+    }
+}
 /// TimeLag Provider
 #[derive(Debug)]
 pub struct TimeLag<M> {
@@ -115,7 +123,7 @@ where
             .get_block_number()
             .await
             .map(|num| num - self.lag)
-            .map_err(ethers_providers::FromErr::from)
+            .map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
@@ -123,7 +131,10 @@ where
         tx: T,
         block: Option<BlockId>,
     ) -> Result<ethers_providers::PendingTransaction<'_, Self::Provider>, Self::Error> {
-        self.inner().send_transaction(tx, block).await.map_err(ethers_providers::FromErr::from)
+        self.inner()
+            .send_transaction(tx, block)
+            .await
+            .map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn get_block<T: Into<BlockId> + Send + Sync>(
@@ -135,7 +146,10 @@ where
             .await?
             .expect("Cannot return None if Some is passed in");
 
-        self.inner().get_block(block_hash_or_number).await.map_err(ethers_providers::FromErr::from)
+        self.inner()
+            .get_block(block_hash_or_number)
+            .await
+            .map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn get_block_with_txs<T: Into<BlockId> + Send + Sync>(
@@ -150,7 +164,7 @@ where
         self.inner()
             .get_block_with_txs(block_hash_or_number)
             .await
-            .map_err(ethers_providers::FromErr::from)
+            .map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn get_uncle_count<T: Into<BlockId> + Send + Sync>(
@@ -165,7 +179,7 @@ where
         self.inner()
             .get_uncle_count(block_hash_or_number)
             .await
-            .map_err(ethers_providers::FromErr::from)
+            .map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn get_uncle<T: Into<BlockId> + Send + Sync>(
@@ -181,7 +195,7 @@ where
         self.inner()
             .get_uncle(block_hash_or_number, idx)
             .await
-            .map_err(ethers_providers::FromErr::from)
+            .map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn get_transaction_count<T: Into<NameOrAddress> + Send + Sync>(
@@ -194,7 +208,7 @@ where
         self.inner()
             .get_transaction_count(from, block)
             .await
-            .map_err(ethers_providers::FromErr::from)
+            .map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn call(
@@ -204,7 +218,7 @@ where
     ) -> Result<Bytes, Self::Error> {
         let block = self.normalize_block_id(block).await?;
 
-        self.inner().call(tx, block).await.map_err(ethers_providers::FromErr::from)
+        self.inner().call(tx, block).await.map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
@@ -213,7 +227,10 @@ where
         block: Option<BlockId>,
     ) -> Result<U256, Self::Error> {
         let block = self.normalize_block_id(block).await?;
-        self.inner().get_balance(from, block).await.map_err(ethers_providers::FromErr::from)
+        self.inner()
+            .get_balance(from, block)
+            .await
+            .map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
@@ -224,7 +241,7 @@ where
             .inner()
             .get_transaction_receipt(transaction_hash)
             .await
-            .map_err(ethers_providers::FromErr::from)?;
+            .map_err(ethers_providers::MiddlewareError::from_err)?;
 
         if receipt.is_none() {
             return Ok(None)
@@ -251,7 +268,7 @@ where
     ) -> Result<Bytes, Self::Error> {
         let block = self.normalize_block_id(block).await?;
 
-        self.inner().get_code(at, block).await.map_err(ethers_providers::FromErr::from)
+        self.inner().get_code(at, block).await.map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn get_storage_at<T: Into<NameOrAddress> + Send + Sync>(
@@ -264,7 +281,7 @@ where
         self.inner()
             .get_storage_at(from, location, block)
             .await
-            .map_err(ethers_providers::FromErr::from)
+            .map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn fill_transaction(
@@ -272,7 +289,10 @@ where
         tx: &mut TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<(), Self::Error> {
-        self.inner().fill_transaction(tx, block).await.map_err(ethers_providers::FromErr::from)
+        self.inner()
+            .fill_transaction(tx, block)
+            .await
+            .map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
@@ -285,7 +305,10 @@ where
             .await?
             .expect("Cannot return None if Some is passed in");
 
-        self.inner().get_block_receipts(block).await.map_err(ethers_providers::FromErr::from)
+        self.inner()
+            .get_block_receipts(block)
+            .await
+            .map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn get_logs(
@@ -295,7 +318,7 @@ where
         let mut filter = filter.clone();
         filter.block_option = self.normalize_filter_range(filter.block_option).await?;
 
-        self.inner().get_logs(&filter).await.map_err(ethers_providers::FromErr::from)
+        self.inner().get_logs(&filter).await.map_err(ethers_providers::MiddlewareError::from_err)
     }
 
     async fn new_filter(

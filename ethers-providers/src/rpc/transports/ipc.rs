@@ -1,9 +1,4 @@
 use super::common::Params;
-use crate::{
-    provider::ProviderError,
-    transports::common::{JsonRpcError, Request, Response},
-    JsonRpcClient, PubsubClient,
-};
 use async_trait::async_trait;
 use bytes::{Buf, BytesMut};
 use ethers_core::types::U256;
@@ -30,6 +25,9 @@ use tokio::{
     runtime,
     sync::oneshot::{self, error::RecvError},
 };
+
+use super::common::{JsonRpcError, Request, Response};
+use crate::{errors::ProviderError, JsonRpcClient, PubsubClient};
 
 type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHasher64>>;
 
@@ -471,16 +469,19 @@ pub enum IpcError {
     #[error(transparent)]
     IoError(#[from] io::Error),
 
+    /// Server responded to the request with a valid JSON-RPC error response
     #[error(transparent)]
-    /// Thrown if the response could not be parsed
     JsonRpcError(#[from] JsonRpcError),
 
+    /// Internal channel failed
     #[error("{0}")]
     ChannelError(String),
 
+    /// Listener for request result is gone
     #[error(transparent)]
     RequestCancelled(#[from] RecvError),
 
+    /// IPC server exited
     #[error("The IPC server has exited")]
     ServerExit,
 }
@@ -488,6 +489,23 @@ pub enum IpcError {
 impl From<IpcError> for ProviderError {
     fn from(src: IpcError) -> Self {
         ProviderError::JsonRpcClientError(Box::new(src))
+    }
+}
+
+impl crate::RpcError for IpcError {
+    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
+        if let IpcError::JsonRpcError(err) = self {
+            Some(err)
+        } else {
+            None
+        }
+    }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            IpcError::JsonError(err) => Some(err),
+            _ => None,
+        }
     }
 }
 

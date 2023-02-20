@@ -1,6 +1,8 @@
-use crate::{H256, U256};
 use enr::{k256::ecdsa::SigningKey, Enr};
-use ethers_core::utils::{from_int_or_hex, ChainConfig};
+use ethers_core::{
+    types::{H256, U256},
+    utils::{from_int_or_hex, ChainConfig},
+};
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
 
@@ -49,9 +51,11 @@ pub struct Ports {
 /// This contains protocol information reported by the connected RPC node.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ProtocolInfo {
+    /// Details about the node's supported eth protocol. `None` if unsupported
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub eth: Option<EthProtocolInfo>,
 
+    /// Details about the node's supported snap protocol. `None` if unsupported
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub snap: Option<SnapProtocolInfo>,
 }
@@ -94,9 +98,11 @@ pub struct SnapProtocolInfo {}
 /// connected RPC node.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct PeerProtocolInfo {
+    /// Details about the peer's supported eth protocol. `None` if unsupported
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub eth: Option<EthPeerInfo>,
 
+    /// Details about the peer's supported snap protocol. `None` if unsupported
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub snap: Option<SnapPeerInfo>,
 }

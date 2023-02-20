@@ -15,7 +15,9 @@ use futures_timer::Delay;
 #[cfg(target_arch = "wasm32")]
 use wasm_timer::Delay;
 
-use crate::{JsonRpcClient, Middleware, PendingTransaction, PinBoxFut, Provider, ProviderError};
+use crate::{
+    utils::PinBoxFut, JsonRpcClient, Middleware, PendingTransaction, Provider, ProviderError,
+};
 
 /// States for the EscalatingPending future
 enum EscalatorStates<'a, P> {

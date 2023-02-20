@@ -25,7 +25,7 @@ async fn graceful_disconnect_on_ws_errors() {
     spawn_ws_server().await;
 
     // Connect to the fake server
-    let (ws, _) = connect_async(format!("ws://{}", WS_ENDPOINT)).await.unwrap();
+    let (ws, _) = connect_async(format!("ws://{WS_ENDPOINT}")).await.unwrap();
     let provider = Provider::new(Ws::new(ws));
     let filter = Filter::new().event("Transfer(address,address,uint256)");
     let mut stream = provider.subscribe_logs(&filter).await.unwrap();

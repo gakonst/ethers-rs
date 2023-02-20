@@ -1,7 +1,7 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
 use super::common::{Authorization, JsonRpcError, Request, Response};
-use crate::{provider::ProviderError, JsonRpcClient};
+use crate::{errors::ProviderError, JsonRpcClient};
 use async_trait::async_trait;
 use reqwest::{header::HeaderValue, Client, Error as ReqwestError};
 use serde::{de::DeserializeOwned, Serialize};
@@ -46,7 +46,12 @@ pub enum ClientError {
 
     #[error("Deserialization Error: {err}. Response: {text}")]
     /// Serde JSON Error
-    SerdeJson { err: serde_json::Error, text: String },
+    SerdeJson {
+        /// Underlying error
+        err: serde_json::Error,
+        /// The contents of the HTTP response that could not be deserialized
+        text: String,
+    },
 }
 
 impl From<ClientError> for ProviderError {
@@ -58,13 +63,28 @@ impl From<ClientError> for ProviderError {
     }
 }
 
+impl crate::RpcError for ClientError {
+    fn as_error_response(&self) -> Option<&super::JsonRpcError> {
+        if let ClientError::JsonRpcError(err) = self {
+            Some(err)
+        } else {
+            None
+        }
+    }
+
+    fn as_serde_error(&self) -> Option<&serde_json::Error> {
+        match self {
+            ClientError::SerdeJson { err, .. } => Some(err),
+            _ => None,
+        }
+    }
+}
+
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl JsonRpcClient for Provider {
     type Error = ClientError;
 
-    /// Sends a POST request with the provided method and the params serialized as JSON
-    /// over HTTP
     async fn request<T: Serialize + Send + Sync, R: DeserializeOwned>(
         &self,
         method: &str,
