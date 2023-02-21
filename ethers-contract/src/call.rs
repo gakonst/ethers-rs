@@ -91,7 +91,7 @@ impl<M: Middleware> ContractError<M> {
     }
 
     pub fn decode_revert<Err: EthError>(&self) -> Option<Err> {
-        self.as_revert().and_then(|data| Err::decode(data).ok())
+        self.as_revert().and_then(|data| Err::decode_with_selector(data))
     }
 
     /// Convert a Middleware Error to a `ContractError`

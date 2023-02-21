@@ -2,7 +2,6 @@ use ethers_contract::ContractFactory;
 use ethers_contract_derive::abigen;
 use ethers_core::{abi::Address, utils::Anvil};
 use ethers_providers::{MiddlewareError, Provider};
-use ethers_signers::LocalWallet;
 use std::{
     convert::TryFrom,
     future::{Future, IntoFuture},
