@@ -26,3 +26,13 @@ pub trait EthError: Tokenizable + AbiDecode + AbiEncode + Send + Sync {
         id(Self::abi_signature())
     }
 }
+
+impl EthError for String {
+    fn error_name() -> Cow<'static, str> {
+        Cow::Borrowed("Error")
+    }
+
+    fn abi_signature() -> Cow<'static, str> {
+        Cow::Borrowed("Error(string)")
+    }
+}

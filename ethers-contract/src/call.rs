@@ -64,7 +64,7 @@ pub enum ContractError<M: Middleware> {
     ProviderError { e: ProviderError },
 
     /// Contract reverted
-    #[error("Contract reverted with data: {0}")]
+    #[error("Contract call reverted with data: {0}")]
     Revert(Bytes),
 
     /// Thrown during deployment if a constructor argument was passed in the `deploy`
@@ -79,11 +79,19 @@ pub enum ContractError<M: Middleware> {
 }
 
 impl<M: Middleware> ContractError<M> {
-    pub fn decode_revert<Err: EthError>(&self) -> Option<Err> {
+    pub fn as_revert(&self) -> Option<&Bytes> {
         match self {
-            ContractError::Revert(data) => Err::decode(data).ok(),
+            ContractError::Revert(data) => Some(data),
             _ => None,
         }
+    }
+
+    pub fn is_revert(&self) -> bool {
+        matches!(self, ContractError::Revert(_))
+    }
+
+    pub fn decode_revert<Err: EthError>(&self) -> Option<Err> {
+        self.as_revert().and_then(|data| Err::decode(data).ok())
     }
 
     /// Convert a Middleware Error to a `ContractError`
@@ -93,6 +101,28 @@ impl<M: Middleware> ContractError<M> {
         } else {
             ContractError::MiddlewareError { e }
         }
+    }
+
+    pub fn as_middleware_error(&self) -> Option<&M::Error> {
+        match self {
+            ContractError::MiddlewareError { e } => Some(e),
+            _ => None,
+        }
+    }
+
+    pub fn is_middleware_error(&self) -> bool {
+        matches!(self, ContractError::MiddlewareError { .. })
+    }
+
+    pub fn as_provider_error(&self) -> Option<&ProviderError> {
+        match self {
+            ContractError::ProviderError { e } => Some(e),
+            _ => None,
+        }
+    }
+
+    pub fn is_provider_error(&self) -> bool {
+        matches!(self, ContractError::ProviderError { .. })
     }
 }
 

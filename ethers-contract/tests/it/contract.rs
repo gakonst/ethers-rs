@@ -722,12 +722,17 @@ mod eth_tests {
             .unwrap();
 
         // .call reverts
-        // don't allow revert -> entire call reverts
-        multicall.clear_calls().add_call(get_value_reverting_call.clone(), false);
-        assert!(matches!(
-            multicall.call::<(String,)>().await.unwrap_err(),
-            MulticallError::ContractError(_)
-        ));
+        // don't allow revert
+        multicall
+            .clear_calls()
+            .add_call(get_value_reverting_call.clone(), false)
+            .add_call(get_value_call.clone(), false);
+        let res = multicall.call::<((bool, String), (bool, String))>().await;
+        let err = res.unwrap_err();
+        dbg!(err.to_string());
+        assert!(err.is_revert());
+        let message = err.decode_revert::<String>().unwrap();
+        assert!(message.contains("Multicall3: call failed"));
 
         // allow revert -> call doesn't revert, but returns Err(_) in raw tokens
         let expected = Bytes::from_static(b"getValue revert").encode();
