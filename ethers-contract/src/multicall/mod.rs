@@ -376,8 +376,11 @@ impl<M: Middleware> Multicall<M> {
         let address: Address = match address {
             Some(addr) => addr,
             None => {
-                let chain_id =
-                    client.get_chainid().await.map_err(ContractError::MiddlewareError)?.as_u64();
+                let chain_id = client
+                    .get_chainid()
+                    .await
+                    .map_err(ContractError::from_middleware_error)?
+                    .as_u64();
                 if !MULTICALL_SUPPORTED_CHAIN_IDS.contains(&chain_id) {
                     return Err(MulticallError::InvalidChainId(chain_id))
                 }
@@ -874,7 +877,7 @@ impl<M: Middleware> Multicall<M> {
         client
             .send_transaction(tx, self.block.map(Into::into))
             .await
-            .map_err(|e| MulticallError::ContractError(ContractError::MiddlewareError(e)))
+            .map_err(|e| MulticallError::ContractError(ContractError::from_middleware_error(e)))
     }
 
     /// v1

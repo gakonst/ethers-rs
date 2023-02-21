@@ -95,7 +95,7 @@ impl DsProxy {
             Some(addr) => addr,
             None => {
                 let chain_id =
-                    client.get_chainid().await.map_err(ContractError::MiddlewareError)?;
+                    client.get_chainid().await.map_err(ContractError::from_middleware_error)?;
                 match ADDRESS_BOOK.get(&chain_id) {
                     Some(addr) => *addr,
                     None => panic!(
@@ -112,8 +112,7 @@ impl DsProxy {
             .legacy()
             .send()
             .await?
-            .await
-            .map_err(ContractError::ProviderError)?
+            .await?
             .ok_or(ContractError::ContractNotDeployed)?;
 
         // decode the event log to get the address of the deployed contract.

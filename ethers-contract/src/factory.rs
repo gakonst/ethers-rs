@@ -247,7 +247,7 @@ where
             .borrow()
             .call(&self.tx, Some(self.block.into()))
             .await
-            .map_err(ContractError::MiddlewareError)?;
+            .map_err(ContractError::from_middleware_error)?;
 
         // TODO: It would be nice to handle reverts in a structured way.
         Ok(())
@@ -282,7 +282,7 @@ where
             .borrow()
             .send_transaction(self.tx, Some(self.block.into()))
             .await
-            .map_err(ContractError::MiddlewareError)?;
+            .map_err(ContractError::from_middleware_error)?;
 
         // TODO: Should this be calculated "optimistically" by address/nonce?
         let receipt = pending_tx

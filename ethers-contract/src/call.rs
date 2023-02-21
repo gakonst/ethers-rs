@@ -1,5 +1,7 @@
 #![allow(clippy::return_self_not_must_use)]
 
+use crate::EthError;
+
 use super::base::{decode_function_data, AbiError};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Detokenize, Function, InvalidOutputType, Tokenizable},
@@ -11,7 +13,7 @@ use ethers_core::{
 };
 use ethers_providers::{
     call_raw::{CallBuilder, RawCall},
-    Middleware, PendingTransaction, ProviderError,
+    JsonRpcError, Middleware, MiddlewareError, PendingTransaction, ProviderError,
 };
 
 use std::{
@@ -54,12 +56,16 @@ pub enum ContractError<M: Middleware> {
     DetokenizationError(#[from] InvalidOutputType),
 
     /// Thrown when a middleware call fails
-    #[error("{0}")]
-    MiddlewareError(M::Error),
+    #[error("{e}")]
+    MiddlewareError { e: M::Error },
 
     /// Thrown when a provider call fails
-    #[error("{0}")]
-    ProviderError(ProviderError),
+    #[error("{e}")]
+    ProviderError { e: ProviderError },
+
+    /// Contract reverted
+    #[error("Contract reverted with data: {0}")]
+    Revert(Bytes),
 
     /// Thrown during deployment if a constructor argument was passed in the `deploy`
     /// call but a constructor was not present in the ABI
@@ -70,6 +76,34 @@ pub enum ContractError<M: Middleware> {
     /// receipt
     #[error("Contract was not deployed")]
     ContractNotDeployed,
+}
+
+impl<M: Middleware> ContractError<M> {
+    pub fn decode_revert<Err: EthError>(&self) -> Option<Err> {
+        match self {
+            ContractError::Revert(data) => Err::decode(data).ok(),
+            _ => None,
+        }
+    }
+
+    /// Convert a Middleware Error to a `ContractError`
+    pub fn from_middleware_error(e: M::Error) -> Self {
+        if let Some(data) = e.as_error_response().and_then(JsonRpcError::as_revert_data) {
+            ContractError::Revert(data)
+        } else {
+            ContractError::MiddlewareError { e }
+        }
+    }
+}
+
+impl<M: Middleware> From<ProviderError> for ContractError<M> {
+    fn from(e: ProviderError) -> Self {
+        if let Some(data) = e.as_error_response().and_then(JsonRpcError::as_revert_data) {
+            ContractError::Revert(data)
+        } else {
+            ContractError::ProviderError { e }
+        }
+    }
 }
 
 /// `ContractCall` is a [`FunctionCall`] object with an [`std::sync::Arc`] middleware.
@@ -177,7 +211,7 @@ where
             .borrow()
             .estimate_gas(&self.tx, self.block)
             .await
-            .map_err(ContractError::MiddlewareError)
+            .map_err(ContractError::from_middleware_error)
     }
 
     /// Queries the blockchain via an `eth_call` for the provided transaction.
@@ -190,9 +224,12 @@ where
     ///
     /// Note: this function _does not_ send a transaction from your account
     pub async fn call(&self) -> Result<D, ContractError<M>> {
-        let client: &M = self.client.borrow();
-        let bytes =
-            client.call(&self.tx, self.block).await.map_err(ContractError::MiddlewareError)?;
+        let bytes = self
+            .client
+            .borrow()
+            .call(&self.tx, self.block)
+            .await
+            .map_err(ContractError::from_middleware_error)?;
 
         // decode output
         let data = decode_function_data(&self.function, &bytes, false)?;
@@ -211,7 +248,7 @@ where
     ) -> impl RawCall<'_> + Future<Output = Result<D, ContractError<M>>> + Debug {
         let call = self.call_raw_bytes();
         call.map(move |res: Result<Bytes, ProviderError>| {
-            let bytes = res.map_err(ContractError::ProviderError)?;
+            let bytes = res?;
             decode_function_data(&self.function, &bytes, false).map_err(From::from)
         })
     }
@@ -237,7 +274,7 @@ where
             .borrow()
             .send_transaction(self.tx.clone(), self.block)
             .await
-            .map_err(ContractError::MiddlewareError)
+            .map_err(ContractError::from_middleware_error)
     }
 }
 
