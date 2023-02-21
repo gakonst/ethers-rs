@@ -21,12 +21,17 @@ pub fn selector(selector: Selector) -> TokenStream {
     quote! {[#( #bytes ),*]}
 }
 
-/// Parses an int type from its string representation
-pub fn parse_int_param_type(s: &str) -> Option<ParamType> {
+/// Parses an int / hash type from its string representation
+pub fn parse_param_type(s: &str) -> Option<ParamType> {
     match s.chars().next() {
-        Some(c @ 'u') | Some(c @ 'i') => {
+        Some('H' | 'h') => {
+            let size = s[1..].parse::<usize>().ok()? / 8;
+            Some(ParamType::FixedBytes(size))
+        }
+
+        Some(c @ 'U' | c @ 'I' | c @ 'u' | c @ 'i') => {
             let size = s[1..].parse::<usize>().ok()?;
-            if c == 'u' {
+            if matches!(c, 'U' | 'u') {
                 Some(ParamType::Uint(size))
             } else {
                 Some(ParamType::Int(size))
@@ -100,57 +105,62 @@ pub fn param_type_quote(kind: &ParamType) -> TokenStream {
 /// given type
 pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
     match ty {
-        Type::Array(ty) => {
-            let param = find_parameter_type(ty.elem.as_ref())?;
-            if let Expr::Lit(ref expr) = ty.len {
+        Type::Array(arr) => {
+            let ty = find_parameter_type(&arr.elem)?;
+            if let Expr::Lit(ref expr) = arr.len {
                 if let Lit::Int(ref len) = expr.lit {
                     if let Ok(size) = len.base10_parse::<usize>() {
-                        return Ok(ParamType::FixedArray(Box::new(param), size))
+                        return Ok(ParamType::FixedArray(Box::new(ty), size))
                     }
                 }
             }
-            Err(Error::new(ty.span(), "Failed to derive proper ABI from array field"))
+            Err(Error::new(arr.span(), "Failed to derive proper ABI from array field"))
         }
+
         Type::Path(ty) => {
             // check for `Vec`
-            if ty.path.segments.len() == 1 && ty.path.segments[0].ident == "Vec" {
-                if let PathArguments::AngleBracketed(ref args) = ty.path.segments[0].arguments {
-                    if args.args.len() == 1 {
-                        if let GenericArgument::Type(ref ty) = args.args.iter().next().unwrap() {
-                            return find_parameter_type(ty)
-                                .map(|kind| ParamType::Array(Box::new(kind)))
-                        }
+            if let Some(segment) = ty.path.segments.iter().find(|s| s.ident == "Vec") {
+                if let PathArguments::AngleBracketed(ref args) = segment.arguments {
+                    // Vec<T, A?>
+                    debug_assert!(matches!(args.args.len(), 1 | 2));
+                    let ty = args.args.iter().next().unwrap();
+                    if let GenericArgument::Type(ref ty) = ty {
+                        return find_parameter_type(ty).map(|kind| ParamType::Array(Box::new(kind)))
                     }
                 }
             }
-            let mut ident = ty.path.get_ident();
-            if ident.is_none() {
-                ident = ty.path.segments.last().map(|s| &s.ident);
-            }
-            if let Some(ident) = ident {
-                let ident = ident.to_string().to_lowercase();
-                return match ident.as_str() {
-                    "address" => Ok(ParamType::Address),
-                    "bytes" => Ok(ParamType::Bytes),
-                    "string" => Ok(ParamType::String),
-                    "bool" => Ok(ParamType::Bool),
-                    "int" | "uint" => Ok(ParamType::Uint(256)),
-                    "h160" => Ok(ParamType::FixedBytes(20)),
-                    "h256" | "secret" | "hash" => Ok(ParamType::FixedBytes(32)),
-                    "h512" | "public" => Ok(ParamType::FixedBytes(64)),
-                    s => parse_int_param_type(s).ok_or_else(|| {
-                        Error::new(ty.span(), "Failed to derive proper ABI from fields")
-                    }),
-                }
-            }
-            Err(Error::new(ty.span(), "Failed to derive proper ABI from fields"))
+
+            // match on the last segment of the path
+            ty.path
+                .get_ident()
+                .or_else(|| ty.path.segments.last().map(|s| &s.ident))
+                .and_then(|ident| {
+                    match ident.to_string().as_str() {
+                        // eth types
+                        "Address" => Some(ParamType::Address),
+                        "Bytes" => Some(ParamType::Bytes),
+                        "Uint8" => Some(ParamType::Uint(8)),
+
+                        // core types
+                        "String" => Some(ParamType::String),
+                        "bool" => Some(ParamType::Bool),
+                        // usize / isize, shouldn't happen but use max width
+                        "usize" => Some(ParamType::Uint(64)),
+                        "isize" => Some(ParamType::Int(64)),
+
+                        s => parse_param_type(s),
+                    }
+                })
+                .ok_or_else(|| Error::new(ty.span(), "Failed to derive proper ABI from fields"))
         }
+
         Type::Tuple(ty) => ty
             .elems
             .iter()
             .map(find_parameter_type)
             .collect::<Result<Vec<_>, _>>()
             .map(ParamType::Tuple),
+
         _ => Err(Error::new(ty.span(), "Failed to derive proper ABI from fields")),
     }
 }
@@ -266,4 +276,98 @@ pub fn abi_parameters_array(input: &DeriveInput, trait_name: &str) -> Result<Tok
     Ok(quote! {
         [#( #iter ),*]
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use syn::parse_quote;
+
+    macro_rules! type_test_cases {
+        ($($t:ty => $e:expr),+ $(,)?) => {{
+            &[
+                $(
+                    (parse_quote!($t), $e),
+                )+
+            ]
+        }};
+    }
+
+    fn arr(ty: ParamType) -> ParamType {
+        ParamType::Array(Box::new(ty))
+    }
+
+    fn farr(ty: ParamType, len: usize) -> ParamType {
+        ParamType::FixedArray(Box::new(ty), len)
+    }
+
+    #[test]
+    fn can_find_params() {
+        use ParamType as PT;
+        let test_cases: &[(Type, ParamType)] = type_test_cases! {
+            u8 => PT::Uint(8),
+            u16 => PT::Uint(16),
+            u32 => PT::Uint(32),
+            u64 => PT::Uint(64),
+            usize => PT::Uint(64),
+            u128 => PT::Uint(128),
+            ::ethers::types::U256 => PT::Uint(256),
+            ethers::types::U256 => PT::Uint(256),
+            ::ethers_core::types::U256 => PT::Uint(256),
+            ethers_core::types::U256 => PT::Uint(256),
+            U256 => PT::Uint(256),
+
+            i8 => PT::Int(8),
+            i16 => PT::Int(16),
+            i32 => PT::Int(32),
+            i64 => PT::Int(64),
+            isize => PT::Int(64),
+            i128 => PT::Int(128),
+            ::ethers::types::I256 => PT::Int(256),
+            ethers::types::I256 => PT::Int(256),
+            ::ethers_core::types::I256 => PT::Int(256),
+            ethers_core::types::I256 => PT::Int(256),
+            I256 => PT::Int(256),
+
+
+            ::ethers::types::H160 => PT::FixedBytes(20),
+            H160 => PT::FixedBytes(20),
+            ::ethers::types::H256 => PT::FixedBytes(32),
+            H256 => PT::FixedBytes(32),
+            ::ethers::types::H512 => PT::FixedBytes(64),
+            H512 => PT::FixedBytes(64),
+
+            ::std::vec::Vec<::ethers_core::types::U256, ::std::alloc::Global> => arr(PT::Uint(256)),
+            ::std::vec::Vec<::ethers_core::types::U256, Global> => arr(PT::Uint(256)),
+            ::std::vec::Vec<::ethers_core::types::U256> => arr(PT::Uint(256)),
+            ::std::vec::Vec<ethers::types::U256> => arr(PT::Uint(256)),
+            ::std::vec::Vec<U256> => arr(PT::Uint(256)),
+            std::vec::Vec<U256> => arr(PT::Uint(256)),
+            vec::Vec<U256> => arr(PT::Uint(256)),
+            Vec<U256> => arr(PT::Uint(256)),
+
+            [u64; 8] => farr(PT::Uint(64), 8),
+            [u64; 16] => farr(PT::Uint(64), 16),
+            [::ethers_core::types::U256; 2] => farr(PT::Uint(256), 2),
+            [String; 4] => farr(PT::String, 4),
+            [Address; 2] => farr(PT::Address, 2),
+
+            (String, String, Address) => PT::Tuple(vec![PT::String, PT::String, PT::Address]),
+            (::ethers_core::types::U256, u8, ::ethers_core::types::Address)
+                => PT::Tuple(vec![PT::Uint(256), PT::Uint(8), PT::Address]),
+            (::ethers::types::Bytes, ::ethers::types::H256, (::ethers::types::Address, ::std::string::String))
+                => PT::Tuple(vec![
+                    PT::Bytes,
+                    PT::FixedBytes(32),
+                    PT::Tuple(vec![PT::Address, PT::String])
+                ]),
+        };
+
+        for (ty, expected) in test_cases {
+            match find_parameter_type(ty) {
+                Ok(ty) => assert_eq!(ty, *expected),
+                Err(e) => panic!("{e}: {ty:#?}\n{expected}"),
+            }
+        }
+    }
 }

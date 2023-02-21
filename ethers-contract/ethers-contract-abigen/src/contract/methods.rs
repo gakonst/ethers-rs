@@ -122,16 +122,15 @@ impl Context {
             hex::encode(function.selector())
         );
 
-        let mut extra_derives = self.expand_extra_derives();
-        if util::can_derive_defaults(&function.inputs) {
-            extra_derives.extend(quote!(Default));
-        }
+        let mut derives = self.expand_extra_derives();
+        let params = function.inputs.iter().map(|param| &param.kind);
+        util::derive_builtin_traits(params, &mut derives, true, true);
 
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
             #[doc = #doc_str]
-            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthCall, #ethers_contract::EthDisplay, #extra_derives)]
+            #[derive(Clone, #ethers_contract::EthCall, #ethers_contract::EthDisplay, #derives)]
             #[ethcall( name = #function_name, abi = #abi_signature )]
             pub #call_type_definition
         })
@@ -162,16 +161,15 @@ impl Context {
             hex::encode(function.selector())
         );
 
-        let mut extra_derives = self.expand_extra_derives();
-        if util::can_derive_defaults(&function.inputs) {
-            extra_derives.extend(quote!(Default));
-        }
+        let mut derives = self.expand_extra_derives();
+        let params = function.inputs.iter().map(|param| &param.kind);
+        util::derive_builtin_traits(params, &mut derives, true, true);
 
         let ethers_contract = ethers_contract_crate();
 
         Ok(Some(quote! {
             #[doc = #doc_str]
-            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
+            #[derive(Clone, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
             pub #return_type_definition
         }))
     }
@@ -197,7 +195,10 @@ impl Context {
             return Ok(struct_def_tokens)
         }
 
-        let extra_derives = self.expand_extra_derives();
+        let mut derives = self.expand_extra_derives();
+        let params =
+            self.abi.functions.values().flatten().flat_map(|f| &f.inputs).map(|param| &param.kind);
+        util::derive_builtin_traits(params, &mut derives, false, true);
 
         let enum_name = self.expand_calls_enum_name();
 
@@ -208,7 +209,7 @@ impl Context {
             #struct_def_tokens
 
             #[doc = "Container type for all of the contract's call "]
-            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
+            #[derive(Clone, #ethers_contract::EthAbiType, #derives)]
             pub enum #enum_name {
                 #( #variant_names(#struct_names), )*
             }

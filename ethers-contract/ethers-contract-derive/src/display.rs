@@ -22,82 +22,117 @@ pub(crate) fn derive_eth_display_impl(input: DeriveInput) -> Result<TokenStream,
         }
     };
 
-    let ethers_core = ethers_core_crate();
-    let hex_encode = quote! {#ethers_core::utils::hex::encode};
-
-    let mut fmts = TokenStream::new();
-    for (idx, field) in fields.iter().enumerate() {
-        let ident = field.ident.clone().map(|id| quote! {#id}).unwrap_or_else(|| {
-            let idx = Index::from(idx);
-            quote! {#idx}
+    let mut expressions = TokenStream::new();
+    for (i, field) in fields.iter().enumerate() {
+        let ident = field.ident.as_ref().map(|id| quote!(#id)).unwrap_or_else(|| {
+            let idx = Index::from(i);
+            quote!(#idx)
         });
-        let tokens = if let Ok(param) = utils::find_parameter_type(&field.ty) {
-            match param {
-                ParamType::Address | ParamType::Uint(_) | ParamType::Int(_) => {
-                    quote! {
-                        write!(f, "{:?}", self.#ident)?;
-                    }
-                }
-                ParamType::Bytes => {
-                    quote! {
-                        write!(f, "0x{}", #hex_encode(&self.#ident))?;
-                    }
-                }
-                ParamType::Bool | ParamType::String => {
-                    quote! {
-                        self.#ident.fmt(f)?;
-                    }
-                }
-                ParamType::Tuple(_) => {
-                    quote! {
-                        write!(f, "{:?}", &self.#ident)?;
-                    }
-                }
-                ParamType::Array(ty) | ParamType::FixedArray(ty, _) => {
-                    if *ty == ParamType::Uint(8) {
-                        // `u8`
-                        quote! {
-                            write!(f, "0x{}", #hex_encode(&self.#ident[..]))?;
-                        }
-                    } else {
-                        // format as array with `[arr[0].display, arr[1].display,...]`
-                        quote! {
-                            write!(f, "[")?;
-                            for (idx, val) in self.#ident.iter().enumerate() {
-                                write!(f, "{:?}", val)?;
-                                if idx < self.#ident.len() - 1 {
-                                    write!(f, ", ")?;
-                                }
-                            }
-                            write!(f, "]")?;
-                        }
-                    }
-                }
-                ParamType::FixedBytes(_) => {
-                    quote! {
-                        write!(f, "0x{}", #hex_encode(&self.#ident))?;
-                    }
-                }
-            }
+        if let Ok(param) = utils::find_parameter_type(&field.ty) {
+            let ethers_core = ethers_core_crate();
+            let hex_encode = quote!(#ethers_core::utils::hex::encode);
+            fmt_params_tokens(&param, ident, &mut expressions, &hex_encode);
         } else {
             // could not detect the parameter type and rely on using debug fmt
-            quote! {
-                write!(f, "{:?}", &self.#ident)?;
-            }
-        };
-        fmts.extend(tokens);
-        if idx < fields.len() - 1 {
-            fmts.extend(quote! { write!(f, ", ")?;});
+            fmt_debug_tokens(&ident, &mut expressions);
+        }
+
+        // comma separator
+        if i < fields.len() - 1 {
+            let tokens = quote! {
+                ::core::fmt::Write::write_str(f, ", ")?;
+            };
+            expressions.extend(tokens);
         }
     }
 
     let name = &input.ident;
     Ok(quote! {
-        impl ::std::fmt::Display for #name {
-            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                #fmts
+        impl ::core::fmt::Display for #name {
+            fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                #expressions
                 Ok(())
             }
         }
     })
+}
+
+/// Recursive for tuples len > 12.
+fn fmt_params_tokens(
+    param: &ParamType,
+    ident: TokenStream,
+    out: &mut TokenStream,
+    hex_encode: &TokenStream,
+) {
+    match param {
+        // Display
+        ParamType::Bool | ParamType::String | ParamType::Uint(_) | ParamType::Int(_) => {
+            fmt_display_tokens(&ident, out);
+        }
+
+        // Debug
+        ParamType::Address => fmt_debug_tokens(&ident, out),
+
+        // 0x ++ hex::encode
+        ParamType::Bytes | ParamType::FixedBytes(_) => hex_encode_tokens(&ident, out, hex_encode),
+
+        // Debug or recurse
+        ParamType::Tuple(params) => {
+            // Debug is implemented automatically only for tuples with arity <= 12
+            if params.len() <= 12 {
+                fmt_debug_tokens(&ident, out);
+            } else {
+                for (i, new_param) in params.iter().enumerate() {
+                    let idx = Index::from(i);
+                    let new_ident = quote!(#ident.#idx);
+                    fmt_params_tokens(new_param, new_ident, out, hex_encode);
+                }
+            }
+        }
+
+        // 0x ++ hex::encode or DebugList
+        ParamType::Array(ty) | ParamType::FixedArray(ty, _) => match &**ty {
+            ParamType::Uint(8) => hex_encode_tokens(&ident, out, hex_encode),
+            ParamType::Tuple(params) if params.len() > 12 => {
+                // TODO: Recurse this
+                let idx = (0..params.len()).map(Index::from);
+                let tokens = quote! {
+                    let mut list = f.debug_list();
+                    for entry in self.#ident.iter() {
+                        #( list.entry(&entry.#idx); )*
+                    }
+                    list.finish()?;
+                };
+                out.extend(tokens);
+            }
+            _ => {
+                let tokens = quote! {
+                    f.debug_list().entries(self.#ident.iter()).finish()?;
+                };
+                out.extend(tokens);
+            }
+        },
+    }
+}
+
+fn fmt_display_tokens(ident: &TokenStream, out: &mut TokenStream) {
+    let tokens = quote! {
+        ::core::fmt::Display::fmt(&self.#ident, f)?;
+    };
+    out.extend(tokens);
+}
+
+fn fmt_debug_tokens(ident: &TokenStream, out: &mut TokenStream) {
+    let tokens = quote! {
+        ::core::fmt::Debug::fmt(&self.#ident, f)?;
+    };
+    out.extend(tokens);
+}
+
+fn hex_encode_tokens(ident: &TokenStream, out: &mut TokenStream, hex_encode: &TokenStream) {
+    let tokens = quote! {
+        ::core::fmt::Write::write_str(f, "0x")?;
+        ::core::fmt::Write::write_str(f, #hex_encode(&self.#ident).as_str())?;
+    };
+    out.extend(tokens);
 }

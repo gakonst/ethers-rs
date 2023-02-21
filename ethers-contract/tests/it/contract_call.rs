@@ -13,9 +13,9 @@ async fn contract_call_into_future_is_send() {
     let client = Arc::new(provider);
     let contract = DsProxyFactory::new(Address::zero(), client);
 
-    fn is_send<T: Future + Send + 'static>(future: T) -> bool {
-        true
+    fn is_send<T: Future + Send + 'static>(future: T) -> T {
+        future
     }
 
-    assert!(is_send(contract.cache().into_future()));
+    is_send(contract.cache().into_future());
 }

@@ -1,4 +1,5 @@
 #![cfg(not(target_arch = "wasm32"))]
+#![allow(dead_code)]
 
 #[cfg(feature = "abigen")]
 use ethers_core::types::Address;

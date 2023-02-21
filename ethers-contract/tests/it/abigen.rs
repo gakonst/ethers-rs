@@ -1,26 +1,25 @@
-#![cfg(feature = "abigen")]
-#![allow(unused)]
 //! Test cases to validate the `abigen!` macro
-use ethers_contract::{abigen, Abigen, EthCall, EthEvent};
+
+use ethers_contract::{abigen, EthCall, EthEvent};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
-    types::{transaction::eip2718::TypedTransaction, Chain, Eip1559TransactionRequest, U256},
+    types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256},
     utils::Anvil,
 };
 use ethers_providers::{MockProvider, Provider};
 use ethers_solc::Solc;
-use std::{
-    convert::{TryFrom, TryInto},
-    sync::Arc,
-};
+use std::sync::Arc;
 
-fn assert_codec<T: AbiDecode + AbiEncode>() {}
-fn assert_tokenizeable<T: Tokenizable>() {}
-fn assert_call<T: AbiEncode + AbiDecode + Default + Tokenizable>() {}
-fn assert_event<T: EthEvent>() {}
+const fn assert_codec<T: AbiDecode + AbiEncode>() {}
+const fn assert_tokenizeable<T: Tokenizable>() {}
+const fn assert_call<T: AbiEncode + AbiDecode + Default + Tokenizable>() {}
+const fn assert_event<T: EthEvent>() {}
+const fn assert_clone<T: Clone>() {}
+const fn assert_default<T: Default>() {}
+const fn assert_builtin<T: std::fmt::Debug + PartialEq + Eq + std::hash::Hash>() {}
 
 #[test]
-fn can_gen_human_readable() {
+fn can_generate_human_readable() {
     abigen!(
         SimpleContract,
         r#"[
@@ -33,12 +32,12 @@ fn can_gen_human_readable() {
 }
 
 #[test]
-fn can_gen_not_human_readable() {
+fn can_generate_not_human_readable() {
     abigen!(VerifierAbiHardhatContract, "./tests/solidity-contracts/verifier_abi_hardhat.json");
 }
 
 #[test]
-fn can_gen_human_readable_multiple() {
+fn can_generate_human_readable_multiple() {
     abigen!(
         SimpleContract1,
         r#"[
@@ -59,7 +58,7 @@ fn can_gen_human_readable_multiple() {
 }
 
 #[test]
-fn can_gen_structs_readable() {
+fn can_generate_structs_readable() {
     abigen!(
         SimpleContract,
         r#"[
@@ -90,7 +89,7 @@ fn can_gen_structs_readable() {
 }
 
 #[test]
-fn can_gen_structs_with_arrays_readable() {
+fn can_generate_structs_with_arrays_readable() {
     abigen!(
         SimpleContract,
         r#"[
@@ -171,7 +170,7 @@ fn can_generate_internal_structs_multiple() {
 }
 
 #[test]
-fn can_gen_return_struct() {
+fn can_generate_return_struct() {
     abigen!(MultiInputOutput, "ethers-contract/tests/solidity-contracts/MultiInputOutput.json");
 
     fn verify<T: AbiEncode + AbiDecode + Clone + std::fmt::Debug + std::cmp::PartialEq>(
@@ -199,7 +198,7 @@ fn can_gen_return_struct() {
 }
 
 #[test]
-fn can_gen_human_readable_with_structs() {
+fn can_generate_human_readable_with_structs() {
     abigen!(
         SimpleContract,
         r#"[
@@ -455,7 +454,7 @@ fn can_handle_duplicates_with_same_name() {
 }
 
 #[test]
-fn can_abigen_console_sol() {
+fn can_abican_generate_console_sol() {
     abigen!(Console, "ethers-contract/tests/solidity-contracts/console.json",);
 }
 
@@ -569,7 +568,7 @@ async fn can_abiencoderv2_output() {
 
 // NOTE: this is commented out because this would result in compiler errors if key not set or
 // etherscan API not working #[test]
-// fn can_gen_multi_etherscan() {
+// fn can_generate_multi_etherscan() {
 //     abigen!(
 //         MyContract, "etherscan:0xdAC17F958D2ee523a2206206994597C13D831ec7";
 //         MyContract2, "etherscan:0x8418bb725b3ac45ec8fff3791dd8b4e0480cc2a2";
@@ -581,7 +580,7 @@ async fn can_abiencoderv2_output() {
 // }
 
 #[test]
-fn can_gen_reserved_word_field_names() {
+fn can_generate_reserved_word_field_names() {
     abigen!(
         Test,
         r#"[
@@ -636,8 +635,8 @@ async fn can_send_struct_param() {
 }
 
 #[test]
-fn can_gen_seaport() {
-    abigen!(Seaport, "./tests/solidity-contracts/seaport.json");
+fn can_generate_seaport_1_0() {
+    abigen!(Seaport, "./tests/solidity-contracts/seaport_1_0.json");
 
     assert_eq!(
         FulfillAdvancedOrderCall::abi_signature(),
@@ -651,11 +650,56 @@ fn can_gen_seaport() {
     let encoded = err.clone().encode();
     assert_eq!(err, SeaportErrors::decode(encoded).unwrap());
 
-    let err = SeaportErrors::ConsiderationNotMet(ConsiderationNotMet {
+    let _err = SeaportErrors::ConsiderationNotMet(ConsiderationNotMet {
         order_index: U256::zero(),
         consideration_index: U256::zero(),
         shortfall_amount: U256::zero(),
     });
+}
+
+#[test]
+fn can_generate_seaport_gt1_0() {
+    mod v1_1 {
+        use super::*;
+        abigen!(Seaport1, "./tests/solidity-contracts/seaport_1_1.json");
+    }
+
+    // (address,uint256,uint256,address,address,address,uint256
+    mod v1_2 {
+        use super::*;
+        abigen!(Seaport2, "./tests/solidity-contracts/seaport_1_2.json");
+    }
+
+    mod v1_3 {
+        use super::*;
+        abigen!(Seaport3, "./tests/solidity-contracts/seaport_1_3.json");
+    }
+
+    // tuples len <= 12
+    assert_clone::<v1_1::FulfillAdvancedOrderCall>();
+    assert_default::<v1_1::FulfillAdvancedOrderCall>();
+    assert_builtin::<v1_1::FulfillAdvancedOrderCall>();
+
+    assert_clone::<v1_2::FulfillAdvancedOrderCall>();
+    assert_default::<v1_2::FulfillAdvancedOrderCall>();
+    assert_builtin::<v1_2::FulfillAdvancedOrderCall>();
+
+    assert_clone::<v1_3::FulfillAdvancedOrderCall>();
+    assert_default::<v1_3::FulfillAdvancedOrderCall>();
+    assert_builtin::<v1_3::FulfillAdvancedOrderCall>();
+
+    // tuples len > 12
+    assert_clone::<v1_1::FulfillBasicOrderCall>();
+    // assert_default::<v1_1::FulfillBasicOrderCall>();
+    // assert_builtin::<v1_1::FulfillBasicOrderCall>();
+
+    assert_clone::<v1_2::FulfillBasicOrderCall>();
+    // assert_default::<v1_2::FulfillBasicOrderCall>();
+    // assert_builtin::<v1_2::FulfillBasicOrderCall>();
+
+    assert_clone::<v1_3::FulfillBasicOrderCall>();
+    // assert_default::<v1_3::FulfillBasicOrderCall>();
+    // assert_builtin::<v1_3::FulfillBasicOrderCall>();
 }
 
 #[test]
@@ -691,11 +735,11 @@ fn can_generate_large_event() {
 fn can_generate_large_output_struct() {
     abigen!(LargeOutputStruct, "ethers-contract/tests/solidity-contracts/LargeStruct.json");
 
-    let r = GetByIdReturn(Info::default());
+    let _r = GetByIdReturn(Info::default());
 }
 
 #[test]
-fn gen_complex_function() {
+fn can_generate_complex_function() {
     abigen!(
         WyvernExchangeV1,
         r#"[
@@ -705,13 +749,13 @@ fn gen_complex_function() {
 }
 
 #[test]
-fn can_gen_large_tuple_types() {
+fn can_generate_large_tuple_types() {
     abigen!(LargeTuple, "./tests/solidity-contracts/large_tuple.json");
 }
 
 #[test]
-fn can_gen_large_tuple_array() {
-    abigen!(LargeTuple, "./tests/solidity-contracts/large-array.json");
+fn can_generate_large_tuple_array() {
+    abigen!(LargeArray, "./tests/solidity-contracts/large-array.json");
 
     impl Default for CallWithLongArrayCall {
         fn default() -> Self {
@@ -743,11 +787,11 @@ fn can_handle_overloaded_function_with_array() {
     abigen!(
         Test,
         r#"[
-         serializeString(string calldata, string calldata, string calldata) external returns (string memory)
-         serializeString(string calldata, string calldata, string[] calldata) external returns (string memory)
-         serializeBool(string calldata, string calldata, bool) external returns (string memory)
-         serializeBool(string calldata, string calldata, bool[] calldata) external returns (string memory)
-    ]"#,
+            serializeString(string calldata, string calldata, string calldata) external returns (string memory)
+            serializeString(string calldata, string calldata, string[] calldata) external returns (string memory)
+            serializeBool(string calldata, string calldata, bool) external returns (string memory)
+            serializeBool(string calldata, string calldata, bool[] calldata) external returns (string memory)
+        ]"#,
     );
 }
 
@@ -767,7 +811,7 @@ fn convert_uses_correct_abi() {
 
     // Ensure that `bar` is using the `Bar` ABI internally (this method lookup will panic if `bar`
     // is incorrectly using the `Foo` ABI internally).
-    bar.bar().call();
+    drop(bar.bar().call());
 }
 
 #[test]
@@ -778,4 +822,12 @@ fn generates_non_zero_bytecode() {
     assert!(GREETER_DEPLOYED_BYTECODE.len() > 0);
     //sanity check that the bytecode is not the same
     assert_ne!(GREETER_BYTECODE, GREETER_DEPLOYED_BYTECODE);
+}
+
+#[test]
+fn can_generate_hardhat_console() {
+    abigen!(HardhatConsole, "./tests/solidity-contracts/console.json");
+
+    fn exists<T>() {}
+    exists::<HardhatConsoleCalls>();
 }

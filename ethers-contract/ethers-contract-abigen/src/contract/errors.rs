@@ -52,16 +52,15 @@ impl Context {
             hex::encode(error.selector())
         );
 
-        let mut extra_derives = self.expand_extra_derives();
-        if util::can_derive_defaults(&error.inputs) {
-            extra_derives.extend(quote!(Default));
-        }
+        let mut derives = self.expand_extra_derives();
+        let params = error.inputs.iter().map(|param| &param.kind);
+        util::derive_builtin_traits(params, &mut derives, true, true);
 
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
             #[doc = #doc_str]
-            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthError, #ethers_contract::EthDisplay, #extra_derives)]
+            #[derive(Clone, #ethers_contract::EthError, #ethers_contract::EthDisplay, #derives)]
             #[etherror(name = #error_name, abi = #abi_signature)]
             pub #data_type_definition
         })
@@ -92,14 +91,17 @@ impl Context {
             })
             .collect::<Vec<_>>();
 
-        let extra_derives = self.expand_extra_derives();
+        let mut derives = self.expand_extra_derives();
+        let params =
+            self.abi.errors.values().flatten().flat_map(|err| &err.inputs).map(|param| &param.kind);
+        util::derive_builtin_traits(params, &mut derives, false, true);
 
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
 
         quote! {
             #[doc = "Container type for all of the contract's custom errors"]
-            #[derive(Debug, Clone, PartialEq, Eq, #ethers_contract::EthAbiType, #extra_derives)]
+            #[derive(Clone, #ethers_contract::EthAbiType, #derives)]
             pub enum #enum_name {
                 #( #variants(#variants), )*
             }

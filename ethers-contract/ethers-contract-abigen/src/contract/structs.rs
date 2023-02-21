@@ -61,9 +61,9 @@ impl Context {
             .internal_structs
             .struct_tuples
             .get(id)
-            .ok_or_else(|| eyre!("No types found for {id}"))?
-            .clone();
-        self.expand_internal_struct(struct_name, sol_struct, tuple)
+            .ok_or_else(|| eyre!("No types found for {id}"))?;
+        let types = if let ParamType::Tuple(types) = tuple { types } else { unreachable!() };
+        self.expand_internal_struct(struct_name, sol_struct, types)
     }
 
     /// Returns the `TokenStream` with all the internal structs extracted form the JSON ABI
@@ -83,7 +83,7 @@ impl Context {
         &self,
         name: &str,
         sol_struct: &SolStruct,
-        tuple: ParamType,
+        types: &[ParamType],
     ) -> Result<TokenStream> {
         let mut fields = Vec::with_capacity(sol_struct.fields().len());
 
@@ -112,19 +112,17 @@ impl Context {
 
         let struct_def = expand_struct(&name, &fields, is_tuple);
 
-        let sig = match tuple {
-            ParamType::Tuple(ref types) if !types.is_empty() => util::abi_signature_types(types),
-            _ => String::new(),
-        };
+        let sig = util::abi_signature_types(types);
         let doc_str = format!("`{name}({sig})`");
 
-        let extra_derives = self.expand_extra_derives();
+        let mut derives = self.expand_extra_derives();
+        util::derive_builtin_traits_struct(&self.internal_structs, sol_struct, types, &mut derives);
 
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
             #[doc = #doc_str]
-            #[derive(Clone, Debug, Default, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
+            #[derive(Clone, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
             pub #struct_def
         })
     }
@@ -167,16 +165,14 @@ impl Context {
 
         let name = util::ident(name);
 
-        let mut extra_derives = self.expand_extra_derives();
-        if param_types.iter().all(util::can_derive_default) {
-            extra_derives.extend(quote!(Default))
-        }
+        let mut derives = self.expand_extra_derives();
+        util::derive_builtin_traits(&param_types, &mut derives, true, true);
 
         let ethers_contract = ethers_contract_crate();
 
         Ok(quote! {
             #[doc = #abi_signature]
-            #[derive(Clone, Debug, Eq, PartialEq, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #extra_derives)]
+            #[derive(Clone, #ethers_contract::EthAbiType, #ethers_contract::EthAbiCodec, #derives)]
             pub struct #name {
                 #( #fields ),*
             }
@@ -231,7 +227,7 @@ impl InternalStructs {
         let mut function_params = HashMap::new();
         let mut outputs = HashMap::new();
         let mut event_params = HashMap::new();
-        let mut structs = HashMap::new();
+
         for item in abi
             .into_iter()
             .filter(|item| matches!(item.type_field.as_str(), "constructor" | "function" | "event"))
@@ -279,6 +275,7 @@ impl InternalStructs {
 
         // turn each top level internal type (function input/output) and their nested types
         // into a struct will create all structs
+        let mut structs = HashMap::new();
         for component in top_level_internal_types.values() {
             insert_structs(&mut structs, component);
         }
@@ -569,7 +566,7 @@ fn struct_type_name(name: &str) -> &str {
     struct_type_identifier(name).rsplit('.').next().unwrap()
 }
 
-/// `Pairing.G2Point` -> `Pairing.G2Point`
+/// `struct Pairing.G2Point[]` -> `Pairing.G2Point`
 fn struct_type_identifier(name: &str) -> &str {
     name.trim_start_matches("struct ").split('[').next().unwrap()
 }

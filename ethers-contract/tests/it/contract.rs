@@ -1,4 +1,5 @@
 #![allow(unused)]
+
 pub use crate::common::*;
 use ethers_contract::{abigen, ContractFactory, EthAbiType};
 use ethers_core::types::{Filter, ValueOrArray, H256};
