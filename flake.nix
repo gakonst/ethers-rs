@@ -6,6 +6,10 @@
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    foundry = {
+      url = "github:shazow/foundry.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -13,6 +17,7 @@
     , nixpkgs
     , flake-utils
     , fenix
+    , foundry
     , devenv
     } @ inputs:
     flake-utils.lib.eachDefaultSystem (system:
@@ -28,6 +33,9 @@
           {
             packages = with pkgs; [
               solc
+              gcc
+              foundry.defaultPackage.${system}
+              go-ethereum
             ] ++ lib.optionals stdenv.isDarwin (with darwin.apple_sdk; [
               libiconv
               frameworks.Security

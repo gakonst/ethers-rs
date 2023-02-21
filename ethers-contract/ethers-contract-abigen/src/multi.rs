@@ -5,7 +5,7 @@ use inflector::Inflector;
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet},
     fs,
     io::Write,
     path::{Path, PathBuf},
@@ -178,12 +178,12 @@ impl MultiExpansion {
         let mut shared_types = Vec::new();
         // this keeps track of those contracts that need to be updated after a struct was
         // extracted from the contract's module and moved to the shared module
-        let mut dirty_contracts = HashSet::new();
+        let mut dirty_contracts = BTreeSet::new();
 
         // merge all types if more than 1 contract
         if expansions.len() > 1 {
             // check for type conflicts across all contracts
-            let mut conflicts: HashMap<String, Vec<usize>> = HashMap::new();
+            let mut conflicts: BTreeMap<String, Vec<usize>> = BTreeMap::new();
             for (idx, (_, ctx)) in expansions.iter().enumerate() {
                 for type_identifier in ctx.internal_structs().rust_type_names().keys() {
                     conflicts
@@ -230,7 +230,7 @@ pub struct MultiExpansionResult {
     root: Option<PathBuf>,
     contracts: Vec<(ExpandedContract, Context)>,
     /// contains the indices of contracts with structs that need to be updated
-    dirty_contracts: HashSet<usize>,
+    dirty_contracts: BTreeSet<usize>,
     /// all type definitions of types that are shared by multiple contracts
     shared_types: Vec<TokenStream>,
 }
