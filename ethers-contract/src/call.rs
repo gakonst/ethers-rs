@@ -190,12 +190,9 @@ where
     ///
     /// Note: this function _does not_ send a transaction from your account
     pub async fn call(&self) -> Result<D, ContractError<M>> {
-        let bytes = self
-            .client
-            .borrow()
-            .call(&self.tx, self.block)
-            .await
-            .map_err(ContractError::MiddlewareError)?;
+        let client: &M = self.client.borrow();
+        let bytes =
+            client.call(&self.tx, self.block).await.map_err(ContractError::MiddlewareError)?;
 
         // decode output
         let data = decode_function_data(&self.function, &bytes, false)?;

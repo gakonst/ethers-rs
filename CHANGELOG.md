@@ -302,6 +302,8 @@
 
 ### Unreleased
 
+- (Breaking) Improve Multicall result handling
+  [#2164](https://github.com/gakonst/ethers-rs/pull/2105)
 - (Breaking) Make `Event` objects generic over borrow & remove lifetime
   [#2105](https://github.com/gakonst/ethers-rs/pull/2105)
 - Make `Factory` objects generic over the borrow trait, to allow non-arc mware
