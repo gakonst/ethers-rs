@@ -104,6 +104,9 @@ pub enum Chain {
     Emerald = 42262,
     EmeraldTestnet = 42261,
 
+    FilecoinMainnet = 314,
+    FilecoinHyperspaceTestnet = 3141,
+
     Avalanche = 43114,
     #[strum(serialize = "fuji", serialize = "avalanche-fuji")]
     AvalancheFuji = 43113,
@@ -230,10 +233,11 @@ impl Chain {
             Emerald => 6_000,
             Dev | AnvilHardhat => 200,
             Celo | CeloAlfajores | CeloBaklava => 5_000,
+            FilecoinHyperspaceTestnet | FilecoinMainnet => 30_000,
             // Explictly handle all network to make it easier not to forget this match when new
             // networks are added.
-            Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
-            MoonbeamDev | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet => {
+            Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase
+            | MoonbeamDev | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet => {
                 return None
             }
         };
@@ -299,6 +303,9 @@ impl Chain {
             Chiado => {
                 ("https://blockscout.chiadochain.net/api", "https://blockscout.chiadochain.net")
             }
+            FilecoinHyperspaceTestnet => {
+                ("https://api.hyperspace.node.glif.io/rpc/v1", "https://hyperspace.filfox.info")
+            }
             Sokol => ("https://blockscout.com/poa/sokol/api", "https://blockscout.com/poa/sokol"),
             Poa => ("https://blockscout.com/poa/core/api", "https://blockscout.com/poa/core"),
             Rsk => ("https://blockscout.com/rsk/mainnet/api", "https://blockscout.com/rsk/mainnet"),
@@ -328,10 +335,10 @@ impl Chain {
                 "https://testnet-explorer.canto.neobase.one/",
                 "https://testnet-explorer.canto.neobase.one/api",
             ),
-            AnvilHardhat | Dev | Morden | MoonbeamDev => {
+            AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
-                return None
+                return None;
             }
         };
 
@@ -344,34 +351,40 @@ impl Chain {
 
         match self {
             // Known legacy chains / non EIP-1559 compliant
-            Optimism |
-            OptimismGoerli |
-            OptimismKovan |
-            Fantom |
-            FantomTestnet |
-            BinanceSmartChain |
-            BinanceSmartChainTestnet |
-            Arbitrum |
-            ArbitrumTestnet |
-            ArbitrumGoerli |
-            ArbitrumNova |
-            Rsk |
-            Oasis |
-            Emerald |
-            EmeraldTestnet |
-            Celo |
-            CeloAlfajores |
-            CeloBaklava => true,
+            Optimism
+            | OptimismGoerli
+            | OptimismKovan
+            | Fantom
+            | FantomTestnet
+            | BinanceSmartChain
+            | BinanceSmartChainTestnet
+            | Arbitrum
+            | ArbitrumTestnet
+            | ArbitrumGoerli
+            | ArbitrumNova
+            | Rsk
+            | Oasis
+            | Emerald
+            | EmeraldTestnet
+            | Celo
+            | CeloAlfajores
+            | CeloBaklava => true,
 
             // Known EIP-1559 chains
-            Mainnet | Goerli | Sepolia | Polygon | PolygonMumbai | Avalanche | AvalancheFuji => {
-                false
-            }
+            Mainnet
+            | Goerli
+            | Sepolia
+            | Polygon
+            | PolygonMumbai
+            | Avalanche
+            | AvalancheFuji
+            | FilecoinHyperspaceTestnet => false,
 
             // Unknown / not applicable, default to false for backwards compatibility
-            Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
-            Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
-            EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet => false,
+            Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan
+            | Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos
+            | EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet
+            | FilecoinMainnet => false,
         }
     }
 }
