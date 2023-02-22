@@ -302,6 +302,11 @@
 
 ### Unreleased
 
+- (Breaking) Add `Revert` to `ContractError`. Add `impl EthError for String`.
+  Modify existing `ContractError` variants to prevent accidental improper
+  usage. Change `MulticallError` to use `ContractError::Revert`. Add
+  convenience methods to decode errors from reverts.
+  [#2172](https://github.com/gakonst/ethers-rs/pull/2172)
 - (Breaking) Improve Multicall result handling
   [#2164](https://github.com/gakonst/ethers-rs/pull/2105)
 - (Breaking) Make `Event` objects generic over borrow & remove lifetime
