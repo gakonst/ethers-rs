@@ -236,8 +236,8 @@ impl Chain {
             FilecoinHyperspaceTestnet | FilecoinMainnet => 30_000,
             // Explictly handle all network to make it easier not to forget this match when new
             // networks are added.
-            Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase
-            | MoonbeamDev | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet => {
+            Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
+            MoonbeamDev | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet => {
                 return None
             }
         };
@@ -338,7 +338,7 @@ impl Chain {
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
-                return None;
+                return None
             }
         };
 
@@ -351,40 +351,40 @@ impl Chain {
 
         match self {
             // Known legacy chains / non EIP-1559 compliant
-            Optimism
-            | OptimismGoerli
-            | OptimismKovan
-            | Fantom
-            | FantomTestnet
-            | BinanceSmartChain
-            | BinanceSmartChainTestnet
-            | Arbitrum
-            | ArbitrumTestnet
-            | ArbitrumGoerli
-            | ArbitrumNova
-            | Rsk
-            | Oasis
-            | Emerald
-            | EmeraldTestnet
-            | Celo
-            | CeloAlfajores
-            | CeloBaklava => true,
+            Optimism |
+            OptimismGoerli |
+            OptimismKovan |
+            Fantom |
+            FantomTestnet |
+            BinanceSmartChain |
+            BinanceSmartChainTestnet |
+            Arbitrum |
+            ArbitrumTestnet |
+            ArbitrumGoerli |
+            ArbitrumNova |
+            Rsk |
+            Oasis |
+            Emerald |
+            EmeraldTestnet |
+            Celo |
+            CeloAlfajores |
+            CeloBaklava => true,
 
             // Known EIP-1559 chains
-            Mainnet
-            | Goerli
-            | Sepolia
-            | Polygon
-            | PolygonMumbai
-            | Avalanche
-            | AvalancheFuji
-            | FilecoinHyperspaceTestnet => false,
+            Mainnet |
+            Goerli |
+            Sepolia |
+            Polygon |
+            PolygonMumbai |
+            Avalanche |
+            AvalancheFuji |
+            FilecoinHyperspaceTestnet => false,
 
             // Unknown / not applicable, default to false for backwards compatibility
-            Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan
-            | Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos
-            | EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet
-            | FilecoinMainnet => false,
+            Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
+            Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
+            EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet |
+            FilecoinMainnet => false,
         }
     }
 }
