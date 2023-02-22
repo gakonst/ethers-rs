@@ -57,11 +57,17 @@ pub enum ContractError<M: Middleware> {
 
     /// Thrown when a middleware call fails
     #[error("{e}")]
-    MiddlewareError { e: M::Error },
+    MiddlewareError {
+        /// The underlying error
+        e: M::Error,
+    },
 
     /// Thrown when a provider call fails
     #[error("{e}")]
-    ProviderError { e: ProviderError },
+    ProviderError {
+        /// The underlying error
+        e: ProviderError,
+    },
 
     /// Contract reverted
     #[error("Contract call reverted with data: {0}")]
@@ -79,6 +85,18 @@ pub enum ContractError<M: Middleware> {
 }
 
 impl<M: Middleware> ContractError<M> {
+    /// If this `ContractError` is a revert, this method will retrieve a
+    /// reference to the underlying revert data. This ABI-encoded data could be
+    /// a String, or a custom Solidity error type.
+    ///
+    /// ## Returns
+    ///
+    /// `None` if the error is not a revert
+    /// `Some(data)` with the revert data, if the error is a revert
+    ///
+    /// ## Note
+    ///
+    /// To skip this step, consider using [`ContractError::decode_revert`]
     pub fn as_revert(&self) -> Option<&Bytes> {
         match self {
             ContractError::Revert(data) => Some(data),
@@ -86,15 +104,18 @@ impl<M: Middleware> ContractError<M> {
         }
     }
 
+    /// True if the error is a revert, false otherwise
     pub fn is_revert(&self) -> bool {
         matches!(self, ContractError::Revert(_))
     }
 
+    /// Decode revert data into an [`EthError`] type. Returns `None` if
+    /// decoding fails, or if this is not a revert
     pub fn decode_revert<Err: EthError>(&self) -> Option<Err> {
         self.as_revert().and_then(|data| Err::decode_with_selector(data))
     }
 
-    /// Convert a Middleware Error to a `ContractError`
+    /// Convert a [`MiddlewareError`] to a `ContractError`
     pub fn from_middleware_error(e: M::Error) -> Self {
         if let Some(data) = e.as_error_response().and_then(JsonRpcError::as_revert_data) {
             ContractError::Revert(data)
@@ -103,6 +124,7 @@ impl<M: Middleware> ContractError<M> {
         }
     }
 
+    /// Convert a `ContractError` to a [`MiddlewareError`] if possible.
     pub fn as_middleware_error(&self) -> Option<&M::Error> {
         match self {
             ContractError::MiddlewareError { e } => Some(e),
@@ -110,10 +132,12 @@ impl<M: Middleware> ContractError<M> {
         }
     }
 
+    /// True if the error is a middleware error
     pub fn is_middleware_error(&self) -> bool {
         matches!(self, ContractError::MiddlewareError { .. })
     }
 
+    /// Convert a `ContractError` to a [`ProviderError`] if possible.
     pub fn as_provider_error(&self) -> Option<&ProviderError> {
         match self {
             ContractError::ProviderError { e } => Some(e),
@@ -121,6 +145,7 @@ impl<M: Middleware> ContractError<M> {
         }
     }
 
+    /// True if the error is a provider error
     pub fn is_provider_error(&self) -> bool {
         matches!(self, ContractError::ProviderError { .. })
     }

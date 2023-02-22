@@ -247,6 +247,7 @@ where
         Ok(EventStream::new(filter.id, filter, Box::new(move |log| Ok(parse_log(log)?))))
     }
 
+    /// As [`Self::subscribe`], but includes event metadata
     pub async fn subscribe_with_meta(
         &self,
     ) -> Result<

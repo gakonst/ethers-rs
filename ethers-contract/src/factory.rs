@@ -79,6 +79,7 @@ where
         self
     }
 
+    /// Sets the block at which RPC requests are made
     pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.deployer.block = block.into();
         self
@@ -222,6 +223,7 @@ where
         self
     }
 
+    /// Set the block at which requests are made
     pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.block = block.into();
         self
@@ -382,6 +384,8 @@ where
         Self { client, abi, bytecode, _m: PhantomData }
     }
 
+    /// Create a deployment tx using the provided tokens as constructor
+    /// arguments
     pub fn deploy_tokens(self, params: Vec<Token>) -> Result<Deployer<B, M>, ContractError<M>>
     where
         B: Clone,

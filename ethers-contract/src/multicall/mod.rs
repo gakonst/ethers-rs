@@ -48,8 +48,11 @@ pub struct Call {
 #[repr(u8)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MulticallVersion {
+    /// V1
     Multicall = 1,
+    /// V2
     Multicall2 = 2,
+    /// V3
     #[default]
     Multicall3 = 3,
 }
@@ -73,16 +76,19 @@ impl TryFrom<u8> for MulticallVersion {
 }
 
 impl MulticallVersion {
+    /// True if call is v1
     #[inline]
     pub fn is_v1(&self) -> bool {
         matches!(self, Self::Multicall)
     }
 
+    /// True if call is v2
     #[inline]
     pub fn is_v2(&self) -> bool {
         matches!(self, Self::Multicall2)
     }
 
+    /// True if call is v3
     #[inline]
     pub fn is_v3(&self) -> bool {
         matches!(self, Self::Multicall3)
@@ -95,7 +101,7 @@ impl MulticallVersion {
 ///
 /// `Multicall` can be instantiated asynchronously from the chain ID of the provided client using
 /// [`new`] or synchronously by providing a chain ID in [`new_with_chain`]. This, by default, uses
-/// [`MULTICALL_ADDRESS`], but can be overridden by providing `Some(address)`.
+/// [`constants::MULTICALL_ADDRESS`], but can be overridden by providing `Some(address)`.
 /// A list of all the supported chains is available [`here`](https://github.com/mds1/multicall#multicall3-contract-addresses).
 ///
 /// Set the contract's version by using [`version`].
@@ -233,17 +239,17 @@ impl<M> fmt::Debug for Multicall<M> {
 impl<M: Middleware> Multicall<M> {
     /// Creates a new Multicall instance from the provided client. If provided with an `address`,
     /// it instantiates the Multicall contract with that address, otherwise it defaults to
-    /// [`MULTICALL_ADDRESS`].
+    /// [`constants::MULTICALL_ADDRESS`].
     ///
     /// # Errors
     ///
-    /// Returns a [`MulticallError`] if the provider returns an error while getting
+    /// Returns a [`error::MulticallError`] if the provider returns an error while getting
     /// `network_version`.
     ///
     /// # Panics
     ///
     /// If a `None` address is provided and the client's network is
-    /// [not supported](MULTICALL_SUPPORTED_CHAIN_IDS).
+    /// [not supported](constants::MULTICALL_SUPPORTED_CHAIN_IDS).
     pub async fn new(client: impl Into<Arc<M>>, address: Option<Address>) -> Result<Self, M> {
         let client = client.into();
 
@@ -278,12 +284,13 @@ impl<M: Middleware> Multicall<M> {
     }
 
     /// Creates a new Multicall instance synchronously from the provided client and address or chain
-    /// ID. Uses the [default multicall address](MULTICALL_ADDRESS) if no address is provided.
+    /// ID. Uses the [default multicall address](constants::MULTICALL_ADDRESS) if no address is
+    /// provided.
     ///
     /// # Errors
     ///
-    /// Returns a [`MulticallError`] if the provided chain_id is not in the
-    /// [supported networks](MULTICALL_SUPPORTED_CHAIN_IDS).
+    /// Returns a [`error::MulticallError`] if the provided chain_id is not in the
+    /// [supported networks](constants::MULTICALL_SUPPORTED_CHAIN_IDS).
     ///
     /// # Panics
     ///
@@ -340,8 +347,9 @@ impl<M: Middleware> Multicall<M> {
     /// to use (so you can fit more calls into a single request), and it adds an aggregate3 method
     /// so you can specify whether calls are allowed to fail on a per-call basis.
     ///
-    /// Note: all these versions are available in the same contract address ([`MULTICALL_ADDRESS`])
-    /// so changing version just changes the methods used, not the contract address.
+    /// Note: all these versions are available in the same contract address
+    /// ([`constants::MULTICALL_ADDRESS`]) so changing version just changes the methods used,
+    /// not the contract address.
     pub fn version(mut self, version: MulticallVersion) -> Self {
         self.version = version;
         self
@@ -553,8 +561,8 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Errors
     ///
-    /// Returns a [`MulticallError`] if there are any errors in the RPC call or while detokenizing
-    /// the tokens back to the expected return type.
+    /// Returns a [`error::MulticallError`] if there are any errors in the RPC call or while
+    /// detokenizing the tokens back to the expected return type.
     ///
     /// Returns an error if any call failed, even if `allow_failure` was set, or if the return data
     /// was empty.
@@ -601,8 +609,8 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Errors
     ///
-    /// Returns a [`MulticallError`] if there are any errors in the RPC call or while detokenizing
-    /// the tokens back to the expected return type.
+    /// Returns a [`error::MulticallError`] if there are any errors in the RPC call or while
+    /// detokenizing the tokens back to the expected return type.
     ///
     /// Returns an error if any call failed, even if `allow_failure` was set, or if the return data
     /// was empty.
@@ -649,7 +657,7 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Errors
     ///
-    /// Returns a [`MulticallError`] if there are any errors in the RPC call.
+    /// Returns a [`error::MulticallError`] if there are any errors in the RPC call.
     ///
     /// # Examples
     ///
@@ -735,7 +743,7 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// # Errors
     ///
-    /// Returns a [`MulticallError`] if there are any errors in the RPC call.
+    /// Returns a [`error::MulticallError`] if there are any errors in the RPC call.
     ///
     /// # Examples
     ///

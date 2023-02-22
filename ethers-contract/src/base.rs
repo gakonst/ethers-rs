@@ -159,6 +159,8 @@ impl BaseContract {
         decode_function_data(function, bytes, true)
     }
 
+    /// Decode the provided ABI encoded bytes as the output of the provided
+    /// function selector
     pub fn decode_output_with_selector<D: Detokenize, T: AsRef<[u8]>>(
         &self,
         signature: Selector,

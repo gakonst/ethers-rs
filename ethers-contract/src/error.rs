@@ -8,10 +8,14 @@ use std::borrow::Cow;
 
 /// A helper trait for types that represents a custom error type
 pub trait EthError: Tokenizable + AbiDecode + AbiEncode + Send + Sync {
+    /// Attempt to decode from a [`JsonRpcError`] by extracting revert data
+    ///
+    /// Fails if the error is not a revert, or decoding fails
     fn from_rpc_response(response: &JsonRpcError) -> Option<Self> {
         Self::decode_with_selector(&response.as_revert_data()?)
     }
 
+    /// Decode the error from EVM revert data including an Error selector
     fn decode_with_selector(data: &Bytes) -> Option<Self> {
         // This will return none if selector mismatch.
         <Self as AbiDecode>::decode(data.strip_prefix(&Self::selector())?).ok()
