@@ -120,9 +120,7 @@ impl Client {
             Chain::Moonbeam | Chain::Moonbase | Chain::MoonbeamDev | Chain::Moonriver => {
                 std::env::var("MOONSCAN_API_KEY")?
             }
-            Chain::Canto | Chain::CantoTestnet => {
-                std::env::var("BLOCKSCOUT_API_KEY")?
-            }
+            Chain::Canto | Chain::CantoTestnet => std::env::var("BLOCKSCOUT_API_KEY")?,
             Chain::AnvilHardhat | Chain::Dev => {
                 return Err(EtherscanError::LocalNetworksNotSupported)
             }

@@ -324,7 +324,10 @@ impl Chain {
                 ("https://explorer.celo.org/baklava", "https://explorer.celo.org/baklava/api")
             }
             Canto => ("https://evm.explorer.canto.io/", "https://evm.explorer.canto.io/api"),
-            CantoTestnet => ("https://testnet-explorer.canto.neobase.one/", "https://testnet-explorer.canto.neobase.one/api"),
+            CantoTestnet => (
+                "https://testnet-explorer.canto.neobase.one/",
+                "https://testnet-explorer.canto.neobase.one/api",
+            ),
             AnvilHardhat | Dev | Morden | MoonbeamDev => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
