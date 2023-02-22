@@ -1,12 +1,10 @@
 use ethers_contract_derive::abigen;
 use ethers_core::abi::Address;
-use ethers_providers::{Provider};
+use ethers_providers::Provider;
 use std::{
     future::{Future, IntoFuture},
     sync::Arc,
 };
-
-
 
 #[tokio::test]
 async fn contract_call_into_future_is_send() {
