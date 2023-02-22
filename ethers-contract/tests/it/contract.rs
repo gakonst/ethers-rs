@@ -727,7 +727,7 @@ mod eth_tests {
             .clear_calls()
             .add_call(get_value_reverting_call.clone(), false)
             .add_call(get_value_call.clone(), false);
-        let res = multicall.call::<((bool, String), (bool, String))>().await;
+        let res = multicall.call::<(String, String)>().await;
         let err = res.unwrap_err();
 
         assert!(err.is_revert());
