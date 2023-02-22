@@ -51,10 +51,13 @@ impl JsonRpcError {
     /// This returns the first hex it finds in the data object, and its
     /// behavior may change with `serde_json` internal changes.
     ///
+    /// If no hex object is found, it will return an empty bytes IFF the error
+    /// is a revert.
+    ///
     /// Inspired by ethers-js logic:
     /// https://github.com/ethers-io/ethers.js/blob/9f990c57f0486728902d4b8e049536f2bb3487ee/packages/providers/src.ts/json-rpc-provider.ts#L25-L53
     pub fn as_revert_data(&self) -> Option<Bytes> {
-        self.is_revert().then(|| self.data.as_ref().and_then(spelunk_revert)).flatten()
+        self.is_revert().then(|| self.data.as_ref().and_then(spelunk_revert).unwrap_or_default())
     }
 
     /// Decode revert data (if any) into a decodeable type
