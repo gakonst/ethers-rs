@@ -4,7 +4,6 @@ use ethers::{
 };
 use eyre::Result;
 use std::sync::Arc;
-use tokio;
 
 const HTTP_URL: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
 const V3FACTORY_ADDRESS: &str = "0x1F98431c8aD98523631AE4a59f267346ea31F984";
@@ -40,8 +39,7 @@ async fn main() -> Result<()> {
         let tick_spacing = U256::from_big_endian(&log.data[29..32]);
         let pool = Address::from(&log.data[44..64].try_into()?);
         println!(
-            "pool = {}, token0 = {}, token1 = {}, fee = {}, spacing = {}",
-            pool, token0, token1, fee_tier, tick_spacing,
+            "pool = {pool}, token0 = {token0}, token1 = {token1}, fee = {fee_tier}, spacing = {tick_spacing}"
         );
     }
     Ok(())

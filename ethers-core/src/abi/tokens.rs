@@ -143,7 +143,7 @@ impl Tokenizable for String {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
             Token::String(s) => Ok(s),
-            other => Err(InvalidOutputType(format!("Expected `String`, got {:?}", other))),
+            other => Err(InvalidOutputType(format!("Expected `String`, got {other:?}"))),
         }
     }
 
@@ -156,7 +156,7 @@ impl Tokenizable for Bytes {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
             Token::Bytes(s) => Ok(s.into()),
-            other => Err(InvalidOutputType(format!("Expected `Bytes`, got {:?}", other))),
+            other => Err(InvalidOutputType(format!("Expected `Bytes`, got {other:?}"))),
         }
     }
 
@@ -169,7 +169,7 @@ impl Tokenizable for bytes::Bytes {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
             Token::Bytes(s) => Ok(s.into()),
-            other => Err(InvalidOutputType(format!("Expected `Bytes`, got {:?}", other))),
+            other => Err(InvalidOutputType(format!("Expected `Bytes`, got {other:?}"))),
         }
     }
 
@@ -183,7 +183,7 @@ impl Tokenizable for H256 {
         match token {
             Token::FixedBytes(mut s) => {
                 if s.len() != 32 {
-                    return Err(InvalidOutputType(format!("Expected `H256`, got {:?}", s)))
+                    return Err(InvalidOutputType(format!("Expected `H256`, got {s:?}")))
                 }
                 let mut data = [0; 32];
                 for (idx, val) in s.drain(..).enumerate() {
@@ -191,7 +191,7 @@ impl Tokenizable for H256 {
                 }
                 Ok(data.into())
             }
-            other => Err(InvalidOutputType(format!("Expected `H256`, got {:?}", other))),
+            other => Err(InvalidOutputType(format!("Expected `H256`, got {other:?}"))),
         }
     }
 
@@ -204,7 +204,7 @@ impl Tokenizable for Address {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
             Token::Address(data) => Ok(data),
-            other => Err(InvalidOutputType(format!("Expected `Address`, got {:?}", other))),
+            other => Err(InvalidOutputType(format!("Expected `Address`, got {other:?}"))),
         }
     }
 
@@ -217,7 +217,7 @@ impl Tokenizable for bool {
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
         match token {
             Token::Bool(data) => Ok(data),
-            other => Err(InvalidOutputType(format!("Expected `bool`, got {:?}", other))),
+            other => Err(InvalidOutputType(format!("Expected `bool`, got {other:?}"))),
         }
     }
     fn into_token(self) -> Token {
@@ -298,7 +298,7 @@ impl Tokenizable for Vec<u8> {
             Token::Bytes(data) => Ok(data),
             Token::Array(data) => data.into_iter().map(u8::from_token).collect(),
             Token::FixedBytes(data) => Ok(data),
-            other => Err(InvalidOutputType(format!("Expected `bytes`, got {:?}", other))),
+            other => Err(InvalidOutputType(format!("Expected `bytes`, got {other:?}"))),
         }
     }
 
@@ -313,7 +313,7 @@ impl<T: TokenizableItem> Tokenizable for Vec<T> {
             Token::FixedArray(tokens) | Token::Array(tokens) => {
                 tokens.into_iter().map(Tokenizable::from_token).collect()
             }
-            other => Err(InvalidOutputType(format!("Expected `Array`, got {:?}", other))),
+            other => Err(InvalidOutputType(format!("Expected `Array`, got {other:?}"))),
         }
     }
 
@@ -338,9 +338,7 @@ impl<const N: usize> Tokenizable for [u8; N] {
                 arr.copy_from_slice(&bytes);
                 Ok(arr)
             }
-            other => {
-                Err(InvalidOutputType(format!("Expected `FixedBytes({})`, got {:?}", N, other)))
-            }
+            other => Err(InvalidOutputType(format!("Expected `FixedBytes({N})`, got {other:?}"))),
         }
     }
 
@@ -372,9 +370,7 @@ impl<T: TokenizableItem + Clone, const N: usize> Tokenizable for [T; N] {
                     Err(_) => panic!("All elements inserted so the array is full; qed"),
                 }
             }
-            other => {
-                Err(InvalidOutputType(format!("Expected `FixedArray({})`, got {:?}", N, other)))
-            }
+            other => Err(InvalidOutputType(format!("Expected `FixedArray({N})`, got {other:?}"))),
         }
     }
 
@@ -483,6 +479,7 @@ mod tests {
 
         let _tuple: (Address, Vec<Vec<u8>>) = assert_detokenize();
         let _vec_of_tuple: Vec<(Address, String)> = assert_detokenize();
+        #[allow(clippy::type_complexity)]
         let _vec_of_tuple_5: Vec<(Address, Vec<Vec<u8>>, String, U256, bool)> = assert_detokenize();
     }
 
@@ -542,12 +539,12 @@ mod tests {
         assert_eq!(data.0[1], 2);
         assert_eq!(data.0[2], 3);
         assert_eq!(data.0[3], 4);
-        assert_eq!(data.1, true);
+        assert!(data.1);
 
         // handle vector of more than one elements
         let tokens = vec![Token::Bool(false), Token::Uint(U256::from(13u8))];
         let data: (bool, u8) = Detokenize::from_tokens(tokens).unwrap();
-        assert_eq!(data.0, false);
+        assert!(!data.0);
         assert_eq!(data.1, 13u8);
 
         // handle more than two tuples
@@ -559,8 +556,8 @@ mod tests {
         assert_eq!((data.0).0[1], 2);
         assert_eq!((data.0).0[2], 3);
         assert_eq!((data.0).0[3], 4);
-        assert_eq!((data.0).1, true);
-        assert_eq!((data.1).0, false);
+        assert!((data.0).1);
+        assert!(!(data.1).0);
         assert_eq!((data.1).1, 13u8);
 
         // error if no tokens in the vector

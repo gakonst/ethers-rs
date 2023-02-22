@@ -192,7 +192,7 @@ where
             .borrow()
             .watch(&self.filter)
             .await
-            .map_err(ContractError::MiddlewareError)?;
+            .map_err(ContractError::from_middleware_error)?;
         Ok(EventStream::new(filter.id, filter, Box::new(move |log| Ok(parse_log(log)?))))
     }
 
@@ -209,7 +209,7 @@ where
             .borrow()
             .watch(&self.filter)
             .await
-            .map_err(ContractError::MiddlewareError)?;
+            .map_err(ContractError::from_middleware_error)?;
         Ok(EventStream::new(
             filter.id,
             filter,
@@ -243,10 +243,11 @@ where
             .borrow()
             .subscribe_logs(&self.filter)
             .await
-            .map_err(ContractError::MiddlewareError)?;
+            .map_err(ContractError::from_middleware_error)?;
         Ok(EventStream::new(filter.id, filter, Box::new(move |log| Ok(parse_log(log)?))))
     }
 
+    /// As [`Self::subscribe`], but includes event metadata
     pub async fn subscribe_with_meta(
         &self,
     ) -> Result<
@@ -259,7 +260,7 @@ where
             .borrow()
             .subscribe_logs(&self.filter)
             .await
-            .map_err(ContractError::MiddlewareError)?;
+            .map_err(ContractError::from_middleware_error)?;
         Ok(EventStream::new(
             filter.id,
             filter,
@@ -285,7 +286,7 @@ where
             .borrow()
             .get_logs(&self.filter)
             .await
-            .map_err(ContractError::MiddlewareError)?;
+            .map_err(ContractError::from_middleware_error)?;
         let events = logs
             .into_iter()
             .map(|log| Ok(parse_log(log)?))
@@ -301,7 +302,7 @@ where
             .borrow()
             .get_logs(&self.filter)
             .await
-            .map_err(ContractError::MiddlewareError)?;
+            .map_err(ContractError::from_middleware_error)?;
         let events = logs
             .into_iter()
             .map(|log| {

@@ -79,6 +79,7 @@ where
         self
     }
 
+    /// Sets the block at which RPC requests are made
     pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.deployer.block = block.into();
         self
@@ -222,6 +223,7 @@ where
         self
     }
 
+    /// Set the block at which requests are made
     pub fn block<T: Into<BlockNumber>>(mut self, block: T) -> Self {
         self.block = block.into();
         self
@@ -247,7 +249,7 @@ where
             .borrow()
             .call(&self.tx, Some(self.block.into()))
             .await
-            .map_err(ContractError::MiddlewareError)?;
+            .map_err(ContractError::from_middleware_error)?;
 
         // TODO: It would be nice to handle reverts in a structured way.
         Ok(())
@@ -282,7 +284,7 @@ where
             .borrow()
             .send_transaction(self.tx, Some(self.block.into()))
             .await
-            .map_err(ContractError::MiddlewareError)?;
+            .map_err(ContractError::from_middleware_error)?;
 
         // TODO: Should this be calculated "optimistically" by address/nonce?
         let receipt = pending_tx
@@ -382,6 +384,8 @@ where
         Self { client, abi, bytecode, _m: PhantomData }
     }
 
+    /// Create a deployment tx using the provided tokens as constructor
+    /// arguments
     pub fn deploy_tokens(self, params: Vec<Token>) -> Result<Deployer<B, M>, ContractError<M>>
     where
         B: Clone,

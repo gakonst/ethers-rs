@@ -1,7 +1,10 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
 use base64::{engine::general_purpose, Engine};
-use ethers_core::types::U256;
+use ethers_core::{
+    abi::AbiDecode,
+    types::{Bytes, U256},
+};
 use serde::{
     de::{self, MapAccess, Unexpected, Visitor},
     Deserialize, Serialize,
@@ -19,6 +22,48 @@ pub struct JsonRpcError {
     pub message: String,
     /// Additional data
     pub data: Option<Value>,
+}
+
+/// Recursively traverses the value, looking for hex data that it can extract
+/// Inspired by ethers-js logic:
+/// https://github.com/ethers-io/ethers.js/blob/9f990c57f0486728902d4b8e049536f2bb3487ee/packages/providers/src.ts/json-rpc-provider.ts#L25-L53
+fn spelunk_revert(value: &Value) -> Option<Bytes> {
+    match value {
+        Value::String(s) => s.parse().ok(),
+        Value::Object(o) => o.values().flat_map(spelunk_revert).next(),
+        _ => None,
+    }
+}
+
+impl JsonRpcError {
+    /// Determine if the error output of the `eth_call` RPC request is a revert
+    ///
+    /// Note that this may return false positives if called on an error from
+    /// other RPC requests
+    pub fn is_revert(&self) -> bool {
+        // Ganache says "revert" not "reverted"
+        self.message.contains("revert")
+    }
+
+    /// Attempt to extract revert data from the JsonRpcError be recursively
+    /// traversing the error's data field
+    ///
+    /// This returns the first hex it finds in the data object, and its
+    /// behavior may change with `serde_json` internal changes.
+    ///
+    /// If no hex object is found, it will return an empty bytes IFF the error
+    /// is a revert
+    ///
+    /// Inspired by ethers-js logic:
+    /// <https://github.com/ethers-io/ethers.js/blob/9f990c57f0486728902d4b8e049536f2bb3487ee/packages/providers/src.ts/json-rpc-provider.ts#L25-L53>
+    pub fn as_revert_data(&self) -> Option<Bytes> {
+        self.is_revert().then(|| self.data.as_ref().and_then(spelunk_revert).unwrap_or_default())
+    }
+
+    /// Decode revert data (if any) into a decodeable type
+    pub fn decode_revert_data<E: AbiDecode>(&self) -> Option<E> {
+        E::decode(&self.as_revert_data()?).ok()
+    }
 }
 
 impl fmt::Display for JsonRpcError {
