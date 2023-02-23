@@ -144,22 +144,22 @@ impl I256 {
         Self::MIN
     }
 
-    /// Creates an I256 from a sign and an absolute value. Returns the value and
-    /// a bool that is true if the conversion caused an overflow.
+    /// Creates an I256 from a sign and an absolute value. Returns the value and a bool that is true
+    /// if the conversion caused an overflow.
     #[inline]
     pub fn overflowing_from_sign_and_abs(sign: Sign, abs: U256) -> (Self, bool) {
-        let value = I256(match sign {
+        let value = Self(match sign {
             Sign::Positive => abs,
             Sign::Negative => twos_complement(abs),
         });
         (value, value.sign() != sign)
     }
 
-    /// Creates an I256 from an absolute value and a negative flag. Returns
-    /// `None` if it would overflow an `I256`.
+    /// Creates an I256 from an absolute value and a negative flag. Returns `None` if it would
+    /// overflow an `I256`.
     #[inline]
     pub fn checked_from_sign_and_abs(sign: Sign, abs: U256) -> Option<Self> {
-        let (result, overflow) = I256::overflowing_from_sign_and_abs(sign, abs);
+        let (result, overflow) = Self::overflowing_from_sign_and_abs(sign, abs);
         if overflow {
             None
         } else {
@@ -168,7 +168,7 @@ impl I256 {
     }
 
     /// Splits a I256 into its absolute value and negative flag.
-    #[inline(always)]
+    #[inline]
     pub fn into_sign_and_abs(self) -> (Sign, U256) {
         let sign = self.sign();
         let abs = match sign {
@@ -193,7 +193,7 @@ impl I256 {
     /// will overflow into a negative value.
     #[inline(always)]
     pub const fn from_raw(raw: U256) -> Self {
-        I256(raw)
+        Self(raw)
     }
 
     /// Returns the signed integer as a unsigned integer. If the value of `self` negative, then the
@@ -212,7 +212,7 @@ impl I256 {
         };
 
         let abs = U256::from_dec_str(value)?;
-        I256::checked_from_sign_and_abs(sign, abs).ok_or(ParseI256Error::IntegerOverflow)
+        Self::checked_from_sign_and_abs(sign, abs).ok_or(ParseI256Error::IntegerOverflow)
     }
 
     /// Convert from a hexadecimal string.
@@ -235,15 +235,19 @@ impl I256 {
         }
 
         let result =
-            I256::checked_from_sign_and_abs(sign, abs).ok_or(ParseI256Error::IntegerOverflow)?;
+            Self::checked_from_sign_and_abs(sign, abs).ok_or(ParseI256Error::IntegerOverflow)?;
 
         Ok(result)
     }
 
-    /// Returns the sign of the number.
+    /// Returns a number representing sign of `self`.
+    ///
+    /// - `0` if the number is zero
+    /// - `1` if the number is positive
+    /// - `-1` if the number is negative
     #[inline(always)]
-    pub fn signum(self) -> Self {
-        self.signum64().into()
+    pub const fn signum(self) -> Self {
+        Self(U256([self.signum64() as u64, 0, 0, 0]))
     }
 
     /// Returns an `i64` representing the sign of the number.
@@ -279,7 +283,7 @@ impl I256 {
     /// Return the least number of bits needed to represent the number.
     #[inline]
     pub fn bits(&self) -> u32 {
-        let unsigned = self.abs_unsigned();
+        let unsigned = self.unsigned_abs();
         let unsigned_bits = unsigned.bits();
 
         // NOTE: We need to deal with two special cases:
@@ -310,8 +314,9 @@ impl I256 {
     ///
     /// # Panics
     ///
-    /// Panics if index exceeds the bit width of the number.
+    /// If index exceeds the bit width of the number.
     #[inline]
+    #[track_caller]
     pub const fn bit(&self, index: usize) -> bool {
         self.0.bit(index)
     }
@@ -320,7 +325,7 @@ impl I256 {
     ///
     /// # Panics
     ///
-    /// Panics if index exceeds the byte width of the number.
+    /// If index exceeds the byte width of the number.
     #[inline]
     #[track_caller]
     pub const fn byte(&self, index: usize) -> u8 {
@@ -328,28 +333,36 @@ impl I256 {
     }
 
     /// Returns the number of ones in the binary representation of `self`.
+    #[inline]
     pub fn count_ones(&self) -> u32 {
         (self.0).0.iter().map(|word| word.count_ones()).sum()
     }
 
     /// Returns the number of zeros in the binary representation of `self`.
+    #[inline]
     pub fn count_zeros(&self) -> u32 {
         (self.0).0.iter().map(|word| word.count_zeros()).sum()
     }
 
     /// Returns the number of leading zeros in the binary representation of
     /// `self`.
+    #[inline]
     pub fn leading_zeros(&self) -> u32 {
         self.0.leading_zeros()
     }
 
     /// Returns the number of leading zeros in the binary representation of
     /// `self`.
+    #[inline]
     pub fn trailing_zeros(&self) -> u32 {
         self.0.trailing_zeros()
     }
 
     /// Write to the slice in big-endian format.
+    ///
+    /// # Panics
+    ///
+    /// If the given slice is not exactly 32 bytes long.
     #[inline]
     #[track_caller]
     pub fn to_big_endian(&self, bytes: &mut [u8]) {
@@ -357,6 +370,10 @@ impl I256 {
     }
 
     /// Write to the slice in little-endian format.
+    ///
+    /// # Panics
+    ///
+    /// If the given slice is not exactly 32 bytes long.
     #[inline]
     #[track_caller]
     pub fn to_little_endian(&self, bytes: &mut [u8]) {
@@ -366,36 +383,38 @@ impl I256 {
 
 // ops impl
 impl I256 {
-    /// Gets the absolute value.
+    /// Computes the absolute value of `self`.
     ///
-    /// # Panics
+    /// # Overflow behavior
     ///
-    /// In debug mode, will panic if it overflows.
+    /// The absolute value of `I256::MIN` cannot be represented as an `I256` and attempting to
+    /// calculate it will cause an overflow. This means that code in debug mode will trigger a panic
+    /// on this case and optimized code will return `I256::MIN` without a panic.
     #[inline]
     #[track_caller]
+    #[must_use]
     pub fn abs(self) -> Self {
         handle_overflow(self.overflowing_abs())
     }
 
-    /// Computes the absolute value of self.
+    /// Computes the absolute value of `self`.
     ///
-    /// Returns a tuple of the absolute version of self along with a boolean
-    /// indicating whether an overflow happened. If self is the minimum value
-    /// (e.g., `I256::MIN` for values of type `I256`), then the minimum value
-    /// will be returned again and true will be returned for an overflow
-    /// happening.
+    /// Returns a tuple of the absolute version of self along with a boolean indicating whether an
+    /// overflow happened. If self is the minimum value then the minimum value will be returned
+    /// again and true will be returned for an overflow happening.
     #[inline]
+    #[must_use]
     pub fn overflowing_abs(self) -> (Self, bool) {
-        if self == I256::MIN {
+        if self == Self::MIN {
             (self, true)
         } else {
-            (I256(self.abs_unsigned()), false)
+            (Self(self.unsigned_abs()), false)
         }
     }
 
-    /// Checked absolute value. Computes `self.abs()`, returning `None` if
-    /// `self == MIN`.
+    /// Checked absolute value. Computes `self.abs()`, returning `None` if `self == MIN`.
     #[inline]
+    #[must_use]
     pub fn checked_abs(self) -> Option<Self> {
         let (result, overflow) = self.overflowing_abs();
         if overflow {
@@ -405,46 +424,46 @@ impl I256 {
         }
     }
 
-    /// Saturating absolute value. Computes `self.abs()`, returning `MAX` if
-    /// `self == MIN` instead of overflowing.
+    /// Saturating absolute value. Computes `self.abs()`, returning `MAX` if `self == MIN` instead
+    /// of overflowing.
     #[inline]
+    #[must_use]
     pub fn saturating_abs(self) -> Self {
-        self.checked_abs().unwrap_or(I256::MAX)
+        self.checked_abs().unwrap_or(Self::MAX)
     }
 
-    /// Wrapping absolute value. Computes `self.abs()`, wrapping around at the
-    /// boundary of the type.
+    /// Wrapping absolute value. Computes `self.abs()`, wrapping around at the boundary of the type.
     #[inline]
+    #[must_use]
     pub fn wrapping_abs(self) -> Self {
-        let (result, _) = self.overflowing_abs();
-        result
+        self.overflowing_abs().0
     }
 
-    /// Gets the absolute value as an unsigned integer.
+    /// Computes the absolute value of `self` without any wrapping or panicking.
     #[inline(always)]
-    fn abs_unsigned(self) -> U256 {
-        let (_, abs) = self.into_sign_and_abs();
-        abs
+    #[must_use]
+    pub fn unsigned_abs(self) -> U256 {
+        self.into_sign_and_abs().1
     }
 
     /// Negates self, overflowing if this is equal to the minimum value.
     ///
-    /// Returns a tuple of the negated version of `self` along with a boolean
-    /// indicating whether an overflow happened. If `self` is the minimum value,
-    /// then the minimum value will be returned again and `true` will be
-    /// returned for an overflow happening.
+    /// Returns a tuple of the negated version of self along with a boolean indicating whether an
+    /// overflow happened. If `self` is the minimum value, then the minimum value will be returned
+    /// again and `true` will be returned for an overflow happening.
     #[inline]
+    #[must_use]
     pub fn overflowing_neg(self) -> (Self, bool) {
-        if self == I256::MIN {
+        if self == Self::MIN {
             (self, true)
         } else {
-            (I256(twos_complement(self.0)), false)
+            (Self(twos_complement(self.0)), false)
         }
     }
 
-    /// Checked negation. Computes `self.neg()`, returning `None` if
-    /// `self == MIN`.
+    /// Checked negation. Computes `-self`, returning `None` if `self == MIN`.
     #[inline]
+    #[must_use]
     pub fn checked_neg(self) -> Option<Self> {
         let (result, overflow) = self.overflowing_neg();
         if overflow {
@@ -454,30 +473,34 @@ impl I256 {
         }
     }
 
-    /// Saturating negation. Computes `self.neg()`, returning `MAX` if
-    /// `self == MIN` instead of overflowing.
+    /// Saturating negation. Computes `-self`, returning `MAX` if `self == MIN` instead of
+    /// overflowing.
     #[inline]
+    #[must_use]
     pub fn saturating_neg(self) -> Self {
-        self.checked_neg().unwrap_or(I256::MAX)
+        self.checked_neg().unwrap_or(Self::MAX)
     }
 
-    /// Wrapping negation. Computes `self.neg()`, returning `MIN` if
-    /// `self == MIN` instead of overflowing.
+    /// Wrapping (modular) negation. Computes `-self`, wrapping around at the boundary of the type.
+    ///
+    /// The only case where such wrapping can occur is when one negates `MIN` on a signed type
+    /// (where `MIN` is the negative minimal value for the type); this is a positive value that is
+    /// too large to represent in the type. In such a case, this function returns `MIN` itself.
     #[inline]
+    #[must_use]
     pub fn wrapping_neg(self) -> Self {
-        let (result, _) = self.overflowing_neg();
-        result
+        self.overflowing_neg().0
     }
 
     /// Calculates `self` + `rhs`
     ///
-    /// Returns a tuple of the addition along with a boolean indicating whether
-    /// an arithmetic overflow would occur. If an overflow would have occurred
-    /// then the wrapped value is returned.
+    /// Returns a tuple of the addition along with a boolean indicating whether an arithmetic
+    /// overflow would occur. If an overflow would have occurred then the wrapped value is returned.
     #[inline]
+    #[must_use]
     pub fn overflowing_add(self, rhs: Self) -> (Self, bool) {
         let (unsigned, _) = self.0.overflowing_add(rhs.0);
-        let result = I256(unsigned);
+        let result = Self(unsigned);
 
         // NOTE: Overflow is determined by checking the sign of the operands and
         //   the result.
@@ -490,10 +513,11 @@ impl I256 {
         (result, overflow)
     }
 
-    /// Checked addition. Returns None if overflow occurred.
+    /// Checked integer addition. Computes `self + rhs`, returning `None` if overflow occurred.
     #[inline]
-    pub fn checked_add(self, other: Self) -> Option<Self> {
-        let (result, overflow) = self.overflowing_add(other);
+    #[must_use]
+    pub fn checked_add(self, rhs: Self) -> Option<Self> {
+        let (result, overflow) = self.overflowing_add(rhs);
         if overflow {
             None
         } else {
@@ -501,14 +525,16 @@ impl I256 {
         }
     }
 
-    /// Addition which saturates at the maximum value (Self::max_value()).
+    /// Saturating integer addition. Computes `self + rhs`, saturating at the numeric bounds instead
+    /// of overflowing.
     #[inline]
-    pub fn saturating_add(self, other: Self) -> Self {
-        let (result, overflow) = self.overflowing_add(other);
+    #[must_use]
+    pub fn saturating_add(self, rhs: Self) -> Self {
+        let (result, overflow) = self.overflowing_add(rhs);
         if overflow {
             match result.sign() {
-                Sign::Positive => I256::MIN,
-                Sign::Negative => I256::MAX,
+                Sign::Positive => Self::MIN,
+                Sign::Negative => Self::MAX,
             }
         } else {
             result
@@ -517,24 +543,24 @@ impl I256 {
 
     /// Wrapping addition.
     #[inline]
-    pub fn wrapping_add(self, other: Self) -> Self {
-        let (result, _) = self.overflowing_add(other);
-        result
+    #[must_use]
+    pub fn wrapping_add(self, rhs: Self) -> Self {
+        self.overflowing_add(rhs).0
     }
 
-    /// Calculates `self` - `rhs`
+    /// Calculates ``self` - `rhs``
     ///
-    /// Returns a tuple of the subtraction along with a boolean indicating
-    /// whether an arithmetic overflow would occur. If an overflow would have
-    /// occurred then the wrapped value is returned.
+    /// Returns a tuple of the subtraction along with a boolean indicating whether an arithmetic
+    /// overflow would occur. If an overflow would have occurred then the wrapped value is returned.
     #[inline]
+    #[must_use]
     pub fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
         // NOTE: We can't just compute the `self + (-rhs)` because `-rhs` does
         //   not always exist, specifically this would be a problem in case
-        //   `rhs == I256::MIN`
+        //   `rhs == Self::MIN`
 
         let (unsigned, _) = self.0.overflowing_sub(rhs.0);
-        let result = I256(unsigned);
+        let result = Self(unsigned);
 
         // NOTE: Overflow is determined by checking the sign of the operands and
         //   the result.
@@ -547,10 +573,11 @@ impl I256 {
         (result, overflow)
     }
 
-    /// Checked subtraction. Returns None if overflow occurred.
+    /// Checked integer subtraction. Computes `self - rhs`, returning `None` if overflow occurred.
     #[inline]
-    pub fn checked_sub(self, other: Self) -> Option<Self> {
-        let (result, overflow) = self.overflowing_sub(other);
+    #[must_use]
+    pub fn checked_sub(self, rhs: Self) -> Option<Self> {
+        let (result, overflow) = self.overflowing_sub(rhs);
         if overflow {
             None
         } else {
@@ -558,45 +585,49 @@ impl I256 {
         }
     }
 
-    /// Subtraction which saturates at zero.
+    /// Saturating integer subtraction. Computes `self - rhs`, saturating at the numeric bounds
+    /// instead of overflowing.
     #[inline]
-    pub fn saturating_sub(self, other: Self) -> Self {
-        let (result, overflow) = self.overflowing_sub(other);
+    #[must_use]
+    pub fn saturating_sub(self, rhs: Self) -> Self {
+        let (result, overflow) = self.overflowing_sub(rhs);
         if overflow {
             match result.sign() {
-                Sign::Positive => I256::MIN,
-                Sign::Negative => I256::MAX,
+                Sign::Positive => Self::MIN,
+                Sign::Negative => Self::MAX,
             }
         } else {
             result
         }
     }
 
-    /// Wrapping subtraction.
+    /// Wrapping (modular) subtraction. Computes `self - rhs`, wrapping around at the boundary of
+    /// the type.
     #[inline]
-    pub fn wrapping_sub(self, other: Self) -> Self {
-        let (result, _) = self.overflowing_sub(other);
-        result
+    #[must_use]
+    pub fn wrapping_sub(self, rhs: Self) -> Self {
+        self.overflowing_sub(rhs).0
     }
 
     /// Calculates `self` * `rhs`
     ///
-    /// Returns a tuple of the multiplication along with a boolean indicating
-    /// whether an arithmetic overflow would occur. If an overflow would have
-    /// occurred then the wrapped value is returned.
+    /// Returns a tuple of the multiplication along with a boolean indicating whether an arithmetic
+    /// overflow would occur. If an overflow would have occurred then the wrapped value is returned.
     #[inline]
+    #[must_use]
     pub fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
         let sign = Sign::from_signum64(self.signum64() * rhs.signum64());
-        let (unsigned, overflow_mul) = self.abs_unsigned().overflowing_mul(rhs.abs_unsigned());
+        let (unsigned, overflow_mul) = self.unsigned_abs().overflowing_mul(rhs.unsigned_abs());
         let (result, overflow_conv) = Self::overflowing_from_sign_and_abs(sign, unsigned);
 
         (result, overflow_mul || overflow_conv)
     }
 
-    /// Checked multiplication. Returns None if overflow occurred.
+    /// Checked integer multiplication. Computes `self * rhs`, returning None if overflow occurred.
     #[inline]
-    pub fn checked_mul(self, other: Self) -> Option<Self> {
-        let (result, overflow) = self.overflowing_mul(other);
+    #[must_use]
+    pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+        let (result, overflow) = self.overflowing_mul(rhs);
         if overflow {
             None
         } else {
@@ -604,42 +635,55 @@ impl I256 {
         }
     }
 
-    /// Multiplication which saturates at the maximum value..
+    /// Saturating integer multiplication. Computes `self * rhs`, saturating at the numeric bounds
+    /// instead of overflowing.
     #[inline]
+    #[must_use]
     pub fn saturating_mul(self, rhs: Self) -> Self {
-        self.checked_mul(rhs).unwrap_or_else(|| {
+        let (result, overflow) = self.overflowing_mul(rhs);
+        if overflow {
             match Sign::from_signum64(self.signum64() * rhs.signum64()) {
-                Sign::Positive => I256::MAX,
-                Sign::Negative => I256::MIN,
+                Sign::Positive => Self::MAX,
+                Sign::Negative => Self::MIN,
             }
-        })
+        } else {
+            result
+        }
     }
 
-    /// Wrapping multiplication.
+    /// Wrapping (modular) multiplication. Computes `self * rhs`, wrapping around at the boundary of
+    /// the type.
     #[inline]
+    #[must_use]
     pub fn wrapping_mul(self, rhs: Self) -> Self {
-        let (result, _) = self.overflowing_mul(rhs);
-        result
+        self.overflowing_mul(rhs).0
     }
 
     /// Calculates `self` / `rhs`
     ///
-    /// Returns a tuple of the division along with a boolean indicating
-    /// whether an arithmetic overflow would occur. If an overflow would have
-    /// occurred then the wrapped value is returned.
+    /// Returns a tuple of the divisor along with a boolean indicating whether an arithmetic
+    /// overflow would occur. If an overflow would occur then self is returned.
+    ///
+    /// # Panics
+    ///
+    /// If `rhs` is 0.
     #[inline]
+    #[track_caller]
+    #[must_use]
     pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
         // Panic early when with division by zero while evaluating sign.
         let sign = Sign::from_signum64(self.signum64() / rhs.signum64());
         // Note, signed division can't overflow!
-        let unsigned = self.abs_unsigned() / rhs.abs_unsigned();
-        let (result, overflow_conv) = I256::overflowing_from_sign_and_abs(sign, unsigned);
+        let unsigned = self.unsigned_abs() / rhs.unsigned_abs();
+        let (result, overflow_conv) = Self::overflowing_from_sign_and_abs(sign, unsigned);
 
         (result, overflow_conv && !result.is_zero())
     }
 
-    /// Checked division. Returns None if overflow occurred or if rhs == 0.
+    /// Checked integer division. Computes `self / rhs`, returning `None` if `rhs == 0` or the
+    /// division results in overflow.
     #[inline]
+    #[must_use]
     pub fn checked_div(self, rhs: Self) -> Option<Self> {
         if rhs.is_zero() || (self == Self::min_value() && rhs == Self::minus_one()) {
             None
@@ -648,25 +692,43 @@ impl I256 {
         }
     }
 
-    /// Division which saturates at the maximum value.
+    /// Saturating integer division. Computes `self / rhs`, saturating at the numeric bounds instead
+    /// of overflowing.
     #[inline]
+    #[must_use]
     pub fn saturating_div(self, rhs: Self) -> Self {
-        // There is only one overflow (I256::MIN / -1 = I256::MAX)
-        self.checked_div(rhs).unwrap_or(I256::MAX)
+        // There is only one overflow (Self::MIN / -1 = Self::MAX)
+        self.checked_div(rhs).unwrap_or(Self::MAX)
     }
 
-    /// Wrapping division.
+    /// Wrapping (modular) division. Computes `self / rhs`, wrapping around at the boundary of the
+    /// type.
+    ///
+    /// The only case where such wrapping can occur is when one divides `MIN / -1` on a signed type
+    /// (where `MIN` is the negative minimal value for the type); this is equivalent to `-MIN`, a
+    /// positive value that is too large to represent in the type. In such a case, this function
+    /// returns `MIN` itself.
+    ///
+    /// # Panics
+    ///
+    /// If `rhs` is 0.
     #[inline]
+    #[track_caller]
+    #[must_use]
     pub fn wrapping_div(self, rhs: Self) -> Self {
         self.overflowing_div(rhs).0
     }
 
     /// Calculates `self` % `rhs`
     ///
-    /// Returns a tuple of the remainder along with a boolean indicating
-    /// whether an arithmetic overflow would occur. If an overflow would have
-    /// occurred then the wrapped value is returned.
+    /// Returns a tuple of the remainder after dividing along with a boolean indicating whether an
+    /// arithmetic overflow would occur. If an overflow would occur then 0 is returned.
+    ///
+    /// # Panics
+    ///
+    /// If `rhs` is 0.
     #[inline]
+    #[must_use]
     pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
         if self == Self::MIN && rhs == Self::minus_one() {
             (Self::zero(), true)
@@ -676,45 +738,118 @@ impl I256 {
         }
     }
 
-    /// Checked remainder. Returns None if overflow occurred or rhs == 0
+    /// Checked integer remainder. Computes `self % rhs`, returning `None` if `rhs == 0` or the
+    /// division results in overflow.
     #[inline]
+    #[must_use]
     pub fn checked_rem(self, rhs: Self) -> Option<Self> {
-        if rhs.is_zero() || (self == Self::min_value() && rhs == -I256::one()) {
+        if rhs.is_zero() || (self == Self::MIN && rhs == Self::minus_one()) {
             None
         } else {
             Some(self.overflowing_rem(rhs).0)
         }
     }
 
-    /// Wrapping remainder. Returns the result of the operation %
-    /// regardless of whether or not the division overflowed.
+    /// Wrapping (modular) remainder. Computes `self % rhs`, wrapping around at the boundary of the
+    /// type.
+    ///
+    /// Such wrap-around never actually occurs mathematically; implementation artifacts make `x % y`
+    /// invalid for `MIN / -1` on a signed type (where `MIN` is the negative minimal value). In such
+    /// a case, this function returns `0`.
     #[inline]
+    #[must_use]
     pub fn wrapping_rem(self, rhs: Self) -> Self {
         self.overflowing_rem(rhs).0
     }
 
-    /// Calculates the quotient of Euclidean division of self by rhs.
+    /// Calculates the quotient of Euclidean division of `self` by `rhs`.
     ///
-    /// This computes the integer `n` such that `self = n * rhs + self.rem_euclid(rhs)`,
-    /// with `0 <= self.rem_euclid(rhs) < rhs`.
-    /// In other words, the result is `self / rhs` rounded to the integer `n` such that `self >= n *
-    /// rhs`:
-    /// * If `self > 0`, this is equal to round towards zero (the default in Rust);
-    /// * If `self < 0`, this is equal to round towards +/- infinity.
+    /// This computes the integer `q` such that `self = q * rhs + r`, with
+    /// `r = self.rem_euclid(rhs)` and `0 <= r < abs(rhs)`.
+    ///
+    /// In other words, the result is `self / rhs` rounded to the integer `q` such that `self >= q *
+    /// rhs`.
+    /// If `self > 0`, this is equal to round towards zero (the default in Rust);
+    /// if `self < 0`, this is equal to round towards +/- infinity.
+    ///
+    /// # Panics
+    ///
+    /// If `rhs` is 0 or the division results in overflow.
     #[inline]
+    #[track_caller]
+    #[must_use]
     pub fn div_euclid(self, rhs: Self) -> Self {
         let q = self / rhs;
         if (self % rhs).is_negative() {
-            return if rhs.is_positive() { q - I256::one() } else { q + I256::one() }
+            if rhs.is_positive() {
+                q - Self::one()
+            } else {
+                q + Self::one()
+            }
+        } else {
+            q
         }
-        q
     }
 
-    /// Calculates the least non-negative remainder of self (mod rhs).
-    /// This is done as if by the _Euclidean division algorithm_
-    /// given `r = self.rem_euclid(rhs)`, `self = rhs * self.div_euclid(rhs) + r, and 0 <= r <
-    /// abs(rhs)`.
+    /// Calculates the quotient of Euclidean division `self.div_euclid(rhs)`.
+    ///
+    /// Returns a tuple of the divisor along with a boolean indicating whether an arithmetic
+    /// overflow would occur. If an overflow would occur then `self` is returned.
+    ///
+    /// # Panics
+    ///
+    /// If `rhs` is 0.
     #[inline]
+    #[track_caller]
+    #[must_use]
+    pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
+        if self == Self::min_value() && rhs == Self::minus_one() {
+            (self, true)
+        } else {
+            (self.div_euclid(rhs), false)
+        }
+    }
+
+    /// Checked Euclidean division. Computes `self.div_euclid(rhs)`, returning `None` if `rhs == 0`
+    /// or the division results in overflow.
+    #[inline]
+    #[must_use]
+    pub fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
+        if rhs.is_zero() || (self == Self::min_value() && rhs == Self::minus_one()) {
+            None
+        } else {
+            Some(self.div_euclid(rhs))
+        }
+    }
+
+    /// Wrapping Euclidean division. Computes `self.div_euclid(rhs)`,
+    /// wrapping around at the boundary of the type.
+    ///
+    /// Wrapping will only occur in `MIN / -1` on a signed type (where `MIN` is the negative minimal
+    /// value for the type). This is equivalent to `-MIN`, a positive value that is too large to
+    /// represent in the type. In this case, this method returns `MIN` itself.
+    ///
+    /// # Panics
+    ///
+    /// If `rhs` is 0.
+    #[inline]
+    #[track_caller]
+    #[must_use]
+    pub fn wrapping_div_euclid(self, rhs: Self) -> Self {
+        self.overflowing_div_euclid(rhs).0
+    }
+
+    /// Calculates the least nonnegative remainder of `self (mod rhs)`.
+    ///
+    /// This is done as if by the Euclidean division algorithm -- given `r = self.rem_euclid(rhs)`,
+    /// `self = rhs * self.div_euclid(rhs) + r`, and `0 <= r < abs(rhs)`.
+    ///
+    /// # Panics
+    ///
+    /// If `rhs` is 0 or the division results in overflow.
+    #[inline]
+    #[track_caller]
+    #[must_use]
     pub fn rem_euclid(self, rhs: Self) -> Self {
         let r = self % rhs;
         if r < Self::zero() {
@@ -728,69 +863,47 @@ impl I256 {
         }
     }
 
-    /// Calculates the quotient of Euclidean division `self.div_euclid(rhs)`.
-    /// Returns a tuple of the divisor along with a boolean indicating whether an arithmetic
-    /// overflow would occur. If an overflow would occur then `self` is returned.
-    #[inline]
-    pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
-        if self == Self::min_value() && rhs == -I256::one() {
-            (self, true)
-        } else {
-            (self.div_euclid(rhs), false)
-        }
-    }
-
-    /// Checked Euclidean division. Computes `self.div_euclid(rhs)`,
-    /// returning None if `rhs == 0` or the division results in overflow.
-    #[inline]
-    pub fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
-        if rhs.is_zero() || (self == Self::min_value() && rhs == -I256::one()) {
-            None
-        } else {
-            Some(self.div_euclid(rhs))
-        }
-    }
-
-    /// Wrapping Euclidean division.
-    /// Computes `self.div_euclid(rhs)`, wrapping around at the boundary of the type.
-    /// Wrapping only occurs in `MIN / -1` on a signed type
-    /// (where `MIN` is the negative minimal value for the type).
-    /// This is equivalent to `-MIN`, a positive value that is too large to represent in the type.
-    /// In this case, this method returns `MIN` itself.
-    #[inline]
-    pub fn wrapping_div_euclid(self, rhs: Self) -> Self {
-        self.overflowing_div_euclid(rhs).0
-    }
-
     /// Overflowing Euclidean remainder. Calculates `self.rem_euclid(rhs)`.
-    /// Returns a tuple of the remainder after dividing along with a boolean indicating whether
-    /// an arithmetic overflow would occur. If an overflow would occur then `0` is returned.
-    /// Panics if `rhs == 0`
+    ///
+    /// Returns a tuple of the remainder after dividing along with a boolean indicating whether an
+    /// arithmetic overflow would occur. If an overflow would occur then 0 is returned.
+    ///
+    /// # Panics
+    ///
+    /// If `rhs` is 0.
     #[inline]
+    #[track_caller]
+    #[must_use]
     pub fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
-        if self == Self::min_value() && rhs == -Self::one() {
+        if self == Self::min_value() && rhs == Self::minus_one() {
             (Self::zero(), true)
         } else {
             (self.rem_euclid(rhs), false)
         }
     }
 
-    /// Wrapping Euclidean remainder.
-    /// Computes `self.rem_euclid(rhs)`, wrapping around at the boundary of the type.
-    /// Wrapping will only occur in `MIN % -1` on a signed type
-    /// (where `MIN` is the negative minimal value for the type).
-    /// In this case, this method returns `0`.
-    /// Panics when `rhs == 0`
+    /// Wrapping Euclidean remainder. Computes `self.rem_euclid(rhs)`, wrapping around at the
+    /// boundary of the type.
+    ///
+    /// Wrapping will only occur in `MIN % -1` on a signed type (where `MIN` is the negative minimal
+    /// value for the type). In this case, this method returns 0.
+    ///
+    /// # Panics
+    ///
+    /// If `rhs` is 0.
     #[inline]
+    #[track_caller]
+    #[must_use]
     pub fn wrapping_rem_euclid(self, rhs: Self) -> Self {
         self.overflowing_rem_euclid(rhs).0
     }
 
-    /// Checked Euclidean remainder. Computes `self.rem_euclid(rhs)`,
-    /// returning `None` if `rhs == 0` or the division results in overflow.
+    /// Checked Euclidean remainder. Computes `self.rem_euclid(rhs)`, returning `None` if `rhs == 0`
+    /// or the division results in overflow.
     #[inline]
+    #[must_use]
     pub fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
-        if rhs.is_zero() || (self == Self::min_value() && rhs == I256::minus_one()) {
+        if rhs.is_zero() || (self == Self::min_value() && rhs == Self::minus_one()) {
             None
         } else {
             Some(self.rem_euclid(rhs))
@@ -818,39 +931,43 @@ impl I256 {
     ///
     /// # Panics
     ///
-    /// Panics if the result overflows the type.
+    /// If the result overflows the type.
     #[inline]
     #[track_caller]
+    #[must_use]
     pub fn exp10(n: usize) -> Self {
         U256::exp10(n).try_into().expect("overflow")
     }
 
-    /// Raise self to the power of `exp`.
+    /// Raises self to the power of `exp`, using exponentiation by squaring.
     ///
     /// # Panics
     ///
-    /// Panics if the result overflows the type in debug mode.
+    /// If the result overflows the type in debug mode.
     #[inline]
     #[track_caller]
+    #[must_use]
     pub fn pow(self, exp: u32) -> Self {
         handle_overflow(self.overflowing_pow(exp))
     }
 
-    /// Raises self to the power of `exp`.
+    /// Raises self to the power of `exp`, using exponentiation by squaring.
     ///
-    /// Returns a tuple of the exponentiation along with a bool indicating
-    /// whether an overflow happened.
+    /// Returns a tuple of the exponentiation along with a bool indicating whether an overflow
+    /// happened.
     #[inline]
+    #[must_use]
     pub fn overflowing_pow(self, exp: u32) -> (Self, bool) {
         let sign = self.pow_sign(exp);
-        let (unsigned, overflow_pow) = self.abs_unsigned().overflowing_pow(exp.into());
-        let (result, overflow_conv) = I256::overflowing_from_sign_and_abs(sign, unsigned);
+        let (unsigned, overflow_pow) = self.unsigned_abs().overflowing_pow(exp.into());
+        let (result, overflow_conv) = Self::overflowing_from_sign_and_abs(sign, unsigned);
 
         (result, overflow_pow || overflow_conv)
     }
 
-    /// Raises self to the power of `exp`. Returns None if overflow occurred.
+    /// Checked exponentiation. Computes `self.pow(exp)`, returning `None` if overflow occurred.
     #[inline]
+    #[must_use]
     pub fn checked_pow(self, exp: u32) -> Option<Self> {
         let (result, overflow) = self.overflowing_pow(exp);
         if overflow {
@@ -860,15 +977,16 @@ impl I256 {
         }
     }
 
-    /// Raises self to the power of `exp`, saturating at the numeric bounds
-    /// instead of overflowing.
+    /// Saturating integer exponentiation. Computes `self.pow(exp)`, saturating at the numeric
+    /// bounds instead of overflowing.
     #[inline]
+    #[must_use]
     pub fn saturating_pow(self, exp: u32) -> Self {
         let (result, overflow) = self.overflowing_pow(exp);
         if overflow {
             match self.pow_sign(exp) {
-                Sign::Positive => I256::MAX,
-                Sign::Negative => I256::MIN,
+                Sign::Positive => Self::MAX,
+                Sign::Negative => Self::MIN,
             }
         } else {
             result
@@ -878,15 +996,15 @@ impl I256 {
     /// Raises self to the power of `exp`, wrapping around at the
     /// boundary of the type.
     #[inline]
+    #[must_use]
     pub fn wrapping_pow(self, exp: u32) -> Self {
-        let (result, _) = self.overflowing_pow(exp);
-        result
+        self.overflowing_pow(exp).0
     }
 
     /// Arithmetic Shift Right operation. Shifts `shift` number of times to the right maintaining
     /// the original sign. If the number is positive this is the same as logic shift right.
     #[inline]
-    #[track_caller]
+    #[must_use]
     pub fn asr(self, shift: u32) -> Self {
         // Avoid shifting if we are going to know the result regardless of the value.
         match (shift, self.sign()) {
@@ -915,6 +1033,7 @@ impl I256 {
     ///
     /// Returns `None` if the operation overflowed (most significant bit changes).
     #[inline]
+    #[must_use]
     pub fn asl(self, shift: u32) -> Option<Self> {
         if shift == 0 {
             Some(self)
@@ -929,8 +1048,9 @@ impl I256 {
         }
     }
 
-    /// Compute the twos complement of the I256
+    /// Compute the [two's complement](https://en.wikipedia.org/wiki/Two%27s_complement) of this number.
     #[inline]
+    #[must_use]
     pub fn twos_complement(self) -> U256 {
         let abs = self.into_raw();
         match self.sign() {
@@ -1034,6 +1154,7 @@ impl_conversions! {
 impl TryFrom<U256> for I256 {
     type Error = TryFromBigIntError;
 
+    #[inline(always)]
     fn try_from(from: U256) -> Result<Self, Self::Error> {
         let value = I256(from);
         match value.sign() {
@@ -1046,6 +1167,7 @@ impl TryFrom<U256> for I256 {
 impl TryFrom<I256> for U256 {
     type Error = TryFromBigIntError;
 
+    #[inline(always)]
     fn try_from(value: I256) -> Result<Self, Self::Error> {
         match value.sign() {
             Sign::Positive => Ok(value.0),
@@ -1055,6 +1177,7 @@ impl TryFrom<I256> for U256 {
 }
 
 impl From<ParseUnits> for I256 {
+    #[inline(always)]
     fn from(n: ParseUnits) -> Self {
         match n {
             ParseUnits::U256(n) => Self::from_raw(n),
@@ -1066,6 +1189,7 @@ impl From<ParseUnits> for I256 {
 impl TryFrom<&str> for I256 {
     type Error = <Self as FromStr>::Err;
 
+    #[inline(always)]
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Self::from_str(value)
     }
@@ -1074,6 +1198,7 @@ impl TryFrom<&str> for I256 {
 impl TryFrom<&String> for I256 {
     type Error = <Self as FromStr>::Err;
 
+    #[inline(always)]
     fn try_from(value: &String) -> Result<Self, Self::Error> {
         Self::from_str(value.as_str())
     }
@@ -1082,6 +1207,7 @@ impl TryFrom<&String> for I256 {
 impl TryFrom<String> for I256 {
     type Error = <Self as FromStr>::Err;
 
+    #[inline(always)]
     fn try_from(value: String) -> Result<Self, Self::Error> {
         Self::from_str(value.as_str())
     }
@@ -1090,6 +1216,7 @@ impl TryFrom<String> for I256 {
 impl FromStr for I256 {
     type Err = ParseI256Error;
 
+    #[inline(always)]
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         I256::from_hex_str(value)
     }
@@ -1132,12 +1259,14 @@ impl fmt::UpperHex for I256 {
 
 // cmp
 impl cmp::PartialOrd for I256 {
+    #[inline(always)]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl cmp::Ord for I256 {
+    #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         // TODO(nlordell): Once subtraction is implemented:
         // self.saturating_sub(*other).signum64().partial_cmp(&0)
@@ -1154,7 +1283,7 @@ impl cmp::Ord for I256 {
     }
 }
 
-// arithmetic ops
+// arithmetic ops - implemented above
 impl ops::Add for I256 {
     type Output = Self;
 
@@ -1267,7 +1396,7 @@ impl iter::Product for I256 {
     }
 }
 
-// bitwise ops
+// bitwise ops - delegated to U256
 impl ops::BitAnd for I256 {
     type Output = Self;
 
@@ -1427,13 +1556,7 @@ fn twos_complement(u: U256) -> U256 {
     (!u).overflowing_add(U256::one()).0
 }
 
-/// Overflow handling that depends on whether or not the binary is built in
-/// debug mode.
-///
-/// # Panics
-///
-/// This function will panic on overflows in debug mode, and simply ignore the
-/// overflow in non-debug mode.
+/// Panic if overflow on debug mode.
 #[inline(always)]
 #[track_caller]
 fn handle_overflow<T>((result, overflow): (T, bool)) -> T {
@@ -1691,15 +1814,6 @@ mod tests {
     fn bit_shift() {
         assert_eq!(I256::one() << 255, I256::MIN);
         assert_eq!(I256::MIN >> 255, I256::one());
-
-        // https://github.com/gakonst/ethers-rs/issues/2174
-        let n = I256::from(340282366920938463463374607431768190071_u128);
-        assert_eq!(n >> U256::zero(), n);
-        assert_eq!(n >> I256::zero(), n);
-        assert_eq!(n << U256::zero(), n);
-        assert_eq!(n << I256::zero(), n);
-        assert_eq!(n.0 << U256::zero(), n.0);
-        assert_eq!(n.0 >> U256::zero(), n.0);
     }
 
     #[test]
@@ -1860,16 +1974,16 @@ mod tests {
         let b = I256::from(4);
 
         assert_eq!(a.div_euclid(b), I256::one()); // 7 >= 4 * 1
-        assert_eq!(a.div_euclid(-b), -I256::one()); // 7 >= -4 * -1
+        assert_eq!(a.div_euclid(-b), I256::minus_one()); // 7 >= -4 * -1
         assert_eq!((-a).div_euclid(b), -I256::from(2)); // -7 >= 4 * -2
         assert_eq!((-a).div_euclid(-b), I256::from(2)); // -7 >= -4 * 2
 
         // Overflowing
-        assert_eq!(I256::MIN.overflowing_div_euclid(-I256::one()), (I256::MIN, true));
+        assert_eq!(I256::MIN.overflowing_div_euclid(I256::minus_one()), (I256::MIN, true));
         // Wrapping
-        assert_eq!(I256::MIN.wrapping_div_euclid(-I256::one()), I256::MIN);
+        assert_eq!(I256::MIN.wrapping_div_euclid(I256::minus_one()), I256::MIN);
         // // Checked
-        assert_eq!(I256::MIN.checked_div_euclid(-I256::one()), None);
+        assert_eq!(I256::MIN.checked_div_euclid(I256::minus_one()), None);
         assert_eq!(I256::one().checked_div_euclid(I256::zero()), None);
     }
 
@@ -1885,29 +1999,32 @@ mod tests {
 
         // Overflowing
         assert_eq!(a.overflowing_rem_euclid(b), (I256::from(3), false));
-        assert_eq!(I256::min_value().overflowing_rem_euclid(-I256::one()), (I256::zero(), true));
+        assert_eq!(
+            I256::min_value().overflowing_rem_euclid(I256::minus_one()),
+            (I256::zero(), true)
+        );
 
         // Wrapping
         assert_eq!(I256::from(100).wrapping_rem_euclid(I256::from(10)), I256::zero());
-        assert_eq!(I256::min_value().wrapping_rem_euclid(-I256::one()), I256::zero());
+        assert_eq!(I256::min_value().wrapping_rem_euclid(I256::minus_one()), I256::zero());
 
         // Checked
         assert_eq!(a.checked_rem_euclid(b), Some(I256::from(3)));
         assert_eq!(a.checked_rem_euclid(I256::zero()), None);
-        assert_eq!(I256::min_value().checked_rem_euclid(-I256::one()), None);
+        assert_eq!(I256::min_value().checked_rem_euclid(I256::minus_one()), None);
     }
 
     #[test]
     #[should_panic]
     fn div_euclid_by_zero() {
         let _ = I256::one().div_euclid(I256::zero());
-        assert_eq!(I256::MIN.div_euclid(-I256::one()), I256::MAX);
+        assert_eq!(I256::MIN.div_euclid(I256::minus_one()), I256::MAX);
     }
 
     #[test]
     #[should_panic]
     fn div_euclid_overflow() {
-        let _ = I256::MIN.div_euclid(-I256::one());
+        let _ = I256::MIN.div_euclid(I256::minus_one());
     }
 
     #[test]
