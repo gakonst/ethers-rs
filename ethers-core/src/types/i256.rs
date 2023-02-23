@@ -212,7 +212,6 @@ impl I256 {
             Some(b'-') => (Sign::Negative, &value[1..]),
             _ => (Sign::Positive, value),
         };
-
         let abs = U256::from_dec_str(value)?;
         Self::checked_from_sign_and_abs(sign, abs).ok_or(ParseI256Error::IntegerOverflow)
     }
@@ -236,10 +235,7 @@ impl I256 {
             abs.0[i] = u64::from_str_radix(word, 16).map_err(|_| ParseI256Error::InvalidDigit)?;
         }
 
-        let result =
-            Self::checked_from_sign_and_abs(sign, abs).ok_or(ParseI256Error::IntegerOverflow)?;
-
-        Ok(result)
+        Self::checked_from_sign_and_abs(sign, abs).ok_or(ParseI256Error::IntegerOverflow)
     }
 
     /// Returns a number representing sign of `self`.
