@@ -246,8 +246,8 @@ impl I256 {
     /// - `1` if the number is positive
     /// - `-1` if the number is negative
     #[inline(always)]
-    pub const fn signum(self) -> Self {
-        Self(U256([self.signum64() as u64, 0, 0, 0]))
+    pub fn signum(self) -> Self {
+        self.signum64().into()
     }
 
     /// Returns an `i64` representing the sign of the number.
