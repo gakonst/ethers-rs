@@ -3,27 +3,30 @@
 pub(crate) mod macros;
 
 mod backend;
+
 mod manager;
+use manager::RequestManager;
 
 mod types;
-
 pub(self) use types::*;
 
 mod error;
 pub use error::*;
 
+use async_trait::async_trait;
+use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::value::RawValue;
 
 use crate::{JsonRpcClient, PubsubClient};
-use async_trait::async_trait;
-use ethers_core::types::U256;
-use manager::RequestManager;
+
+use self::manager::SharedChannelMap;
 
 #[derive(Debug)]
 pub struct WsClient {
     instructions: mpsc::UnboundedSender<Instruction>,
+    channel_map: SharedChannelMap,
 }
 
 impl WsClient {
@@ -33,7 +36,7 @@ impl WsClient {
         Ok(this)
     }
 
-    async fn request<R>(&self, method: &str, params: Box<RawValue>) -> Result<R, WsClientError>
+    async fn make_request<R>(&self, method: &str, params: Box<RawValue>) -> Result<R, WsClientError>
     where
         R: DeserializeOwned,
     {
@@ -44,24 +47,6 @@ impl WsClient {
             .map_err(|_| WsClientError::UnexpectedClose)?;
 
         let res = rx.await.map_err(|_| WsClientError::UnexpectedClose)??;
-
-        Ok(serde_json::from_str(res.get())?)
-    }
-
-    async fn request_sub<R>(&self, params: Box<RawValue>) -> Result<R, WsClientError>
-    where
-        R: DeserializeOwned,
-    {
-        let (tx, rx) = mpsc::unbounded();
-        let (req_tx, req_rx) = oneshot::channel();
-
-        let instruction = Instruction::SubscriptionRequest { params, channel: tx, sender: req_tx };
-
-        self.instructions
-            .unbounded_send(instruction)
-            .map_err(|_| WsClientError::UnexpectedClose)?;
-
-        let res = req_rx.await.map_err(|_| WsClientError::UnexpectedClose)??;
 
         Ok(serde_json::from_str(res.get())?)
     }
@@ -80,11 +65,9 @@ impl JsonRpcClient for WsClient {
         let params = serde_json::to_string(&params)?;
         let params = RawValue::from_string(params)?;
 
-        if method == "eth_subscribe" {
-            self.request_sub(params).await
-        } else {
-            self.request(method, params).await
-        }
+        let res = self.make_request(method, params).await?;
+
+        Ok(res)
     }
 }
 
@@ -92,9 +75,8 @@ impl PubsubClient for WsClient {
     type NotificationStream = mpsc::UnboundedReceiver<Box<RawValue>>;
 
     fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream, WsClientError> {
-        let (tx, rx) = oneshot::channel();
-
-        rx.await
+        let id = id.into();
+        self.channel_map.lock().unwrap().remove(&id).ok_or(WsClientError::UnknownSubscription(id))
     }
 
     fn unsubscribe<T: Into<U256>>(&self, id: T) -> Result<(), WsClientError> {

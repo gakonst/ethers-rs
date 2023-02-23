@@ -1,6 +1,9 @@
 use std::{
     collections::{BTreeMap, HashMap},
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc, Mutex,
+    },
 };
 
 use ethers_core::types::U256;
@@ -16,51 +19,52 @@ use super::{
     WsClientError, WsItem,
 };
 
-#[derive(Default)]
+pub type SharedChannelMap = Arc<Mutex<HashMap<U256, mpsc::UnboundedReceiver<Box<RawValue>>>>>;
+
 pub struct SubscriptionManager {
     subs: BTreeMap<u64, ActiveSub>,
     aliases: HashMap<U256, u64>,
-    sub_channel_holding: HashMap<u64, mpsc::UnboundedReceiver<Notification>>,
+    // used to communicate to the WsClient
+    channel_map: SharedChannelMap,
 }
 
 impl SubscriptionManager {
+    fn new(channel_map: SharedChannelMap) -> Self {
+        Self { subs: Default::default(), aliases: Default::default(), channel_map }
+    }
+
     fn add_alias(&mut self, sub: U256, id: u64) {
         if let Some(entry) = self.subs.get_mut(&id) {
-            entry.aliases.insert(sub);
+            entry.current_server_id = Some(sub);
         }
         self.aliases.insert(sub, id);
     }
 
-    fn remove_alias(&mut self, sub: U256) {
-        if let Some(entry) = self.subs.get_mut(&sub) {
-            entry.aliases.remove(&sub);
+    fn remove_alias(&mut self, server_id: U256) {
+        if let Some(id) = self.aliases.get(&server_id) {
+            if let Some(sub) = self.subs.get_mut(id) {
+                sub.current_server_id = None;
+            }
         }
-        self.aliases.remove(&sub);
+        self.aliases.remove(&server_id);
     }
 
-    fn remove_subscription(&mut self, id: u64) -> Box<RawValue> {
+    fn end_subscription(&mut self, id: u64) -> Box<RawValue> {
         if let Some(sub) = self.subs.remove(&id) {
-            sub.aliases.iter().for_each(|id| self.aliases.remove_alias(id));
+            if let Some(alias) = sub.current_server_id {
+                self.remove_alias(alias);
+            }
         }
+        todo!("return unsubscribe request")
     }
 
-    fn get_subscription(
-        &mut self,
-        id: U256,
-        sender: oneshot::Sender<mpsc::UnboundedReceiver<Notification>>,
-    ) {
-        if let Some(channel) = self.sub_channel_holding.remove(&id.low_u64()) {
-            let _ = sender.send(channel);
-        }
-    }
-
-    fn handle_notification(&mut self, params: Notification) {
-        let sub_id = params.subscription;
+    fn handle_notification(&mut self, notification: Notification) {
+        let sub_id = notification.subscription;
 
         if let Some(id) = self.aliases.get(&sub_id) {
             if let Some(active) = self.subs.get(id) {
                 // send the notification over the channel
-                let send_res = active.channel.unbounded_send(params);
+                let send_res = active.channel.unbounded_send(notification.result);
                 // receiver has dropped, so we drop the sub
                 // to consider: this leaves aliases to dead subs in the map if
                 // reconnection has occurred. however, this seems like a small
@@ -97,10 +101,10 @@ impl SubscriptionManager {
     ) -> Result<Box<RawValue>, WsClientError> {
         let (tx, rx) = mpsc::unbounded();
         // we make both a pending req and an active sub here
-        let active_sub = ActiveSub { params, channel: tx };
+        let active_sub = ActiveSub { params, channel: tx, current_server_id: None };
         let req = active_sub.to_request(id);
 
-        self.sub_channel_holding.insert(id, rx);
+        self.channel_map.lock().unwrap().insert(id.into(), rx);
         self.subs.insert(id, active_sub);
 
         Ok(RawValue::from_string(serde_json::to_string(&req)?)?)
@@ -113,7 +117,7 @@ pub struct RequestManager {
     reqs: BTreeMap<u64, InFlight>,
     backend: Backend,
     conn: ConnectionDetails,
-    instructions: mpsc::UnboundedReceiver<Instruction>, // TODO
+    instructions: mpsc::UnboundedReceiver<Instruction>,
 }
 
 impl RequestManager {
@@ -124,20 +128,21 @@ impl RequestManager {
     pub async fn connect(conn: ConnectionDetails) -> Result<(Self, WsClient), WsClientError> {
         let (ws, backend) = WsBackend::connect(conn.clone()).await?;
 
-        let (tx, rx) = mpsc::unbounded();
+        let (instructions_tx, instructions_rx) = mpsc::unbounded();
+        let channel_map: SharedChannelMap = Default::default();
 
         ws.spawn();
 
         Ok((
             Self {
                 id: Default::default(),
-                subs: Default::default(),
+                subs: SubscriptionManager::new(channel_map.clone()),
                 reqs: Default::default(),
                 backend,
                 conn,
-                instructions: rx,
+                instructions: instructions_rx,
             },
-            WsClient { instructions: tx },
+            WsClient { instructions: instructions_tx, channel_map },
         ))
     }
 
@@ -148,14 +153,19 @@ impl RequestManager {
         // spawn the new backend
         s.spawn();
 
-        // swap the out our backend
+        // swap out the backend
         std::mem::swap(&mut self.backend, &mut backend);
 
         // rename for clarity
-        let old_backend = backend;
+        let mut old_backend = backend;
 
-        // don't care if it errored
-        let _ = old_backend.shutdown.send(());
+        // Drain anything in the backend
+        while let Some(to_handle) = old_backend.to_handle.next().await {
+            self.handle(to_handle);
+        }
+
+        // issue a shutdown command (even though it's likely gone)
+        old_backend.shutdown();
 
         // reissue subscriptionps
         for (id, sub) in self.subs.to_reissue() {
@@ -179,19 +189,19 @@ impl RequestManager {
     fn req_success(&mut self, id: u64, result: Box<RawValue>) {
         // pending fut is missing, this is fine
         if let Some(req) = self.reqs.remove(&id) {
-            if self.subs.has(id) {
-                let result = self.subs.req_success(id, result);
-                let _ = req.channel.send(Ok(result));
+            let result = if self.subs.has(id) {
+                // rewrite
+                self.subs.req_success(id, result)
             } else {
-                // if error, pending fut has been dropped, this is fine
-                let _ = req.channel.send(Ok(result));
-            }
+                result
+            };
+            let _ = req.channel.send(Ok(result));
         }
     }
 
     fn req_fail(&mut self, id: u64, error: JsonRpcError) {
         // pending fut is missing, this is fine
-        if let Some(mut req) = self.reqs.remove(&id) {
+        if let Some(req) = self.reqs.remove(&id) {
             // pending fut has been dropped, this is fine
             let _ = req.channel.send(Err(error));
         }
@@ -220,30 +230,35 @@ impl RequestManager {
         let req = in_flight.to_request(id);
         let req = RawValue::from_string(serde_json::to_string(&req)?)?;
         self.backend.dispatcher.unbounded_send(req).map_err(|_| WsClientError::DeadChannel)?;
+
+        if in_flight.method == "eth_subscribe" {
+            self.subs.service_subscription_request(id, in_flight.params.clone())?;
+        }
+
         self.reqs.insert(id, in_flight);
         Ok(())
     }
 
-    fn service_instruction(&mut self, instruction: Instruction) {
+    fn service_instruction(&mut self, instruction: Instruction) -> Result<(), WsClientError> {
         match instruction {
             Instruction::Request { method, params, sender } => {
                 let id = self.next_id();
-                self.service_request(id, method, params, sender);
-                if method == "eth_subscribe" {
-                    self.subs.service_subscription_request(id, params);
-                }
+                self.service_request(id, method, params, sender)?;
             }
-            Instruction::GetSubscription { id, sender } => self.subs.get_subscription(id, sender),
             Instruction::Unsubscribe { id } => {
-                let req = self.subs.unsub(id);
-                let _ = self.backend.dispatcher.unbounded_send(req);
+                let req = self.subs.end_subscription(id.low_u64());
+                self.backend
+                    .dispatcher
+                    .unbounded_send(req)
+                    .map_err(|_| WsClientError::DeadChannel)?;
             }
         }
+        Ok(())
     }
 
     pub fn spawn(mut self) {
         let fut = async move {
-            loop {
+            let result = loop {
                 select! {
                     _ = &mut self.backend.error => {
                         self.reconnect().await.unwrap();
@@ -251,20 +266,21 @@ impl RequestManager {
                     item_opt = self.backend.to_handle.next() => {
                         match item_opt {
                             Some(item) => self.handle(item),
-                            None => self.reconnect().await.unwrap()
+                            None => if let Err(e) = self.reconnect().await {
+                                break Err(e);
+                            }
                         }
                     },
                     inst_opt = self.instructions.next() => {
                         match inst_opt {
-                            Some(instruction) => self.service_instruction(instruction),
-                            None => {
-                                let _ = self.backend.shutdown.send(());
-                                break;
-                            },
+                            Some(instruction) => if let Err(e) = self.service_instruction(instruction) { break Err(e)},
+                            None => break Ok(()),
                         }
                     }
                 }
-            }
+            };
+            let _ = result; // todo: log result
+            self.backend.shutdown();
         };
 
         #[cfg(target_arch = "wasm32")]

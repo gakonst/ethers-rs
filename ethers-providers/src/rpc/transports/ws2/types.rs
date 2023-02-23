@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
 use serde::Deserialize;
@@ -55,8 +53,8 @@ impl InFlight {
 
 pub(super) struct ActiveSub {
     pub params: Box<RawValue>,
-    pub channel: mpsc::UnboundedSender<Notification>,
-    pub aliases: HashSet<U256>,
+    pub channel: mpsc::UnboundedSender<Box<RawValue>>,
+    pub current_server_id: Option<U256>,
 }
 
 impl ActiveSub {
@@ -74,8 +72,6 @@ impl ActiveSub {
 pub enum Instruction {
     /// JSON-RPC request
     Request { method: String, params: Box<RawValue>, sender: oneshot::Sender<Response> },
-    /// Get subscription channel
-    GetSubscription { id: U256, sender: oneshot::Sender<mpsc::UnboundedReceiver<Notification>> },
     /// Cancel an existing subscription
     Unsubscribe { id: U256 },
 }

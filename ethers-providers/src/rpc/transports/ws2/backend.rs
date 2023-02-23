@@ -21,7 +21,14 @@ pub struct Backend {
     pub error: oneshot::Receiver<()>,
 
     pub dispatcher: mpsc::UnboundedSender<Box<RawValue>>,
-    pub shutdown: oneshot::Sender<()>,
+    shutdown: oneshot::Sender<()>,
+}
+
+impl Backend {
+    pub fn shutdown(self) {
+        // don't care if it fails, as that means the backend is gone anyway
+        let _ = self.shutdown.send(());
+    }
 }
 
 impl WsBackend {
@@ -108,7 +115,7 @@ impl WsBackend {
             let mut err = false;
             loop {
                 #[cfg(not(target_arch = "wasm32"))]
-                let mut keepalive = tokio::time::sleep(std::time::Duration::from_secs(10)).fuse();
+                let keepalive = tokio::time::sleep(std::time::Duration::from_secs(10)).fuse();
                 #[cfg(not(target_arch = "wasm32"))]
                 tokio::pin!(keepalive);
 
