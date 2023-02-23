@@ -240,6 +240,7 @@ impl_abi_type_tuple!(19, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S
 impl_abi_type_tuple!(20, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T);
 impl_abi_type_tuple!(21, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U);
 
+#[allow(clippy::extra_unused_type_parameters)]
 #[cfg(test)]
 mod tests {
     use super::*;
