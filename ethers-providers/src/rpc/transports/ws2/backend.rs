@@ -9,22 +9,22 @@ use crate::{ws_error, ws_trace};
 pub struct WsBackend {
     server: InternalStream,
 
-    handler: mpsc::UnboundedSender<WsItem>,
+    handler: mpsc::UnboundedSender<PubSubItem>,
     error: oneshot::Sender<()>,
 
     to_dispatch: mpsc::UnboundedReceiver<Box<RawValue>>,
     shutdown: oneshot::Receiver<()>,
 }
 
-pub struct Backend {
-    pub to_handle: mpsc::UnboundedReceiver<WsItem>,
+pub struct BackendDriver {
+    pub to_handle: mpsc::UnboundedReceiver<PubSubItem>,
     pub error: oneshot::Receiver<()>,
 
     pub dispatcher: mpsc::UnboundedSender<Box<RawValue>>,
     shutdown: oneshot::Sender<()>,
 }
 
-impl Backend {
+impl BackendDriver {
     pub fn shutdown(self) {
         // don't care if it fails, as that means the backend is gone anyway
         let _ = self.shutdown.send(());
@@ -33,7 +33,9 @@ impl Backend {
 
 impl WsBackend {
     #[cfg(target_arch = "wasm32")]
-    pub async fn connect(details: ConnectionDetails) -> Result<(Self, Backend), WsClientError> {
+    pub async fn connect(
+        details: ConnectionDetails,
+    ) -> Result<(Self, BackendDriver), WsClientError> {
         let wsio = WsMeta::connect(details.url, None)
             .await
             .expect_throw("Could not create websocket")
@@ -44,12 +46,14 @@ impl WsBackend {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn connect(details: ConnectionDetails) -> Result<(Self, Backend), WsClientError> {
+    pub async fn connect(
+        details: ConnectionDetails,
+    ) -> Result<(Self, BackendDriver), WsClientError> {
         let ws = connect_async(details).await?.0.fuse();
         Ok(Self::new(ws))
     }
 
-    pub fn new(server: InternalStream) -> (Self, Backend) {
+    pub fn new(server: InternalStream) -> (Self, BackendDriver) {
         let (handler, to_handle) = mpsc::unbounded();
         let (dispatcher, to_dispatch) = mpsc::unbounded();
         let (error_tx, error_rx) = oneshot::channel();
@@ -57,7 +61,7 @@ impl WsBackend {
 
         (
             WsBackend { server, handler, error: error_tx, to_dispatch, shutdown: shutdown_rx },
-            Backend { to_handle, error: error_rx, dispatcher, shutdown: shutdown_tx },
+            BackendDriver { to_handle, error: error_rx, dispatcher, shutdown: shutdown_tx },
         )
     }
 

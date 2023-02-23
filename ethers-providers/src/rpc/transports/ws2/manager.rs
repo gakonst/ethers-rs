@@ -14,9 +14,9 @@ use serde_json::value::RawValue;
 use crate::JsonRpcError;
 
 use super::{
-    backend::{Backend, WsBackend},
-    ActiveSub, ConnectionDetails, InFlight, Instruction, Notification, Response, SubId, WsClient,
-    WsClientError, WsItem,
+    backend::{BackendDriver, WsBackend},
+    ActiveSub, ConnectionDetails, InFlight, Instruction, Notification, PubSubItem, Response, SubId,
+    WsClient, WsClientError,
 };
 
 pub type SharedChannelMap = Arc<Mutex<HashMap<U256, mpsc::UnboundedReceiver<Box<RawValue>>>>>;
@@ -104,7 +104,11 @@ impl SubscriptionManager {
         let active_sub = ActiveSub { params, channel: tx, current_server_id: None };
         let req = active_sub.to_request(id);
 
-        self.channel_map.lock().unwrap().insert(id.into(), rx);
+        // Explicit drop for the lock
+        // This insertion should be made BEFORE the request returns.
+        {
+            self.channel_map.lock().unwrap().insert(id.into(), rx);
+        }
         self.subs.insert(id, active_sub);
 
         Ok(RawValue::from_string(serde_json::to_string(&req)?)?)
@@ -115,7 +119,7 @@ pub struct RequestManager {
     id: AtomicU64,
     subs: SubscriptionManager,
     reqs: BTreeMap<u64, InFlight>,
-    backend: Backend,
+    backend: BackendDriver,
     conn: ConnectionDetails,
     instructions: mpsc::UnboundedReceiver<Instruction>,
 }
@@ -189,12 +193,9 @@ impl RequestManager {
     fn req_success(&mut self, id: u64, result: Box<RawValue>) {
         // pending fut is missing, this is fine
         if let Some(req) = self.reqs.remove(&id) {
-            let result = if self.subs.has(id) {
-                // rewrite
-                self.subs.req_success(id, result)
-            } else {
-                result
-            };
+            // Allow subscription manager to rewrite the result if the request
+            // corresponds to a known ID
+            let result = if self.subs.has(id) { self.subs.req_success(id, result) } else { result };
             let _ = req.channel.send(Ok(result));
         }
     }
@@ -211,11 +212,11 @@ impl RequestManager {
         self.subs.handle_notification(params)
     }
 
-    fn handle(&mut self, item: WsItem) {
+    fn handle(&mut self, item: PubSubItem) {
         match item {
-            WsItem::Success { id, result } => self.req_success(id, result),
-            WsItem::Error { id, error } => self.req_fail(id, error),
-            WsItem::Notification { params } => self.handle_notification(params),
+            PubSubItem::Success { id, result } => self.req_success(id, result),
+            PubSubItem::Error { id, error } => self.req_fail(id, error),
+            PubSubItem::Notification { params } => self.handle_notification(params),
         }
     }
 

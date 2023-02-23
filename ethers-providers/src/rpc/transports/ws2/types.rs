@@ -21,7 +21,7 @@ pub struct Notification {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
-pub enum WsItem {
+pub enum PubSubItem {
     Success { id: u64, result: Box<RawValue> },
     Error { id: u64, error: JsonRpcError },
     Notification { params: Notification },

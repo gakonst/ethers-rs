@@ -5,7 +5,7 @@ pub(crate) mod macros;
 mod backend;
 
 mod manager;
-use manager::RequestManager;
+use manager::{RequestManager, SharedChannelMap};
 
 mod types;
 pub(self) use types::*;
@@ -21,9 +21,7 @@ use serde_json::value::RawValue;
 
 use crate::{JsonRpcClient, PubsubClient};
 
-use self::manager::SharedChannelMap;
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct WsClient {
     instructions: mpsc::UnboundedSender<Instruction>,
     channel_map: SharedChannelMap,
@@ -75,6 +73,8 @@ impl PubsubClient for WsClient {
     type NotificationStream = mpsc::UnboundedReceiver<Box<RawValue>>;
 
     fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream, WsClientError> {
+        // due to the behavior of the request manager, we know this map has
+        // been populated by the time the `request()` call returns
         let id = id.into();
         self.channel_map.lock().unwrap().remove(&id).ok_or(WsClientError::UnknownSubscription(id))
     }
