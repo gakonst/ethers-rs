@@ -8,9 +8,14 @@ use crate::{common::Request, JsonRpcError};
 // Normal JSON-RPC response
 pub type Response = Result<Box<RawValue>, JsonRpcError>;
 
-#[derive(serde::Deserialize)]
-pub struct SubId {
-    pub subscription: U256,
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct SubId(pub U256);
+
+impl SubId {
+    pub(super) fn serialize_raw(&self) -> Result<Box<RawValue>, serde_json::Error> {
+        let s = serde_json::to_string(&self)?;
+        RawValue::from_string(s)
+    }
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -45,9 +50,9 @@ impl InFlight {
         Request::new(id, &self.method, self.params.clone())
     }
 
-    pub(super) fn serialize_raw(&self, id: u64) -> Box<RawValue> {
-        let s = serde_json::to_string(&self.to_request(id)).unwrap();
-        RawValue::from_string(s).unwrap()
+    pub(super) fn serialize_raw(&self, id: u64) -> Result<Box<RawValue>, serde_json::Error> {
+        let s = serde_json::to_string(&self.to_request(id))?;
+        RawValue::from_string(s)
     }
 }
 
@@ -62,9 +67,9 @@ impl ActiveSub {
         Request::new(id, "eth_subscribe", self.params.clone())
     }
 
-    pub(super) fn serialize_raw(&self, id: u64) -> Box<RawValue> {
-        let s = serde_json::to_string(&self.to_request(id)).unwrap();
-        RawValue::from_string(s).unwrap()
+    pub(super) fn serialize_raw(&self, id: u64) -> Result<Box<RawValue>, serde_json::Error> {
+        let s = serde_json::to_string(&self.to_request(id))?;
+        RawValue::from_string(s)
     }
 }
 
