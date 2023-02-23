@@ -12,7 +12,8 @@ use serde::{Deserialize, Serialize};
 use std::{
     cmp,
     fmt::{self, Write},
-    iter, ops, str,
+    iter, ops,
+    str::FromStr,
 };
 use thiserror::Error;
 
@@ -229,7 +230,7 @@ impl I256 {
 
         let mut abs = U256::zero();
         for (i, word) in value.as_bytes().rchunks(16).enumerate() {
-            let word = str::from_utf8(word).map_err(|_| ParseI256Error::InvalidDigit)?;
+            let word = core::str::from_utf8(word).map_err(|_| ParseI256Error::InvalidDigit)?;
             abs.0[i] = u64::from_str_radix(word, 16).map_err(|_| ParseI256Error::InvalidDigit)?;
         }
 
@@ -363,7 +364,7 @@ impl I256 {
     }
 }
 
-// ops
+// ops impl
 impl I256 {
     /// Gets the absolute value.
     ///
@@ -939,6 +940,7 @@ impl I256 {
     }
 }
 
+// conversions
 macro_rules! impl_conversions {
     ($($u:ty [$actual_lowu:ident -> $low_u:ident, $as_u:ident] , $i:ty [$actual_lowi:ident -> $low_i:ident, $as_i:ident];)+) => {
         // low_*, as_*
@@ -1061,7 +1063,31 @@ impl From<ParseUnits> for I256 {
     }
 }
 
-impl str::FromStr for I256 {
+impl TryFrom<&str> for I256 {
+    type Error = <Self as FromStr>::Err;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::from_str(value)
+    }
+}
+
+impl TryFrom<&String> for I256 {
+    type Error = <Self as FromStr>::Err;
+
+    fn try_from(value: &String) -> Result<Self, Self::Error> {
+        Self::from_str(value.as_str())
+    }
+}
+
+impl TryFrom<String> for I256 {
+    type Error = <Self as FromStr>::Err;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::from_str(value.as_str())
+    }
+}
+
+impl FromStr for I256 {
     type Err = ParseI256Error;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
@@ -1069,6 +1095,7 @@ impl str::FromStr for I256 {
     }
 }
 
+// formatting
 impl fmt::Debug for I256 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(self, f)
@@ -1103,6 +1130,7 @@ impl fmt::UpperHex for I256 {
     }
 }
 
+// cmp
 impl cmp::PartialOrd for I256 {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
@@ -1126,124 +1154,7 @@ impl cmp::Ord for I256 {
     }
 }
 
-impl ops::Neg for I256 {
-    type Output = I256;
-
-    #[inline]
-    #[track_caller]
-    fn neg(self) -> Self::Output {
-        handle_overflow(self.overflowing_neg())
-    }
-}
-
-impl ops::Not for I256 {
-    type Output = I256;
-
-    #[inline]
-    fn not(self) -> Self::Output {
-        I256(!self.0)
-    }
-}
-
-impl ops::BitAnd for I256 {
-    type Output = Self;
-
-    #[inline]
-    fn bitand(self, rhs: Self) -> Self::Output {
-        I256(self.0 & rhs.0)
-    }
-}
-
-impl ops::BitAndAssign for I256 {
-    #[inline]
-    fn bitand_assign(&mut self, rhs: Self) {
-        *self = *self & rhs;
-    }
-}
-
-impl ops::BitOr for I256 {
-    type Output = Self;
-
-    #[inline]
-    fn bitor(self, rhs: Self) -> Self::Output {
-        I256(self.0 | rhs.0)
-    }
-}
-
-impl ops::BitOrAssign for I256 {
-    #[inline]
-    fn bitor_assign(&mut self, rhs: Self) {
-        *self = *self | rhs;
-    }
-}
-
-impl ops::BitXor for I256 {
-    type Output = Self;
-
-    #[inline]
-    fn bitxor(self, rhs: Self) -> Self::Output {
-        I256(self.0 ^ rhs.0)
-    }
-}
-
-impl ops::BitXorAssign for I256 {
-    #[inline]
-    fn bitxor_assign(&mut self, rhs: Self) {
-        *self = *self ^ rhs;
-    }
-}
-
-macro_rules! impl_shift {
-    ($( $t:ty $( [ $convert:ident ] )? ),*) => {
-        $(
-            impl_shift!(@imp $t $([$convert])*);
-        )*
-    };
-
-    (@imp $t:ty) => {
-        impl_shift!(@imp $t [ from ]);
-    };
-
-    (@imp $t:ty [ $convert:ident ]) => {
-        impl ops::Shl<$t> for I256 {
-            type Output = Self;
-
-            #[inline]
-            fn shl(self, rhs: $t) -> Self::Output {
-                // We are OK with wrapping behaviour here, that is how Rust behaves with the
-                // primitive integer types.
-                Self(self.0 << Self::$convert(rhs).0)
-            }
-        }
-
-        impl ops::ShlAssign<$t> for I256 {
-            #[inline]
-            fn shl_assign(&mut self, rhs: $t) {
-                *self = *self << rhs;
-            }
-        }
-
-        impl ops::Shr<$t> for I256 {
-            type Output = Self;
-
-            #[inline]
-            fn shr(self, rhs: $t) -> Self::Output {
-                I256(self.0 >> Self::$convert(rhs).0)
-            }
-        }
-
-        impl ops::ShrAssign<$t> for I256 {
-            #[inline]
-            fn shr_assign(&mut self, rhs: $t) {
-                *self = *self >> rhs;
-            }
-        }
-    };
-}
-
-impl_shift!(i8, u8, i16, u16, i32, u32, i64, u64, i128, u128, isize, usize);
-impl_shift!(I256, U256[from_raw]);
-
+// arithmetic ops
 impl ops::Add for I256 {
     type Output = Self;
 
@@ -1356,6 +1267,148 @@ impl iter::Product for I256 {
     }
 }
 
+// bitwise ops
+impl ops::BitAnd for I256 {
+    type Output = Self;
+
+    #[inline]
+    fn bitand(self, rhs: Self) -> Self::Output {
+        I256(self.0 & rhs.0)
+    }
+}
+
+impl ops::BitAndAssign for I256 {
+    #[inline]
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = *self & rhs;
+    }
+}
+
+impl ops::BitOr for I256 {
+    type Output = Self;
+
+    #[inline]
+    fn bitor(self, rhs: Self) -> Self::Output {
+        I256(self.0 | rhs.0)
+    }
+}
+
+impl ops::BitOrAssign for I256 {
+    #[inline]
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs;
+    }
+}
+
+impl ops::BitXor for I256 {
+    type Output = Self;
+
+    #[inline]
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        I256(self.0 ^ rhs.0)
+    }
+}
+
+impl ops::BitXorAssign for I256 {
+    #[inline]
+    fn bitxor_assign(&mut self, rhs: Self) {
+        *self = *self ^ rhs;
+    }
+}
+
+macro_rules! impl_shift_with_from {
+    ($($t:ty),+) => {$(
+        impl ops::Shl<$t> for I256 {
+            type Output = Self;
+
+            #[inline]
+            fn shl(self, rhs: $t) -> Self::Output {
+                // We are OK with wrapping behaviour here, that is how Rust behaves with the
+                // primitive integer types.
+                Self(self.0 << <Self as From<$t>>::from(rhs).0)
+            }
+        }
+
+        impl ops::ShlAssign<$t> for I256 {
+            #[inline]
+            fn shl_assign(&mut self, rhs: $t) {
+                *self = *self << rhs;
+            }
+        }
+
+        impl ops::Shr<$t> for I256 {
+            type Output = Self;
+
+            #[inline]
+            fn shr(self, rhs: $t) -> Self::Output {
+                I256(self.0 >> <Self as From<$t>>::from(rhs).0)
+            }
+        }
+
+        impl ops::ShrAssign<$t> for I256 {
+            #[inline]
+            fn shr_assign(&mut self, rhs: $t) {
+                *self = *self >> rhs;
+            }
+        }
+    )+};
+}
+
+impl_shift_with_from!(i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128, I256);
+
+// Use from_raw for U256 shifts
+impl ops::Shl<U256> for I256 {
+    type Output = Self;
+
+    #[inline]
+    fn shl(self, rhs: U256) -> Self::Output {
+        I256(self.0 << Self::from_raw(rhs).0)
+    }
+}
+
+impl ops::ShlAssign<U256> for I256 {
+    #[inline]
+    fn shl_assign(&mut self, rhs: U256) {
+        *self = *self << rhs;
+    }
+}
+
+impl ops::Shr<U256> for I256 {
+    type Output = Self;
+
+    #[inline]
+    fn shr(self, rhs: U256) -> Self::Output {
+        I256(self.0 >> Self::from_raw(rhs).0)
+    }
+}
+
+impl ops::ShrAssign<U256> for I256 {
+    #[inline]
+    fn shr_assign(&mut self, rhs: U256) {
+        *self = *self >> rhs;
+    }
+}
+
+// unary ops
+impl ops::Neg for I256 {
+    type Output = I256;
+
+    #[inline]
+    #[track_caller]
+    fn neg(self) -> Self::Output {
+        handle_overflow(self.overflowing_neg())
+    }
+}
+
+impl ops::Not for I256 {
+    type Output = I256;
+
+    #[inline]
+    fn not(self) -> Self::Output {
+        I256(!self.0)
+    }
+}
+
 impl Tokenizable for I256 {
     #[inline]
     fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
@@ -1417,7 +1470,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::cognitive_complexity)]
+    // #[allow(clippy::cognitive_complexity)]
     fn std_num_conversion() {
         let small_positive = I256::from(42);
         let small_negative = I256::from(-42);
@@ -1638,6 +1691,15 @@ mod tests {
     fn bit_shift() {
         assert_eq!(I256::one() << 255, I256::MIN);
         assert_eq!(I256::MIN >> 255, I256::one());
+
+        // https://github.com/gakonst/ethers-rs/issues/2174
+        let n = I256::from(340282366920938463463374607431768190071_u128);
+        assert_eq!(n >> U256::zero(), n);
+        assert_eq!(n >> I256::zero(), n);
+        assert_eq!(n << U256::zero(), n);
+        assert_eq!(n << I256::zero(), n);
+        assert_eq!(n.0 << U256::zero(), n.0);
+        assert_eq!(n.0 >> U256::zero(), n.0);
     }
 
     #[test]
@@ -1728,7 +1790,6 @@ mod tests {
     }
 
     #[test]
-    // #[allow(clippy::eq_op)]
     fn subtraction() {
         assert_eq!(I256::MIN.overflowing_sub(I256::MAX), (I256::one(), true));
         assert_eq!(I256::MAX.overflowing_sub(I256::MIN), (I256::minus_one(), true));
@@ -1844,7 +1905,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(debug_assertions, should_panic)]
+    #[should_panic]
     fn div_euclid_overflow() {
         let _ = I256::MIN.div_euclid(-I256::one());
     }
