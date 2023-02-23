@@ -1013,11 +1013,81 @@ impl I256 {
         self.overflowing_pow(exp).0
     }
 
+    /// Shifts self left by `rhs` bits.
+    ///
+    /// Returns a tuple of the shifted version of self along with a boolean indicating whether the
+    /// shift value was larger than or equal to the number of bits.
+    #[inline(always)]
+    #[must_use]
+    pub fn overflowing_shl(self, rhs: usize) -> (Self, bool) {
+        if rhs >= 256 {
+            (Self::zero(), true)
+        } else {
+            (Self(self.0 << rhs), false)
+        }
+    }
+
+    /// Checked shift left. Computes `self << rhs`, returning `None` if `rhs` is larger than or
+    /// equal to the number of bits in `self`.
+    #[inline(always)]
+    #[must_use]
+    pub fn checked_shl(self, rhs: usize) -> Option<Self> {
+        match self.overflowing_shl(rhs) {
+            (value, false) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Panic-free bitwise shift-left; yields `self << mask(rhs)`, where `mask` removes
+    /// any high-order bits of `rhs` that would cause the shift to exceed the bitwidth of the type.
+    ///
+    /// Note that this is *not* the same as a rotate-left; the RHS of a wrapping shift-left is
+    /// restricted to the range of the type, rather than the bits shifted out of the LHS being
+    /// returned to the other end. The primitive integer types all implement a
+    /// [`rotate_left`](Self::rotate_left) function, which may be what you want instead.
+    #[inline(always)]
+    #[must_use]
+    pub fn wrapping_shl(self, rhs: usize) -> Self {
+        self.overflowing_shl(rhs).0
+    }
+
+    /// Shifts self right by `rhs` bits.
+    ///
+    /// Returns a tuple of the shifted version of self along with a boolean indicating whether the
+    /// shift value was larger than or equal to the number of bits.
+    #[inline(always)]
+    #[must_use]
+    pub fn overflowing_shr(self, rhs: usize) -> (Self, bool) {
+        if rhs >= 256 {
+            (Self::zero(), true)
+        } else {
+            (Self(self.0 >> rhs), false)
+        }
+    }
+
+    /// Checked shift right. Computes `self >> rhs`, returning `None` if `rhs` is larger than or
+    /// equal to the number of bits in `self`.
+    #[inline(always)]
+    #[must_use]
+    pub fn checked_shr(self, rhs: usize) -> Option<Self> {
+        match self.overflowing_shr(rhs) {
+            (value, false) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Right shift by `rhs` bits.
+    #[inline(always)]
+    #[must_use]
+    pub fn wrapping_shr(self, rhs: usize) -> Self {
+        self.overflowing_shr(rhs).0
+    }
+
     /// Arithmetic Shift Right operation. Shifts `shift` number of times to the right maintaining
     /// the original sign. If the number is positive this is the same as logic shift right.
     #[inline(always)]
     #[must_use]
-    pub fn asr(self, shift: u32) -> Self {
+    pub fn asr(self, shift: usize) -> Self {
         // Avoid shifting if we are going to know the result regardless of the value.
         match (shift, self.sign()) {
             (0, _) => self,
@@ -1037,6 +1107,9 @@ impl I256 {
             (255.., Sign::Positive) => Self::zero(),
             // It's always going to be -1 (i.e. 11111111...11111111)
             (255.., Sign::Negative) => Self::minus_one(),
+
+            // Rust cannot prove that the above is exhaustive for usize (works for any other int)
+            _ => unreachable!(),
         }
     }
 
@@ -1046,7 +1119,7 @@ impl I256 {
     /// Returns `None` if the operation overflowed (most significant bit changes).
     #[inline(always)]
     #[must_use]
-    pub fn asl(self, shift: u32) -> Option<Self> {
+    pub fn asl(self, shift: usize) -> Option<Self> {
         if shift == 0 {
             Some(self)
         } else {
@@ -1074,12 +1147,15 @@ impl I256 {
 
 // conversions
 macro_rules! impl_conversions {
-    ($($u:ty [$actual_lowu:ident -> $low_u:ident, $as_u:ident] , $i:ty [$actual_lowi:ident -> $low_i:ident, $as_i:ident];)+) => {
+    ($(
+        $u:ty [$actual_low_u:ident -> $low_u:ident, $as_u:ident],
+        $i:ty [$actual_low_i:ident -> $low_i:ident, $as_i:ident];
+    )+) => {
         // low_*, as_*
         impl I256 {
             $(
-                impl_conversions!(@impl_fns $u, $actual_lowu $low_u $as_u);
-                impl_conversions!(@impl_fns $i, $actual_lowi $low_i $as_i);
+                impl_conversions!(@impl_fns $u, $actual_low_u $low_u $as_u);
+                impl_conversions!(@impl_fns $i, $actual_low_i $low_i $as_i);
             )+
         }
 
@@ -1114,7 +1190,7 @@ macro_rules! impl_conversions {
                         return Err(TryFromBigIntError);
                     }
 
-                    Ok(value.$actual_lowu() as $u)
+                    Ok(value.$actual_low_u() as $u)
                 }
             }
 
@@ -1127,7 +1203,7 @@ macro_rules! impl_conversions {
                         return Err(TryFromBigIntError);
                     }
 
-                    Ok(value.$actual_lowi() as $i)
+                    Ok(value.$actual_low_i() as $i)
                 }
             }
         )+
@@ -1457,78 +1533,57 @@ impl ops::BitXorAssign for I256 {
     }
 }
 
-macro_rules! impl_shift_with_from {
-    ($($t:ty),+) => {$(
-        impl ops::Shl<$t> for I256 {
-            type Output = Self;
+// Implement Shl and Shr only for types <= usize, since U256 uses .as_usize() which panics
+macro_rules! impl_shift {
+    ($($t:ty),+) => {
+        // We are OK with wrapping behaviour here because it's how Rust behaves with the primitive
+        // integer types.
 
-            #[inline(always)]
-            fn shl(self, rhs: $t) -> Self::Output {
-                // We are OK with wrapping behaviour here, that is how Rust behaves with the
-                // primitive integer types.
-                Self(self.0 << <Self as From<$t>>::from(rhs).0)
+        // $t <= usize: cast to usize
+        $(
+            impl ops::Shl<$t> for I256 {
+                type Output = Self;
+
+                #[inline(always)]
+                fn shl(self, rhs: $t) -> Self::Output {
+                    self.wrapping_shl(rhs as usize)
+                }
             }
-        }
 
-        impl ops::ShlAssign<$t> for I256 {
-            #[inline(always)]
-            fn shl_assign(&mut self, rhs: $t) {
-                *self = *self << rhs;
+            impl ops::ShlAssign<$t> for I256 {
+                #[inline(always)]
+                fn shl_assign(&mut self, rhs: $t) {
+                    *self = *self << rhs;
+                }
             }
-        }
 
-        impl ops::Shr<$t> for I256 {
-            type Output = Self;
+            impl ops::Shr<$t> for I256 {
+                type Output = Self;
 
-            #[inline(always)]
-            fn shr(self, rhs: $t) -> Self::Output {
-                I256(self.0 >> <Self as From<$t>>::from(rhs).0)
+                #[inline(always)]
+                fn shr(self, rhs: $t) -> Self::Output {
+                    self.wrapping_shr(rhs as usize)
+                }
             }
-        }
 
-        impl ops::ShrAssign<$t> for I256 {
-            #[inline(always)]
-            fn shr_assign(&mut self, rhs: $t) {
-                *self = *self >> rhs;
+            impl ops::ShrAssign<$t> for I256 {
+                #[inline(always)]
+                fn shr_assign(&mut self, rhs: $t) {
+                    *self = *self >> rhs;
+                }
             }
-        }
-    )+};
+        )+
+    };
 }
 
-impl_shift_with_from!(i8, u8, i16, u16, i32, u32, i64, u64, isize, usize, i128, u128, I256);
+#[cfg(target_pointer_width = "16")]
+impl_shift!(i8, u8, i16, u16, isize, usize);
 
-// Use from_raw for U256 shifts
-impl ops::Shl<U256> for I256 {
-    type Output = Self;
+#[cfg(target_pointer_width = "32")]
+impl_shift!(i8, u8, i16, u16, i32, u32, isize, usize);
 
-    #[inline(always)]
-    fn shl(self, rhs: U256) -> Self::Output {
-        I256(self.0 << Self::from_raw(rhs).0)
-    }
-}
-
-impl ops::ShlAssign<U256> for I256 {
-    #[inline(always)]
-    fn shl_assign(&mut self, rhs: U256) {
-        *self = *self << rhs;
-    }
-}
-
-impl ops::Shr<U256> for I256 {
-    type Output = Self;
-
-    #[inline(always)]
-    fn shr(self, rhs: U256) -> Self::Output {
-        I256(self.0 >> Self::from_raw(rhs).0)
-    }
-}
-
-impl ops::ShrAssign<U256> for I256 {
-    #[inline(always)]
-    fn shr_assign(&mut self, rhs: U256) {
-        *self = *self >> rhs;
-    }
-}
+#[cfg(target_pointer_width = "64")]
+impl_shift!(i8, u8, i16, u16, i32, u32, i64, u64, isize, usize);
 
 // unary ops
 impl ops::Neg for I256 {
@@ -1571,7 +1626,7 @@ fn twos_complement(u: U256) -> U256 {
 /// Panic if overflow on debug mode.
 #[inline(always)]
 #[track_caller]
-fn handle_overflow<T>((result, overflow): (T, bool)) -> T {
+fn handle_overflow((result, overflow): (I256, bool)) -> I256 {
     debug_assert!(!overflow, "overflow");
     result
 }
@@ -1832,70 +1887,70 @@ mod tests {
     fn arithmetic_shift_right() {
         let value = I256::from_raw(U256::from(2u8).pow(U256::from(254u8))).neg();
         let expected_result = I256::from_raw(U256::MAX - U256::one());
-        assert_eq!(value.asr(253u32), expected_result, "1011...1111 >> 253 was not 1111...1110");
+        assert_eq!(value.asr(253), expected_result, "1011...1111 >> 253 was not 1111...1110");
 
         let value = I256::minus_one();
         let expected_result = I256::minus_one();
-        assert_eq!(value.asr(250u32), expected_result, "-1 >> any_amount was not -1");
+        assert_eq!(value.asr(250), expected_result, "-1 >> any_amount was not -1");
 
         let value = I256::from_raw(U256::from(2u8).pow(U256::from(254u8))).neg();
         let expected_result = I256::minus_one();
-        assert_eq!(value.asr(255u32), expected_result, "1011...1111 >> 255 was not -1");
+        assert_eq!(value.asr(255), expected_result, "1011...1111 >> 255 was not -1");
 
         let value = I256::from_raw(U256::from(2u8).pow(U256::from(254u8))).neg();
         let expected_result = I256::minus_one();
-        assert_eq!(value.asr(1024u32), expected_result, "1011...1111 >> 1024 was not -1");
+        assert_eq!(value.asr(1024), expected_result, "1011...1111 >> 1024 was not -1");
 
         let value = I256::from(1024i32);
         let expected_result = I256::from(32i32);
-        assert_eq!(value.asr(5u32), expected_result, "1024 >> 5 was not 32");
+        assert_eq!(value.asr(5), expected_result, "1024 >> 5 was not 32");
 
         let value = I256::MAX;
         let expected_result = I256::zero();
-        assert_eq!(value.asr(255u32), expected_result, "I256::MAX >> 255 was not 0");
+        assert_eq!(value.asr(255), expected_result, "I256::MAX >> 255 was not 0");
 
         let value = I256::from_raw(U256::from(2u8).pow(U256::from(254u8))).neg();
         let expected_result = value;
-        assert_eq!(value.asr(0u32), expected_result, "1011...1111 >> 0 was not 1011...111");
+        assert_eq!(value.asr(0), expected_result, "1011...1111 >> 0 was not 1011...111");
     }
 
     #[test]
     fn arithmetic_shift_left() {
         let value = I256::minus_one();
         let expected_result = Some(value);
-        assert_eq!(value.asl(0u32), expected_result, "-1 << 0 was not -1");
+        assert_eq!(value.asl(0), expected_result, "-1 << 0 was not -1");
 
         let value = I256::minus_one();
         let expected_result = None;
         assert_eq!(
-            value.asl(256u32),
+            value.asl(256),
             expected_result,
             "-1 << 256 did not overflow (result should be 0000...0000)"
         );
 
         let value = I256::minus_one();
         let expected_result = Some(I256::from_raw(U256::from(2u8).pow(U256::from(255u8))));
-        assert_eq!(value.asl(255u32), expected_result, "-1 << 255 was not 1000...0000");
+        assert_eq!(value.asl(255), expected_result, "-1 << 255 was not 1000...0000");
 
         let value = I256::from(-1024i32);
         let expected_result = Some(I256::from(-32768i32));
-        assert_eq!(value.asl(5u32), expected_result, "-1024 << 5 was not -32768");
+        assert_eq!(value.asl(5), expected_result, "-1024 << 5 was not -32768");
 
         let value = I256::from(1024i32);
         let expected_result = Some(I256::from(32768i32));
-        assert_eq!(value.asl(5u32), expected_result, "1024 << 5 was not 32768");
+        assert_eq!(value.asl(5), expected_result, "1024 << 5 was not 32768");
 
         let value = I256::from(1024i32);
         let expected_result = None;
         assert_eq!(
-            value.asl(245u32),
+            value.asl(245),
             expected_result,
             "1024 << 245 did not overflow (result should be 1000...0000)"
         );
 
         let value = I256::zero();
         let expected_result = Some(value);
-        assert_eq!(value.asl(1024u32), expected_result, "0 << anything was not 0");
+        assert_eq!(value.asl(1024), expected_result, "0 << anything was not 0");
     }
 
     #[test]
