@@ -1372,113 +1372,101 @@ impl cmp::Ord for I256 {
 }
 
 // arithmetic ops - implemented above
-impl ops::Add for I256 {
+impl<T: Into<I256>> ops::Add<T> for I256 {
     type Output = Self;
 
-    #[inline(always)]
     #[track_caller]
-    fn add(self, rhs: Self) -> Self::Output {
-        handle_overflow(self.overflowing_add(rhs))
+    fn add(self, rhs: T) -> Self::Output {
+        handle_overflow(self.overflowing_add(rhs.into()))
     }
 }
 
-impl ops::AddAssign for I256 {
-    #[inline(always)]
+impl<T: Into<I256>> ops::AddAssign<T> for I256 {
     #[track_caller]
-    fn add_assign(&mut self, rhs: Self) {
+    fn add_assign(&mut self, rhs: T) {
         *self = *self + rhs
     }
 }
 
-impl ops::Sub for I256 {
+impl<T: Into<I256>> ops::Sub<T> for I256 {
     type Output = Self;
 
-    #[inline(always)]
     #[track_caller]
-    fn sub(self, rhs: Self) -> Self::Output {
-        handle_overflow(self.overflowing_sub(rhs))
+    fn sub(self, rhs: T) -> Self::Output {
+        handle_overflow(self.overflowing_sub(rhs.into()))
     }
 }
 
-impl ops::SubAssign for I256 {
-    #[inline(always)]
+impl<T: Into<I256>> ops::SubAssign<T> for I256 {
     #[track_caller]
-    fn sub_assign(&mut self, rhs: Self) {
+    fn sub_assign(&mut self, rhs: T) {
         *self = *self - rhs;
     }
 }
 
-impl ops::Mul for I256 {
+impl<T: Into<I256>> ops::Mul<T> for I256 {
     type Output = Self;
 
-    #[inline(always)]
     #[track_caller]
-    fn mul(self, rhs: Self) -> Self::Output {
-        handle_overflow(self.overflowing_mul(rhs))
+    fn mul(self, rhs: T) -> Self::Output {
+        handle_overflow(self.overflowing_mul(rhs.into()))
     }
 }
 
-impl ops::MulAssign for I256 {
-    #[inline(always)]
+impl<T: Into<I256>> ops::MulAssign<T> for I256 {
     #[track_caller]
-    fn mul_assign(&mut self, rhs: Self) {
+    fn mul_assign(&mut self, rhs: T) {
         *self = *self * rhs;
     }
 }
 
-impl ops::Div for I256 {
+impl<T: Into<I256>> ops::Div<T> for I256 {
     type Output = Self;
 
-    #[inline(always)]
     #[track_caller]
-    fn div(self, rhs: Self) -> Self::Output {
-        handle_overflow(self.overflowing_div(rhs))
+    fn div(self, rhs: T) -> Self::Output {
+        handle_overflow(self.overflowing_div(rhs.into()))
     }
 }
 
-impl ops::DivAssign for I256 {
-    #[inline(always)]
+impl<T: Into<I256>> ops::DivAssign<T> for I256 {
     #[track_caller]
-    fn div_assign(&mut self, rhs: Self) {
+    fn div_assign(&mut self, rhs: T) {
         *self = *self / rhs;
     }
 }
 
-impl ops::Rem for I256 {
+impl<T: Into<I256>> ops::Rem<T> for I256 {
     type Output = Self;
 
-    #[inline(always)]
     #[track_caller]
-    fn rem(self, rhs: Self) -> Self::Output {
-        handle_overflow(self.overflowing_rem(rhs))
+    fn rem(self, rhs: T) -> Self::Output {
+        handle_overflow(self.overflowing_rem(rhs.into()))
     }
 }
 
-impl ops::RemAssign for I256 {
-    #[inline(always)]
+impl<T: Into<I256>> ops::RemAssign<T> for I256 {
     #[track_caller]
-    fn rem_assign(&mut self, rhs: Self) {
+    fn rem_assign(&mut self, rhs: T) {
         *self = *self % rhs;
     }
 }
 
-impl iter::Sum for I256 {
-    #[inline(always)]
+impl<T: Into<I256>> iter::Sum<T> for I256 {
     #[track_caller]
     fn sum<I>(iter: I) -> Self
     where
-        I: Iterator<Item = Self>,
+        I: Iterator<Item = T>,
     {
         iter.fold(I256::zero(), |acc, x| acc + x)
     }
 }
 
-impl iter::Product for I256 {
-    #[inline(always)]
+impl<T: Into<I256>> iter::Product<T> for I256 {
     #[track_caller]
     fn product<I>(iter: I) -> Self
     where
-        I: Iterator<Item = Self>,
+        I: Iterator<Item = T>,
     {
         iter.fold(I256::one(), |acc, x| acc * x)
     }

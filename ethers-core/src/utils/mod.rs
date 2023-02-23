@@ -547,7 +547,7 @@ fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {
         .map(|(a, b)| {
             let a = I256::try_from(*a).expect("priority fee overflow");
             let b = I256::try_from(*b).expect("priority fee overflow");
-            ((b - a) * 100.into()) / a
+            ((b - a) * 100) / a
         })
         .collect();
     percentage_change.pop();
