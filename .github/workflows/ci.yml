@@ -30,8 +30,6 @@ jobs:
                       target: x86_64-apple-darwin
                     - os: windows-latest
                       target: x86_64-pc-windows-msvc
-                    - os: ubuntu-latest
-                      target: wasm32-unknown-unknown
                 toolchain: ["stable", "nightly"]
                 exclude:
                     # ntapi crate does not compile on nightly due to E0793:
@@ -74,8 +72,6 @@ jobs:
                       target: x86_64-apple-darwin
                     - os: windows-latest
                       target: x86_64-pc-windows-msvc
-                    - os: ubuntu-latest
-                      target: wasm32-unknown-unknown
                 toolchain: ["stable", "nightly"]
                 exclude:
                     # ntapi crate does not compile on nightly due to E0793:
@@ -111,8 +107,8 @@ jobs:
         steps:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@nightly
-            - uses: Swatinem/rust-cache@v2
             - uses: taiki-e/install-action@cargo-hack
+            - uses: Swatinem/rust-cache@v2
             - name: cargo hack
               run:
                   cargo hack check --all --feature-powerset --depth 2 -Z avoid-dev-deps --keep-going
@@ -168,12 +164,10 @@ jobs:
                   version: nightly
 
             - uses: Swatinem/rust-cache@v2
-              with:
-                  cache-on-failure: true
             - name: Check
-              run: rustup run stable-wasm32-unknown-unknown cargo check --workspace
+              run: cargo test --workspace --target wasm32-unknown-unknown
             - name: Check all features
-              run: rustup run stable-wasm32-unknown-unknown cargo check --workspace --all-features
+              run: cargo test --workspace --target wasm32-unknown-unknown --all-features
 
             - name: Install wasm-pack
               run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
@@ -213,52 +207,3 @@ jobs:
                   cache-on-failure: true
             - name: Build and run all examples
               run: ./scripts/examples.sh
-
-    # windows-build:
-    #     runs-on: windows-latest
-    #     name: (${{ matrix.target }}, ${{ matrix.cfg_release_channel }})
-    #     env:
-    #         CFG_RELEASE_CHANNEL: ${{ matrix.cfg_release_channel }}
-    #     strategy:
-    #         fail-fast: false
-    #         matrix:
-    #             target:
-    #                 [
-    #                     i686-pc-windows-gnu,
-    #                     i686-pc-windows-msvc,
-    #                     x86_64-pc-windows-gnu,
-    #                     x86_64-pc-windows-msvc,
-    #                 ]
-    #             cfg_release_channel: [nightly]
-
-    #     steps:
-    #         - name: checkout
-    #           uses: actions/checkout@v3
-
-    #           # Run build
-    #         - name: Update Rustup
-    #           run: |
-    #               # disable download progress bar
-    #               $ProgressPreference = "SilentlyContinue"
-    #               rustup update
-    #               rustup target add ${{ matrix.target }}
-    #           shell: powershell
-
-    #         - name: Add mingw32 to path for i686-gnu
-    #           run: |
-    #               echo "C:\msys64\mingw32\bin" >> $GITHUB_PATH
-    #           if: matrix.target == 'i686-pc-windows-gnu' && matrix.channel == 'nightly'
-    #           shell: bash
-
-    #         - name: Add mingw64 to path for x86_64-gnu
-    #           run: echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
-    #           if: matrix.target == 'x86_64-pc-windows-gnu' && matrix.channel == 'nightly'
-    #           shell: bash
-
-    #         - name: build
-    #           run: |
-    #               rustc -Vv
-    #               cargo -V
-    #               # we test without --all-features on Windows so that sha2-asm is not activated.
-    #               cargo check
-    #           shell: cmd
