@@ -40,7 +40,7 @@ where
 }
 
 impl<M: Middleware> std::fmt::Display for MwErr<M> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Ok(())
     }
 }
@@ -62,7 +62,7 @@ impl<M: Middleware> Middleware for NonClone<M> {
 // It exists to ensure that trait bounds on contract internal behave as
 // expected. It should not be run
 fn it_compiles() {
-    let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+    let (abi, _bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
 
     // launch anvil
     let anvil = Anvil::new().spawn();
@@ -138,11 +138,11 @@ async fn deploy_and_call_contract() {
     let contract_call =
         contract.connect(client2.clone()).method::<_, H256>("setValue", "hi".to_owned()).unwrap();
     let calldata = contract_call.calldata().unwrap();
-    let gas_estimate = contract_call.estimate_gas().await.unwrap();
+    let _gas_estimate = contract_call.estimate_gas().await.unwrap();
     let contract_call = contract_call.legacy();
     let pending_tx = contract_call.send().await.unwrap();
     let tx = client.get_transaction(*pending_tx).await.unwrap().unwrap();
-    let tx_receipt = pending_tx.await.unwrap().unwrap();
+    let _tx_receipt = pending_tx.await.unwrap().unwrap();
     assert_eq!(last_sender.clone().call().await.unwrap(), addr2);
     assert_eq!(get_value.clone().call().await.unwrap(), "hi");
     assert_eq!(tx.input, calldata);
@@ -761,7 +761,7 @@ async fn multicall_aggregate() {
 
     // string revert
     let string_revert =
-        reverting_contract.method::<_, H256>("stringRevert", ("String".to_string())).unwrap();
+        reverting_contract.method::<_, H256>("stringRevert", "String".to_string()).unwrap();
     multicall.clear_calls().add_call(string_revert, true);
     assert_eq!(
         multicall.call::<(String,)>().await.unwrap_err().as_revert().unwrap()[4..],
@@ -778,7 +778,7 @@ async fn multicall_aggregate() {
 
     // custom error with data revert
     let custom_error_with_data =
-        reverting_contract.method::<_, H256>("customErrorWithData", ("Data".to_string())).unwrap();
+        reverting_contract.method::<_, H256>("customErrorWithData", "Data".to_string()).unwrap();
     multicall.clear_calls().add_call(custom_error_with_data, true);
     let err = multicall.call::<(Bytes,)>().await.unwrap_err();
     let bytes = err.as_revert().unwrap();

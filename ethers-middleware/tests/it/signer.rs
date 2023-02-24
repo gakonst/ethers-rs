@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use ethers_contract::ContractFactory;
 use ethers_core::{abi::Abi, types::*, utils::parse_ether};
 use ethers_middleware::signer::SignerMiddleware;
