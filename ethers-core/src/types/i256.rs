@@ -539,7 +539,8 @@ impl I256 {
         }
     }
 
-    /// Wrapping addition.
+    /// Wrapping (modular) addition. Computes `self + rhs`, wrapping around at the boundary of the
+    /// type.
     #[inline(always)]
     #[must_use]
     pub fn wrapping_add(self, rhs: Self) -> Self {
