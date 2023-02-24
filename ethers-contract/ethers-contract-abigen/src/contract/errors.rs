@@ -104,11 +104,15 @@ impl Context {
             #[derive(Clone, #ethers_contract::EthAbiType, #derives)]
             pub enum #enum_name {
                 #( #variants(#variants), )*
+                RevertString(String),
             }
 
             impl #ethers_core::abi::AbiDecode for #enum_name {
                 fn decode(data: impl AsRef<[u8]>) -> ::core::result::Result<Self, #ethers_core::abi::AbiError> {
                     let data = data.as_ref();
+                    if let Ok(decoded) = <::std::string::String as #ethers_core::abi::AbiDecode>::decode(data) {
+                        return Ok(Self::RevertString(decoded))
+                    }
                     #(
                         if let Ok(decoded) = <#variants as #ethers_core::abi::AbiDecode>::decode(data) {
                             return Ok(Self::#variants(decoded))
@@ -124,17 +128,38 @@ impl Context {
                         #(
                             Self::#variants(element) => #ethers_core::abi::AbiEncode::encode(element),
                         )*
+                        Self::RevertString(s) => #ethers_core::abi::AbiEncode::encode(s),
                     }
                 }
             }
+
+            impl #ethers_contract::ContractRevert for #enum_name {
+                fn valid_selector(selector: [u8; 4]) -> bool {
+                    match selector {
+                        #(
+                            _ if selector == <#variants as #ethers_contract::EthError>::selector() => true,
+                        )*
+                        _ if selector == <::std::string::String as #ethers_contract::EthError>::selector() => true,
+                        _ => false,
+                    }
+                }
+            }
+
 
             impl ::core::fmt::Display for #enum_name {
                 fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
                     match self {
                         #(
-                            Self::#variants(element) => ::core::fmt::Display::fmt(element, f)
-                        ),*
+                            Self::#variants(element) => ::core::fmt::Display::fmt(element, f),
+                        )*
+                        Self::RevertString(s) => ::core::fmt::Display::fmt(s, f),
                     }
+                }
+            }
+
+            impl ::core::convert::From<::std::string::String> for #enum_name {
+                fn from(value: String) -> Self {
+                    Self::RevertString(value)
                 }
             }
 

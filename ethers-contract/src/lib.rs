@@ -13,7 +13,7 @@ mod call;
 pub use call::{ContractCall, ContractError, EthCall, FunctionCall};
 
 mod error;
-pub use error::EthError;
+pub use error::{ContractRevert, EthError};
 
 mod factory;
 pub use factory::{ContractDeployer, ContractDeploymentTx, ContractFactory, DeploymentTxFactory};

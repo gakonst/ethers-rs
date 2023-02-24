@@ -6,6 +6,29 @@ use ethers_core::{
 use ethers_providers::JsonRpcError;
 use std::borrow::Cow;
 
+/// A trait for enums unifying [`EthError`] types.
+///
+/// We do not recommend manual implementations of this trait. Instead, use the
+/// automatically generated implementation in the [`abigen`] macro
+pub trait ContractRevert: AbiDecode + AbiEncode + Send + Sync {
+    /// Decode the error from EVM revert data including an Error selector
+    fn decode_with_selector(data: &Bytes) -> Option<Self> {
+        if data.len() < 4 {
+            return None
+        }
+        let mut selector = [0u8; 4];
+        selector.copy_from_slice(&data[..4]);
+        if !Self::valid_selector(selector) {
+            return None
+        }
+        <Self as AbiDecode>::decode(&data[4..]).ok()
+    }
+
+    /// `true` if the selector corresponds to an error that this contract can
+    /// revert. False otherwise
+    fn valid_selector(selector: Selector) -> bool;
+}
+
 /// A helper trait for types that represents a custom error type
 pub trait EthError: Tokenizable + AbiDecode + AbiEncode + Send + Sync {
     /// Attempt to decode from a [`JsonRpcError`] by extracting revert data
