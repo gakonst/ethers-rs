@@ -109,24 +109,19 @@ ethers-contract = { version = "^1.0.0", default-features = false, path = "./ethe
 ] }
 ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers", features = [
     "ws",
-] }
-tempfile = "3.3.0"
-
-[target.'cfg(target_family = "unix")'.dev-dependencies]
-ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers", features = [
-    "ws",
     "ipc",
 ] }
+
+bytes = "1.4.0"
 eyre = "0.6"
+hex = "0.4.3"
 rand = "0.8.5"
 serde = { version = "1.0.124", features = ["derive"] }
 serde_json = "1.0.64"
+tempfile = "3.3.0"
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread"] }
-hex = "0.4.3"
-bytes = "1.4.0"
 
 # profile for the wasm example
 [profile.release.package.ethers-wasm]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
-
