@@ -9,6 +9,7 @@ DIR="$HOME/bin"
 mkdir -p "$DIR"
 cd "$DIR"
 export PATH="$DIR:$PATH"
+[ "$GITHUB_PATH" ] && echo "$DIR" >> "$GITHUB_PATH"
 
 echo "Installing Geth"
 PLATFORM="$(uname -s | awk '{print tolower($0)}')"
