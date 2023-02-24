@@ -36,7 +36,8 @@ jobs:
                 exclude:
                     # ntapi crate does not compile on nightly due to E0793:
                     # https://github.com/gakonst/ethers-rs/actions/runs/4266119447/jobs/7426254381
-                    - os: windows-latest
+                    - job:
+                          os: windows-latest
                       toolchain: nightly
         steps:
             - uses: actions/checkout@v3
@@ -79,7 +80,8 @@ jobs:
                 exclude:
                     # ntapi crate does not compile on nightly due to E0793:
                     # https://github.com/gakonst/ethers-rs/actions/runs/4266119447/jobs/7426254381
-                    - os: windows-latest
+                    - job:
+                          os: windows-latest
                       toolchain: nightly
         steps:
             - uses: actions/checkout@v3
