@@ -31,7 +31,7 @@ jobs:
                     - os: windows-latest
                       target: x86_64-pc-windows-msvc
                     - os: ubuntu-latest
-                      target: wasm32-unkown-unkown
+                      target: wasm32-unknown-unknown
                 toolchain: ["stable", "nightly"]
         steps:
             - uses: actions/checkout@v3
