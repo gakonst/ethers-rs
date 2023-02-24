@@ -9,7 +9,7 @@ use std::borrow::Cow;
 /// A trait for enums unifying [`EthError`] types.
 ///
 /// We do not recommend manual implementations of this trait. Instead, use the
-/// automatically generated implementation in the [`abigen`] macro
+/// automatically generated implementation in the [`crate::abigen`] macro
 pub trait ContractRevert: AbiDecode + AbiEncode + Send + Sync {
     /// Decode the error from EVM revert data including an Error selector
     fn decode_with_selector(data: &Bytes) -> Option<Self> {
