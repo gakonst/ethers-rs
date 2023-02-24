@@ -6,7 +6,6 @@ GETH_BUILD=${GETH_BUILD:-"1.11.2-73b01f40"}
 SOLC_VERSION=${SOLC_VERSION:-"0.8.19"}
 
 DIR="$HOME/bin"
-# DIR="$HOME/github/danipopes/ethers-rs/test_bin"
 mkdir -p "$DIR"
 cd "$DIR"
 export PATH="$DIR:$PATH"
@@ -15,7 +14,8 @@ echo "Installing Geth"
 PLATFORM="$(uname -s)"
 case "$PLATFORM" in
     Linux|Darwin)
-        GETH_ARCHIVE_NAME="geth-${PLATFORM,,}-amd64-$GETH_BUILD"
+        platform="$(echo "$PLATFORM" | awk "{print tolower($0)}")"
+        GETH_ARCHIVE_NAME="geth-$platform-amd64-$GETH_BUILD"
         curl "https://gethstore.blob.core.windows.net/builds/$GETH_ARCHIVE_NAME.tar.gz" | tar -xzvf -
         mv -f "$GETH_ARCHIVE_NAME/geth" ./
         rm -rf "$GETH_ARCHIVE_NAME"
