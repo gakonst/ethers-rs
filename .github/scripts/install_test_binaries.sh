@@ -14,7 +14,7 @@ echo "Installing Geth"
 PLATFORM="$(uname -s)"
 case "$PLATFORM" in
     Linux|Darwin)
-        platform="$(echo "$PLATFORM" | awk "{print tolower($0)}")"
+        platform="$(echo "$PLATFORM" | awk '{print tolower($0)}')"
         GETH_ARCHIVE_NAME="geth-$platform-amd64-$GETH_BUILD"
         curl "https://gethstore.blob.core.windows.net/builds/$GETH_ARCHIVE_NAME.tar.gz" | tar -xzvf -
         mv -f "$GETH_ARCHIVE_NAME/geth" ./

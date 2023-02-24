@@ -157,9 +157,9 @@ jobs:
               with:
                   cache-on-failure: true
             - name: Check
-              run: rustup run wasm32-unknown-unknown cargo check --workspace
+              run: rustup run stable-wasm32-unknown-unknown cargo check --workspace
             - name: Check all features
-              run: rustup run wasm32-unknown-unknown cargo check --workspace --all-features
+              run: rustup run stable-wasm32-unknown-unknown cargo check --workspace --all-features
 
             - name: Install wasm-pack
               run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
