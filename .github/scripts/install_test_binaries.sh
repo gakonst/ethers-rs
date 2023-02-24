@@ -11,11 +11,10 @@ cd "$DIR"
 export PATH="$DIR:$PATH"
 
 echo "Installing Geth"
-PLATFORM="$(uname -s)"
+PLATFORM="$(uname -s | awk '{print tolower($0)}')"
 case "$PLATFORM" in
-    Linux|Darwin)
-        platform="$(echo "$PLATFORM" | awk '{print tolower($0)}')"
-        GETH_ARCHIVE_NAME="geth-$platform-amd64-$GETH_BUILD"
+    linux|darwin)
+        GETH_ARCHIVE_NAME="geth-$PLATFORM-amd64-$GETH_BUILD"
         curl "https://gethstore.blob.core.windows.net/builds/$GETH_ARCHIVE_NAME.tar.gz" | tar -xzvf -
         mv -f "$GETH_ARCHIVE_NAME/geth" ./
         rm -rf "$GETH_ARCHIVE_NAME"
