@@ -1,4 +1,3 @@
-#![cfg(not(target_arch = "wasm32"))]
 use ethers_core::{
     types::{TransactionRequest, U256},
     utils::Anvil,

@@ -1,5 +1,3 @@
-#![cfg(not(target_arch = "wasm32"))]
-
 use async_trait::async_trait;
 use ethers_core::{types::*, utils::Anvil};
 use ethers_middleware::gas_oracle::{

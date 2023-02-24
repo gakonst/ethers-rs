@@ -1,5 +1,3 @@
-#![cfg(not(feature = "celo"))]
-
 use ethers_providers::{Middleware, Provider, StreamExt, Ws};
 use futures_util::SinkExt;
 use std::time::Duration;

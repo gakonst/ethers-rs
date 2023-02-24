@@ -1,4 +1,3 @@
-#![cfg(not(target_arch = "wasm32"))]
 use ethers_providers::{Http, Middleware, Provider};
 use std::{convert::TryFrom, time::Duration};
 

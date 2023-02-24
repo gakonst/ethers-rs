@@ -1,3 +1,5 @@
+#![allow(clippy::extra_unused_type_parameters)]
+
 use ethers_contract_derive::EthAbiType;
 use ethers_core::{
     types::{

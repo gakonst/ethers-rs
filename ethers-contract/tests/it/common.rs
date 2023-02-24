@@ -1,17 +1,9 @@
-#![cfg(not(target_arch = "wasm32"))]
-#![allow(dead_code)]
-
-#[cfg(feature = "abigen")]
-use ethers_core::types::Address;
-
-#[cfg(feature = "abigen")]
-use ethers_contract::EthEvent;
-
-#[cfg(feature = "abigen")]
-mod derive;
-
-use ethers_contract::{Contract, ContractFactory};
-use ethers_core::{abi::Abi, types::Bytes, utils::AnvilInstance};
+use ethers_contract::{Contract, ContractFactory, EthEvent};
+use ethers_core::{
+    abi::Abi,
+    types::{Address, Bytes},
+    utils::AnvilInstance,
+};
 use ethers_providers::{Http, Middleware, Provider};
 use ethers_solc::Solc;
 use std::{convert::TryFrom, sync::Arc, time::Duration};

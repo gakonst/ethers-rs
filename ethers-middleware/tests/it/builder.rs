@@ -1,5 +1,3 @@
-#![cfg(not(target_arch = "wasm32"))]
-
 use ethers_core::{rand::thread_rng, types::U64};
 use ethers_middleware::{
     builder::MiddlewareBuilder,

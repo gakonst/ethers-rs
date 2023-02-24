@@ -1,5 +1,3 @@
-#![cfg(all(not(target_arch = "wasm32"), not(feature = "celo")))]
-
 use ethers_core::{types::*, utils::Anvil};
 use ethers_middleware::MiddlewareBuilder;
 use ethers_providers::{Http, Middleware, Provider};
