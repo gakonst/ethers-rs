@@ -1,16 +1,17 @@
 name: book
+
 on:
   push:
     branches: [master]
     paths:
-      - 'book/**'
-      - 'book.toml'
+      - "book/**"
+      - "book.toml"
 
   pull_request:
     branches: [master]
     paths:
-      - 'book/**'
-      - 'book.toml'
+      - "book/**"
+      - "book.toml"
 
 jobs:
   build:
