@@ -33,6 +33,11 @@ jobs:
                     - os: ubuntu-latest
                       target: wasm32-unknown-unknown
                 toolchain: ["stable", "nightly"]
+                exclude:
+                    # ntapi crate does not compile on nightly due to E0793:
+                    # https://github.com/gakonst/ethers-rs/actions/runs/4266119447/jobs/7426254381
+                    - os: windows-latest
+                      toolchain: nightly
         steps:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@master
@@ -53,7 +58,7 @@ jobs:
               shell: bash
               run: |
                   export ETHERSCAN_API_KEY="$ETHERSCAN_API_KEY_ETHEREUM"
-                  rustup run ${{ matrix.toolchain }}-${{ matrix.job.target }} cargo test --workspace
+                  cargo +${{ matrix.toolchain }} test --workspace --target ${{ matrix.job.target }}
 
     feature-tests:
         name: feature tests ${{ matrix.toolchain }}-${{ matrix.job.target }}
@@ -68,7 +73,14 @@ jobs:
                       target: x86_64-apple-darwin
                     - os: windows-latest
                       target: x86_64-pc-windows-msvc
+                    - os: ubuntu-latest
+                      target: wasm32-unknown-unknown
                 toolchain: ["stable", "nightly"]
+                exclude:
+                    # ntapi crate does not compile on nightly due to E0793:
+                    # https://github.com/gakonst/ethers-rs/actions/runs/4266119447/jobs/7426254381
+                    - os: windows-latest
+                      toolchain: nightly
         steps:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@master
@@ -89,10 +101,10 @@ jobs:
               shell: bash
               run: |
                   export ETHERSCAN_API_KEY="$ETHERSCAN_API_KEY_CELO"
-                  rustup run ${{ matrix.toolchain }}-${{ matrix.job.target }} cargo test --workspace
+                  cargo +${{ matrix.toolchain }} test --workspace --target ${{ matrix.job.target }} --all-features
 
-    features:
-        name: features
+    feature-checks:
+        name: feature checks
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v3
