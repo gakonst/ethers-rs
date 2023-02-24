@@ -1,4 +1,4 @@
-use super::common::*;
+use crate::common::*;
 use ethers_contract::{
     abigen, ContractFactory, ContractInstance, EthAbiType, EthEvent, LogMeta, Multicall,
     MulticallError, MulticallVersion,
@@ -61,7 +61,7 @@ impl<M: Middleware> Middleware for NonClone<M> {
 // this is not a test. It is a compile check. :)
 // It exists to ensure that trait bounds on contract internal behave as
 // expected. It should not be run
-fn it_compiles() {
+fn _it_compiles() {
     let (abi, _bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
 
     // launch anvil
