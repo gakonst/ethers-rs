@@ -5,6 +5,9 @@
 /// If the expanded source does not match the quoted source.
 macro_rules! assert_quote {
     ($ex:expr, { $($t:tt)* } $(,)?) => {
-        assert_eq!($ex.to_string(), quote::quote! { $($t)* }.to_string())
+        assert_eq!(
+            $ex.to_string(),
+            quote::quote! { $($t)* }.to_string(),
+        )
     };
 }
