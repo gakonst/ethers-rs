@@ -230,19 +230,7 @@ pub(crate) fn event_struct_alias(event_name: &str) -> Ident {
 mod tests {
     use super::*;
     use crate::Abigen;
-    use ethers_core::abi::{EventParam, Hash, ParamType};
-    use proc_macro2::Literal;
-
-    /// Expands a 256-bit `Hash` into a literal representation that can be used with
-    /// quasi-quoting for code generation. We do this to avoid allocating at runtime
-    fn expand_hash(hash: Hash) -> TokenStream {
-        let bytes = hash.as_bytes().iter().copied().map(Literal::u8_unsuffixed);
-        let ethers_core = ethers_core_crate();
-
-        quote! {
-            #ethers_core::types::H256([#( #bytes ),*])
-        }
-    }
+    use ethers_core::abi::{EventParam, ParamType};
 
     fn test_context() -> Context {
         Context::from_abigen(Abigen::new("TestToken", "[]").unwrap()).unwrap()
@@ -392,20 +380,5 @@ mod tests {
         assert_quote!(definition, {
             struct FooAliasedFilter(pub bool, pub ::ethers_core::types::Address);
         });
-    }
-
-    #[test]
-    fn expand_hash_value() {
-        assert_quote!(
-            expand_hash(
-                "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f".parse().unwrap()
-            ),
-            {
-                ::ethers_core::types::H256([
-                    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-                    22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-                ])
-            },
-        );
     }
 }
