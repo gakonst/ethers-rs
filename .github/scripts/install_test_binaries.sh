@@ -9,7 +9,10 @@ DIR="$HOME/bin"
 mkdir -p "$DIR"
 cd "$DIR"
 export PATH="$DIR:$PATH"
-[ "$GITHUB_PATH" ] && echo "$DIR" >> "$GITHUB_PATH"
+if [ "$GITHUB_PATH" ]; then
+    echo "$DIR" >> "$GITHUB_PATH"
+    echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+fi
 
 echo "Installing Geth"
 PLATFORM="$(uname -s | awk '{print tolower($0)}')"
@@ -44,3 +47,6 @@ if command -v solc; then
 fi
 
 solc --version
+
+which geth
+which solc
