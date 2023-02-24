@@ -23,10 +23,11 @@ case "$PLATFORM" in
         ;;
     *)
         GETH_ARCHIVE_NAME="geth-windows-amd64-$GETH_BUILD"
-        wget -q "https://gethstore.blob.core.windows.net/builds/$GETH_ARCHIVE_NAME.zip"
-        unzip "$GETH_ARCHIVE_NAME.zip"
+        zip="$GETH_ARCHIVE_NAME.zip"
+        curl -o "$zip" "https://gethstore.blob.core.windows.net/builds/$zip"
+        unzip "$zip"
         mv -f "$GETH_ARCHIVE_NAME/geth.exe" ./
-        rm -rf "$GETH_ARCHIVE_NAME" "$GETH_ARCHIVE_NAME.zip"
+        rm -rf "$GETH_ARCHIVE_NAME" "$zip"
         ;;
 esac
 
