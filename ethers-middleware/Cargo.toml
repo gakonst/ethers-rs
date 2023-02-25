@@ -15,7 +15,9 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-ethers-contract = { version = "^1.0.0", path = "../ethers-contract", default-features = false }
+ethers-contract = { version = "^1.0.0", path = "../ethers-contract", default-features = false, features = [
+    "abigen",
+] }
 ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
 ethers-etherscan = { version = "^1.0.0", path = "../ethers-etherscan", default-features = false }
 ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-features = false }
@@ -41,14 +43,15 @@ instant = { version = "0.1.12", features = ["now"] }
 tokio = { version = "1.18" }
 
 [dev-dependencies]
-hex = { version = "0.4.3", default-features = false, features = ["std"] }
-rand = { version = "0.8.5", default-features = false }
 ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-features = false, features = [
     "ws",
     "rustls",
 ] }
-once_cell = "1.17.1"
 ethers-solc = { version = "^1.0.0", path = "../ethers-solc" }
+
+hex = { version = "0.4.3", default-features = false, features = ["std"] }
+rand = { version = "0.8.5", default-features = false }
+once_cell = "1.17.1"
 serial_test = "0.10.0"
 reqwest = { version = "0.11.14", default-features = false, features = ["json", "rustls"] }
 

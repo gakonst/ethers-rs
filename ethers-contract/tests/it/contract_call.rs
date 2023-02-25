@@ -7,7 +7,7 @@ use std::{
 };
 
 fn _contract_call_into_future_is_send() {
-    abigen!(DsProxyFactory, "ethers-middleware/contracts/DsProxyFactory.json");
+    abigen!(DsProxyFactory, "./../ethers-middleware/contracts/DSProxyFactory.json");
     let (provider, _) = Provider::mocked();
     let client = Arc::new(provider);
     let contract = DsProxyFactory::new(Address::zero(), client);

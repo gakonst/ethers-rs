@@ -1,40 +1,41 @@
-use ethers_core::types::*;
+use ethers_core::{types::*, utils::Anvil};
 use ethers_middleware::{
     gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},
-    signer::SignerMiddleware,
+    MiddlewareBuilder,
 };
-use ethers_providers::Middleware;
+use ethers_providers::{Http, Middleware, Provider};
 use ethers_signers::{LocalWallet, Signer};
-use std::time::Duration;
 
 #[tokio::test]
 #[ignore]
-async fn gas_escalator_live() {
-    // connect to ropsten for getting bad block times
-    #[allow(deprecated)]
-    let provider = ethers_providers::ROPSTEN.ws().await;
-    let provider = provider.interval(Duration::from_millis(2000u64));
-    let wallet = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169"
-        .parse::<LocalWallet>()
-        .unwrap();
+async fn gas_escalator() {
+    let anvil = Anvil::new().block_time(2u64).spawn();
+    let chain_id = anvil.chain_id();
+    let provider = Provider::<Http>::try_from(anvil.endpoint()).unwrap();
+
+    // wrap with signer
+    let wallet: LocalWallet = anvil.keys().first().unwrap().clone().into();
+    let wallet = wallet.with_chain_id(chain_id);
     let address = wallet.address();
-    let provider = SignerMiddleware::new(provider, wallet);
+    let provider = provider.with_signer(wallet);
 
+    // wrap with escalator
     let escalator = GeometricGasPrice::new(5.0, 10u64, Some(2_000_000_000_000u64));
-
-    let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::Duration(3000));
+    let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::Duration(300));
 
     let nonce = provider.get_transaction_count(address, None).await.unwrap();
-    let tx = TransactionRequest::pay(Address::zero(), 1u64).gas_price(10_000_000);
+    // 1 gwei default base fee
+    let gas_price = U256::from(1_000_000_000_u64);
+    let tx = TransactionRequest::pay(Address::zero(), 1u64)
+        .gas_price(gas_price)
+        .nonce(nonce)
+        .chain_id(chain_id);
 
-    // broadcast 3 txs
-    provider.send_transaction(tx.clone().nonce(nonce), None).await.unwrap();
-    provider.send_transaction(tx.clone().nonce(nonce + 1), None).await.unwrap();
-    provider.send_transaction(tx.clone().nonce(nonce + 2), None).await.unwrap();
-
-    // Wait a bunch of seconds and refresh etherscan to see the transactions get bumped
-    tokio::time::sleep(Duration::from_secs(100)).await;
-
-    // TODO: Figure out how to test this behavior properly in a local network. If the gas price was
-    // bumped then the tx hash will be different
+    eprintln!("sending");
+    let pending = provider.send_transaction(tx, None).await.expect("could not send");
+    eprintln!("waiting");
+    let receipt = pending.await.expect("reverted").expect("dropped");
+    assert_eq!(receipt.from, address);
+    assert_eq!(receipt.to, Some(Address::zero()));
+    assert!(receipt.effective_gas_price.unwrap() > gas_price * 2, "{receipt:?}");
 }
