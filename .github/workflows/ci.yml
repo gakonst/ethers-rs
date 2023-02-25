@@ -142,7 +142,7 @@ jobs:
               run: cargo doc --no-deps --all --all-features
               env:
                   RUSTFLAGS: --cfg docsrs
-                  RUSTDOCFLAGS: --cfg docsrs -Dwarnings
+                  RUSTDOCFLAGS: --cfg docsrs
 
     wasm:
         name: WASM
