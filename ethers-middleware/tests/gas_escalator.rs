@@ -30,9 +30,9 @@ async fn gas_escalator_live() {
     let tx = TransactionRequest::pay(Address::zero(), 1u64).gas_price(10_000_000);
 
     // broadcast 3 txs
-    provider.send_transaction(tx.clone().nonce(nonce), None).await.unwrap();
-    provider.send_transaction(tx.clone().nonce(nonce + 1), None).await.unwrap();
-    provider.send_transaction(tx.clone().nonce(nonce + 2), None).await.unwrap();
+    let _ = provider.send_transaction(tx.clone().nonce(nonce), None).await.unwrap();
+    let _ = provider.send_transaction(tx.clone().nonce(nonce + 1), None).await.unwrap();
+    let _ = provider.send_transaction(tx.clone().nonce(nonce + 2), None).await.unwrap();
 
     // Wait a bunch of seconds and refresh etherscan to see the transactions get bumped
     tokio::time::sleep(Duration::from_secs(100)).await;

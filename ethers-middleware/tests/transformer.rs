@@ -133,6 +133,9 @@ async fn ds_proxy_code() {
         .legacy()
         .send()
         .await
+        .unwrap()
+        .await
+        .unwrap()
         .unwrap();
 
     // verify that DsProxy's state was updated.
