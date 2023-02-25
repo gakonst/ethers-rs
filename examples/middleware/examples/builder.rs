@@ -10,7 +10,7 @@ use ethers::{
 };
 use std::convert::TryFrom;
 
-const RPC_URL: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
+const RPC_URL: &str = "https://eth.llamarpc.com";
 const SIGNING_KEY: &str = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169";
 
 /// In ethers-rs, middleware is a way to customize the behavior of certain aspects of the library by

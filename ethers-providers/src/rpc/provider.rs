@@ -87,7 +87,7 @@ impl FromStr for NodeClient {
 /// use std::convert::TryFrom;
 ///
 /// let provider = Provider::<Http>::try_from(
-///     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
+///     "https://eth.llamarpc.com"
 /// ).expect("could not instantiate HTTP Provider");
 ///
 /// let block = provider.get_block(100u64).await?;
@@ -1387,20 +1387,20 @@ mod sealed {
 ///
 /// Note that this will send an RPC to retrieve the chain id.
 ///
-/// ```
+/// ```no_run
 ///  # use ethers_providers::{Http, Provider, ProviderExt};
 ///  # async fn t() {
-/// let http_provider = Provider::<Http>::connect("https://eth-mainnet.alchemyapi.io/v2/API_KEY").await;
+/// let http_provider = Provider::<Http>::connect("https://eth.llamarpc.com").await;
 /// # }
 /// ```
 ///
 /// This is essentially short for
 ///
-/// ```
+/// ```no_run
 /// use std::convert::TryFrom;
 /// use ethers_core::types::Chain;
 /// use ethers_providers::{Http, Provider, ProviderExt};
-/// let http_provider = Provider::<Http>::try_from("https://eth-mainnet.alchemyapi.io/v2/API_KEY").unwrap().set_chain(Chain::Mainnet);
+/// let http_provider = Provider::<Http>::try_from("https://eth.llamarpc.com").unwrap().set_chain(Chain::Mainnet);
 /// ```
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]

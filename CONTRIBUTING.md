@@ -173,9 +173,7 @@ documentation test:
 /// use ethers::providers::{JsonRpcClient, Provider, Http};
 /// use std::convert::TryFrom;
 ///
-/// let provider = Provider::<Http>::try_from(
-///     "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27"
-/// ).expect("could not instantiate HTTP Provider");
+/// let provider = Provider::<Http>::try_from("https://eth.llamarpc.com").expect("could not instantiate HTTP Provider");
 ///
 /// # async fn foo<P: JsonRpcClient>(provider: &Provider<P>) -> Result<(), Box<dyn std::error::Error>> {
 /// let block = provider.get_block(100u64).await?;

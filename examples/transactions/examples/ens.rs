@@ -7,8 +7,7 @@ use eyre::Result;
 #[tokio::main]
 async fn main() -> Result<()> {
     // fork mainnet
-    let anvil =
-        Anvil::new().fork("https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27").spawn();
+    let anvil = Anvil::new().fork("https://eth.llamarpc.com").spawn();
     let from = anvil.addresses()[0];
     // connect to the network
     let provider = Provider::<Http>::try_from(anvil.endpoint()).unwrap().with_sender(from);

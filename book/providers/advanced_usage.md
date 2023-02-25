@@ -16,7 +16,7 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
+    let rpc_url = "https://eth.llamarpc.com";
     let provider: Arc<Provider<Http>> = Arc::new(Provider::<Http>::try_from(rpc_url)?);
 
     let from_adr: H160 = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
@@ -50,7 +50,7 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
+    let rpc_url = "https://eth.llamarpc.com";
     let provider: Arc<Provider<Http>> = Arc::new(Provider::<Http>::try_from(rpc_url)?);
 
     let from_adr: H160 = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
@@ -85,7 +85,7 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
+    let rpc_url = "https://eth.llamarpc.com";
     let provider: Arc<Provider<Http>> = Arc::new(Provider::<Http>::try_from(rpc_url)?);
 
     let from_adr: H160 = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;

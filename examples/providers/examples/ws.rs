@@ -6,7 +6,7 @@
 
 use ethers::prelude::*;
 
-const WSS_URL: &str = "wss://mainnet.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27";
+const WSS_URL: &str = "wss://eth.llamarpc.com";
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
