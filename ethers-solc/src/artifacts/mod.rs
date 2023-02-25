@@ -683,6 +683,23 @@ pub struct OptimizerDetails {
     pub yul_details: Option<YulDetails>,
 }
 
+// === impl OptimizerDetails ===
+
+impl OptimizerDetails {
+    /// Returns true if no settings are set.
+    pub fn is_empty(&self) -> bool {
+        self.peephole.is_none() &&
+            self.inliner.is_none() &&
+            self.jumpdest_remover.is_none() &&
+            self.order_literals.is_none() &&
+            self.deduplicate.is_none() &&
+            self.cse.is_none() &&
+            self.constant_optimizer.is_none() &&
+            self.yul.is_none() &&
+            self.yul_details.as_ref().map(|yul| yul.is_empty()).unwrap_or(true)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct YulDetails {
@@ -694,6 +711,15 @@ pub struct YulDetails {
     /// Optional, the optimizer will use the default sequence if omitted.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub optimizer_steps: Option<String>,
+}
+
+// === impl YulDetails ===
+
+impl YulDetails {
+    /// Returns true if no settings are set.
+    pub fn is_empty(&self) -> bool {
+        self.stack_allocation.is_none() && self.optimizer_steps.is_none()
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
