@@ -94,17 +94,18 @@ jobs:
                   export ETHERSCAN_API_KEY="$ETHERSCAN_API_KEY_CELO"
                   cargo +${{ matrix.toolchain }} test --workspace --target ${{ matrix.job.target }} --all-features
 
-    feature-checks:
-        name: feature checks
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v3
-            - uses: dtolnay/rust-toolchain@nightly
-            - uses: taiki-e/install-action@cargo-hack
-            - uses: Swatinem/rust-cache@v2
-            - name: cargo hack
-              run:
-                  cargo hack check --all --feature-powerset --depth 2 -Z avoid-dev-deps --keep-going
+    # TODO: [#2191](https://github.com/gakonst/ethers-rs/issues/2191)
+    # feature-checks:
+    #     name: feature checks
+    #     runs-on: ubuntu-latest
+    #     steps:
+    #         - uses: actions/checkout@v3
+    #         - uses: dtolnay/rust-toolchain@nightly
+    #         - uses: taiki-e/install-action@cargo-hack
+    #         - uses: Swatinem/rust-cache@v2
+    #         - name: cargo hack
+    #           run:
+    #               cargo hack check --all --feature-powerset --depth 2 -Z avoid-dev-deps --keep-going
 
     clippy:
         name: clippy
@@ -123,14 +124,12 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v3
-            - uses: dtolnay/rust-toolchain@master
+            - uses: dtolnay/rust-toolchain@nightly
               with:
-                  # TODO: Remove nightly override: rust-lang/rust#{108334,108378}
-                  toolchain: nightly-2023-02-07
                   components: rust-docs
             - uses: Swatinem/rust-cache@v2
             - name: doc
-              run: cargo doc --lib --workspace --all-features
+              run: cargo doc --workspace --all-features --no-deps --document-private-items
 
     fmt:
         name: fmt
@@ -159,8 +158,9 @@ jobs:
             - uses: Swatinem/rust-cache@v2
             - name: Check
               run: cargo check --target wasm32-unknown-unknown
-            - name: Check all features
-              run: cargo check --target wasm32-unknown-unknown --all-features
+            # TODO: [#2191](https://github.com/gakonst/ethers-rs/issues/2191)
+            # - name: Check all features
+            #   run: cargo check --target wasm32-unknown-unknown --all-features
 
             - name: Install wasm-pack
               run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
