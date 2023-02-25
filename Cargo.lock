@@ -4114,9 +4114,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "svm-rs"
-version = "0.2.21"
+version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "719b86a8043b9bf425247c8f559edb1de8cfc5d444f8b8f19af2d7d24a7f0988"
+checksum = "01afefe60c02f4a2271fb15d1965c37856712cebb338330b06649d12afec42df"
 dependencies = [
  "anyhow",
  "cfg-if 1.0.0",
@@ -4145,9 +4145,9 @@ dependencies = [
 
 [[package]]
 name = "svm-rs-builds"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b7d778dbd9c8f2b55a44fd953c2ccf91e8e1893406693263a22c9403cf65156"
+checksum = "2e69c19996b709c881de264a6ce64609ff305ef0bf59fc45243ac5a67291afd1"
 dependencies = [
  "build_const",
  "hex",
