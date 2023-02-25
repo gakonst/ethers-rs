@@ -71,6 +71,18 @@ pub enum INS {
     SIGN_ETH_EIP_712 = 0x0C,
 }
 
+impl std::fmt::Display for INS {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            INS::GET_PUBLIC_KEY => write!(f, "GET_PUBLIC_KEY"),
+            INS::SIGN => write!(f, "SIGN"),
+            INS::GET_APP_CONFIGURATION => write!(f, "GET_APP_CONFIGURATION"),
+            INS::SIGN_PERSONAL_MESSAGE => write!(f, "SIGN_PERSONAL_MESSAGE"),
+            INS::SIGN_ETH_EIP_712 => write!(f, "SIGN_ETH_EIP_712"),
+        }
+    }
+}
+
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 #[allow(non_camel_case_types)]
