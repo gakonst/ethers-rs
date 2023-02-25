@@ -9,40 +9,26 @@ on:
 # so that we do not get rate limited by Etherscan (and it's free to generate as
 # many as you want)
 env:
-    ETHERSCAN_API_KEY_ETHEREUM: I5BXNZYP5GEDWFINGVEZKYIVU2695NPQZB
-    ETHERSCAN_API_KEY_CELO: B13XSMUT6Q3Q4WZ5DNQR8RXDBA2KNTMT4M
+    ETHERSCAN_API_KEY: "I5BXNZYP5GEDWFINGVEZKYIVU2695NPQZB"
     GOERLI_PRIVATE_KEY: "fa4a1a79e869a96fcb42727f75e3232d6865a82ea675bb95de967a7fe6a773b2"
     GETH_BUILD: "1.11.2-73b01f40"
     SOLC_VERSION: "0.8.19"
     RUSTFLAGS: "-D warnings"
 
 jobs:
-    tests:
-        name: tests ${{ matrix.toolchain }}-${{ matrix.job.target }}
+    test:
+        name: test ${{ matrix.job.os }}
         runs-on: ${{ matrix.job.os }}
         strategy:
             fail-fast: false
             matrix:
-                job:
-                    - os: ubuntu-latest
-                      target: x86_64-unknown-linux-gnu
-                    - os: macos-latest
-                      target: x86_64-apple-darwin
-                    - os: windows-latest
-                      target: x86_64-pc-windows-msvc
-                toolchain: ["stable", "nightly"]
-                exclude:
-                    # ntapi crate does not compile on nightly due to E0793:
-                    # https://github.com/gakonst/ethers-rs/actions/runs/4266119447/jobs/7426254381
-                    - job:
-                          os: windows-latest
-                      toolchain: nightly
+                os:
+                    - ubuntu-latest
+                    - macos-latest
+                    - windows-latest
         steps:
             - uses: actions/checkout@v3
-            - uses: dtolnay/rust-toolchain@master
-              with:
-                  toolchain: ${{ matrix.toolchain }}
-                  targets: ${{ matrix.job.target }}
+            - uses: dtolnay/rust-toolchain@stable
             - name: Install Anvil
               uses: foundry-rs/foundry-toolchain@v1
               with:
@@ -51,33 +37,23 @@ jobs:
               shell: bash
               run: ./.github/scripts/install_test_binaries.sh
             - uses: Swatinem/rust-cache@v2
-              with:
-                  cache-on-failure: true
             - name: test
               shell: bash
-              run: |
-                  export ETHERSCAN_API_KEY="$ETHERSCAN_API_KEY_ETHEREUM"
-                  cargo +${{ matrix.toolchain }} test --workspace --target ${{ matrix.job.target }}
+              run: cargo test --workspace --target ${{ matrix.job.target }}
 
     feature-tests:
-        name: feature tests ${{ matrix.toolchain }}-${{ matrix.job.target }}
+        name: feature tests ${{ matrix.job.os }}
         runs-on: ${{ matrix.job.os }}
         strategy:
             fail-fast: false
             matrix:
-                job:
-                    - os: ubuntu-latest
-                      target: x86_64-unknown-linux-gnu
-                    - os: macos-latest
-                      target: x86_64-apple-darwin
-                    # Note: we cannot compile --all-features on windows due to sha2-asm
-                toolchain: ["stable", "nightly"]
+                os:
+                    - ubuntu-latest
+                    - macos-latest
+                    - windows-latest
         steps:
             - uses: actions/checkout@v3
-            - uses: dtolnay/rust-toolchain@master
-              with:
-                  toolchain: ${{ matrix.toolchain }}
-                  targets: ${{ matrix.job.target }}
+            - uses: dtolnay/rust-toolchain@stable
             - name: Install Anvil
               uses: foundry-rs/foundry-toolchain@v1
               with:
@@ -86,13 +62,9 @@ jobs:
               shell: bash
               run: ./.github/scripts/install_test_binaries.sh
             - uses: Swatinem/rust-cache@v2
-              with:
-                  cache-on-failure: true
             - name: test
               shell: bash
-              run: |
-                  export ETHERSCAN_API_KEY="$ETHERSCAN_API_KEY_CELO"
-                  cargo +${{ matrix.toolchain }} test --workspace --target ${{ matrix.job.target }} --all-features
+              run: cargo test --workspace --target ${{ matrix.job.target }} --all-features
 
     # TODO: [#2191](https://github.com/gakonst/ethers-rs/issues/2191)
     # feature-checks:
@@ -146,6 +118,9 @@ jobs:
             - uses: Swatinem/rust-cache@v2
             - name: doc
               run: cargo doc --workspace --all-features --no-deps --document-private-items
+              env:
+                  RUSTFLAGS: --cfg docsrs
+                  RUSTDOCFLAGS: --cfg docsrs -Dwarnings
 
     fmt:
         name: fmt
@@ -212,7 +187,5 @@ jobs:
                   override: true
                   components: rustfmt, clippy
             - uses: Swatinem/rust-cache@v2
-              with:
-                  cache-on-failure: true
             - name: Build and run all examples
               run: ./scripts/examples.sh
