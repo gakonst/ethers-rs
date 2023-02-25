@@ -38,7 +38,6 @@ pub enum LedgerError {
     /// Device response was unexpectedly none
     #[error("Received unexpected response from device. Expected data in response, found none.")]
     UnexpectedNullResponse,
-
     #[error(transparent)]
     /// Error when converting from a hex string
     HexError(#[from] hex::FromHexError),
@@ -51,6 +50,12 @@ pub enum LedgerError {
     /// Error when signing EIP712 struct with not compatible Ledger ETH app
     #[error("Ledger ethereum app requires at least version: {0:?}")]
     UnsupportedAppVersion(String),
+    /// Got a response, but it didn't contain as much data as expected
+    #[error("Cannot deserialize ledger response, insufficient bytes. Got {got} expected at least {at_least}")]
+    ShortResponse { got: usize, at_least: usize },
+    /// Payload is empty
+    #[error("Payload must not be empty")]
+    EmptyPayload,
 }
 
 pub const P1_FIRST: u8 = 0x00;

@@ -125,7 +125,7 @@ impl LedgerEthereum {
         let mut payload = Self::path_to_bytes(&self.derivation);
         payload.extend_from_slice(tx_with_chain.rlp().as_ref());
 
-        let mut signature = self.sign_payload(INS::SIGN, payload).await?;
+        let mut signature = self.sign_payload(INS::SIGN, &payload).await?;
 
         // modify `v` value of signature to match EIP-155 for chains with large chain ID
         // The logic is derived from Ledger's library
@@ -158,7 +158,7 @@ impl LedgerEthereum {
         payload.extend_from_slice(&(message.len() as u32).to_be_bytes());
         payload.extend_from_slice(message);
 
-        self.sign_payload(INS::SIGN_PERSONAL_MESSAGE, payload).await
+        self.sign_payload(INS::SIGN_PERSONAL_MESSAGE, &payload).await
     }
 
     /// Signs an EIP712 encoded domain separator and message
@@ -185,7 +185,7 @@ impl LedgerEthereum {
         payload.extend_from_slice(&domain_separator);
         payload.extend_from_slice(&struct_hash);
 
-        self.sign_payload(INS::SIGN_ETH_EIP_712, payload).await
+        self.sign_payload(INS::SIGN_ETH_EIP_712, &payload).await
     }
 
     // Helper function for signing either transaction data, personal messages or EIP712 derived
@@ -193,8 +193,11 @@ impl LedgerEthereum {
     pub async fn sign_payload(
         &self,
         command: INS,
-        mut payload: Vec<u8>,
+        payload: &Vec<u8>,
     ) -> Result<Signature, LedgerError> {
+        if payload.is_empty() {
+            return Err(LedgerError::EmptyPayload)
+        }
         let transport = self.transport.lock().await;
         let mut command = APDUCommand {
             ins: command as u8,
@@ -204,21 +207,32 @@ impl LedgerEthereum {
             response_len: None,
         };
 
-        let mut result = Vec::new();
+        let mut answer = None;
+
+        // workaround for https://github.com/LedgerHQ/app-ethereum/issues/409
+        // TODO: remove in future version
+        let chunk_size =
+            (0..255).rev().find(|i| payload.len() % i != 3).expect("true for any length");
 
         // Iterate in 255 byte chunks
-        while !payload.is_empty() {
+        for chunk in payload.chunks(chunk_size) {
             let chunk_size = std::cmp::min(payload.len(), 255);
-            let data = payload.drain(0..chunk_size).collect::<Vec<_>>();
-            command.data = APDUData::new(&data);
 
-            let answer = block_on(transport.exchange(&command))?;
-            result = answer.data().ok_or(LedgerError::UnexpectedNullResponse)?.to_vec();
+            command.data = APDUData::new(chunk);
+
+            answer = Some(block_on(transport.exchange(&command))?);
+            if answer.as_ref().expect("just assigned").data().is_none() {
+                return Err(LedgerError::UnexpectedNullResponse)
+            }
 
             // We need more data
             command.p1 = P1::MORE as u8;
         }
-
+        let answer = answer.expect("payload is non-empty, therefore loop ran");
+        let result = answer.data().expect("check in loop");
+        if result.len() < 65 {
+            return Err(LedgerError::ShortResponse { got: result.len(), at_least: 65 })
+        }
         let v = result[0] as u64;
         let r = U256::from_big_endian(&result[1..33]);
         let s = U256::from_big_endian(&result[33..]);
