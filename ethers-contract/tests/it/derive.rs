@@ -399,7 +399,7 @@ fn eth_display_works() {
 
 #[test]
 fn eth_display_works_for_human_readable() {
-    ethers_contract::abigen!(
+    abigen!(
         HevmConsole,
         r#"[
             event log(string)

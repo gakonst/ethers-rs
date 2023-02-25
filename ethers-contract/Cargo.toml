@@ -45,9 +45,11 @@ tokio = { version = "1.18", default-features = false, features = ["macros"] }
 default = ["abigen"]
 
 eip712 = ["ethers-derive-eip712", "ethers-core/eip712"]
-abigen = ["ethers-contract-abigen/reqwest", "ethers-contract-derive"]
+
 abigen-offline = ["ethers-contract-abigen", "ethers-contract-derive"]
-celo = ["legacy", "ethers-core/celo", "ethers-core/celo", "ethers-providers/celo"]
+abigen = ["abigen-offline", "ethers-contract-abigen/online"]
+
+celo = ["legacy", "ethers-core/celo", "ethers-providers/celo"]
 legacy = []
 
 rustls = ["ethers-contract-abigen/rustls"]

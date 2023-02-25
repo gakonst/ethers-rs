@@ -6,8 +6,7 @@ use std::{
     sync::Arc,
 };
 
-#[tokio::test]
-async fn contract_call_into_future_is_send() {
+fn _contract_call_into_future_is_send() {
     abigen!(DsProxyFactory, "ethers-middleware/contracts/DsProxyFactory.json");
     let (provider, _) = Provider::mocked();
     let client = Arc::new(provider);
