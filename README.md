@@ -69,7 +69,7 @@ You can get one [here](https://snowtrace.io/apis).
 
 ### Celo Support
 
-[Celo](http://celo.org/) support is turned on via the feature-flag `celo`:
+[Celo](https://celo.org) support is turned on via the feature-flag `celo`:
 
 ```toml
 [dependencies]
