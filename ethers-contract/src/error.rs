@@ -1,6 +1,6 @@
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Tokenizable},
-    types::{Bytes, Selector},
+    types::Selector,
     utils::id,
 };
 use ethers_providers::JsonRpcError;
@@ -12,7 +12,7 @@ use std::borrow::Cow;
 /// automatically generated implementation in the [`crate::abigen`] macro
 pub trait ContractRevert: AbiDecode + AbiEncode + Send + Sync {
     /// Decode the error from EVM revert data including an Error selector
-    fn decode_with_selector(data: &Bytes) -> Option<Self> {
+    fn decode_with_selector(data: &[u8]) -> Option<Self> {
         if data.len() < 4 {
             return None
         }
@@ -39,7 +39,7 @@ pub trait EthError: Tokenizable + AbiDecode + AbiEncode + Send + Sync {
     }
 
     /// Decode the error from EVM revert data including an Error selector
-    fn decode_with_selector(data: &Bytes) -> Option<Self> {
+    fn decode_with_selector(data: &[u8]) -> Option<Self> {
         // This will return none if selector mismatch.
         <Self as AbiDecode>::decode(data.strip_prefix(&Self::selector())?).ok()
     }

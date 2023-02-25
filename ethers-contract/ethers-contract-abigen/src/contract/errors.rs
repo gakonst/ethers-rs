@@ -104,7 +104,7 @@ impl Context {
             #[derive(Clone, #ethers_contract::EthAbiType, #derives)]
             pub enum #enum_name {
                 #( #variants(#variants), )*
-                RevertString(String),
+                RevertString(::std::string::String),
             }
 
             impl #ethers_core::abi::AbiDecode for #enum_name {
@@ -136,10 +136,11 @@ impl Context {
             impl #ethers_contract::ContractRevert for #enum_name {
                 fn valid_selector(selector: [u8; 4]) -> bool {
                     match selector {
+                        // Error(string) -- standard solidity revert
+                        [0x08, 0xc3, 0x79, 0xa0] => true,
                         #(
                             _ if selector == <#variants as #ethers_contract::EthError>::selector() => true,
                         )*
-                        _ if selector == <::std::string::String as #ethers_contract::EthError>::selector() => true,
                         _ => false,
                     }
                 }
