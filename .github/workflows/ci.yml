@@ -44,31 +44,6 @@ jobs:
               shell: bash
               run: cargo test ${{ matrix.flags }}
 
-    feature-tests:
-        name: feature tests ${{ matrix.os }}
-        runs-on: ${{ matrix.os }}
-        strategy:
-            fail-fast: false
-            matrix:
-                os:
-                    - ubuntu-latest
-                    - macos-latest
-                    - windows-latest
-        steps:
-            - uses: actions/checkout@v3
-            - uses: dtolnay/rust-toolchain@stable
-            - name: Install Anvil
-              uses: foundry-rs/foundry-toolchain@v1
-              with:
-                  version: nightly
-            - name: Install test binaries
-              shell: bash
-              run: ./.github/scripts/install_test_binaries.sh
-            - uses: Swatinem/rust-cache@v2
-            - name: test
-              shell: bash
-              run: cargo test --workspace --target ${{ matrix.job.target }} --all-features
-
     # TODO: [#2191](https://github.com/gakonst/ethers-rs/issues/2191)
     # feature-checks:
     #     name: feature checks
