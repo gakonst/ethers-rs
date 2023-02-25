@@ -7,7 +7,6 @@ GETH_BUILD=${GETH_BUILD:-"1.11.2-73b01f40"}
 SOLC_VERSION=${SOLC_VERSION:-"0.8.19"}
 
 BIN_DIR=${BIN_DIR:-"$HOME/bin"}
-BIN_DIR=$(realpath "$BIN_DIR")
 
 PLATFORM="$(uname -s | awk '{print tolower($0)}')"
 if [ "$PLATFORM" != "linux" ] && [ "$PLATFORM" != "darwin" ]; then
