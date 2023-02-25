@@ -539,14 +539,15 @@ impl I256 {
         }
     }
 
-    /// Wrapping addition.
+    /// Wrapping (modular) addition. Computes `self + rhs`, wrapping around at the boundary of the
+    /// type.
     #[inline(always)]
     #[must_use]
     pub fn wrapping_add(self, rhs: Self) -> Self {
         self.overflowing_add(rhs).0
     }
 
-    /// Calculates ``self` - `rhs``
+    /// Calculates `self` - `rhs`
     ///
     /// Returns a tuple of the subtraction along with a boolean indicating whether an arithmetic
     /// overflow would occur. If an overflow would have occurred then the wrapped value is returned.
@@ -1034,13 +1035,8 @@ impl I256 {
         }
     }
 
-    /// Panic-free bitwise shift-left; yields `self << mask(rhs)`, where `mask` removes
-    /// any high-order bits of `rhs` that would cause the shift to exceed the bitwidth of the type.
-    ///
-    /// Note that this is *not* the same as a rotate-left; the RHS of a wrapping shift-left is
-    /// restricted to the range of the type, rather than the bits shifted out of the LHS being
-    /// returned to the other end. The primitive integer types all implement a
-    /// [`rotate_left`](Self::rotate_left) function, which may be what you want instead.
+    /// Wrapping shift left. Computes `self << rhs`, returning 0 if larger than or equal to the
+    /// number of bits in `self`.
     #[inline(always)]
     #[must_use]
     pub fn wrapping_shl(self, rhs: usize) -> Self {
@@ -1072,31 +1068,32 @@ impl I256 {
         }
     }
 
-    /// Right shift by `rhs` bits.
+    /// Wrapping shift right. Computes `self >> rhs`, returning 0 if larger than or equal to the
+    /// number of bits in `self`.
     #[inline(always)]
     #[must_use]
     pub fn wrapping_shr(self, rhs: usize) -> Self {
         self.overflowing_shr(rhs).0
     }
 
-    /// Arithmetic Shift Right operation. Shifts `shift` number of times to the right maintaining
-    /// the original sign. If the number is positive this is the same as logic shift right.
+    /// Arithmetic shift right operation. Computes `self >> rhs` maintaining the original sign. If
+    /// the number is positive this is the same as logic shift right.
     #[inline(always)]
     #[must_use]
-    pub fn asr(self, shift: usize) -> Self {
+    pub fn asr(self, rhs: usize) -> Self {
         // Avoid shifting if we are going to know the result regardless of the value.
-        match (shift, self.sign()) {
+        match (rhs, self.sign()) {
             (0, _) => self,
 
             // Perform the shift.
-            (1..=254, Sign::Positive) => self >> shift,
+            (1..=254, Sign::Positive) => self.wrapping_shr(rhs),
             (1..=254, Sign::Negative) => {
                 // We need to do: `for 0..shift { self >> 1 | 2^255 }`
                 // We can avoid the loop by doing: `self >> shift | ~(2^(255 - shift) - 1)`
                 // where '~' represents ones complement
                 const TWO: U256 = U256([2, 0, 0, 0]);
-                let bitwise_or = Self::from_raw(!(TWO.pow(U256::from(255 - shift)) - U256::one()));
-                (self >> shift) | bitwise_or
+                let bitwise_or = Self::from_raw(!(TWO.pow(U256::from(255 - rhs)) - U256::one()));
+                (self.wrapping_shr(rhs)) | bitwise_or
             }
 
             // It's always going to be zero (i.e. 00000000...00000000)
@@ -1109,17 +1106,17 @@ impl I256 {
         }
     }
 
-    /// Arithmetic Shift Left operation. Shifts `shift` number of times to the left, checking for
-    /// overflow on the final result.
+    /// Arithmetic shift left operation. Computes `self << rhs`, checking for overflow on the final
+    /// result.
     ///
     /// Returns `None` if the operation overflowed (most significant bit changes).
     #[inline(always)]
     #[must_use]
-    pub fn asl(self, shift: usize) -> Option<Self> {
-        if shift == 0 {
+    pub fn asl(self, rhs: usize) -> Option<Self> {
+        if rhs == 0 {
             Some(self)
         } else {
-            let result = self << shift;
+            let result = self.wrapping_shl(rhs);
             if result.sign() != self.sign() {
                 // Overflow occurred
                 None
