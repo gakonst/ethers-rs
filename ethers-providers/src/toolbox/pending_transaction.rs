@@ -56,7 +56,6 @@ use wasm_timer::Delay;
 /// # }
 /// ```
 #[pin_project]
-#[must_use = "A PendingTransaction is a future and it must be polled or awaited to completion"]
 pub struct PendingTransaction<'a, P> {
     tx_hash: TxHash,
     confirmations: usize,
