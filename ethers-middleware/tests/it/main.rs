@@ -12,16 +12,16 @@ mod gas_escalator;
 
 mod gas_oracle;
 
-// #[cfg(not(feature = "celo"))]
+#[cfg(not(feature = "celo"))]
 mod signer;
 
-// #[cfg(not(feature = "celo"))]
+#[cfg(not(feature = "celo"))]
 mod nonce_manager;
 
-// #[cfg(not(feature = "celo"))]
+#[cfg(not(feature = "celo"))]
 mod stack;
 
-// #[cfg(not(feature = "celo"))]
+#[cfg(not(feature = "celo"))]
 mod transformer;
 
 /// Spawns Anvil and instantiates an HTTP provider.

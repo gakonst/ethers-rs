@@ -17,8 +17,8 @@ env:
 
 jobs:
     test:
-        name: test ${{ matrix.job.os }}
-        runs-on: ${{ matrix.job.os }}
+        name: test ${{ matrix.os }}
+        runs-on: ${{ matrix.os }}
         strategy:
             fail-fast: false
             matrix:
@@ -26,6 +26,9 @@ jobs:
                     - ubuntu-latest
                     - macos-latest
                     - windows-latest
+                flags:
+                    - --workspace
+                    - --workspace --all-features
         steps:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@stable
@@ -39,11 +42,11 @@ jobs:
             - uses: Swatinem/rust-cache@v2
             - name: test
               shell: bash
-              run: cargo test --workspace --target ${{ matrix.job.target }}
+              run: cargo test ${{ matrix.flags }}
 
     feature-tests:
-        name: feature tests ${{ matrix.job.os }}
-        runs-on: ${{ matrix.job.os }}
+        name: feature tests ${{ matrix.os }}
+        runs-on: ${{ matrix.os }}
         strategy:
             fail-fast: false
             matrix:
