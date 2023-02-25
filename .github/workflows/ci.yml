@@ -139,7 +139,7 @@ jobs:
               with:
                   cache-on-failure: true
             - name: cargo doc
-              run: cargo +nightly doc --lib --all-features
+              run: cargo doc --no-deps --all --all-features
               env:
                   RUSTFLAGS: --cfg docsrs
                   RUSTDOCFLAGS: --cfg docsrs -Dwarnings
