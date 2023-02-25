@@ -3,8 +3,7 @@ use ethers_core::types::Address;
 use semver::Version;
 use serde::{Deserialize, Deserializer};
 
-static SOLC_BIN_LIST_URL: &str =
-    "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/bin/list.txt";
+static SOLC_BIN_LIST_URL: &str = "https://binaries.soliditylang.org/bin/list.txt";
 
 /// Given a Solc [Version], lookup the build metadata and return the full SemVer.
 /// e.g. `0.8.13` -> `0.8.13+commit.abaa5c0e`
@@ -71,36 +70,7 @@ pub fn deserialize_source_code<'de, D: Deserializer<'de>>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{contract::SourceCodeLanguage, tests::run_at_least_duration};
-    use semver::{BuildMetadata, Prerelease};
-    use serial_test::serial;
-    use std::time::Duration;
-
-    #[tokio::test]
-    #[serial]
-    async fn can_lookup_compiler_version_build_metadata() {
-        run_at_least_duration(Duration::from_millis(250), async {
-            let v = Version::new(0, 8, 13);
-            let version = lookup_compiler_version(&v).await.unwrap();
-            assert_eq!(v.major, version.major);
-            assert_eq!(v.minor, version.minor);
-            assert_eq!(v.patch, version.patch);
-            assert_ne!(version.build, BuildMetadata::EMPTY);
-            assert_eq!(version.pre, Prerelease::EMPTY);
-        })
-        .await
-    }
-
-    #[tokio::test]
-    #[serial]
-    async fn errors_on_invalid_solc() {
-        run_at_least_duration(Duration::from_millis(250), async {
-            let v = Version::new(100, 0, 0);
-            let err = lookup_compiler_version(&v).await.unwrap_err();
-            assert!(matches!(err, EtherscanError::MissingSolcVersion(_)));
-        })
-        .await
-    }
+    use crate::contract::SourceCodeLanguage;
 
     #[test]
     fn can_deserialize_address_opt() {

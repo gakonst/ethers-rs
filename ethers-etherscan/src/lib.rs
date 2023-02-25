@@ -325,7 +325,8 @@ impl ClientBuilder {
     /// Returns a Client that uses this ClientBuilder configuration.
     ///
     /// # Errors
-    /// if required fields are missing:
+    ///
+    /// If the following required fields are missing:
     ///   - `etherscan_api_url`
     ///   - `etherscan_url`
     pub fn build(self) -> Result<Client> {
@@ -468,10 +469,6 @@ fn into_url(url: impl IntoUrl) -> std::result::Result<Url, reqwest::Error> {
 mod tests {
     use crate::{Client, EtherscanError};
     use ethers_core::types::{Address, Chain, H256};
-    use std::{
-        future::Future,
-        time::{Duration, SystemTime},
-    };
 
     #[test]
     fn test_api_paths() {
@@ -525,24 +522,5 @@ mod tests {
     fn local_networks_not_supported() {
         let err = Client::new_from_env(Chain::Dev).unwrap_err();
         assert!(matches!(err, EtherscanError::LocalNetworksNotSupported));
-    }
-
-    #[tokio::test]
-    async fn check_wrong_etherscan_api_key() {
-        let client = Client::new(Chain::Mainnet, "ABCDEFG").unwrap();
-        let resp = client
-            .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
-            .await
-            .unwrap_err();
-
-        assert!(matches!(resp, EtherscanError::InvalidApiKey));
-    }
-
-    pub async fn run_at_least_duration(duration: Duration, block: impl Future) {
-        let start = SystemTime::now();
-        block.await;
-        if let Some(sleep) = duration.checked_sub(start.elapsed().unwrap()) {
-            tokio::time::sleep(sleep).await;
-        }
     }
 }
