@@ -161,7 +161,7 @@ impl Anvil {
         self
     }
 
-    /// Sets the block-time which will be used when the `anvil` instance is launched.
+    /// Sets the block-time in seconds which will be used when the `anvil` instance is launched.
     #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
