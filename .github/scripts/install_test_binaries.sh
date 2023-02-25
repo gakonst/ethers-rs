@@ -25,6 +25,7 @@ main() {
     install_solc &
     wait
 
+    echo ""
     echo "Installed Geth:"
     geth version
     echo ""
@@ -32,6 +33,7 @@ main() {
     solc --version
 }
 
+# Installs geth from https://geth.ethereum.org/downloads
 install_geth() {
     case "$PLATFORM" in
         linux|darwin)
@@ -52,13 +54,14 @@ install_geth() {
     esac
 }
 
+# Install the solc binary from the Github releases page
 install_solc() {
     case "$PLATFORM" in
         linux)  SOLC_NAME="solc-static-linux";;
         darwin) SOLC_NAME="solc-macos";;
         *)      SOLC_NAME="solc-windows.exe";;
     esac
-    wget -q "https://github.com/ethereum/solidity/releases/download/v$SOLC_VERSION/$SOLC_NAME"
+    curl -o "$SOLC_NAME" "https://github.com/ethereum/solidity/releases/download/v$SOLC_VERSION/$SOLC_NAME"
     mv -f "$SOLC_NAME" "solc$EXT"
     chmod +x "solc$EXT"
 }
