@@ -107,6 +107,22 @@ jobs:
     #           run:
     #               cargo hack check --all --feature-powerset --depth 2 -Z avoid-dev-deps --keep-going
 
+    miri:
+        name: miri
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: dtolnay/rust-toolchain@nightly
+              with:
+                  components: miri
+            - uses: Swatinem/rust-cache@v2
+            - name: miri
+              # Many of tests and doctests use #[tokio::test] or that calls epoll_create1
+              # that Miri does not support.
+              run: cargo miri test --workspace --lib --no-fail-fast
+              env:
+                  MIRIFLAGS: -Zmiri-disable-isolation -Zmiri-strict-provenance -Zmiri-retag-fields
+
     clippy:
         name: clippy
         runs-on: ubuntu-latest
