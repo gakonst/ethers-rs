@@ -1,4 +1,4 @@
-// #![allow(clippy::extra_unused_type_parameters)]
+#![allow(clippy::extra_unused_type_parameters)]
 
 #[cfg(feature = "abigen")]
 mod abigen;
