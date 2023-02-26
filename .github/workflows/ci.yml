@@ -144,26 +144,19 @@ jobs:
                   yarn anvil &
                   wasm-pack test --headless --firefox
                   wasm-pack test --headless --chrome
-                  kill %1
 
     examples:
         name: Examples
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v3
+            - uses: dtolnay/rust-toolchain@stable
             - name: Install Anvil
               uses: foundry-rs/foundry-toolchain@v1
               with:
                   version: nightly
             - name: Install test binaries
               run: ./.github/scripts/install_test_binaries.sh
-            - name: Install stable toolchain
-              uses: actions-rs/toolchain@v1
-              with:
-                  profile: minimal
-                  toolchain: stable
-                  override: true
-                  components: rustfmt, clippy
             - uses: Swatinem/rust-cache@v2
             - name: Build and run all examples
               run: ./scripts/examples.sh

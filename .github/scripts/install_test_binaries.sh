@@ -4,7 +4,6 @@
 set -e
 
 GETH_BUILD=${GETH_BUILD:-"1.11.2-73b01f40"}
-SOLC_VERSION=${SOLC_VERSION:-"0.8.19"}
 
 BIN_DIR=${BIN_DIR:-"$HOME/bin"}
 
@@ -22,8 +21,9 @@ main() {
     fi
 
     install_geth &
+    g=$!
     install_solc &
-    wait
+    wait $g $!
 
     echo ""
     echo "Installed Geth:"
@@ -37,32 +37,52 @@ main() {
 install_geth() {
     case "$PLATFORM" in
         linux|darwin)
-            GETH_ARCHIVE_NAME="geth-$PLATFORM-amd64-$GETH_BUILD"
-            curl "https://gethstore.blob.core.windows.net/builds/$GETH_ARCHIVE_NAME.tar.gz" | tar -xzvf -
-            mv -f "$GETH_ARCHIVE_NAME/geth" ./
-            rm -rf "$GETH_ARCHIVE_NAME"
+            name="geth-$PLATFORM-amd64-$GETH_BUILD"
+            curl -s "https://gethstore.blob.core.windows.net/builds/$name.tar.gz" | tar -xzf -
+            mv -f "$name/geth" ./
+            rm -rf "$name"
             chmod +x geth
             ;;
         *)
-            GETH_ARCHIVE_NAME="geth-windows-amd64-$GETH_BUILD"
-            zip="$GETH_ARCHIVE_NAME.zip"
-            curl -o "$zip" "https://gethstore.blob.core.windows.net/builds/$zip"
+            name="geth-windows-amd64-$GETH_BUILD"
+            zip="$name.zip"
+            curl -so "$zip" "https://gethstore.blob.core.windows.net/builds/$zip"
             unzip "$zip"
-            mv -f "$GETH_ARCHIVE_NAME/geth.exe" ./
-            rm -rf "$GETH_ARCHIVE_NAME" "$zip"
+            mv -f "$name/geth.exe" ./
+            rm -rf "$name" "$zip"
             ;;
     esac
 }
 
-# Install the solc binary from the Github releases page
+# Installs solc from https://binaries.soliditylang.org (https://github.com/ethereum/solc-bin)
 install_solc() {
+    bins_url="https://binaries.soliditylang.org"
     case "$PLATFORM" in
-        linux)  SOLC_NAME="solc-static-linux";;
-        darwin) SOLC_NAME="solc-macos";;
-        *)      SOLC_NAME="solc-windows.exe";;
+        linux)  bins_url+="/linux-amd64";;
+        darwin) bins_url+="/macosx-amd64";;
+        *)      bins_url+="/windows-amd64";;
     esac
-    curl -o "$SOLC_NAME" "https://github.com/ethereum/solidity/releases/download/v$SOLC_VERSION/$SOLC_NAME"
-    mv -f "$SOLC_NAME" "solc$EXT"
+
+    list=$(curl -s "$bins_url/list.json")
+    # use latest version
+    if [ -z "$SOLC_VERSION" ]; then
+        SOLC_VERSION="$(echo "$list" | jq -r ".latestRelease")"
+    fi
+    bin=$(echo "$list" | jq -r ".releases[\"$SOLC_VERSION\"]")
+
+    if [ "$bin" = "null" ]; then
+        echo "Invalid Solc version: $SOLC_VERSION" 1>&2
+        exit 1
+    fi
+
+    # windows versions <= 0.7.1 use .zip
+    if [[ "$bin" = *.zip ]]; then
+        echo "Cannot install solc <= 0.7.1" 1>&2
+        exit 1
+    fi
+
+    curl -so "$bin" "$bins_url/$bin"
+    mv -f "$bin" "solc$EXT"
     chmod +x "solc$EXT"
 }
 
