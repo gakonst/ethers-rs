@@ -80,11 +80,10 @@
 //! If caching is enabled in the [Project](crate::Project) a cache file will be created upon a
 //! successful solc build. The [cache file](crate::cache::SolFilesCache) stores metadata for all the
 //! files that were provided to solc.
-//! For every file the cache file contains a dedicated [cache
-//! entry](crate::cache::CacheEntry), which represents the state of the file. A solidity file can
-//! contain several contracts, for every contract a separate [artifact](crate::Artifact) is emitted.
-//! Therefor the entry also tracks all artifacts emitted by a file. A solidity file can also be
-//! compiled with several solc versions.
+//! For every file the cache file contains a dedicated [cache entry](crate::cache::CacheEntry),
+//! which represents the state of the file. A solidity file can contain several contracts, for every
+//! contract a separate [artifact](crate::Artifact) is emitted. Therefor the entry also tracks all
+//! artifacts emitted by a file. A solidity file can also be compiled with several solc versions.
 //!
 //! For example in `A(<=0.8.10) imports C(>0.4.0)` and
 //! `B(0.8.11) imports C(>0.4.0)`, both `A` and `B` import `C` but there's no solc version that's
@@ -252,10 +251,12 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
 /// The main reason is to debug all states individually
 #[derive(Debug)]
 struct PreprocessedState<'a, T: ArtifactOutput> {
-    /// contains all sources to compile
+    /// Contains all the sources to compile.
     sources: FilteredCompilerSources,
-    /// cache that holds [CacheEntry] object if caching is enabled and the project is recompiled
+
+    /// Cache that holds `CacheEntry` objects if caching is enabled and the project is recompiled
     cache: ArtifactsCache<'a, T>,
+
     sparse_output: SparseOutputFilter,
 }
 

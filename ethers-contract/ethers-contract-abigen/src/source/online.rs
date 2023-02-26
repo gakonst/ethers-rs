@@ -119,7 +119,7 @@ impl Source {
     /// Parse `s` as an explorer ("etherscan"), explorer domain ("etherscan.io") or a chain that has
     /// an explorer ("mainnet").
     ///
-    /// The URL can be either <explorer>:<address> or <explorer_url>/.../<address>
+    /// The URL can be either `<explorer>:<address>` or `<explorer_url>/.../<address>`
     fn from_explorer(s: &str, url: &Url) -> Result<Self> {
         let explorer: Explorer = s.parse().or_else(|_| Explorer::from_chain(s.parse()?))?;
         let address = last_segment_address(url).ok_or_else(|| eyre::eyre!("Invalid URL: {url}"))?;
