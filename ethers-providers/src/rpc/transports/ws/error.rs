@@ -33,6 +33,10 @@ pub enum WsClientError {
     /// PubSubClient asked to listen to an unknown subscription id
     #[error("Attempted to listen to unknown subscription: {0:?}")]
     UnknownSubscription(U256),
+
+    /// Too Many Reconnects
+    #[error("Reconnect limit reached")]
+    TooManyReconnects,
 }
 
 impl crate::RpcError for WsClientError {

@@ -8,6 +8,7 @@ mod manager;
 use manager::{RequestManager, SharedChannelMap};
 
 mod types;
+pub use types::ConnectionDetails;
 pub(self) use types::*;
 
 mod error;
@@ -28,12 +29,22 @@ pub struct WsClient {
 }
 
 impl WsClient {
-    pub async fn connect(conn: ConnectionDetails) -> Result<Self, WsClientError> {
-        let (man, this) = RequestManager::connect(conn).await?;
+    pub async fn connect(conn: impl Into<ConnectionDetails>) -> Result<Self, WsClientError> {
+        let (man, this) = RequestManager::connect(conn.into()).await?;
         man.spawn();
         Ok(this)
     }
 
+    pub async fn connect_with_reconnects(
+        conn: impl Into<ConnectionDetails>,
+        reconnects: usize,
+    ) -> Result<Self, WsClientError> {
+        let (man, this) = RequestManager::connect_with_reconnects(conn.into(), reconnects).await?;
+        man.spawn();
+        Ok(this)
+    }
+
+    #[tracing::instrument(skip(self, params), err)]
     async fn make_request<R>(&self, method: &str, params: Box<RawValue>) -> Result<R, WsClientError>
     where
         R: DeserializeOwned,
@@ -45,8 +56,10 @@ impl WsClient {
             .map_err(|_| WsClientError::UnexpectedClose)?;
 
         let res = rx.await.map_err(|_| WsClientError::UnexpectedClose)??;
-
-        Ok(serde_json::from_str(res.get())?)
+        tracing::trace!(res = %res, "Received response from request manager");
+        let resp = serde_json::from_str(res.get())?;
+        tracing::trace!("Deserialization success");
+        Ok(resp)
     }
 }
 

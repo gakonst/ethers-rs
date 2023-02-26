@@ -4,7 +4,7 @@ use futures_util::{select, sink::SinkExt, stream::StreamExt, FutureExt};
 use serde_json::value::RawValue;
 
 use super::{types::*, WsClientError};
-use crate::{ws_error, ws_trace};
+use tracing::{error, trace};
 
 pub struct WsBackend {
     server: InternalStream,
@@ -66,11 +66,17 @@ impl WsBackend {
     }
 
     pub async fn handle_text(&mut self, t: String) -> Result<(), WsClientError> {
-        ws_trace!("received message {t:?}");
-        if let Ok(item) = serde_json::from_str(&t) {
-            let res = self.handler.unbounded_send(item);
-            if res.is_err() {
-                return Err(WsClientError::DeadChannel)
+        trace!(text = t, "Received message");
+        match serde_json::from_str(&t) {
+            Ok(item) => {
+                trace!(%item, "Deserialized message");
+                let res = self.handler.unbounded_send(item);
+                if res.is_err() {
+                    return Err(WsClientError::DeadChannel)
+                }
+            }
+            Err(e) => {
+                error!(e = %e, "Failed to deserialize message");
             }
         }
         Ok(())
@@ -94,13 +100,13 @@ impl WsBackend {
                 Message::Binary(buf) => Err(WsClientError::UnexpectedBinary(buf)),
                 Message::Close(frame) => {
                     if frame.is_some() {
-                        ws_error!("Close frame: {}", frame.unwrap());
+                        error!("Close frame: {}", frame.unwrap());
                     }
                     Err(WsClientError::UnexpectedClose)
                 }
             },
             Err(e) => {
-                ws_error!(err = %e, "Error response from WS");
+                error!(err = %e, "Error response from WS");
                 Err(e.into())
             }
         }
@@ -131,7 +137,7 @@ impl WsBackend {
                     _ = keepalive => {
                         #[cfg(not(target_arch = "wasm32"))]
                         if let Err(e) = self.server.send(Message::Ping(vec![])).await {
-                            ws_error!("WS connection error {e}");
+                            error!("WS connection error {e}");
                             err = true;
                             break
                         }
@@ -145,7 +151,7 @@ impl WsBackend {
                                 if err { break }
                             },
                             None => {
-                                ws_error!("WS server has gone away");
+                                error!("WS server has gone away");
                                 err = true;
                                 break
                             },
@@ -157,7 +163,7 @@ impl WsBackend {
                         match inst {
                             Some(msg) => {
                                 if let Err(e) = self.server.send(Message::Text(msg.to_string())).await {
-                                    ws_error!("WS connection error {e}");
+                                    error!("WS connection error {e}");
                                     err = true;
                                     break
                                 }

@@ -8,7 +8,7 @@ use std::{
 
 use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
-use futures_util::{select, StreamExt};
+use futures_util::{select_biased, StreamExt};
 use serde_json::value::RawValue;
 
 use crate::JsonRpcError;
@@ -21,6 +21,8 @@ use super::{
 
 pub type SharedChannelMap = Arc<Mutex<HashMap<U256, mpsc::UnboundedReceiver<Box<RawValue>>>>>;
 
+pub const DEFAULT_RECONNECTS: usize = 5;
+
 pub struct SubscriptionManager {
     subs: BTreeMap<u64, ActiveSub>,
     aliases: HashMap<U256, u64>,
@@ -31,6 +33,10 @@ pub struct SubscriptionManager {
 impl SubscriptionManager {
     fn new(channel_map: SharedChannelMap) -> Self {
         Self { subs: Default::default(), aliases: Default::default(), channel_map }
+    }
+
+    fn count(&self) -> usize {
+        self.subs.len()
     }
 
     fn add_alias(&mut self, sub: U256, id: u64) {
@@ -70,29 +76,42 @@ impl SubscriptionManager {
         None
     }
 
+    #[tracing::instrument(skip_all, fields(server_id = ?notification.subscription))]
     fn handle_notification(&mut self, notification: Notification) {
-        let sub_id = notification.subscription;
+        let server_id = notification.subscription;
 
-        if let Some(id) = self.aliases.get(&sub_id) {
-            if let Some(active) = self.subs.get(id) {
-                // send the notification over the channel
-                let send_res = active.channel.unbounded_send(notification.result);
-                // receiver has dropped, so we drop the sub
-                // to consider: this leaves aliases to dead subs in the map if
-                // reconnection has occurred. however, this seems like a small
-                // use of memory
-                if send_res.is_err() {
-                    self.aliases.remove(&sub_id);
-                }
-            }
+        // If no alias, just return
+        let id_opt = self.aliases.get(&server_id).copied();
+        if id_opt.is_none() {
+            tracing::debug!(?server_id, "No aliased subscription found");
+            return
+        }
+        let id = id_opt.unwrap();
+
+        // alias exists, or should be dropped from alias table
+        let sub_opt = self.subs.get(&id);
+        if sub_opt.is_none() {
+            self.aliases.remove(&server_id);
+            tracing::debug!("Aliased subscription found, but not active");
+        }
+        let active = sub_opt.unwrap();
+
+        // send the notification over the channel
+        let send_res = active.channel.unbounded_send(notification.result);
+
+        // receiver has dropped, so we drop the sub
+        if send_res.is_err() {
+            self.aliases.remove(&server_id);
+            self.subs.remove(&id);
         }
     }
 
     fn req_success(&mut self, id: u64, result: Box<RawValue>) -> Box<RawValue> {
         if let Ok(sub_id) = serde_json::from_str::<SubId>(result.get()) {
+            tracing::debug!(id, server_id = %sub_id.0, "Registering new sub alias");
             self.add_alias(sub_id.0, id);
             let result = U256::from(id);
-            RawValue::from_string(format!("{result:?}")).unwrap()
+            RawValue::from_string(format!("\"0x{result:x}\"")).unwrap()
         } else {
             result
         }
@@ -134,6 +153,8 @@ pub struct RequestManager {
     backend: BackendDriver,
     conn: ConnectionDetails,
     instructions: mpsc::UnboundedReceiver<Instruction>,
+
+    reconnects: usize,
 }
 
 impl RequestManager {
@@ -142,6 +163,13 @@ impl RequestManager {
     }
 
     pub async fn connect(conn: ConnectionDetails) -> Result<(Self, WsClient), WsClientError> {
+        Self::connect_with_reconnects(conn, DEFAULT_RECONNECTS).await
+    }
+
+    pub async fn connect_with_reconnects(
+        conn: ConnectionDetails,
+        reconnects: usize,
+    ) -> Result<(Self, WsClient), WsClientError> {
         let (ws, backend) = WsBackend::connect(conn.clone()).await?;
 
         let (instructions_tx, instructions_rx) = mpsc::unbounded();
@@ -157,12 +185,19 @@ impl RequestManager {
                 backend,
                 conn,
                 instructions: instructions_rx,
+                reconnects,
             },
             WsClient { instructions: instructions_tx, channel_map },
         ))
     }
 
     async fn reconnect(&mut self) -> Result<(), WsClientError> {
+        if self.reconnects == 0 {
+            return Err(WsClientError::TooManyReconnects)
+        }
+        self.reconnects -= 1;
+
+        tracing::info!(remaining = self.reconnects, url = self.conn.url, "Reconnecting to backend");
         // create the new backend
         let (s, mut backend) = WsBackend::connect(self.conn.clone()).await?;
 
@@ -176,6 +211,7 @@ impl RequestManager {
         let mut old_backend = backend;
 
         // Drain anything in the backend
+        tracing::debug!("Draining old backend to_handle channel");
         while let Some(to_handle) = old_backend.to_handle.next().await {
             self.handle(to_handle);
         }
@@ -183,6 +219,7 @@ impl RequestManager {
         // issue a shutdown command (even though it's likely gone)
         old_backend.shutdown();
 
+        tracing::debug!(count = self.subs.count(), "Re-starting active subscriptions");
         // reissue subscriptionps
         for (id, sub) in self.subs.to_reissue() {
             self.backend
@@ -191,6 +228,7 @@ impl RequestManager {
                 .map_err(|_| WsClientError::DeadChannel)?;
         }
 
+        tracing::debug!(count = self.reqs.len(), "Re-issuing pending requests");
         // reissue requests
         for (id, req) in self.reqs.iter() {
             self.backend
@@ -198,17 +236,24 @@ impl RequestManager {
                 .unbounded_send(req.serialize_raw(*id)?)
                 .map_err(|_| WsClientError::DeadChannel)?;
         }
+        tracing::info!(subs = self.subs.count(), reqs = self.reqs.len(), "Re-connection complete");
 
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, result))]
     fn req_success(&mut self, id: u64, result: Box<RawValue>) {
         // pending fut is missing, this is fine
+        tracing::trace!(%result, "Success response received");
+        tracing::trace!(?self.reqs, "reqs");
         if let Some(req) = self.reqs.remove(&id) {
+            tracing::debug!("Sending result to request listener");
             // Allow subscription manager to rewrite the result if the request
             // corresponds to a known ID
             let result = if self.subs.has(id) { self.subs.req_success(id, result) } else { result };
             let _ = req.channel.send(Ok(result));
+        } else {
+            tracing::trace!("No InFlight found");
         }
     }
 
@@ -220,15 +265,11 @@ impl RequestManager {
         }
     }
 
-    fn handle_notification(&mut self, params: Notification) {
-        self.subs.handle_notification(params)
-    }
-
     fn handle(&mut self, item: PubSubItem) {
         match item {
             PubSubItem::Success { id, result } => self.req_success(id, result),
             PubSubItem::Error { id, error } => self.req_fail(id, error),
-            PubSubItem::Notification { params } => self.handle_notification(params),
+            PubSubItem::Notification { params } => self.subs.handle_notification(params),
         }
     }
 
@@ -247,7 +288,6 @@ impl RequestManager {
         if in_flight.method == "eth_subscribe" {
             self.subs.service_subscription_request(id, in_flight.params.clone())?;
         }
-
         self.reqs.insert(id, in_flight);
         Ok(())
     }
@@ -273,16 +313,21 @@ impl RequestManager {
     pub fn spawn(mut self) {
         let fut = async move {
             let result = loop {
-                select! {
-                    _ = &mut self.backend.error => {
-                        self.reconnect().await.unwrap();
-                    },
+                // We bias the loop so that we always handle messages before
+                // reconnecting, and always reconnect before
+                select_biased! {
                     item_opt = self.backend.to_handle.next() => {
                         match item_opt {
                             Some(item) => self.handle(item),
+                            // Backend is gone, so reconnect
                             None => if let Err(e) = self.reconnect().await {
                                 break Err(e);
                             }
+                        }
+                    },
+                    _ = &mut self.backend.error => {
+                        if let Err(e) = self.reconnect().await {
+                            break Err(e);
                         }
                     },
                     inst_opt = self.instructions.next() => {
@@ -293,7 +338,9 @@ impl RequestManager {
                     }
                 }
             };
-            let _ = result; // todo: log result
+            if let Err(err) = result {
+                tracing::error!(%err, "Error during reconnection");
+            } // todo: log result
             self.backend.shutdown();
         };
 

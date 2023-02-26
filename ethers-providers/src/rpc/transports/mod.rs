@@ -12,7 +12,8 @@ pub use ipc::{Ipc, IpcError};
 #[cfg(feature = "ws")]
 mod ws;
 #[cfg(feature = "ws")]
-pub use ws::{ClientError as WsClientError, Ws};
+pub use ws::{ConnectionDetails, WsClient as Ws, WsClientError};
+// pub use ws::{ClientError as WsClientError, Ws};
 
 mod quorum;
 pub use quorum::{JsonRpcClientWrapper, Quorum, QuorumError, QuorumProvider, WeightedProvider};
@@ -28,4 +29,4 @@ pub use mock::{MockError, MockProvider};
 
 #[cfg(feature = "ws")]
 pub mod ws2;
-pub use ws2::WsClient as Ws2Client;
+// pub use ws2::WsClient as Ws2Client;
