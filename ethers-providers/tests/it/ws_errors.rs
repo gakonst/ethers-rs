@@ -52,7 +52,6 @@ async fn handle_conn(stream: TcpStream) -> Result<(), Error> {
 }
 
 #[tokio::test]
-#[tracing_test::traced_test]
 async fn graceful_disconnect_on_ws_errors() {
     // Spawn a fake Ws server that will drop our connection after a while
     spawn_ws_server().await;

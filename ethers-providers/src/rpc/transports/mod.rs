@@ -27,6 +27,7 @@ pub use retry::*;
 mod mock;
 pub use mock::{MockError, MockProvider};
 
+/// archival websocket
 #[cfg(feature = "ws")]
 pub mod ws2;
 // pub use ws2::WsClient as Ws2Client;
