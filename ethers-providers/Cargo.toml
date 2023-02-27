@@ -69,7 +69,7 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "1.18", default-features = false, features = ["rt", "macros", "time"] }
-tempfile = "3.3.0"
+tempfile = "3.4.0"
 
 [features]
 default = ["ws", "rustls"]

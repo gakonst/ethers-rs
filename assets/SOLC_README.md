@@ -1,1 +1,0 @@
-../ethers-solc/README.md

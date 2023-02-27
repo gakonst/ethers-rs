@@ -371,8 +371,8 @@ impl Context {
     /// convention of suffixing the function name with _with
     ///
     /// The first function or the function with the least amount of arguments should
-    /// be named as in the ABI, the following functions suffixed with _with_ +
-    /// additional_params[0].name + (_and_(additional_params[1+i].name))*
+    /// be named as in the ABI, the following functions suffixed with:
+    /// `_with_ + additional_params[0].name + (_and_(additional_params[1+i].name))*`
     fn get_method_aliases(&self) -> Result<BTreeMap<String, MethodAlias>> {
         let mut aliases = self.method_aliases.clone();
 

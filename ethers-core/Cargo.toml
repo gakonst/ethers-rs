@@ -40,12 +40,12 @@ cargo_metadata = { version = "0.15.3", optional = true }
 
 # eip712 feature enabled dependencies
 convert_case = { version = "0.6.0", optional = true }
-syn = { version = "1.0.108", optional = true }
+syn = { version = "1.0.109", optional = true }
 proc-macro2 = { version = "1.0.51", optional = true }
 num_enum = "0.5.11"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tempfile = { version = "3.3.0", default-features = false }
+tempfile = { version = "3.4.0", default-features = false }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly
