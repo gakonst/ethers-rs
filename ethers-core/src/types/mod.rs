@@ -1,3 +1,5 @@
+//! Ethereum data types.
+
 pub type Selector = [u8; 4];
 
 // Re-export common ethereum datatypes with more specific names

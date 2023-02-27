@@ -1,4 +1,5 @@
-//! Bindings for [etherscan.io web api](https://docs.etherscan.io/)
+#![doc = include_str!("../README.md")]
+#![deny(unsafe_code, rustdoc::broken_intra_doc_links)]
 
 use crate::errors::{is_blocked_by_cloudflare_response, is_cloudflare_security_challenge};
 use contract::ContractMetadata;

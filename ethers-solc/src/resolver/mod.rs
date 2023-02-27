@@ -179,7 +179,9 @@ impl GraphEdges {
     ///
     /// This is a preprocess function that attempts to resolve those libraries that will the
     /// solidity `file` will be required to link. And further restrict this list to libraries
-    /// that won't be inlined See also [SolLibrary](parse::SolLibrary)
+    /// that won't be inlined.
+    ///
+    /// See also `parse::SolLibrary`.
     pub fn get_link_references(&self, file: impl AsRef<Path>) -> HashSet<&PathBuf> {
         let mut link_references = HashSet::new();
         for import in self.all_imported_nodes(self.node_id(file)) {

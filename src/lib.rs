@@ -1,56 +1,50 @@
-#![warn(missing_debug_implementations, missing_docs, rust_2018_idioms, unreachable_pub)]
-#![deny(rustdoc::broken_intra_doc_links)]
-#![doc(test(
-    no_crate_inject,
-    attr(deny(warnings, rust_2018_idioms), allow(dead_code, unused_variables))
-))]
-
-//! # Complete Ethereum & Celo library and wallet implementation.
+//! # ethers-rs
 //!
-//! > ethers-rs is a port of [ethers-js](https://github.com/ethers-io/ethers.js) in Rust.
+//! A complete Ethereum and Celo Rust library.
 //!
 //! ## Quickstart: `prelude`
 //!
 //! A prelude is provided which imports all the important data types and traits for you. Use this
 //! when you want to quickly bootstrap a new project.
 //!
-//! ```no_run
-//! # #[allow(unused)]
+//! ```rust
 //! use ethers::prelude::*;
 //! ```
 //!
-//! Examples on how you can use the types imported by the prelude can be found in
-//! the [`examples` directory of the repository](https://github.com/gakonst/ethers-rs/tree/master/examples)
+//! Examples on how you can use the types imported by the prelude can be found in the
+//! [`examples` directory of the repository](https://github.com/gakonst/ethers-rs/tree/master/examples)
 //! and in the `tests/` directories of each crate.
 //!
-//! # Quick explanation of each module in ascending order of abstraction
+//! ## Modules
 //!
-//! ## `core`
+//! The following paragraphs are a quick explanation of each module in ascending order of
+//! abstraction. More details can be found in [the book](https://gakonst.com/ethers-rs).
 //!
-//! Contains all the [necessary data structures](core::types) for interacting
-//! with Ethereum, along with cryptographic utilities for signing and verifying
-//! ECDSA signatures on `secp256k1`. Bindings to the Solidity compiler, Anvil and `ganache-cli`
-//! are also provided as helpers. To simplify your imports, consider using the re-exported
-//! modules described in the next subsection.
+//! ### `core`
 //!
-//! ## `utils`, `types`, `abi`
+//! Contains all the [necessary data structures](core::types) for interacting with Ethereum, along
+//! with cryptographic utilities for signing and verifying ECDSA signatures on `secp256k1`. Bindings
+//! to the Solidity compiler, Anvil and Ganace are also provided as helpers.
+//! To simplify your imports, consider using the re-exported modules described in the next
+//! subsection.
 //!
-//! These are re-exports of the [`utils`], [`types`] and [`abi`] modules from the `core` crate
+//! ### `utils`, `types`, `abi`
 //!
-//! ## `providers`
+//! These are re-exports of the [`utils`], [`types`] and [`abi`] modules from the [`core`] crate.
 //!
-//! Ethereum nodes expose RPC endpoints (by default at `localhost:8545`). You can connect
-//! to them by using the [`Provider`]. The provider instance
-//! allows you to issue requests to the node which involve querying the state of Ethereum or
-//! broadcasting transactions with unlocked accounts on the node.
+//! ### `providers`
 //!
-//! ## `signers`
+//! Contains the [`Provider`] struct, an abstraction of a connection to the Ethereum network, which
+//! alongside the [`Middleware`] trait provides a concise, consistent interface to standard Ethereum
+//! node functionality,
 //!
-//! This module provides a [`Signer`] trait which can be used for signing messages
-//! or transactions. A [`Wallet`] type is implemented which can be used with a
-//! raw private key, or a YubiHSM2. We also provide Ledger support.
+//! ### `signers`
 //!
-//! ## `contract`
+//! Provides a [`Signer`] trait which can be used for signing messages or transactions. A [`Wallet`]
+//! type is implemented which can be used with a raw private key or a YubiHSM2. Ledger and Trezor
+//! support are also provided.
+//!
+//! ### `contract`
 //!
 //! Interacting with Ethereum is not restricted to sending or receiving funds. It also involves
 //! using smart contracts, which can be thought of as programs with persistent storage.
@@ -61,9 +55,10 @@
 //! selector](https://ethereum.stackexchange.com/questions/72363/what-is-a-function-selector)
 //! along with the arguments of the called function. This module provides the
 //! [`Contract`] and [`ContractFactory`] abstractions so that you do not have to worry about that.
-//! It also provides typesafe bindings via the [`abigen`] macro and the [`Abigen` builder].
 //!
-//! ## `middleware`
+//! It also provides typesafe bindings via the [`abigen`] macro and the [`Abigen`] builder.
+//!
+//! ### `middleware`
 //!
 //! In order to keep the ethers architecture as modular as possible, providers define a
 //! [`Middleware`] trait which defines all the methods to interact with an Ethereum node. By
@@ -78,56 +73,38 @@
 //! [`Signer`]: signers::Signer
 //! [`ContractFactory`]: contract::ContractFactory
 //! [`Contract`]: contract::Contract
-//! [`abigen`]: ./contract/macro.abigen.html
-//! [`Abigen` builder]: contract::Abigen
+//! [`abigen`]: contract::abigen
+//! [`Abigen`]: contract::Abigen
 //! [`utils`]: core::utils
 //! [`abi`]: core::abi
 //! [`types`]: core::types
 
-/// Address book consisting of frequently used contracts
-pub mod addressbook {
-    pub use ethers_addressbook::*;
-}
+#![warn(missing_debug_implementations, missing_docs, rust_2018_idioms, unreachable_pub)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![doc(test(no_crate_inject, attr(deny(rust_2018_idioms), allow(dead_code, unused_variables))))]
 
-#[doc = include_str!("../assets/CONTRACT_README.md")]
-pub mod contract {
-    pub use ethers_contract::*;
-}
-
-#[doc = include_str!("../assets/CORE_README.md")]
-pub mod core {
-    pub use ethers_core::*;
-}
-
-#[doc = include_str!("../assets/PROVIDERS_README.md")]
-pub mod providers {
-    pub use ethers_providers::*;
-}
-
-#[doc = include_str!("../assets/MIDDLEWARE_README.md")]
-pub mod middleware {
-    pub use ethers_middleware::*;
-}
-
-#[doc = include_str!("../assets/SIGNERS_README.md")]
-pub mod signers {
-    pub use ethers_signers::*;
-}
-
+#[doc(inline)]
+pub use ethers_addressbook as addressbook;
+#[doc(inline)]
+pub use ethers_contract as contract;
+#[doc(inline)]
+pub use ethers_core as core;
+#[doc(inline)]
+pub use ethers_etherscan as etherscan;
+#[doc(inline)]
+pub use ethers_middleware as middleware;
+#[doc(inline)]
+pub use ethers_providers as providers;
+#[doc(inline)]
+pub use ethers_signers as signers;
+#[doc(inline)]
 #[cfg(feature = "ethers-solc")]
-#[doc = include_str!("../assets/SOLC_README.md")]
-pub mod solc {
-    pub use ethers_solc::*;
-}
+pub use ethers_solc as solc;
 
-/// Etherscan bindings
-pub mod etherscan {
-    pub use ethers_etherscan::*;
-}
+#[doc(inline)]
+pub use ethers_core::{abi, types, utils};
 
-pub use crate::core::{abi, types, utils};
-
-/// Easy imports of frequently used type definitions and traits
+/// Easy imports of frequently used type definitions and traits.
 #[doc(hidden)]
 pub mod prelude {
     pub use super::addressbook::*;
@@ -135,6 +112,8 @@ pub mod prelude {
     pub use super::contract::*;
 
     pub use super::core::{types::*, *};
+
+    pub use super::etherscan::*;
 
     pub use super::middleware::*;
 
@@ -144,6 +123,4 @@ pub mod prelude {
 
     #[cfg(feature = "ethers-solc")]
     pub use super::solc::*;
-
-    pub use super::etherscan::*;
 }
