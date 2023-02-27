@@ -2,13 +2,13 @@ use std::collections::HashMap;
 
 use crate::{
     types::{Address, Bytes, H256, U256, U64},
-    utils::{from_int_or_hex, from_int_or_hex_opt, from_u64_or_hex_opt},
+    utils::{from_int_or_hex, from_int_or_hex_opt, from_u64_or_hex_opt, from_unformatted_hex_map},
 };
 use serde::{Deserialize, Serialize};
 
 /// This represents the chain configuration, specifying the genesis block, header fields, and hard
 /// fork switch blocks.
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Genesis {
     /// The fork configuration for this network.
@@ -133,7 +133,11 @@ pub struct GenesisAccount {
     pub balance: U256,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub code: Option<Bytes>,
-    #[serde(flatten, skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "from_unformatted_hex_map",
+        default
+    )]
     pub storage: Option<HashMap<H256, H256>>,
 }
 
@@ -142,7 +146,7 @@ pub struct GenesisAccount {
 /// See [geth's `ChainConfig`
 /// struct](https://github.com/ethereum/go-ethereum/blob/64dccf7aa411c5c7cd36090c3d9b9892945ae813/params/config.go#L349)
 /// for the source of each field.
-#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[derive(Clone, Debug, Deserialize, Serialize, Default, PartialEq, Eq)]
 #[serde(default, rename_all = "camelCase")]
 pub struct ChainConfig {
     /// The network's chain ID.
@@ -248,11 +252,11 @@ const fn one() -> u64 {
 }
 
 /// Empty consensus configuration for proof-of-work networks.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct EthashConfig {}
 
 /// Consensus configuration for Clique.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct CliqueConfig {
     /// Number of seconds between blocks to enforce.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -265,7 +269,12 @@ pub struct CliqueConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::{Genesis, H256};
+    use super::{ChainConfig, Genesis, GenesisAccount, H256};
+    use crate::{
+        types::{Address, Bytes, H160, U256},
+        utils::EthashConfig,
+    };
+    use std::{collections::HashMap, str::FromStr};
 
     #[test]
     fn parse_hive_genesis() {
@@ -611,6 +620,204 @@ mod tests {
         }
         "#;
 
-        let _genesis: Genesis = serde_json::from_str(geth_genesis).unwrap();
+        let genesis: Genesis = serde_json::from_str(geth_genesis).unwrap();
+        let alloc_entry = genesis
+            .alloc
+            .get(&H160::from_str("0000000000000000000000000000000000000314").unwrap())
+            .expect("missing account for parsed genesis");
+        let storage = alloc_entry.storage.as_ref().expect("missing storage for parsed genesis");
+        let expected_storage = HashMap::from_iter(vec![
+            (
+                H256::from_str(
+                    "0x0000000000000000000000000000000000000000000000000000000000000000",
+                )
+                .unwrap(),
+                H256::from_str(
+                    "0x0000000000000000000000000000000000000000000000000000000000001234",
+                )
+                .unwrap(),
+            ),
+            (
+                H256::from_str(
+                    "0x6661e9d6d8b923d5bbaab1b96e1dd51ff6ea2a93520fdc9eb75d059238b8c5e9",
+                )
+                .unwrap(),
+                H256::from_str(
+                    "0x0000000000000000000000000000000000000000000000000000000000000001",
+                )
+                .unwrap(),
+            ),
+        ]);
+        assert_eq!(storage, &expected_storage);
+
+        let expected_code = Bytes::from_str("0x60606040526000357c0100000000000000000000000000000000000000000000000000000000900463ffffffff168063a223e05d1461006a578063abd1a0cf1461008d578063abfced1d146100d4578063e05c914a14610110578063e6768b451461014c575b610000565b346100005761007761019d565b6040518082815260200191505060405180910390f35b34610000576100be600480803573ffffffffffffffffffffffffffffffffffffffff169060200190919050506101a3565b6040518082815260200191505060405180910390f35b346100005761010e600480803573ffffffffffffffffffffffffffffffffffffffff169060200190919080359060200190919050506101ed565b005b346100005761014a600480803590602001909190803573ffffffffffffffffffffffffffffffffffffffff16906020019091905050610236565b005b346100005761017960048080359060200190919080359060200190919080359060200190919050506103c4565b60405180848152602001838152602001828152602001935050505060405180910390f35b60005481565b6000600160008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019081526020016000205490505b919050565b80600160008473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020819055505b5050565b7f6031a8d62d7c95988fa262657cd92107d90ed96e08d8f867d32f26edfe85502260405180905060405180910390a17f47e2689743f14e97f7dcfa5eec10ba1dff02f83b3d1d4b9c07b206cbbda66450826040518082815260200191505060405180910390a1817fa48a6b249a5084126c3da369fbc9b16827ead8cb5cdc094b717d3f1dcd995e2960405180905060405180910390a27f7890603b316f3509577afd111710f9ebeefa15e12f72347d9dffd0d65ae3bade81604051808273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16815260200191505060405180910390a18073ffffffffffffffffffffffffffffffffffffffff167f7efef9ea3f60ddc038e50cccec621f86a0195894dc0520482abf8b5c6b659e4160405180905060405180910390a28181604051808381526020018273ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1681526020019250505060405180910390a05b5050565b6000600060008585859250925092505b935093509390505600a165627a7a72305820aaf842d0d0c35c45622c5263cbb54813d2974d3999c8c38551d7c613ea2bc1170029").unwrap();
+        let code = alloc_entry.code.as_ref().expect("missing code for parsed genesis");
+        assert_eq!(code, &expected_code);
+    }
+
+    #[test]
+    fn test_hive_smoke_alloc_deserialize() {
+        let hive_genesis = r#"
+        {
+            "nonce": "0x0000000000000042",
+            "difficulty": "0x2123456",
+            "mixHash": "0x123456789abcdef123456789abcdef123456789abcdef123456789abcdef1234",
+            "coinbase": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "timestamp": "0x123456",
+            "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "extraData": "0xfafbfcfd",
+            "gasLimit": "0x2fefd8",
+            "alloc": {
+                "dbdbdb2cbd23b783741e8d7fcf51e459b497e4a6": {
+                    "balance": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+                },
+                "e6716f9544a56c530d868e4bfbacb172315bdead": {
+                    "balance": "0x11",
+                    "code": "0x12"
+                },
+                "b9c015918bdaba24b4ff057a92a3873d6eb201be": {
+                    "balance": "0x21",
+                    "storage": {
+                        "0x0000000000000000000000000000000000000000000000000000000000000001": "0x22"
+                    }
+                },
+                "1a26338f0d905e295fccb71fa9ea849ffa12aaf4": {
+                    "balance": "0x31",
+                    "nonce": "0x32"
+                },
+                "0000000000000000000000000000000000000001": {
+                    "balance": "0x41"
+                },
+                "0000000000000000000000000000000000000002": {
+                    "balance": "0x51"
+                },
+                "0000000000000000000000000000000000000003": {
+                    "balance": "0x61"
+                },
+                "0000000000000000000000000000000000000004": {
+                    "balance": "0x71"
+                }
+            },
+            "config": {
+                "ethash": {},
+                "chainId": 10,
+                "homesteadBlock": 0,
+                "eip150Block": 0,
+                "eip155Block": 0,
+                "eip158Block": 0,
+                "byzantiumBlock": 0,
+                "constantinopleBlock": 0,
+                "petersburgBlock": 0,
+                "istanbulBlock": 0
+            }
+        }
+        "#;
+
+        let expected_genesis = Genesis {
+            nonce: 0x0000000000000042.into(),
+            difficulty: 0x2123456.into(),
+            mix_hash: H256::from_str("0x123456789abcdef123456789abcdef123456789abcdef123456789abcdef1234").unwrap(),
+            coinbase: Address::from_str("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa").unwrap(),
+            timestamp: 0x123456.into(),
+            parent_hash: Some(H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000000").unwrap()),
+            extra_data: Bytes::from_str("0xfafbfcfd").unwrap(),
+            gas_limit: 0x2fefd8.into(),
+            alloc: HashMap::from_iter(vec![
+                (
+                    Address::from_str("0xdbdbdb2cbd23b783741e8d7fcf51e459b497e4a6").unwrap(),
+                    GenesisAccount {
+                        balance: U256::from_str("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff").unwrap(),
+                        nonce: None,
+                        code: None,
+                        storage: None,
+                    },
+                ),
+                (
+                    Address::from_str("0xe6716f9544a56c530d868e4bfbacb172315bdead").unwrap(),
+                    GenesisAccount {
+                        balance: U256::from_str("0x11").unwrap(),
+                        nonce: None,
+                        code: Some(Bytes::from_str("0x12").unwrap()),
+                        storage: None,
+                    },
+                ),
+                (
+                    Address::from_str("0xb9c015918bdaba24b4ff057a92a3873d6eb201be").unwrap(),
+                    GenesisAccount {
+                        balance: U256::from_str("0x21").unwrap(),
+                        nonce: None,
+                        code: None,
+                        storage: Some(HashMap::from_iter(vec![
+                            (
+                                H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000001").unwrap(),
+                                H256::from_str("0x0000000000000000000000000000000000000000000000000000000000000022").unwrap(),
+                            ),
+                        ])),
+                    },
+                ),
+                (
+                    Address::from_str("0x1a26338f0d905e295fccb71fa9ea849ffa12aaf4").unwrap(),
+                    GenesisAccount {
+                        balance: U256::from_str("0x31").unwrap(),
+                        nonce: Some(0x32u64),
+                        code: None,
+                        storage: None,
+                    },
+                ),
+                (
+                    Address::from_str("0x0000000000000000000000000000000000000001").unwrap(),
+                    GenesisAccount {
+                        balance: U256::from_str("0x41").unwrap(),
+                        nonce: None,
+                        code: None,
+                        storage: None,
+                    },
+                ),
+                (
+                    Address::from_str("0x0000000000000000000000000000000000000002").unwrap(),
+                    GenesisAccount {
+                        balance: U256::from_str("0x51").unwrap(),
+                        nonce: None,
+                        code: None,
+                        storage: None,
+                    },
+                ),
+                (
+                    Address::from_str("0x0000000000000000000000000000000000000003").unwrap(),
+                    GenesisAccount {
+                        balance: U256::from_str("0x61").unwrap(),
+                        nonce: None,
+                        code: None,
+                        storage: None,
+                    },
+                ),
+                (
+                    Address::from_str("0x0000000000000000000000000000000000000004").unwrap(),
+                    GenesisAccount {
+                        balance: U256::from_str("0x71").unwrap(),
+                        nonce: None,
+                        code: None,
+                        storage: None,
+                    },
+                ),
+            ]),
+            config: ChainConfig {
+                ethash: Some(EthashConfig{}),
+                chain_id: 10,
+                homestead_block: Some(0),
+                eip150_block: Some(0),
+                eip155_block: Some(0),
+                eip158_block: Some(0),
+                byzantium_block: Some(0),
+                constantinople_block: Some(0),
+                petersburg_block: Some(0),
+                istanbul_block: Some(0),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let deserialized_genesis: Genesis = serde_json::from_str(hive_genesis).unwrap();
+        assert_eq!(deserialized_genesis, expected_genesis, "deserialized genesis {deserialized_genesis:#?} does not match expected {expected_genesis:#?}");
     }
 }
