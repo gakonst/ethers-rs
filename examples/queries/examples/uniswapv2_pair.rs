@@ -17,9 +17,7 @@ abigen!(
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let client = Provider::<Http>::try_from(
-        "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27",
-    )?;
+    let client = Provider::<Http>::try_from("https://eth.llamarpc.com")?;
     let client = Arc::new(client);
 
     // ETH/USDT pair on Uniswap V2

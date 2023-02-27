@@ -134,7 +134,7 @@ impl MulticallVersion {
 /// let abi: Abi = serde_json::from_str(r#"[{"inputs":[{"internalType":"string","name":"value","type":"string"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"author","type":"address"},{"indexed":true,"internalType":"address","name":"oldAuthor","type":"address"},{"indexed":false,"internalType":"string","name":"oldValue","type":"string"},{"indexed":false,"internalType":"string","name":"newValue","type":"string"}],"name":"ValueChanged","type":"event"},{"inputs":[],"name":"getValue","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"lastSender","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"string","name":"value","type":"string"}],"name":"setValue","outputs":[],"stateMutability":"nonpayable","type":"function"}]"#)?;
 ///
 /// // connect to the network
-/// let client = Provider::<Http>::try_from("https://goerli.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27")?;
+/// let client = Provider::<Http>::try_from("http://localhost:8545")?;
 ///
 /// // create the contract object. This will be used to construct the calls for multicall
 /// let client = Arc::new(client);

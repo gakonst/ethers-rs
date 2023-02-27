@@ -242,7 +242,7 @@ pub trait Middleware: Sync + Send + Debug {
     /// # use std::convert::TryFrom;
     /// # #[tokio::main(flavor = "current_thread")]
     /// # async fn main() {
-    /// # let provider = Provider::<HttpProvider>::try_from("https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27").unwrap();
+    /// # let provider = Provider::<HttpProvider>::try_from("https://eth.llamarpc.com").unwrap();
     /// let avatar = provider.resolve_avatar("parishilton.eth").await.unwrap();
     /// assert_eq!(avatar.to_string(), "https://i.imgur.com/YW3Hzph.jpg");
     /// # }
@@ -264,7 +264,7 @@ pub trait Middleware: Sync + Send + Debug {
     /// # use std::{str::FromStr, convert::TryFrom};
     /// # #[tokio::main(flavor = "current_thread")]
     /// # async fn main() {
-    /// # let provider = Provider::<HttpProvider>::try_from("https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27").unwrap();
+    /// # let provider = Provider::<HttpProvider>::try_from("https://eth.llamarpc.com").unwrap();
     /// let token = ethers_providers::erc::ERCNFT::from_str("erc721:0xc92ceddfb8dd984a89fb494c376f9a48b999aafc/9018").unwrap();
     /// let token_image = provider.resolve_nft(token).await.unwrap();
     /// assert_eq!(token_image.to_string(), "https://creature.mypinata.cloud/ipfs/QmNwj3aUzXfG4twV3no7hJRYxLLAWNPk6RrfQaqJ6nVJFa/9018.jpg");

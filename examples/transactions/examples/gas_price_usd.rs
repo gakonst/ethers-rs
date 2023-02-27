@@ -23,7 +23,7 @@ abigen!(
 const ETH_DECIMALS: u32 = 18;
 const USD_PRICE_DECIMALS: u32 = 8;
 const ETH_USD_FEED: &str = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419";
-const RPC_URI: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
+const RPC_URI: &str = "https://eth.llamarpc.com";
 
 /// Retrieves the USD amount per gas unit, using a Chainlink price oracle.
 /// Function gets the amount of `wei` to be spent per gas unit then multiplies
