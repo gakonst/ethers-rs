@@ -89,8 +89,7 @@ async fn etherchain() {
 #[tokio::test]
 async fn etherscan() {
     let chain = Chain::Mainnet;
-    let etherscan_client = Client::new_from_env(chain)
-        .unwrap_or_else(|_| Client::builder().chain(chain).unwrap().build().unwrap());
+    let etherscan_client = Client::new_from_opt_env(chain).unwrap();
 
     // initialize and fetch gas estimates from Etherscan
     // since etherscan does not support `fastest` category, we expect an error

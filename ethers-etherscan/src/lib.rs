@@ -108,6 +108,20 @@ impl Client {
         Self::new(chain, api_key)
     }
 
+    /// Create a new client with the correct endpoints based on the chain and API key
+    /// from the default environment variable defined in [`Chain`].
+    ///
+    /// If the environment variable is not set, create a new client without it.
+    pub fn new_from_opt_env(chain: Chain) -> Result<Self> {
+        match Self::new_from_env(chain) {
+            Ok(client) => Ok(client),
+            Err(EtherscanError::EnvVarNotFound(_)) => {
+                Self::builder().chain(chain).and_then(|c| c.build())
+            }
+            Err(e) => Err(e),
+        }
+    }
+
     /// Sets the root to the cache dir and the ttl to use
     pub fn set_cache(&mut self, root: impl Into<PathBuf>, ttl: Duration) -> &mut Self {
         self.cache = Some(Cache { root: root.into(), ttl });
@@ -459,16 +473,8 @@ mod tests {
     }
 
     #[test]
-    fn chain_not_supported() {
-        let err = Client::new_from_env(Chain::Morden).unwrap_err();
-
-        assert!(matches!(err, EtherscanError::ChainNotSupported(_)));
-        assert_eq!(err.to_string(), "Chain morden not supported");
-    }
-
-    #[test]
     fn stringifies_block_url() {
-        let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
+        let etherscan = Client::new(Chain::Mainnet, "").unwrap();
         let block: u64 = 1;
         let block_url: String = etherscan.block_url(block);
         assert_eq!(block_url, format!("https://etherscan.io/block/{block}"));
@@ -476,7 +482,7 @@ mod tests {
 
     #[test]
     fn stringifies_address_url() {
-        let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
+        let etherscan = Client::new(Chain::Mainnet, "").unwrap();
         let addr: Address = Address::zero();
         let address_url: String = etherscan.address_url(addr);
         assert_eq!(address_url, format!("https://etherscan.io/address/{addr:?}"));
@@ -484,7 +490,7 @@ mod tests {
 
     #[test]
     fn stringifies_transaction_url() {
-        let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
+        let etherscan = Client::new(Chain::Mainnet, "").unwrap();
         let tx_hash = H256::zero();
         let tx_url: String = etherscan.transaction_url(tx_hash);
         assert_eq!(tx_url, format!("https://etherscan.io/tx/{tx_hash:?}"));
@@ -492,10 +498,16 @@ mod tests {
 
     #[test]
     fn stringifies_token_url() {
-        let etherscan = Client::new_from_env(Chain::Mainnet).unwrap();
+        let etherscan = Client::new(Chain::Mainnet, "").unwrap();
         let token_hash = Address::zero();
         let token_url: String = etherscan.token_url(token_hash);
         assert_eq!(token_url, format!("https://etherscan.io/token/{token_hash:?}"));
+    }
+
+    #[test]
+    fn chain_not_supported() {
+        let err = Client::new_from_env(Chain::Morden).unwrap_err();
+        assert!(matches!(err, EtherscanError::ChainNotSupported(Chain::Morden)));
     }
 
     #[test]
