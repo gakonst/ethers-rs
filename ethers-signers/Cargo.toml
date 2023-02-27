@@ -53,7 +53,7 @@ yubihsm = { version = "0.41.0", features = ["secp256k1", "usb", "mockhsm"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 yubihsm = { version = "0.41.0", features = ["secp256k1", "usb", "mockhsm"] }
 tokio = { version = "1.18", default-features = false, features = ["macros", "rt"] }
-tempfile = "3.3.0"
+tempfile = "3.4.0"
 
 [features]
 futures = ["futures-util", "futures-executor"]
