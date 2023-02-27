@@ -109,20 +109,19 @@ jobs:
 
             - uses: Swatinem/rust-cache@v2
             - name: Check
-              run: cargo check --target wasm32-unknown-unknown
+              run: cargo check --workspace --target wasm32-unknown-unknown
             # TODO: [#2191](https://github.com/gakonst/ethers-rs/issues/2191)
             # - name: Check all features
-            #   run: cargo check --target wasm32-unknown-unknown --all-features
+            #   run: cargo check --workspace --target wasm32-unknown-unknown --all-features
 
             - name: Install wasm-pack
               run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
             - uses: actions/setup-node@v3
               with:
                   node-version: 16
-                  cache: yarn
             - name: Run wasm example
+              working-directory: examples/ethers-wasm
               run: |
-                  cd examples/ethers-wasm
                   yarn
                   yarn anvil &
                   wasm-pack test --headless --firefox
