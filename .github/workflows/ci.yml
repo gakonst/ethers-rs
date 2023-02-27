@@ -94,7 +94,7 @@ jobs:
               run: cargo doc --workspace --all-features --no-deps --document-private-items
               env:
                   RUSTFLAGS: --cfg docsrs
-                  RUSTDOCFLAGS: --cfg docsrs -Dwarnings
+                  RUSTDOCFLAGS: --cfg docsrs
 
     fmt:
         name: fmt

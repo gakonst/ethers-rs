@@ -76,8 +76,9 @@ impl ProjectPathsConfig {
         }
     }
 
-    /// Same as [Self::paths()] but strips the `root` form all paths,
-    /// [ProjectPaths::strip_prefix_all()]
+    /// Same as [`paths`][ProjectPathsConfig::paths] but strips the `root` form all paths.
+    ///
+    /// See: [`ProjectPaths::strip_prefix_all`]
     pub fn paths_relative(&self) -> ProjectPaths {
         let mut paths = self.paths();
         paths.strip_prefix_all(&self.root);
@@ -790,7 +791,8 @@ impl SolcConfigBuilder {
     }
 }
 
-/// Container for all `--include-path` arguments for Solc, se also [Solc docs](https://docs.soliditylang.org/en/v0.8.9/using-the-compiler.html#base-path-and-import-remapping
+/// Container for all `--include-path` arguments for Solc, see also
+/// [Solc docs](https://docs.soliditylang.org/en/v0.8.9/using-the-compiler.html#base-path-and-import-remapping).
 ///
 /// The `--include--path` flag:
 /// > Makes an additional source directory available to the default import callback. Use this option

@@ -24,7 +24,7 @@ ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-f
 ethers-signers = { version = "^1.0.0", path = "../ethers-signers", default-features = false }
 
 async-trait = { version = "0.1.50", default-features = false }
-auto_impl = { version = "0.5.0", default-features = false }
+auto_impl = { version = "1.0.1", default-features = false }
 serde = { version = "1.0.124", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0", default-features = false }
 futures-util = { version = "^0.3" }

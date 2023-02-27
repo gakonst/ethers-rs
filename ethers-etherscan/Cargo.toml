@@ -35,7 +35,7 @@ getrandom = { version = "0.2", features = ["js"] }
 [dev-dependencies]
 ethers-solc = { version = "^1.0.0", path = "../ethers-solc", default-features = false }
 
-tempfile = "3.3.0"
+tempfile = "3.4.0"
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread", "time"] }
 serial_test = "1.0.0"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }

@@ -463,7 +463,7 @@ impl CacheEntry {
 
     /// Reads all artifact files associated with the `CacheEntry`
     ///
-    /// **Note:** all artifact file paths should be absolute, see [`Self::join`]
+    /// **Note:** all artifact file paths should be absolute.
     fn read_artifact_files<Artifact: DeserializeOwned>(
         &self,
     ) -> Result<BTreeMap<String, Vec<ArtifactFile<Artifact>>>> {
@@ -579,27 +579,32 @@ impl CacheEntry {
 /// and which `Artifacts` can be reused.
 #[derive(Debug)]
 pub(crate) struct ArtifactsCacheInner<'a, T: ArtifactOutput> {
-    /// preexisting cache file
+    /// The preexisting cache file.
     pub cache: SolFilesCache,
-    /// all already existing artifacts
+
+    /// All already existing artifacts.
     pub cached_artifacts: Artifacts<T::Artifact>,
-    /// relationship between all the files
+
+    /// Relationship between all the files.
     pub edges: GraphEdges,
-    /// the project
+
+    /// The project.
     pub project: &'a Project<T>,
-    /// all files that were filtered because they haven't changed
+
+    /// All the files that were filtered because they haven't changed.
     pub filtered: HashMap<PathBuf, (Source, HashSet<Version>)>,
-    /// the corresponding cache entries for all sources that were deemed to be dirty
+
+    /// The corresponding cache entries for all sources that were deemed to be dirty.
     ///
-    /// `CacheEntry` are grouped by their solidity file.
+    /// `CacheEntry` are grouped by their Solidity file.
     /// During preprocessing the `artifacts` field of a new `CacheEntry` is left blank, because in
     /// order to determine the artifacts of the solidity file, the file needs to be compiled first.
     /// Only after the `CompilerOutput` is received and all compiled contracts are handled, see
-    /// [`crate::ArtifactOutput::on_output()`] all artifacts, their disk paths, are determined and
-    /// can be populated before the updated [`crate::SolFilesCache`] is finally written to disk,
-    /// see [`Cache::finish()`]
+    /// [`crate::ArtifactOutput::on_output`] all artifacts, their disk paths, are determined and
+    /// can be populated before the updated [`crate::SolFilesCache`] is finally written to disk.
     pub dirty_source_files: HashMap<PathBuf, (CacheEntry, HashSet<Version>)>,
-    /// the file hashes
+
+    /// The file hashes.
     pub content_hashes: HashMap<PathBuf, String>,
 }
 
@@ -652,7 +657,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
         }
     }
 
-    /// Returns the set of [Source]s that need to be included in the [CompilerOutput] in order to
+    /// Returns the set of [Source]s that need to be included in the `CompilerOutput` in order to
     /// recompile the project.
     ///
     /// We define _dirty_ sources as files that:
@@ -661,12 +666,12 @@ impl<'a, T: ArtifactOutput> ArtifactsCacheInner<'a, T> {
     ///   - their imports were changed
     ///   - their artifact is missing
     ///
-    /// A _dirty_ file is always included in the [CompilerInput].
+    /// A _dirty_ file is always included in the `CompilerInput`.
     /// A _dirty_ file can also include clean files - files that do not match any of the above
     /// criteria - which solc also requires in order to compile a dirty file.
     ///
     /// Therefore, these files will also be included in the filtered output but not marked as dirty,
-    /// so that their [OutputSelection] can be optimized in the [CompilerOutput] and their (empty)
+    /// so that their `OutputSelection` can be optimized in the `CompilerOutput` and their (empty)
     /// artifacts ignored.
     fn filter(&mut self, sources: Sources, version: &Version) -> FilteredSources {
         // all files that are not dirty themselves, but are pulled from a dirty file
@@ -906,7 +911,7 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
         }
     }
 
-    /// Consumes the `Cache`, rebuilds the [`SolFileCache`] by merging all artifacts that were
+    /// Consumes the `Cache`, rebuilds the `SolFileCache` by merging all artifacts that were
     /// filtered out in the previous step (`Cache::filtered`) and the artifacts that were just
     /// compiled and written to disk `written_artifacts`.
     ///

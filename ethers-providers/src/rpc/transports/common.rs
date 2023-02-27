@@ -24,9 +24,10 @@ pub struct JsonRpcError {
     pub data: Option<Value>,
 }
 
-/// Recursively traverses the value, looking for hex data that it can extract
+/// Recursively traverses the value, looking for hex data that it can extract.
+///
 /// Inspired by ethers-js logic:
-/// https://github.com/ethers-io/ethers.js/blob/9f990c57f0486728902d4b8e049536f2bb3487ee/packages/providers/src.ts/json-rpc-provider.ts#L25-L53
+/// <https://github.com/ethers-io/ethers.js/blob/9f990c57f0486728902d4b8e049536f2bb3487ee/packages/providers/src.ts/json-rpc-provider.ts#L25-L53>
 fn spelunk_revert(value: &Value) -> Option<Bytes> {
     match value {
         Value::String(s) => s.parse().ok(),

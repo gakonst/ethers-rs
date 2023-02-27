@@ -1,6 +1,5 @@
-//! Provides a unified interface for locally signing transactions.
-#![deny(unsafe_code)]
-#![deny(rustdoc::broken_intra_doc_links)]
+#![doc = include_str!("../README.md")]
+#![deny(unsafe_code, rustdoc::broken_intra_doc_links)]
 
 mod wallet;
 pub use wallet::{MnemonicBuilder, Wallet, WalletError};
