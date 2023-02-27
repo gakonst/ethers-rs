@@ -129,12 +129,14 @@ async fn check_tx<P: JsonRpcClient + Clone>(
     let provider = pending_tx.provider();
     let receipt = pending_tx.await.unwrap().unwrap();
     let tx = provider.get_transaction(receipt.transaction_hash).await.unwrap().unwrap();
-    // legacy can be either None or Some(0)
-    // TODO: https://github.com/foundry-rs/foundry/issues/4428
-    // if expected == 0 {
-    //     assert!(receipt.transaction_type.is_none() || receipt.transaction_type ==
-    // Some(0.into())); } else {
-    //     assert_eq!(receipt.transaction_type, Some(expected.into()));
-    // }
-    assert_eq!(tx.transaction_type, Some(expected.into()));
+
+    let expected = U64::from(expected);
+    for ty in [receipt.transaction_type, tx.transaction_type] {
+        // legacy can be either None or Some(0)
+        if expected.is_zero() {
+            assert!(ty.is_none() || ty == Some(0.into()));
+        } else {
+            assert_eq!(ty, Some(expected));
+        }
+    }
 }
