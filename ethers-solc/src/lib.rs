@@ -1,5 +1,5 @@
+#![doc = include_str!("../README.md")]
 #![deny(rustdoc::broken_intra_doc_links)]
-#![allow(rustdoc::private_intra_doc_links)]
 
 pub mod artifacts;
 pub mod sourcemap;
@@ -24,7 +24,7 @@ pub use compile::{
 };
 
 mod config;
-pub use config::{AllowedLibPaths, PathStyle, ProjectPathsConfig, SolcConfig};
+pub use config::{AllowedLibPaths, PathStyle, ProjectPaths, ProjectPathsConfig, SolcConfig};
 
 pub mod remappings;
 use crate::artifacts::{Source, SourceFile, StandardJsonCompilerInput};
@@ -280,7 +280,7 @@ impl<T: ArtifactOutput> Project<T> {
     ///
     /// This will autodetect the appropriate `Solc` version(s) to use when compiling the provided
     /// `Sources`. Solc auto-detection follows semver rules, see also
-    /// [`crate::resolver::Graph::get_input_node_versions()`]
+    /// `Graph::get_input_node_versions`
     ///
     /// # Errors
     ///

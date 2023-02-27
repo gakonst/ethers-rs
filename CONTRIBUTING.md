@@ -22,7 +22,7 @@ us!
 The ethers-rs project adheres to the [Rust Code of Conduct][coc]. This describes
 the _minimum_ behavior expected from all contributors. Instances of violations of the Code of Conduct can be reported by contacting the project team at [me@gakonst.com](mailto:me@gakonst.com).
 
-[coc]: https://github.com/rust-lang/rust/blob/master/CODE_OF_CONDUCT.md
+[coc]: https://www.rust-lang.org/policies/code-of-conduct
 
 ## Contributing in Issues
 

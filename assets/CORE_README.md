@@ -1,1 +1,0 @@
-../ethers-core/README.md

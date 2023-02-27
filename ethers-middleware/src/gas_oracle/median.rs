@@ -75,21 +75,20 @@ impl GasOracle for Median {
     }
 }
 
-/// Weighted fractile by key
+/// Weighted fractile by key.
 ///
-/// Sort the values in place by key and return the weighted fractile value such
-/// that `fractile` fraction of the values by weight are less than or equal to
-/// the value.
+/// Sort the values in place by key and return the weighted fractile value such that `fractile`
+/// fraction of the values by weight are less than or equal to the value.
 ///
-/// Returns None if the values are empty.
+/// Returns `None` if the values are empty.
 ///
 /// Note: it doesn't handle NaNs or other special float values.
 ///
-/// See <https://en.wikipedia.org/wiki/Percentile#The_weighted_percentile_method>
+/// See: <https://en.wikipedia.org/wiki/Percentile#The_weighted_percentile_method>
 ///
 /// # Panics
 ///
-/// Panics if [`fractile`] is not in the range $[0, 1]$.
+/// Panics if `fractile` is not in the range `0.0..=1.0`.
 fn weighted_fractile_by_key<'a, T, F, K>(
     fractile: f32,
     values: &'a mut [(f32, T)],

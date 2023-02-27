@@ -1,19 +1,47 @@
-# Clients for interacting with Ethereum nodes
+# ethers-providers
+
+Clients for interacting with Ethereum nodes.
 
 This crate provides asynchronous
 [Ethereum JSON-RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC) compliant
 clients.
 
-For more documentation on the available calls, refer to the
-[`Provider`](./struct.Provider.html) struct.
+For more information, please refer to the [book](https://gakonst.com/ethers-rs).
 
-# Examples
+## Websockets
+
+This crate supports for WebSockets via `tokio-tungstenite`.
+Please ensure that you have the `ws` feature enabled if you wish to use WebSockets:
+
+```toml
+[dependencies]
+ethers-providers = { version = "1.0.2", features = ["ws"] }
+```
+
+## Interprocess Communication (IPC)
+
+This crate supports for Interprocess Communication via Unix sockets and Windows named pipes.
+Please ensure that you have the `ipc` feature enabled if you wish to use IPC:
+
+```toml
+[dependencies]
+ethers-providers = { version = "1.0.2", features = ["ipc"] }
+```
+
+## Ethereum Name Service
+
+The provider may also be used to resolve [Ethereum Name Service](https://ens.domains) (ENS) names
+to addresses (and vice versa).
+The default ENS address is [`0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e`][ens]
+and can be overriden with the [`ens`](./struct.Provider.html#method.ens) method on the provider.
+
+[ens]: https://etherscan.io/address/0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e
+
+## Examples
 
 ```rust,no_run
-use ethers_core::types::Address;
-use ethers_providers::{Provider, Http, Middleware};
-use std::convert::TryFrom;
-
+# use ethers_core::types::Address;
+# use ethers_providers::{Provider, Http, Middleware, Ws};
 # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 let provider = Provider::<Http>::try_from("https://eth.llamarpc.com")?;
 
@@ -27,30 +55,10 @@ println!("Got code: {}", serde_json::to_string(&code)?);
 # }
 ```
 
-# Websockets
-
-The crate has support for WebSockets via Tokio. Please ensure that you have the "ws" and "rustls" / "openssl" features enabled if you wish to use WebSockets.
-
-```
-# async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-# use ethers_providers::Ws;
-let ws = Ws::connect("ws://localhost:8545").await?;
-# Ok(())
-# }
-```
-
-# Ethereum Name Service
-
-The provider may also be used to resolve
-[Ethereum Name Service](https://ens.domains) (ENS) names to addresses (and vice
-versa). The default ENS address is
-[mainnet](https://etherscan.io/address/0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e)
-and can be overriden by calling the [`ens`](./struct.Provider.html#method.ens)
-method on the provider.
+Using ENS:
 
 ```rust,no_run
 # use ethers_providers::{Provider, Http, Middleware};
-# use std::convert::TryFrom;
 # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 let provider = Provider::<Http>::try_from("https://eth.llamarpc.com")?;
 

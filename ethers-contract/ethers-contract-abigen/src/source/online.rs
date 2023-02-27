@@ -67,7 +67,8 @@ impl Explorer {
         let chain = self.chain();
         let client = match api_key {
             Some(api_key) => Client::new(chain, api_key),
-            None => Client::new_from_env(chain),
+            None => Client::new_from_env(chain)
+                .or_else(|_| Client::builder().chain(chain).and_then(|b| b.build())),
         }?;
         Ok(client)
     }
@@ -119,7 +120,7 @@ impl Source {
     /// Parse `s` as an explorer ("etherscan"), explorer domain ("etherscan.io") or a chain that has
     /// an explorer ("mainnet").
     ///
-    /// The URL can be either <explorer>:<address> or <explorer_url>/.../<address>
+    /// The URL can be either `<explorer>:<address>` or `<explorer_url>/.../<address>`
     fn from_explorer(s: &str, url: &Url) -> Result<Self> {
         let explorer: Explorer = s.parse().or_else(|_| Explorer::from_chain(s.parse()?))?;
         let address = last_segment_address(url).ok_or_else(|| eyre::eyre!("Invalid URL: {url}"))?;
