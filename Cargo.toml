@@ -9,7 +9,7 @@ readme = "README.md"
 documentation = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 homepage = "https://docs.rs/ethers"
-description = "Complete Ethereum library and wallet implementation in Rust."
+description = "A complete Ethereum and Celo Rust library"
 
 [workspace]
 members = [

@@ -363,14 +363,12 @@ impl Client {
     /// ```no_run
     /// # use ethers_etherscan::Client;
     /// # use ethers_core::types::Chain;
-    ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
-    ///     let meta = client
-    ///         .contract_source_code("0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse().unwrap())
-    ///         .await.unwrap();
-    ///     let code = meta.source_code();
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::new(Chain::Mainnet, "<your_api_key>")?;
+    /// let address = "0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413".parse()?;
+    /// let metadata = client.contract_source_code(address).await?;
+    /// assert_eq!(metadata.items[0].contract_name, "DAO");
+    /// # Ok(())
     /// # }
     /// ```
     pub async fn contract_source_code(&self, address: Address) -> Result<ContractMetadata> {

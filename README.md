@@ -1,6 +1,6 @@
-# <h1 align="center"> ethers.rs </h1>
+# <h1 align="center"> ethers-rs </h1>
 
-**Complete Ethereum and Celo wallet implementation and utilities in Rust**
+**A complete Ethereum and Celo Rust library**
 
 ![Github Actions](https://github.com/gakonst/ethers-rs/workflows/Tests/badge.svg)
 [![Telegram Chat](https://img.shields.io/endpoint?color=neon&style=flat-square&url=https%3A%2F%2Ftg.sumanjay.workers.dev%2Fethers_rs)](https://t.me/ethers_rs)
@@ -9,42 +9,34 @@
 [crates-badge]: https://img.shields.io/crates/v/ethers.svg
 [crates-url]: https://crates.io/crates/ethers
 
+## Quickstart
+
+Add this to your Cargo.toml:
+
+```toml
+[dependencies]
+ethers = "1.0.2"
+```
+
+And this to your code:
+
+```rust
+use ethers::prelude::*;
+```
+
 ## Documentation
 
-Extensive documentation and examples are available [here](https://docs.rs/ethers).
-
-Alternatively, you may clone the repository and run `cd ethers/ && cargo doc --open`
+View the API reference [here](https://docs.rs/ethers) or the online book [here](https://gakonst.com/ethers-rs).
 
 Examples are organized into individual crates under the `/examples` folder.
-You can run any of the examples by executing: 
+You can run any of the examples by executing:
+
 ```bash
 # cargo run -p <example-crate-name> --example <name>
 cargo run -p examples-big-numbers --example math_operations
 ```
 
-## Add ethers-rs to your repository
-
-```toml
-[dependencies]
-
-ethers = "1.0.0"
-```
-
-</details>
-
-## Running the tests
-
-Tests require the following installed:
-
-1. [`solc`](https://solidity.readthedocs.io/en/latest/installing-solidity.html) (>=0.8.10). We also recommend using [solc-select](https://github.com/crytic/solc-select) for more flexibility.
-2. [`anvil`](https://github.com/foundry-rs/foundry/blob/master/anvil/README.md)
-3. [`geth`](https://github.com/ethereum/go-ethereum)
-
-In addition, it is recommended that you set the `ETHERSCAN_API_KEY` environment variable
-for [the abigen via Etherscan](https://github.com/gakonst/ethers-rs/blob/master/ethers-contract/tests/it/abigen.rs) tests.
-You can get one [here](https://etherscan.io/apis).
-
-### EVM-compatible chains support
+## EVM-compatible chains support
 
 There are many chains live which are Ethereum JSON-RPC & EVM compatible, but do not yet have
 support for [EIP-2718](https://eips.ethereum.org/EIPS/eip-2718) Typed Transactions. This means
@@ -53,8 +45,7 @@ address that, you must use the `legacy` feature flag:
 
 ```toml
 [dependencies]
-
-ethers = { version = "1.0.0", features = ["legacy"] }
+ethers = { version = "1.0.2", features = ["legacy"] }
 ```
 
 ### Polygon support
@@ -73,8 +64,7 @@ You can get one [here](https://snowtrace.io/apis).
 
 ```toml
 [dependencies]
-
-ethers = { version = "1.0.0", features = ["celo"] }
+ethers = { version = "1.0.2", features = ["celo"] }
 ```
 
 Celo's transactions differ from Ethereum transactions by including 3 new fields:
@@ -111,8 +101,7 @@ Websockets support is turned on via the feature-flag `ws`:
 
 ```toml
 [dependencies]
-
-ethers = { version = "1.0.0", features = ["ws"] }
+ethers = { version = "1.0.2", features = ["ws"] }
 ```
 
 ### Interprocess Communication (IPC)
@@ -121,8 +110,7 @@ IPC support is turned on via the feature-flag `ipc`:
 
 ```toml
 [dependencies]
-
-ethers = { version = "1.0.0", features = ["ipc"] }
+ethers = { version = "1.0.2", features = ["ipc"] }
 ```
 
 ### HTTP Secure (HTTPS)
@@ -134,16 +122,14 @@ To enable `rustls`:
 
 ```toml
 [dependencies]
-
-ethers = { version = "1.0.0", features = ["rustls"] }
+ethers = { version = "1.0.2", features = ["rustls"] }
 ```
 
 To enable `openssl`:
 
 ```toml
 [dependencies]
-
-ethers = { version = "1.0.0", features = ["openssl"] }
+ethers = { version = "1.0.2", features = ["openssl"] }
 ```
 
 ## Note on WASM and FFI bindings
@@ -171,24 +157,22 @@ Join the [ethers-rs telegram](https://t.me/ethers_rs) to chat with the community
 ## Contributing
 
 Thanks for your help improving the project! We are so happy to have you! We have
-[a contributing guide](https://github.com/gakonst/ethers-rs/blob/master/CONTRIBUTING.md) to
-help you get involved in the ethers-rs project.
+[a contributing guide](./CONTRIBUTING.md) to help you get involved in the ethers-rs project.
 
-If you make a Pull Request, do not forget to add your changes in the [CHANGELOG](CHANGELOG.md) and ensure your code is
-properly formatted with `cargo +nightly fmt` and clippy is happy `cargo clippy`, you can even try to let clippy fix simple
-issues itself: `cargo +nightly clippy --fix -Z unstable-options`
+If you open a Pull Request, do not forget to add your changes in the [CHANGELOG](./CHANGELOG.md), ensure your code is
+properly formatted with `cargo +nightly fmt` and that Clippy is happy `cargo clippy`; you can even try to let clippy fix simple
+issues itself: `cargo +nightly clippy --fix`
 
-## Related Projects
+### Running the tests
 
-This library would not have been possible without the great work done in:
+Tests require the following installed:
 
--   [`ethers.js`](https://github.com/ethers-io/ethers.js/)
--   [`rust-web3`](https://github.com/tomusdrw/rust-web3/)
--   [`ethcontract-rs`](https://github.com/gnosis/ethcontract-rs/)
--   [`guac_rs`](https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc)
+1. [`solc`](https://docs.soliditylang.org/en/latest/installing-solidity.html) (>=0.8.0). We also recommend using [svm](https://github.com/roynalnaruto/svm-rs) for more flexibility.
+2. [`anvil`](https://github.com/foundry-rs/foundry/blob/master/anvil/README.md)
+3. [`geth`](https://github.com/ethereum/go-ethereum)
 
-A lot of the code was inspired and adapted from them, to a unified and opinionated interface,
-built with async/await and std futures from the ground up.
+Additionally, the `ETHERSCAN_API_KEY` environment variable has to be set to run [`ethers-etherscan`](./ethers-etherscan) tests.
+You can get one [here](https://etherscan.io/apis).
 
 ## Projects using ethers-rs
 
@@ -199,3 +183,15 @@ built with async/await and std futures from the ground up.
 -   [Celo Threshold BLS DKG](https://github.com/celo-org/celo-threshold-bls-rs/): CLI for using Celo as a data availability network for the Joint-Feldman BLS DKG
 -   [Celo Plumo Prover](https://github.com/celo-org/plumo-prover): Creates Celo's ultralight client proof from on-chain data
 -   [Celo SNARK Setup Coordinator](https://github.com/celo-org/snark-setup-operator): Coordinator for executing a pipelined Groth16 SNARK setup
+
+## Credits
+
+This library would not have been possible without the great work done in:
+
+-   [`ethers.js`](https://github.com/ethers-io/ethers.js/)
+-   [`rust-web3`](https://github.com/tomusdrw/rust-web3/)
+-   [`ethcontract-rs`](https://github.com/gnosis/ethcontract-rs/)
+-   [`guac_rs`](https://github.com/althea-net/guac_rs/)
+
+A lot of the code was inspired and adapted from them, to a unified and opinionated interface,
+built with async/await and std futures from the ground up.
