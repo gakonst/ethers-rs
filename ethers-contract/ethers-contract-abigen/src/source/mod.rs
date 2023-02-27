@@ -133,17 +133,22 @@ mod tests {
 
     #[test]
     fn parse_source() {
-        let rel = "../tests/solidity-contracts/console.json";
-        let abs = concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/solidity-contracts/console.json");
-        let abs_url = concat!(
-            "file://",
-            env!("CARGO_MANIFEST_DIR"),
-            "/../tests/solidity-contracts/console.json"
-        );
-        let exp = Source::Local(Path::new(rel).canonicalize().unwrap());
-        assert_eq!(Source::parse(rel).unwrap(), exp);
-        assert_eq!(Source::parse(abs).unwrap(), exp);
-        assert_eq!(Source::parse(abs_url).unwrap(), exp);
+        // Skip checking paths on Windows
+        #[cfg(not(windows))]
+        {
+            let rel = "../tests/solidity-contracts/console.json";
+            let abs =
+                concat!(env!("CARGO_MANIFEST_DIR"), "/../tests/solidity-contracts/console.json");
+            let abs_url = concat!(
+                "file://",
+                env!("CARGO_MANIFEST_DIR"),
+                "/../tests/solidity-contracts/console.json"
+            );
+            let exp = Source::Local(Path::new(rel).canonicalize().unwrap());
+            assert_eq!(Source::parse(rel).unwrap(), exp);
+            assert_eq!(Source::parse(abs).unwrap(), exp);
+            assert_eq!(Source::parse(abs_url).unwrap(), exp);
+        }
 
         // ABI
         let source = r#"[{"constant":true,"inputs":[],"name":"name","outputs":[{"name":"name","type":"string"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"symbol","outputs":[{"name":"symbol","type":"string"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"decimals","outputs":[{"name":"decimals","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"spender","type":"address"},{"name":"value","type":"uint256"}],"name":"approve","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"totalSupply","outputs":[{"name":"totalSupply","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"from","type":"address"},{"name":"to","type":"address"},{"name":"value","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"who","type":"address"}],"name":"balanceOf","outputs":[{"name":"balance","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"to","type":"address"},{"name":"value","type":"uint256"}],"name":"transfer","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"owner","type":"address"},{"name":"spender","type":"address"}],"name":"allowance","outputs":[{"name":"remaining","type":"uint256"}],"payable":false,"type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"name":"owner","type":"address"},{"indexed":true,"name":"spender","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"from","type":"address"},{"indexed":true,"name":"to","type":"address"},{"indexed":false,"name":"value","type":"uint256"}],"name":"Transfer","type":"event"}]"#;
