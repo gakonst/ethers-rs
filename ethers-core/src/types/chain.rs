@@ -463,6 +463,7 @@ impl Chain {
 
             Canto | CantoTestnet => "BLOCKSCOUT_API_KEY",
 
+            // Explicitly exhaustive. See NB above.
             XDai | Chiado | Sepolia | Rsk | Sokol | Poa | Oasis | Emerald | EmeraldTestnet |
             Evmos | EvmosTestnet | AnvilHardhat | Dev => return None,
         };
