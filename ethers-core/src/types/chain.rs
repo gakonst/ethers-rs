@@ -20,6 +20,11 @@ pub type ParseChainError = TryFromPrimitiveError<Chain>;
 //      "main" must be present and will be used in `Display`, `Serialize` and `FromStr`,
 //      while the aliases will be added only to `FromStr`.
 
+// We don't derive Serialize because it is manually implemented using AsRef<str> and it would
+// break a lot of things since Serialize is `kebab-case` vs Deserialize `snake_case`.
+// This means that the Chain type is not "round-trippable", because the Serialize and Deserialize
+// implementations do not use the same case style.
+
 /// An Ethereum EIP-155 chain.
 #[derive(
     Clone,
@@ -30,11 +35,11 @@ pub type ParseChainError = TryFromPrimitiveError<Chain>;
     PartialOrd,
     Ord,
     Hash,
-    AsRefStr,         // also for fmt::Display and serde::Serialize
-    EnumVariantNames, // Self::VARIANTS
+    AsRefStr,         // AsRef<str>, fmt::Display and serde::Serialize
+    EnumVariantNames, // Chain::VARIANTS
     EnumString,       // FromStr, TryFrom<&str>
-    EnumIter,
-    EnumCount,
+    EnumIter,         // Chain::iter
+    EnumCount,        // Chain::COUNT
     TryFromPrimitive, // TryFrom<u64>
     Deserialize,
 )]
@@ -212,6 +217,19 @@ impl Chain {
     /// **Note:** this is not an accurate average, but is rather a sensible default derived from
     /// blocktime charts such as [Etherscan's](https://etherscan.com/chart/blocktime)
     /// or [Polygonscan's](https://polygonscan.com/chart/blocktime).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ethers_core::types::Chain;
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(
+    ///     Chain::Mainnet.average_blocktime_hint(),
+    ///     Some(Duration::from_millis(12_000)),
+    /// );
+    /// assert_eq!(Chain::Optimism.average_blocktime_hint(), None);
+    /// ```
     pub const fn average_blocktime_hint(&self) -> Option<Duration> {
         use Chain::*;
 
@@ -240,9 +258,72 @@ impl Chain {
         Some(Duration::from_millis(ms))
     }
 
+    /// Returns whether the chain implements EIP-1559 (with the type 2 EIP-2718 transaction type).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ethers_core::types::Chain;
+    ///
+    /// assert!(!Chain::Mainnet.is_legacy());
+    /// assert!(Chain::Celo.is_legacy());
+    /// ```
+    #[allow(clippy::match_like_matches_macro)]
+    pub const fn is_legacy(&self) -> bool {
+        use Chain::*;
+
+        match self {
+            // Known legacy chains / non EIP-1559 compliant
+            Optimism |
+            OptimismGoerli |
+            OptimismKovan |
+            Fantom |
+            FantomTestnet |
+            BinanceSmartChain |
+            BinanceSmartChainTestnet |
+            Arbitrum |
+            ArbitrumTestnet |
+            ArbitrumGoerli |
+            ArbitrumNova |
+            Rsk |
+            Oasis |
+            Emerald |
+            EmeraldTestnet |
+            Celo |
+            CeloAlfajores |
+            CeloBaklava => true,
+
+            // Known EIP-1559 chains
+            Mainnet | Goerli | Sepolia | Polygon | PolygonMumbai | Avalanche | AvalancheFuji => {
+                false
+            }
+
+            // Unknown / not applicable, default to false for backwards compatibility
+            Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
+            Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
+            EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet => false,
+        }
+    }
+
     /// Returns the chain's blockchain explorer and its API (Etherscan and Etherscan-like) URLs.
     ///
-    /// Returns `(API URL, BASE_URL)`, like `("https://api(-chain).etherscan.io/api", "https://etherscan.io")`
+    /// Returns `(API_URL, BASE_URL)`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ethers_core::types::Chain;
+    ///
+    /// assert_eq!(
+    ///     Chain::Mainnet.etherscan_urls(),
+    ///     Some(("https://api.etherscan.io/api", "https://etherscan.io"))
+    /// );
+    /// assert_eq!(
+    ///     Chain::Avalanche.etherscan_urls(),
+    ///     Some(("https://api.snowtrace.io/api", "https://snowtrace.io"))
+    /// );
+    /// assert_eq!(Chain::AnvilHardhat.etherscan_urls(), None);
+    /// ```
     pub const fn etherscan_urls(&self) -> Option<(&'static str, &'static str)> {
         use Chain::*;
 
@@ -327,51 +408,82 @@ impl Chain {
                 "https://testnet-explorer.canto.neobase.one/",
                 "https://testnet-explorer.canto.neobase.one/api",
             ),
-            AnvilHardhat | Dev | Morden | MoonbeamDev => {
-                // this is explicitly exhaustive so we don't forget to add new urls when adding a
-                // new chain
-                return None
-            }
+
+            // Explicitly exhaustive. See NB above.
+            AnvilHardhat | Dev | Morden | MoonbeamDev => return None,
         };
 
         Some(urls)
     }
 
-    /// Returns whether the chain implements EIP-1559 (with the type 2 EIP-2718 transaction type).
-    pub const fn is_legacy(&self) -> bool {
+    /// Returns the chain's blockchain explorer's API key environment variable's default name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ethers_core::types::Chain;
+    ///
+    /// assert_eq!(Chain::Mainnet.etherscan_api_key_name(), Some("ETHERSCAN_API_KEY"));
+    /// assert_eq!(Chain::AnvilHardhat.etherscan_api_key_name(), None);
+    /// ```
+    pub const fn etherscan_api_key_name(&self) -> Option<&'static str> {
         use Chain::*;
 
-        match self {
-            // Known legacy chains / non EIP-1559 compliant
+        let api_key_name = match self {
+            Mainnet |
+            Morden |
+            Ropsten |
+            Kovan |
+            Rinkeby |
+            Goerli |
             Optimism |
             OptimismGoerli |
             OptimismKovan |
-            Fantom |
-            FantomTestnet |
             BinanceSmartChain |
             BinanceSmartChainTestnet |
             Arbitrum |
             ArbitrumTestnet |
             ArbitrumGoerli |
             ArbitrumNova |
-            Rsk |
-            Oasis |
-            Emerald |
-            EmeraldTestnet |
+            Cronos |
+            CronosTestnet |
+            Aurora |
+            AuroraTestnet |
             Celo |
             CeloAlfajores |
-            CeloBaklava => true,
+            CeloBaklava => "ETHERSCAN_API_KEY",
 
-            // Known EIP-1559 chains
-            Mainnet | Goerli | Sepolia | Polygon | PolygonMumbai | Avalanche | AvalancheFuji => {
-                false
-            }
+            Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
-            // Unknown / not applicable, default to false for backwards compatibility
-            Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
-            Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
-            EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet => false,
-        }
+            Polygon | PolygonMumbai => "POLYGONSCAN_API_KEY",
+
+            Fantom | FantomTestnet => "FTMSCAN_API_KEY",
+
+            Moonbeam | Moonbase | MoonbeamDev | Moonriver => "MOONSCAN_API_KEY",
+
+            Canto | CantoTestnet => "BLOCKSCOUT_API_KEY",
+
+            XDai | Chiado | Sepolia | Rsk | Sokol | Poa | Oasis | Emerald | EmeraldTestnet |
+            Evmos | EvmosTestnet | AnvilHardhat | Dev => return None,
+        };
+
+        Some(api_key_name)
+    }
+
+    /// Returns the chain's blockchain explorer's API key, from the environment variable with the
+    /// name specified in [`etherscan_api_key_name`](Chain::etherscan_api_key_name).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ethers_core::types::Chain;
+    ///
+    /// let chain = Chain::Mainnet;
+    /// std::env::set_var(chain.etherscan_api_key_name().unwrap(), "KEY");
+    /// assert_eq!(chain.etherscan_api_key().as_deref(), Some("KEY"));
+    /// ```
+    pub fn etherscan_api_key(&self) -> Option<String> {
+        self.etherscan_api_key_name().and_then(|name| std::env::var(name).ok())
     }
 }
 

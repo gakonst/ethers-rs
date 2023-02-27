@@ -45,6 +45,7 @@ pub struct Client {
 
 impl Client {
     /// Creates a `ClientBuilder` to configure a `Client`.
+    ///
     /// This is the same as `ClientBuilder::default()`.
     ///
     /// # Example
@@ -76,36 +77,15 @@ impl Client {
     }
 
     /// Create a new client with the correct endpoints based on the chain and API key
-    /// from ETHERSCAN_API_KEY environment variable
+    /// from the default environment variable defined in [`Chain`].
     pub fn new_from_env(chain: Chain) -> Result<Self> {
         let api_key = match chain {
-            Chain::Avalanche | Chain::AvalancheFuji => std::env::var("SNOWTRACE_API_KEY")?,
-            Chain::Polygon | Chain::PolygonMumbai => std::env::var("POLYGONSCAN_API_KEY")?,
-            Chain::Mainnet |
-            Chain::Morden |
-            Chain::Ropsten |
-            Chain::Kovan |
-            Chain::Rinkeby |
-            Chain::Goerli |
-            Chain::Optimism |
-            Chain::OptimismGoerli |
-            Chain::OptimismKovan |
-            Chain::BinanceSmartChain |
-            Chain::BinanceSmartChainTestnet |
-            Chain::Arbitrum |
-            Chain::ArbitrumTestnet |
-            Chain::ArbitrumGoerli |
-            Chain::ArbitrumNova |
-            Chain::Cronos |
-            Chain::CronosTestnet |
-            Chain::Aurora |
-            Chain::AuroraTestnet |
-            Chain::Celo |
-            Chain::CeloAlfajores |
-            Chain::CeloBaklava => std::env::var("ETHERSCAN_API_KEY")?,
-            Chain::Fantom | Chain::FantomTestnet => {
-                std::env::var("FTMSCAN_API_KEY").or_else(|_| std::env::var("FANTOMSCAN_API_KEY"))?
-            }
+            // Extra aliases
+            Chain::Fantom | Chain::FantomTestnet => std::env::var("FMTSCAN_API_KEY")
+                .or_else(|_| std::env::var("FANTOMSCAN_API_KEY"))
+                .map_err(Into::into),
+
+            // Backwards compatibility, ideally these should return an error.
             Chain::XDai |
             Chain::Chiado |
             Chain::Sepolia |
@@ -116,15 +96,14 @@ impl Client {
             Chain::Emerald |
             Chain::EmeraldTestnet |
             Chain::Evmos |
-            Chain::EvmosTestnet => String::default(),
-            Chain::Moonbeam | Chain::Moonbase | Chain::MoonbeamDev | Chain::Moonriver => {
-                std::env::var("MOONSCAN_API_KEY")?
-            }
-            Chain::Canto | Chain::CantoTestnet => std::env::var("BLOCKSCOUT_API_KEY")?,
-            Chain::AnvilHardhat | Chain::Dev => {
-                return Err(EtherscanError::LocalNetworksNotSupported)
-            }
-        };
+            Chain::EvmosTestnet => Ok(String::new()),
+            Chain::AnvilHardhat | Chain::Dev => Err(EtherscanError::LocalNetworksNotSupported),
+
+            _ => chain
+                .etherscan_api_key_name()
+                .ok_or_else(|| EtherscanError::ChainNotSupported(chain))
+                .and_then(|key_name| std::env::var(key_name).map_err(Into::into)),
+        }?;
         Self::new(chain, api_key)
     }
 
