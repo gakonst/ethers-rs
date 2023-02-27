@@ -76,6 +76,7 @@ default = ["ws", "rustls"]
 celo = ["ethers-core/celo"]
 
 ws = ["tokio-tungstenite", "futures-channel"]
+legacy_ws = ["ws"]
 ipc = ["tokio/io-util", "bytes", "futures-channel", "winapi"]
 
 openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]

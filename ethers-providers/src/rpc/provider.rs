@@ -11,13 +11,8 @@ use crate::{
     MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient,
 };
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "ws"))]
-use crate::Authorization;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{HttpRateLimitRetryPolicy, RetryClient};
-
-#[cfg(feature = "ws")]
-use crate::rpc::transports::ConnectionDetails;
 
 #[cfg(feature = "celo")]
 pub use crate::CeloMiddleware;
@@ -1217,49 +1212,6 @@ impl<P: JsonRpcClient> Provider<P> {
     /// and pending transactions (default: 7 seconds)
     pub fn get_interval(&self) -> Duration {
         self.interval.unwrap_or(DEFAULT_POLL_INTERVAL)
-    }
-}
-
-#[cfg(feature = "ws")]
-impl Provider<crate::Ws> {
-    /// Direct connection to a websocket endpoint. Defaults to 5 reconnects.
-    pub async fn connect(url: impl Into<ConnectionDetails>) -> Result<Self, ProviderError> {
-        let ws = crate::Ws::connect(url).await?;
-        Ok(Self::new(ws))
-    }
-
-    /// Direct connection to a websocket endpoint, with a set number of
-    /// reconnection attempts
-    pub async fn connect_with_reconnects(
-        url: impl Into<ConnectionDetails>,
-        reconnects: usize,
-    ) -> Result<Self, ProviderError> {
-        let ws = crate::Ws::connect_with_reconnects(url, reconnects).await?;
-        Ok(Self::new(ws))
-    }
-
-    /// Connect to a WS RPC provider with authentication details
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn connect_with_auth(
-        url: impl AsRef<str>,
-        auth: Authorization,
-    ) -> Result<Self, ProviderError> {
-        let conn = ConnectionDetails::new(url, Some(auth));
-        let ws = crate::Ws::connect(conn).await?;
-        Ok(Self::new(ws))
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    /// Connect to a WS RPC provider with authentication details and a set
-    /// number of reconnection attempts
-    pub async fn connect_with_auth_and_reconnects(
-        url: impl AsRef<str>,
-        auth: Authorization,
-        reconnects: usize,
-    ) -> Result<Self, ProviderError> {
-        let conn = ConnectionDetails::new(url, Some(auth));
-        let ws = crate::Ws::connect_with_reconnects(conn, reconnects).await?;
-        Ok(Self::new(ws))
     }
 }
 

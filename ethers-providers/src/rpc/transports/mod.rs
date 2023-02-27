@@ -9,9 +9,9 @@ mod ipc;
 #[cfg(all(feature = "ipc", any(unix, windows)))]
 pub use ipc::{Ipc, IpcError};
 
-#[cfg(feature = "ws")]
+#[cfg(all(feature = "ws", not(feature = "legacy_ws")))]
 mod ws;
-#[cfg(feature = "ws")]
+#[cfg(all(feature = "ws", not(feature = "legacy_ws")))]
 pub use ws::{ConnectionDetails, WsClient as Ws, WsClientError};
 // pub use ws::{ClientError as WsClientError, Ws};
 
@@ -28,6 +28,8 @@ mod mock;
 pub use mock::{MockError, MockProvider};
 
 /// archival websocket
-#[cfg(feature = "ws")]
-pub mod ws2;
-// pub use ws2::WsClient as Ws2Client;
+#[cfg(feature = "legacy_ws")]
+pub mod legacy_ws;
+
+#[cfg(feature = "legacy_ws")]
+pub use legacy_ws::Ws;
