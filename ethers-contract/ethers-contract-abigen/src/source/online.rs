@@ -206,6 +206,11 @@ mod tests {
 
     #[test]
     fn get_mainnet_contract() {
+        // Skip if ETHERSCAN_API_KEY is not set
+        if std::env::var("ETHERSCAN_API_KEY").is_err() {
+            return
+        }
+
         let source = Source::parse("mainnet:0x6b175474e89094c44da98b954eedeac495271d0f").unwrap();
         let abi = source.get().unwrap();
         assert!(!abi.is_empty());
