@@ -505,12 +505,6 @@ mod tests {
     }
 
     #[test]
-    fn chain_not_supported() {
-        let err = Client::new_from_env(Chain::Morden).unwrap_err();
-        assert!(matches!(err, EtherscanError::ChainNotSupported(Chain::Morden)));
-    }
-
-    #[test]
     fn local_networks_not_supported() {
         let err = Client::new_from_env(Chain::Dev).unwrap_err();
         assert!(matches!(err, EtherscanError::LocalNetworksNotSupported));

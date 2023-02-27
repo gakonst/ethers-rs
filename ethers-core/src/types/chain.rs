@@ -252,8 +252,8 @@ impl Chain {
             Dev | AnvilHardhat => 200,
             Celo | CeloAlfajores | CeloBaklava => 5_000,
             FilecoinHyperspaceTestnet | FilecoinMainnet => 30_000,
-            // Explictly handle all network to make it easier not to forget this match when new
-            // networks are added.
+
+            // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
             EmeraldTestnet => return None,
