@@ -112,6 +112,9 @@ impl Context {
             impl #ethers_core::abi::AbiDecode for #enum_name {
                 fn decode(data: impl AsRef<[u8]>) -> ::core::result::Result<Self, #ethers_core::abi::AbiError> {
                     let data = data.as_ref();
+                    // NB: This implementation does not include selector information, and ABI encoded types
+                    // are incredibly ambiguous, so it's possible to have bad false positives. Instead, we default
+                    // to a String to minimize amount of decoding attempts
                     if let Ok(decoded) = <::std::string::String as #ethers_core::abi::AbiDecode>::decode(data) {
                         return Ok(Self::RevertString(decoded))
                     }
