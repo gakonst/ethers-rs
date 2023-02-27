@@ -29,7 +29,7 @@ pub trait ContractRevert: AbiDecode + AbiEncode + Send + Sync {
         if data.len() < 4 {
             return None
         }
-        let selector = data.try_into().expect("checked by len");
+        let selector = data[..4].try_into().expect("checked by len");
         if !Self::valid_selector(selector) {
             return None
         }
