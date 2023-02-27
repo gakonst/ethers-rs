@@ -469,19 +469,6 @@ pub fn eip1559_default_estimator(base_fee_per_gas: U256, rewards: Vec<Vec<U256>>
     (max_fee_per_gas, max_priority_fee_per_gas)
 }
 
-/// Deserializes the (0x-prefixed) input into a H256, accepting inputs that are less than 64 hex
-/// characters long.
-pub fn from_unformatted_hex<'de, D>(deserializer: D) -> Result<H256, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    // first deserialize to Bytes
-    let bytes = Bytes::deserialize(deserializer)?;
-
-    // then convert to H256
-    from_bytes_to_h256::<'de, D>(bytes)
-}
-
 /// Converts a Bytes value into a H256, accepting inputs that are less than 32 bytes long. These
 /// inputs will be left padded with zeros.
 pub fn from_bytes_to_h256<'de, D>(bytes: Bytes) -> Result<H256, D::Error>
