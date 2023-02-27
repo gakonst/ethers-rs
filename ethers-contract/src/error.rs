@@ -16,8 +16,7 @@ pub trait ContractRevert: AbiDecode + AbiEncode + Send + Sync {
         if data.len() < 4 {
             return None
         }
-        let mut selector = [0u8; 4];
-        selector.copy_from_slice(&data[..4]);
+        let selector = data.try_into().expect("checked by len");
         if !Self::valid_selector(selector) {
             return None
         }
