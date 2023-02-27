@@ -110,7 +110,7 @@ ethers-contract = { version = "^1.0.0", default-features = false, path = "./ethe
 ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers", features = [
     "ws",
 ] }
-tempfile = "3.3.0"
+tempfile = "3.4.0"
 
 [target.'cfg(target_family = "unix")'.dev-dependencies]
 ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers", features = [
