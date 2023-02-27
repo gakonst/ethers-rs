@@ -3,8 +3,7 @@ use ethers_core::types::Address;
 use semver::Version;
 use serde::{Deserialize, Deserializer};
 
-static SOLC_BIN_LIST_URL: &str =
-    "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/bin/list.txt";
+static SOLC_BIN_LIST_URL: &str = "https://binaries.soliditylang.org/bin/list.txt";
 
 /// Given a Solc [Version], lookup the build metadata and return the full SemVer.
 /// e.g. `0.8.13` -> `0.8.13+commit.abaa5c0e`
