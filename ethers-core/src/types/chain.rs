@@ -216,8 +216,8 @@ impl Chain {
         use Chain::*;
 
         let ms = match self {
+            Mainnet => 12_000,
             Arbitrum | ArbitrumTestnet | ArbitrumGoerli | ArbitrumNova => 1_300,
-            Mainnet | Optimism => 13_000,
             Polygon | PolygonMumbai => 2_100,
             Moonbeam | Moonriver => 12_500,
             BinanceSmartChain | BinanceSmartChainTestnet => 3_000,
@@ -230,12 +230,11 @@ impl Chain {
             Emerald => 6_000,
             Dev | AnvilHardhat => 200,
             Celo | CeloAlfajores | CeloBaklava => 5_000,
-            // Explictly handle all network to make it easier not to forget this match when new
-            // networks are added.
+
+            // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
-            MoonbeamDev | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet => {
-                return None
-            }
+            MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
+            EmeraldTestnet => return None,
         };
 
         Some(Duration::from_millis(ms))
