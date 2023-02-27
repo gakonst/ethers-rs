@@ -36,11 +36,12 @@ pub use rlp;
 /// Re-export hex
 pub use hex;
 
-use crate::types::{Address, ParseI256Error, I256, U256, U64};
+use crate::types::{Address, Bytes, ParseI256Error, H256, I256, U256, U64};
 use elliptic_curve::sec1::ToEncodedPoint;
 use ethabi::ethereum_types::FromDecStrErr;
 use k256::{ecdsa::SigningKey, PublicKey as K256PublicKey};
 use std::{
+    collections::HashMap,
     convert::{TryFrom, TryInto},
     fmt,
     str::FromStr,
@@ -466,6 +467,60 @@ pub fn eip1559_default_estimator(base_fee_per_gas: U256, rewards: Vec<Vec<U256>>
         potential_max_fee
     };
     (max_fee_per_gas, max_priority_fee_per_gas)
+}
+
+/// Deserializes the (0x-prefixed) input into a H256, accepting inputs that are less than 64 hex
+/// characters long.
+pub fn from_unformatted_hex<'de, D>(deserializer: D) -> Result<H256, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    // first deserialize to Bytes
+    let bytes = Bytes::deserialize(deserializer)?;
+
+    // then convert to H256
+    from_bytes_to_h256::<'de, D>(bytes)
+}
+
+/// Converts a Bytes value into a H256, accepting inputs that are less than 32 bytes long. These
+/// inputs will be left padded with zeros.
+pub fn from_bytes_to_h256<'de, D>(bytes: Bytes) -> Result<H256, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    if bytes.0.len() > 32 {
+        return Err(serde::de::Error::custom("input too long to be a H256"))
+    }
+
+    // left pad with zeros to 32 bytes
+    let mut padded = [0u8; 32];
+    padded[32 - bytes.0.len()..].copy_from_slice(&bytes.0);
+
+    // then convert to H256 without a panic
+    Ok(H256::from_slice(&padded))
+}
+
+/// Deserializes the input into an Option<HashMap<H256, H256>>, using from_unformatted_hex to
+/// deserialize the keys and values.
+pub fn from_unformatted_hex_map<'de, D>(
+    deserializer: D,
+) -> Result<Option<HashMap<H256, H256>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let map = Option::<HashMap<Bytes, Bytes>>::deserialize(deserializer)?;
+    match map {
+        Some(mut map) => {
+            let mut res_map = HashMap::new();
+            for (k, v) in map.drain() {
+                let k_deserialized = from_bytes_to_h256::<'de, D>(k)?;
+                let v_deserialized = from_bytes_to_h256::<'de, D>(v)?;
+                res_map.insert(k_deserialized, v_deserialized);
+            }
+            Ok(Some(res_map))
+        }
+        None => return Ok(None),
+    }
 }
 
 /// Deserializes the input into a U256, accepting both 0x-prefixed hex and decimal strings with
