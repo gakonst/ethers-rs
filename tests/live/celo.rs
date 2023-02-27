@@ -1,13 +1,14 @@
-use crate::compile_contract;
+use crate::simple_storage::SimpleStorage;
 use ethers::prelude::*;
 use std::{sync::Arc, time::Duration};
+
+static CELO_TESTNET_URL: &str = "https://alfajores-forno.celo-testnet.org";
 
 #[tokio::test]
 async fn test_send_transaction() {
     // Celo testnet
-    let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
-        .unwrap()
-        .interval(Duration::from_millis(3000u64));
+    let provider =
+        Provider::<Http>::try_from(CELO_TESTNET_URL).unwrap().interval(Duration::from_secs(3));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
 
     // Funded with https://celo.org/developers/faucet
@@ -27,13 +28,9 @@ async fn test_send_transaction() {
 
 #[tokio::test]
 async fn deploy_and_call_contract() {
-    // compiles the given contract and returns the ABI and Bytecode
-    let (abi, bytecode) = compile_contract("SimpleStorage.sol", "SimpleStorage");
-
     // Celo testnet
-    let provider = Provider::<Http>::try_from("https://alfajores-forno.celo-testnet.org")
-        .unwrap()
-        .interval(Duration::from_millis(6000));
+    let provider =
+        Provider::<Http>::try_from(CELO_TESTNET_URL).unwrap().interval(Duration::from_secs(3));
     let chain_id = provider.get_chainid().await.unwrap().as_u64();
 
     // Funded with https://celo.org/developers/faucet
@@ -41,20 +38,19 @@ async fn deploy_and_call_contract() {
         .parse::<LocalWallet>()
         .unwrap()
         .with_chain_id(chain_id);
-    let client = SignerMiddleware::new_with_provider_chain(provider, wallet).await.unwrap();
+    let client = provider.with_signer(wallet);
     let client = Arc::new(client);
 
-    let factory = ContractFactory::new(abi, bytecode, client);
-    let deployer = factory.deploy(()).unwrap().legacy();
-    let contract = deployer.block(BlockNumber::Pending).send().await.unwrap();
+    let deploy_tx = SimpleStorage::deploy(client, ()).unwrap();
+    let contract = deploy_tx.send().await.unwrap();
 
-    let value: U256 = contract.method("value", ()).unwrap().call().await.unwrap();
+    let value: U256 = contract.value().call().await.unwrap();
     assert_eq!(value, 0.into());
 
     // make a state mutating transaction
     // gas estimation costs are sometimes under-reported on celo,
     // so we manually set it to avoid failures
-    let call = contract.method::<_, H256>("setValue", U256::from(1)).unwrap().gas(100000);
+    let call = contract.set_value(1.into()).gas(100000);
     let pending_tx = call.send().await.unwrap();
     let _receipt = pending_tx.await.unwrap();
 
