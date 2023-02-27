@@ -67,7 +67,8 @@ impl Explorer {
         let chain = self.chain();
         let client = match api_key {
             Some(api_key) => Client::new(chain, api_key),
-            None => Client::new_from_env(chain),
+            None => Client::new_from_env(chain)
+                .or_else(|_| Client::builder().chain(chain).and_then(|b| b.build())),
         }?;
         Ok(client)
     }
