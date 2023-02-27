@@ -13,7 +13,7 @@ env:
     GOERLI_PRIVATE_KEY: "fa4a1a79e869a96fcb42727f75e3232d6865a82ea675bb95de967a7fe6a773b2"
     GETH_BUILD: "1.11.2-73b01f40"
     SOLC_VERSION: "0.8.19"
-    RUSTFLAGS: "-D warnings"
+    CARGO_TERM_COLOR: always
 
 jobs:
     test:
@@ -43,12 +43,32 @@ jobs:
             - uses: Swatinem/rust-cache@v2
             - name: test
               shell: bash
-              run: cargo nextest run ${{ matrix.flags }} -E "!binary(~live)"
+              # skip `ethers_etherscan::it` and `ethers::live`
+              run: |
+                  cargo nextest run \
+                  ${{ matrix.flags }} \
+                  -E "!binary(~live) & !(deps(ethers-etherscan) & kind(test))"
+
+    etherscan-tests:
+        name: etherscan tests
+        runs-on: ubuntu-latest
+        concurrency: etherscan-tests-${{ github.head_ref || github.run_id }}
+        # Run after main tests are done to avoid rate limiting,
+        # regardless of whether they were successful
+        if: ${{ always() }}
+        needs: test
+        steps:
+            - uses: actions/checkout@v3
+            - uses: dtolnay/rust-toolchain@stable
+            - uses: Swatinem/rust-cache@v2
+            # Don't use cargo-nextest since all the tests have to be ran sequentially
+            - name: live tests
+              run: cargo test -p ethers-etherscan --test it
 
     live-tests:
         name: live tests
         runs-on: ubuntu-latest
-        concurrency: ${{ github.head_ref || github.run_id }}
+        concurrency: live-tests-${{ github.head_ref || github.run_id }}
         steps:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@stable
@@ -80,6 +100,8 @@ jobs:
             - uses: Swatinem/rust-cache@v2
             - name: clippy
               run: cargo clippy --workspace --tests --all-features
+              env:
+                  RUSTFLAGS: "-D warnings"
 
     docs:
         name: docs
@@ -93,8 +115,8 @@ jobs:
             - name: doc
               run: cargo doc --workspace --all-features --no-deps --document-private-items
               env:
-                  RUSTFLAGS: --cfg docsrs
-                  RUSTDOCFLAGS: --cfg docsrs
+                  RUSTFLAGS: "--cfg docsrs"
+                  RUSTDOCFLAGS: "--cfg docsrs -D warnings"
 
     fmt:
         name: fmt
@@ -143,6 +165,7 @@ jobs:
     examples:
         name: Examples
         runs-on: ubuntu-latest
+        concurrency: examples-${{ github.head_ref || github.run_id }}
         steps:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@stable
