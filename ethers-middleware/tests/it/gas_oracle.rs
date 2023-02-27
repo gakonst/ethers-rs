@@ -5,8 +5,6 @@ use ethers_middleware::gas_oracle::{
     GasOracleMiddleware, Polygon, ProviderOracle, Result,
 };
 use ethers_providers::{Http, Middleware, Provider};
-use serial_test::serial;
-use std::convert::TryFrom;
 
 #[derive(Debug)]
 struct FakeGasOracle {
@@ -26,7 +24,6 @@ impl GasOracle for FakeGasOracle {
 }
 
 #[tokio::test]
-#[serial]
 async fn provider_using_gas_oracle() {
     let anvil = Anvil::new().spawn();
 
@@ -52,7 +49,6 @@ async fn provider_using_gas_oracle() {
 }
 
 #[tokio::test]
-#[serial]
 async fn provider_oracle() {
     // spawn anvil and connect to it
     let anvil = Anvil::new().spawn();
