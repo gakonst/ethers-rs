@@ -1,1 +1,0 @@
-../ethers-contract/README.md

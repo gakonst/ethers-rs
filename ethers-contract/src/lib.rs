@@ -1,6 +1,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
 #![deny(unsafe_code)]
+#![warn(missing_docs)]
 
 mod contract;
 pub use contract::{Contract, ContractInstance};
@@ -31,8 +32,10 @@ mod multicall;
 #[cfg(any(test, feature = "abigen"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
 pub use multicall::{
-    contract as multicall_contract, Call, Multicall, MulticallContract, MulticallError,
-    MulticallVersion, MULTICALL_ADDRESS, MULTICALL_SUPPORTED_CHAIN_IDS,
+    constants::{MULTICALL_ADDRESS, MULTICALL_SUPPORTED_CHAIN_IDS},
+    contract as multicall_contract,
+    error::MulticallError,
+    Call, Multicall, MulticallContract, MulticallVersion,
 };
 
 /// This module exposes low lever builder structures which are only consumed by the

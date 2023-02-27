@@ -12,7 +12,7 @@ use ethers::providers::{Http, Middleware, Provider};
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
     // Initialize a new Http provider
-    let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
+    let rpc_url = "https://eth.llamarpc.com";
     let provider = Provider::try_from(rpc_url)?;
 
     Ok(())
@@ -60,7 +60,7 @@ use ethers::providers::{Http, Middleware, Provider};
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
+    let rpc_url = "https://eth.llamarpc.com";
     let provider = Provider::try_from(rpc_url)?;
 
     let chain_id = provider.get_chainid().await?;
@@ -88,7 +88,7 @@ abigen!(
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
+    let rpc_url = "https://eth.llamarpc.com";
     let provider = Arc::new(Provider::try_from(rpc_url)?);
 
     // Initialize a new instance of the Weth/Dai Uniswap V2 pair contract
@@ -108,13 +108,12 @@ This example is a little more complicated, so let's walk through what is going o
 It is very common to wrap a provider in an `Arc` to share the provider across threads. Let's look at another example where the provider is used asynchronously across two tokio threads. In the next example, a new provider is initialized and used to asynchronously fetch the number of Ommer blocks from the most recent block, as well as the previous block.
 
 ```rust
-use std::sync::Arc;
-
 use ethers::providers::{Http, Middleware, Provider};
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
-    let rpc_url = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
+    let rpc_url = "https://eth.llamarpc.com";
     let provider = Arc::new(Provider::try_from(rpc_url)?);
 
     let current_block_number = provider.get_block_number().await?;

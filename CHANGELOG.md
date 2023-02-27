@@ -284,6 +284,8 @@
 
 ### Unreleased
 
+- fix: `LedgerSigner` has improved tracing and a ledger app bug mitigation
+  [#2192](https://github.com/gakonst/ethers-rs/pull/2192)
 - `eth-keystore-rs` crate updated. Allow an optional name for the to-be-generated
   keystore file [#910](https://github.com/gakonst/ethers-rs/pull/910)
 - [1983](https://github.com/gakonst/ethers-rs/pull/1983) Added a `from_bytes` function for the `Wallet` type.
@@ -302,6 +304,11 @@
 
 ### Unreleased
 
+- (Breaking) Add `Revert` to `ContractError`. Add `impl EthError for String`.
+  Modify existing `ContractError` variants to prevent accidental improper
+  usage. Change `MulticallError` to use `ContractError::Revert`. Add
+  convenience methods to decode errors from reverts.
+  [#2172](https://github.com/gakonst/ethers-rs/pull/2172)
 - (Breaking) Improve Multicall result handling
   [#2164](https://github.com/gakonst/ethers-rs/pull/2105)
 - (Breaking) Make `Event` objects generic over borrow & remove lifetime

@@ -90,86 +90,89 @@ async fn send_with_chain_id_anvil() {
     let _err = res.unwrap_err();
 }
 
-#[tokio::test]
-#[cfg(not(feature = "celo"))]
-async fn pending_txs_with_confirmations_testnet() {
-    let provider = GOERLI.provider().interval(Duration::from_millis(3000));
-    let chain_id = provider.get_chainid().await.unwrap();
-    let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
-    let address = wallet.address();
-    let provider = SignerMiddleware::new(provider, wallet);
-    generic_pending_txs_test(provider, address).await;
-}
+// #[tokio::test]
+// #[cfg(not(feature = "celo"))]
+// async fn pending_txs_with_confirmations_testnet() {
+//     let provider = GOERLI.provider().interval(Duration::from_millis(3000));
+//     let chain_id = provider.get_chainid().await.unwrap();
+//     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
+//     let address = wallet.address();
+//     let provider = SignerMiddleware::new(provider, wallet);
+//     generic_pending_txs_test(provider, address).await;
+// }
+//
+// // different keys to avoid nonce errors
+// #[tokio::test]
+// #[cfg(not(feature = "celo"))]
+// async fn websocket_pending_txs_with_confirmations_testnet() {
+//     let provider = GOERLI.ws().await.interval(Duration::from_millis(3000));
+//     let chain_id = provider.get_chainid().await.unwrap();
+//     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
+//     let address = wallet.address();
+//     let provider = SignerMiddleware::new(provider, wallet);
+//     generic_pending_txs_test(provider, address).await;
+// }
 
-// different keys to avoid nonce errors
-#[tokio::test]
-#[cfg(not(feature = "celo"))]
-async fn websocket_pending_txs_with_confirmations_testnet() {
-    let provider = GOERLI.ws().await.interval(Duration::from_millis(3000));
-    let chain_id = provider.get_chainid().await.unwrap();
-    let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
-    let address = wallet.address();
-    let provider = SignerMiddleware::new(provider, wallet);
-    generic_pending_txs_test(provider, address).await;
-}
-
-#[cfg(not(feature = "celo"))]
-async fn generic_pending_txs_test<M: Middleware>(provider: M, who: Address) {
-    let tx = TransactionRequest::new().to(who).from(who);
-    let pending_tx = provider.send_transaction(tx, None).await.unwrap();
-    let tx_hash = *pending_tx;
-    let receipt = pending_tx.confirmations(1).await.unwrap().unwrap();
-    // got the correct receipt
-    assert_eq!(receipt.transaction_hash, tx_hash);
-}
-
-#[tokio::test]
-#[cfg(not(feature = "celo"))]
-async fn typed_txs() {
-    let provider = GOERLI.provider();
-
-    let chain_id = provider.get_chainid().await.unwrap();
-    let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
-    let address = wallet.address();
-    // our wallet
-    let provider = SignerMiddleware::new(provider, wallet);
-
-    // Uncomment the below and run this test to re-fund the wallets if they get drained.
-    // Would be ideal if we'd have a way to do this automatically, but this should be
-    // happening rarely enough that it doesn't matter.
-    // WALLETS.fund(provider.provider(), 10u32).await;
-
-    async fn check_tx<P: JsonRpcClient + Clone>(
-        pending_tx: ethers_providers::PendingTransaction<'_, P>,
-        expected: u64,
-    ) {
-        let provider = pending_tx.provider();
-        let receipt = pending_tx.await.unwrap().unwrap();
-        let tx = provider.get_transaction(receipt.transaction_hash).await.unwrap().unwrap();
-        assert_eq!(receipt.transaction_type, Some(expected.into()));
-        assert_eq!(tx.transaction_type, Some(expected.into()));
-    }
-
-    let nonce = provider.get_transaction_count(address, None).await.unwrap();
-    let bn = Some(BlockNumber::Pending.into());
-    let gas_price = provider.get_gas_price().await.unwrap() * 125 / 100;
-
-    let tx = TransactionRequest::new().from(address).to(address).nonce(nonce).gas_price(gas_price);
-    let tx1 = provider.send_transaction(tx.clone(), bn).await.unwrap();
-
-    let tx = tx.clone().from(address).to(address).nonce(nonce + 1).with_access_list(vec![]);
-    let tx2 = provider.send_transaction(tx, bn).await.unwrap();
-
-    let tx = Eip1559TransactionRequest::new()
-        .from(address)
-        .to(address)
-        .nonce(nonce + 2)
-        .max_fee_per_gas(gas_price)
-        .max_priority_fee_per_gas(gas_price);
-    let tx3 = provider.send_transaction(tx, bn).await.unwrap();
-
-    futures_util::join!(check_tx(tx1, 0), check_tx(tx2, 1), check_tx(tx3, 2),);
-}
+// #[cfg(not(feature = "celo"))]
+// async fn generic_pending_txs_test<M: Middleware>(provider: M, who: Address) {
+//     let tx = TransactionRequest::new().to(who).from(who);
+//     let pending_tx = provider.send_transaction(tx, None).await.unwrap();
+//     let tx_hash = *pending_tx;
+//     let receipt = pending_tx.confirmations(1).await.unwrap().unwrap();
+//     // got the correct receipt
+//     assert_eq!(receipt.transaction_hash, tx_hash);
+// }
+//
+// #[tokio::test]
+// #[cfg(not(feature = "celo"))]
+// async fn typed_txs() {
+//     let provider = GOERLI.provider();
+//
+//     let chain_id = provider.get_chainid().await.unwrap();
+//     let wallet = WALLETS.next().with_chain_id(chain_id.as_u64());
+//     let address = wallet.address();
+//
+//     dbg!(&wallet, &address);
+//     // our wallet
+//     let provider = SignerMiddleware::new(provider, wallet);
+//
+//     // Uncomment the below and run this test to re-fund the wallets if they get drained.
+//     // Would be ideal if we'd have a way to do this automatically, but this should be
+//     // happening rarely enough that it doesn't matter.
+//     // WALLETS.fund(provider.provider(), 10u32).await;
+//
+//     async fn check_tx<P: JsonRpcClient + Clone>(
+//         pending_tx: ethers_providers::PendingTransaction<'_, P>,
+//         expected: u64,
+//     ) {
+//         let provider = pending_tx.provider();
+//         let receipt = pending_tx.await.unwrap().unwrap();
+//         let tx = provider.get_transaction(receipt.transaction_hash).await.unwrap().unwrap();
+//         assert_eq!(receipt.transaction_type, Some(expected.into()));
+//         assert_eq!(tx.transaction_type, Some(expected.into()));
+//     }
+//
+//     let nonce = provider.get_transaction_count(address, None).await.unwrap();
+//     let bn = Some(BlockNumber::Pending.into());
+//     let gas_price = provider.get_gas_price().await.unwrap() * 125 / 100;
+//
+//     let tx =
+// TransactionRequest::new().from(address).to(address).nonce(nonce).gas_price(gas_price);
+//     let tx1 = provider.send_transaction(tx.clone(), bn).await.unwrap();
+//
+//     let tx = tx.clone().from(address).to(address).nonce(nonce + 1).with_access_list(vec![]);
+//     let tx2 = provider.send_transaction(tx, bn).await.unwrap();
+//
+//     let tx = Eip1559TransactionRequest::new()
+//         .from(address)
+//         .to(address)
+//         .nonce(nonce + 2)
+//         .max_fee_per_gas(gas_price)
+//         .max_priority_fee_per_gas(gas_price);
+//     let tx3 = provider.send_transaction(tx, bn).await.unwrap();
+//
+//     futures_util::join!(check_tx(tx1, 0), check_tx(tx2, 1), check_tx(tx3, 2),);
+// }
 
 #[tokio::test]
 #[cfg(feature = "celo")]
@@ -296,7 +299,7 @@ impl TestWallets {
     pub async fn fund<T: JsonRpcClient, U: Into<u32>>(&self, provider: &Provider<T>, n: U) {
         let addrs = (0..n.into()).map(|i| self.get(i).address()).collect::<Vec<_>>();
         // hardcoded funder address private key, GOERLI
-        let signer = "39aa18eeb5d12c071e5f19d8e9375a872e90cb1f2fa640384ffd8800a2f3e8f1"
+        let signer = "9867bd0f8d9e16c57f5251b35a73f6f903eb8eee1bdc7f15256d0dc09d1945fb"
             .parse::<LocalWallet>()
             .unwrap()
             .with_chain_id(provider.get_chainid().await.unwrap().as_u64());

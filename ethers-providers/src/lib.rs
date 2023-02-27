@@ -1,9 +1,8 @@
-#![cfg_attr(docsrs, feature(doc_cfg))]
-#![deny(unsafe_code)]
-#![deny(rustdoc::broken_intra_doc_links)]
-#![allow(clippy::type_complexity)]
 #![doc = include_str!("../README.md")]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![allow(clippy::type_complexity)]
 #![warn(missing_docs)]
+#![deny(unsafe_code, rustdoc::broken_intra_doc_links)]
 
 mod ext;
 pub use ext::*;

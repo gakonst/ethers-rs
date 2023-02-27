@@ -1,3 +1,6 @@
+//! Contains the `EventStream` type which aids in streaming access to contract
+//! events
+
 use crate::LogMeta;
 use ethers_core::types::{Log, U256};
 use futures_util::{
@@ -19,6 +22,7 @@ type MapEvent<'a, R, E> = Box<dyn Fn(Log) -> Result<R, E> + 'a + Send + Sync>;
 /// We use this wrapper type instead of `StreamExt::map` in order to preserve
 /// information about the filter/subscription's id.
 pub struct EventStream<'a, T, R, E> {
+    /// The stream ID, provided by the RPC server
     pub id: U256,
     #[pin]
     stream: T,
@@ -33,6 +37,9 @@ impl<'a, T, R, E> EventStream<'a, T, R, E> {
 }
 
 impl<'a, T, R, E> EventStream<'a, T, R, E> {
+    /// Instantiate a new `EventStream`
+    ///
+    /// Typically users should not call this directly
     pub fn new(id: U256, stream: T, parse: MapEvent<'a, R, E>) -> Self {
         Self { id, stream, parse }
     }
@@ -128,8 +135,10 @@ where
     }
 }
 
+/// A stream of two items
 pub type SelectEither<'a, L, R> = Pin<Box<dyn Stream<Item = Either<L, R>> + 'a>>;
 
+/// Stream for [`EventStream::select`]
 #[pin_project]
 pub struct SelectEvent<T>(#[pin] T);
 

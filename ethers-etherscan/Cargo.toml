@@ -33,7 +33,7 @@ semver = "1.0.16"
 getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
-tempfile = "3.3.0"
+tempfile = "3.4.0"
 tokio = { version = "1.18", features = ["macros", "rt-multi-thread", "time"] }
 serial_test = "0.10.0"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }

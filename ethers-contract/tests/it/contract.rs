@@ -722,19 +722,24 @@ mod eth_tests {
             .unwrap();
 
         // .call reverts
-        // don't allow revert -> entire call reverts
-        multicall.clear_calls().add_call(get_value_reverting_call.clone(), false);
-        assert!(matches!(
-            multicall.call::<(String,)>().await.unwrap_err(),
-            MulticallError::ContractError(_)
-        ));
+        // don't allow revert
+        multicall
+            .clear_calls()
+            .add_call(get_value_reverting_call.clone(), false)
+            .add_call(get_value_call.clone(), false);
+        let res = multicall.call::<(String, String)>().await;
+        let err = res.unwrap_err();
+
+        assert!(err.is_revert());
+        let message = err.decode_revert::<String>().unwrap();
+        assert!(message.contains("Multicall3: call failed"));
 
         // allow revert -> call doesn't revert, but returns Err(_) in raw tokens
         let expected = Bytes::from_static(b"getValue revert").encode();
         multicall.clear_calls().add_call(get_value_reverting_call.clone(), true);
         assert_eq!(multicall.call_raw().await.unwrap()[0].as_ref().unwrap_err()[4..], expected[..]);
         assert_eq!(
-            multicall.call::<(String,)>().await.unwrap_err().into_bytes().unwrap()[4..],
+            multicall.call::<(String,)>().await.unwrap_err().as_revert().unwrap()[4..],
             expected[..]
         );
 
@@ -774,14 +779,14 @@ mod eth_tests {
         // empty revert
         let empty_revert = reverting_contract.method::<_, H256>("emptyRevert", ()).unwrap();
         multicall.clear_calls().add_call(empty_revert.clone(), true);
-        assert!(multicall.call::<(String,)>().await.unwrap_err().into_bytes().unwrap().is_empty());
+        assert!(multicall.call::<(String,)>().await.unwrap_err().as_revert().unwrap().is_empty());
 
         // string revert
         let string_revert =
             reverting_contract.method::<_, H256>("stringRevert", ("String".to_string())).unwrap();
         multicall.clear_calls().add_call(string_revert, true);
         assert_eq!(
-            multicall.call::<(String,)>().await.unwrap_err().into_bytes().unwrap()[4..],
+            multicall.call::<(String,)>().await.unwrap_err().as_revert().unwrap()[4..],
             Bytes::from_static(b"String").encode()[..]
         );
 
@@ -789,7 +794,7 @@ mod eth_tests {
         let custom_error = reverting_contract.method::<_, H256>("customError", ()).unwrap();
         multicall.clear_calls().add_call(custom_error, true);
         assert_eq!(
-            multicall.call::<(Bytes,)>().await.unwrap_err().into_bytes().unwrap()[..],
+            multicall.call::<(Bytes,)>().await.unwrap_err().as_revert().unwrap()[..],
             keccak256("CustomError()")[..4]
         );
 
@@ -798,7 +803,8 @@ mod eth_tests {
             .method::<_, H256>("customErrorWithData", ("Data".to_string()))
             .unwrap();
         multicall.clear_calls().add_call(custom_error_with_data, true);
-        let bytes = multicall.call::<(Bytes,)>().await.unwrap_err().into_bytes().unwrap();
+        let err = multicall.call::<(Bytes,)>().await.unwrap_err();
+        let bytes = err.as_revert().unwrap();
         assert_eq!(bytes[..4], keccak256("CustomErrorWithData(string)")[..4]);
         assert_eq!(bytes[4..], encode(&[Token::String("Data".to_string())]));
     }
