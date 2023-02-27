@@ -43,15 +43,7 @@ and can be overriden with the [`ens`](./struct.Provider.html#method.ens) method 
 # use ethers_core::types::Address;
 # use ethers_providers::{Provider, Http, Middleware, Ws};
 # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-// HTTP Provider
-let provider = Provider::<Http>::try_from(
-    "https://mainnet.infura.io/v3/YOUR_API_KEY"
-)?;
-
-// Websocket Provider
-let provider = Provider::<Ws>::connect(
-    "wss://mainnet.infura.io/v3/YOUR_API_KEY"
-).await?;
+let provider = Provider::<Http>::try_from("https://eth.llamarpc.com")?;
 
 let block = provider.get_block(100u64).await?;
 println!("Got block: {}", serde_json::to_string(&block)?);
@@ -68,9 +60,8 @@ Using ENS:
 ```rust,no_run
 # use ethers_providers::{Provider, Http, Middleware};
 # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-# let provider = Provider::<Http>::try_from(
-#     "https://mainnet.infura.io/v3/YOUR_API_KEY"
-# )?;
+let provider = Provider::<Http>::try_from("https://eth.llamarpc.com")?;
+
 // Resolve ENS name to Address
 let name = "vitalik.eth";
 let address = provider.resolve_name(name).await?;

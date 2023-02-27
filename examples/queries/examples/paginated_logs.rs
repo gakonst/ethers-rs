@@ -10,9 +10,7 @@ use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let client: Provider<Ws> =
-        Provider::<Ws>::connect("wss://mainnet.infura.io/ws/v3/c60b0bb42f8a4c6481ecd229eddaca27")
-            .await?;
+    let client: Provider<Ws> = Provider::<Ws>::connect("wss://eth.llamarpc.com").await?;
     let client = Arc::new(client);
 
     let last_block = client.get_block(BlockNumber::Latest).await?.unwrap().number.unwrap();

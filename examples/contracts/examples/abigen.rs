@@ -63,7 +63,7 @@ async fn rust_inline_generation() -> Result<()> {
         ]"#,
     );
 
-    const RPC_URL: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
+    const RPC_URL: &str = "https://eth.llamarpc.com";
     const WETH_ADDRESS: &str = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2";
 
     let provider = Provider::<Http>::try_from(RPC_URL)?;

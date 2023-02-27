@@ -5,7 +5,7 @@ use ethers::prelude::*;
 use reqwest::header::{HeaderMap, HeaderValue};
 use std::sync::Arc;
 
-const RPC_URL: &str = "https://mainnet.infura.io/v3/c60b0bb42f8a4c6481ecd229eddaca27";
+const RPC_URL: &str = "https://eth.llamarpc.com";
 
 #[tokio::main]
 async fn main() -> eyre::Result<()> {
