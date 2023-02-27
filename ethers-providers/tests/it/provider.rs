@@ -77,7 +77,7 @@ mod eth_tests {
     }
 
     #[tokio::test]
-    #[cfg(feature = "ws")]
+    #[cfg(feature = "ipc")]
     async fn subscribe_blocks_ipc() {
         let (provider, _anvil, _ipc) = crate::spawn_anvil_ipc().await;
         generic_subscribe_blocks_test(provider).await;
