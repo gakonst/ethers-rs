@@ -6,10 +6,23 @@ use ethers_core::{
 use ethers_providers::JsonRpcError;
 use std::borrow::Cow;
 
-/// A trait for enums unifying [`EthError`] types.
+/// A trait for enums unifying [`EthError`] types. This trait is usually used
+/// to represent the errors that a specific contract might throw. I.e. all
+/// solidity custom errors + revert strings.
+///
+/// This trait should be accessed via
+/// `ContractError::decode_contract_revert()`. It is generally unnecessary to
+/// import this trait into your code.
+///
+/// # Implementor's Note
 ///
 /// We do not recommend manual implementations of this trait. Instead, use the
 /// automatically generated implementation in the [`crate::abigen`] macro
+///
+/// However, sophisticated users may wish to represent the errors of multiple
+/// contracts as a single unified enum. E.g. if your contract calls Uniswap,
+/// you may wish to implement this on `pub enum MyContractOrUniswapErrors`.
+/// In that case, it should be straightforward to delegate to the inner types.
 pub trait ContractRevert: AbiDecode + AbiEncode + Send + Sync {
     /// Decode the error from EVM revert data including an Error selector
     fn decode_with_selector(data: &[u8]) -> Option<Self> {
