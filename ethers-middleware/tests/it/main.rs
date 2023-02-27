@@ -24,22 +24,22 @@ mod stack;
 #[cfg(not(feature = "celo"))]
 mod transformer;
 
-/// Spawns Anvil and instantiates an HTTP provider.
+/// Spawns Anvil and instantiates an Http provider.
 pub fn spawn_anvil() -> (Provider<Http>, AnvilInstance) {
-    let anvil = Anvil::new().spawn();
+    let anvil = Anvil::new().block_time(1u64).spawn();
     let provider = Provider::<Http>::try_from(anvil.endpoint())
         .unwrap()
-        .interval(Duration::from_millis(10u64));
+        .interval(Duration::from_millis(50u64));
     (provider, anvil)
 }
 
-/// Spawns Anvil and instantiates a WS provider.
+/// Spawns Anvil and instantiates a Ws provider.
 pub async fn spawn_anvil_ws() -> (Provider<Ws>, AnvilInstance) {
-    let anvil = Anvil::new().spawn();
+    let anvil = Anvil::new().block_time(1u64).spawn();
     let provider = Provider::<Ws>::connect(anvil.ws_endpoint())
         .await
         .unwrap()
-        .interval(Duration::from_millis(10u64));
+        .interval(Duration::from_millis(50u64));
     (provider, anvil)
 }
 

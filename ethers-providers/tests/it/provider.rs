@@ -1,14 +1,8 @@
-use ethers_providers::{Http, Middleware, Provider};
-use std::{convert::TryFrom, time::Duration};
-
 #[cfg(not(feature = "celo"))]
 mod eth_tests {
-    use super::*;
-    use ethers_core::{
-        types::{Address, BlockId, TransactionRequest, H256},
-        utils::Anvil,
-    };
-    use ethers_providers::GOERLI;
+    use crate::spawn_anvil;
+    use ethers_core::types::{Address, BlockId, BlockNumber, TransactionRequest, H256};
+    use ethers_providers::{Middleware, StreamExt, GOERLI};
 
     #[tokio::test]
     async fn non_existing_data_works() {
@@ -34,53 +28,10 @@ mod eth_tests {
 
     // Without TLS this would error with "TLS Support not compiled in"
     #[tokio::test]
+    #[cfg(any(feature = "openssl", feature = "rustls"))]
     async fn ssl_websocket() {
         let provider = GOERLI.ws().await;
-        let _number = provider.get_block_number().await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn watch_blocks_websocket() {
-        use ethers_core::types::H256;
-        use ethers_providers::{StreamExt, Ws};
-
-        let anvil = Anvil::new().block_time(2u64).spawn();
-        let (ws, _) = tokio_tungstenite::connect_async(anvil.ws_endpoint()).await.unwrap();
-        let provider = Provider::new(Ws::new(ws)).interval(Duration::from_millis(500u64));
-
-        let stream = provider.watch_blocks().await.unwrap().stream();
-
-        let _blocks = stream.take(3usize).collect::<Vec<H256>>().await;
-        let _number = provider.get_block_number().await.unwrap();
-    }
-
-    #[tokio::test]
-    async fn pending_txs_with_confirmations_anvil() {
-        let anvil = Anvil::new().block_time(2u64).spawn();
-        let provider = Provider::<Http>::try_from(anvil.endpoint())
-            .unwrap()
-            .interval(Duration::from_millis(500u64));
-        let accounts = provider.get_accounts().await.unwrap();
-        generic_pending_txs_test(provider, accounts[0]).await;
-    }
-
-    #[tokio::test]
-    async fn websocket_pending_txs_with_confirmations_anvil() {
-        use ethers_providers::Ws;
-        let anvil = Anvil::new().block_time(2u64).spawn();
-        let ws = Ws::connect(anvil.ws_endpoint()).await.unwrap();
-        let provider = Provider::new(ws);
-        let accounts = provider.get_accounts().await.unwrap();
-        generic_pending_txs_test(provider, accounts[0]).await;
-    }
-
-    async fn generic_pending_txs_test<M: Middleware>(provider: M, who: Address) {
-        let tx = TransactionRequest::new().to(who).from(who);
-        let pending_tx = provider.send_transaction(tx, None).await.unwrap();
-        let tx_hash = *pending_tx;
-        let receipt = pending_tx.confirmations(3).await.unwrap().unwrap();
-        // got the correct receipt
-        assert_eq!(receipt.transaction_hash, tx_hash);
+        assert_ne!(provider.get_block_number().await.unwrap(), 0.into());
     }
 
     #[tokio::test]
@@ -92,33 +43,93 @@ mod eth_tests {
     }
 
     #[tokio::test]
-    #[ignore]
-    async fn test_hardhat_compatibility() {
-        use ethers_providers::RetryClient;
+    async fn watch_blocks_http() {
+        let (provider, _anvil) = spawn_anvil();
+        generic_watch_blocks_test(provider).await;
+    }
 
-        async fn send_zst_requests<M: Middleware>(provider: M) {
-            let _ = provider.get_chainid().await.unwrap();
-            let _ = provider.get_block_number().await.unwrap();
-            let _ = provider.get_gas_price().await.unwrap();
-            let _ = provider.get_accounts().await.unwrap();
-            let _ = provider.get_net_version().await.unwrap();
-        }
+    #[tokio::test]
+    #[cfg(feature = "ws")]
+    async fn watch_blocks_ws() {
+        let (provider, _anvil) = crate::spawn_anvil_ws().await;
+        generic_watch_blocks_test(provider).await;
+    }
 
-        let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
-        send_zst_requests(provider).await;
+    #[tokio::test]
+    #[cfg(feature = "ipc")]
+    async fn watch_blocks_ipc() {
+        let (provider, _anvil, _ipc) = crate::spawn_anvil_ipc().await;
+        generic_watch_blocks_test(provider).await;
+    }
 
-        let provider =
-            Provider::<RetryClient<Http>>::new_client("http://localhost:8545", 10, 200).unwrap();
+    async fn generic_watch_blocks_test<M: Middleware>(provider: M) {
+        let stream = provider.watch_blocks().await.unwrap().stream();
+        let hashes = stream.take(3).collect::<Vec<H256>>().await;
+        let block = provider.get_block(BlockNumber::Latest).await.unwrap().unwrap();
+        assert_eq!(block.hash.unwrap(), *hashes.last().unwrap());
+    }
 
-        send_zst_requests(provider).await;
+    #[tokio::test]
+    #[cfg(feature = "ws")]
+    async fn subscribe_blocks_ws() {
+        let (provider, _anvil) = crate::spawn_anvil_ws().await;
+        generic_subscribe_blocks_test(provider).await;
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "ws")]
+    async fn subscribe_blocks_ipc() {
+        let (provider, _anvil, _ipc) = crate::spawn_anvil_ipc().await;
+        generic_subscribe_blocks_test(provider).await;
+    }
+
+    #[cfg(any(feature = "ws", feature = "ipc"))]
+    async fn generic_subscribe_blocks_test<M>(provider: M)
+    where
+        M: Middleware,
+        M::Provider: ethers_providers::PubsubClient,
+    {
+        let stream = provider.subscribe_blocks().await.unwrap();
+        let blocks = stream.take(3).collect::<Vec<_>>().await;
+        let block = provider.get_block(BlockNumber::Latest).await.unwrap().unwrap();
+        assert_eq!(&block, blocks.last().unwrap());
+    }
+
+    #[tokio::test]
+    async fn send_tx_http() {
+        let (provider, anvil) = spawn_anvil();
+        generic_send_tx_test(provider, anvil.addresses()[0]).await;
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "ws")]
+    async fn send_tx_ws() {
+        let (provider, anvil) = crate::spawn_anvil_ws().await;
+        generic_send_tx_test(provider, anvil.addresses()[0]).await;
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "ipc")]
+    async fn send_tx_ipc() {
+        let (provider, anvil, _ipc) = crate::spawn_anvil_ipc().await;
+        generic_send_tx_test(provider, anvil.addresses()[0]).await;
+    }
+
+    async fn generic_send_tx_test<M: Middleware>(provider: M, who: Address) {
+        let tx = TransactionRequest::new().to(who).from(who);
+        let pending_tx = provider.send_transaction(tx, None).await.unwrap();
+        let tx_hash = *pending_tx;
+        let receipt = pending_tx.confirmations(3).await.unwrap().unwrap();
+        assert_eq!(receipt.transaction_hash, tx_hash);
     }
 }
 
 #[cfg(feature = "celo")]
 mod celo_tests {
-    use super::*;
     use ethers_core::types::{Randomness, H256};
+    use ethers_providers::{Http, Middleware, Provider};
     use futures_util::stream::StreamExt;
+    use std::time::Duration;
 
     #[tokio::test]
     async fn get_block() {

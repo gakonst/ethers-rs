@@ -27,24 +27,6 @@ async fn send_eth() {
 }
 
 #[tokio::test]
-async fn pending_txs_with_confirmations_testnet() {
-    let (provider, anvil) = spawn_anvil();
-    let wallet = get_wallet(&anvil, 0);
-    let address = wallet.address();
-    let provider = provider.with_signer(wallet);
-    generic_pending_txs_test(provider, address).await;
-}
-
-#[tokio::test]
-async fn websocket_pending_txs_with_confirmations_testnet() {
-    let (provider, anvil) = spawn_anvil_ws().await;
-    let wallet = get_wallet(&anvil, 0);
-    let address = wallet.address();
-    let provider = provider.with_signer(wallet);
-    generic_pending_txs_test(provider, address).await;
-}
-
-#[tokio::test]
 async fn typed_txs() {
     let (provider, anvil) = spawn_anvil();
     let wallet = get_wallet(&anvil, 0);
@@ -111,15 +93,6 @@ async fn send_transaction_handles_tx_from_field() {
     let sent_tx = provider.get_transaction(receipt.transaction_hash).await.unwrap().unwrap();
 
     assert_eq!(sent_tx.from, other.address());
-}
-
-async fn generic_pending_txs_test<M: Middleware>(provider: M, who: Address) {
-    let tx = TransactionRequest::new().to(who).from(who);
-    let pending_tx = provider.send_transaction(tx, None).await.unwrap();
-    let tx_hash = *pending_tx;
-    let receipt = pending_tx.confirmations(1).await.unwrap().unwrap();
-    // got the correct receipt
-    assert_eq!(receipt.transaction_hash, tx_hash);
 }
 
 async fn check_tx<P: JsonRpcClient + Clone>(
