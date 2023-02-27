@@ -11,8 +11,8 @@ use std::borrow::Cow;
 /// solidity custom errors + revert strings.
 ///
 /// This trait should be accessed via
-/// `ContractError::decode_contract_revert()`. It is generally unnecessary to
-/// import this trait into your code.
+/// [`crate::ContractError::decode_contract_revert`]. It is generally
+/// unnecessary to import this trait into your code.
 ///
 /// # Implementor's Note
 ///
