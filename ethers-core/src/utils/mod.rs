@@ -506,7 +506,7 @@ where
             }
             Ok(Some(res_map))
         }
-        None => return Ok(None),
+        None => Ok(None),
     }
 }
 
