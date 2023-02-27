@@ -63,6 +63,10 @@ impl EthError for String {
     fn abi_signature() -> Cow<'static, str> {
         Cow::Borrowed("Error(string)")
     }
+
+    fn selector() -> Selector {
+        [0x08, 0xc3, 0x79, 0xa0]
+    }
 }
 
 #[cfg(test)]
