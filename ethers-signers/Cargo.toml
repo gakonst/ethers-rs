@@ -29,6 +29,7 @@ yubihsm = { version = "0.41.0", features = ["secp256k1", "http", "usb"], optiona
 futures-util = { version = "^0.3", optional = true }
 futures-executor = { version = "^0.3", optional = true }
 semver = { version = "1.0.16", optional = true }
+tracing = { version = "0.1.37" }
 trezor-client = { version = "0.0.7", optional = true, default-features = false, features = [
     "f_ethereum",
 ] }
@@ -36,7 +37,6 @@ trezor-client = { version = "0.0.7", optional = true, default-features = false, 
 # aws
 rusoto_core = { version = "0.48.0", default-features = false, optional = true }
 rusoto_kms = { version = "0.48.0", default-features = false, optional = true }
-tracing = { version = "0.1.37", optional = true }
 spki = { version = "0.6.0", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -60,5 +60,5 @@ futures = ["futures-util", "futures-executor"]
 celo = ["ethers-core/celo"]
 ledger = ["coins-ledger", "futures", "semver"]
 yubi = ["yubihsm"]
-aws = ["rusoto_core/rustls", "rusoto_kms/rustls", "tracing", "spki"]
+aws = ["rusoto_core/rustls", "rusoto_kms/rustls", "spki"]
 trezor = ["trezor-client", "futures", "semver", "home"]
