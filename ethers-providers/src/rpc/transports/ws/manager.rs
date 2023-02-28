@@ -30,9 +30,11 @@ pub const DEFAULT_RECONNECTS: usize = 5;
 /// subscription id allows the subscription to behave consistently across
 /// reconnections
 pub struct SubscriptionManager {
+    // Active subs indexed by request id
     subs: BTreeMap<u64, ActiveSub>,
+    // Maps active server-side IDs to local subscription IDs
     aliases: HashMap<U256, u64>,
-    // used to communicate to the WsClient
+    // Used to share notification channels with the WsClient(s)
     channel_map: SharedChannelMap,
 }
 
@@ -185,14 +187,20 @@ impl SubscriptionManager {
 /// been dropped (because all instruction channel `UnboundedSender` instances
 /// will have dropped).
 pub struct RequestManager {
+    // Next JSON-RPC Request ID
     id: AtomicU64,
-    subs: SubscriptionManager,
-    reqs: BTreeMap<u64, InFlight>,
-    backend: BackendDriver,
-    conn: ConnectionDetails,
-    instructions: mpsc::UnboundedReceiver<Instruction>,
-
+    // How many times we should reconnect the backend before erroring
     reconnects: usize,
+    // Subscription manager
+    subs: SubscriptionManager,
+    // Requests for which a response has not been receivedc
+    reqs: BTreeMap<u64, InFlight>,
+    // Control of the active WS backend
+    backend: BackendDriver,
+    // The URL and optional auth info for the connection
+    conn: ConnectionDetails,
+    // Instructions from the user-facing providers
+    instructions: mpsc::UnboundedReceiver<Instruction>,
 }
 
 impl RequestManager {
@@ -218,12 +226,12 @@ impl RequestManager {
         Ok((
             Self {
                 id: Default::default(),
+                reconnects,
                 subs: SubscriptionManager::new(channel_map.clone()),
                 reqs: Default::default(),
                 backend,
                 conn,
                 instructions: instructions_rx,
-                reconnects,
             },
             WsClient { instructions: instructions_tx, channel_map },
         ))
@@ -359,7 +367,8 @@ impl RequestManager {
         let fut = async move {
             let result = loop {
                 // We bias the loop so that we always handle messages before
-                // reconnecting, and always reconnect before
+                // reconnecting, and always reconnect before dispatching new
+                // requests
                 select_biased! {
                     item_opt = self.backend.to_handle.next() => {
                         match item_opt {

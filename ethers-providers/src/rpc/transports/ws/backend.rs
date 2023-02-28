@@ -6,6 +6,27 @@ use serde_json::value::RawValue;
 use super::{types::*, WsClientError};
 use tracing::{error, trace};
 
+/// `BackendDriver` drives a specific `WsBackend`. It can be used to issue
+/// requests, receive responses, see errors, and shut down the backend.
+pub struct BackendDriver {
+    // Pubsub items from the backend, received via WS
+    pub to_handle: mpsc::UnboundedReceiver<PubSubItem>,
+    // Notification from the backend of a terminal error
+    pub error: oneshot::Receiver<()>,
+
+    // Requests that the backend should dispatch
+    pub dispatcher: mpsc::UnboundedSender<Box<RawValue>>,
+    // Notify the backend of intentional shutdown
+    shutdown: oneshot::Sender<()>,
+}
+
+impl BackendDriver {
+    pub fn shutdown(self) {
+        // don't care if it fails, as that means the backend is gone anyway
+        let _ = self.shutdown.send(());
+    }
+}
+
 /// `WsBackend` dispatches requests and routes responses and notifications. It
 /// also has a simple ping-based keepalive (when not compiled to wasm), to
 /// prevent inactivity from triggering server-side closes
@@ -15,28 +36,15 @@ use tracing::{error, trace};
 pub struct WsBackend {
     server: InternalStream,
 
+    // channel to the manager, through which to send items received via WS
     handler: mpsc::UnboundedSender<PubSubItem>,
+    // notify manager of an error causing this task to halt
     error: oneshot::Sender<()>,
 
+    // channel of inbound requests to dispatch
     to_dispatch: mpsc::UnboundedReceiver<Box<RawValue>>,
+    // notification from manager of intentional shutdown
     shutdown: oneshot::Receiver<()>,
-}
-
-/// `BackendDriver` drives a specific `WsBackend`. It can be used to issue
-/// requests, receive responses, see errors, and shut down the backend.
-pub struct BackendDriver {
-    pub to_handle: mpsc::UnboundedReceiver<PubSubItem>,
-    pub error: oneshot::Receiver<()>,
-
-    pub dispatcher: mpsc::UnboundedSender<Box<RawValue>>,
-    shutdown: oneshot::Sender<()>,
-}
-
-impl BackendDriver {
-    pub fn shutdown(self) {
-        // don't care if it fails, as that means the backend is gone anyway
-        let _ = self.shutdown.send(());
-    }
 }
 
 impl WsBackend {
