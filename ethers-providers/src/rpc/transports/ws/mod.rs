@@ -1,7 +1,5 @@
 #![allow(missing_docs)]
 
-pub(crate) mod macros;
-
 mod backend;
 
 mod manager;

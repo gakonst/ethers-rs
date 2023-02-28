@@ -145,7 +145,7 @@ impl WsBackend {
                     _ = keepalive => {
                         #[cfg(not(target_arch = "wasm32"))]
                         if let Err(e) = self.server.send(Message::Ping(vec![])).await {
-                            error!("WS connection error {e}");
+                            error!(err = %e, "WS connection error");
                             err = true;
                             break
                         }
@@ -171,7 +171,7 @@ impl WsBackend {
                         match inst {
                             Some(msg) => {
                                 if let Err(e) = self.server.send(Message::Text(msg.to_string())).await {
-                                    error!("WS connection error {e}");
+                                    error!(err = %e, "WS connection error");
                                     err = true;
                                     break
                                 }
