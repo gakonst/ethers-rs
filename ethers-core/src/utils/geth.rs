@@ -392,24 +392,30 @@ impl Geth {
                 let clique_config = CliqueConfig { period: Some(0), epoch: Some(8) };
                 genesis.config.clique = Some(clique_config);
 
+                let clique_addr = secret_key_to_address(
+                    self.clique_private_key.as_ref().expect("is_clique == true"),
+                );
+
                 // set the extraData field
-                let extra_data_bytes = [
-                    &[0u8; 32][..],
-                    secret_key_to_address(
-                        self.clique_private_key.as_ref().expect("is_clique == true"),
-                    )
-                    .as_ref(),
-                    &[0u8; 65][..],
-                ]
-                .concat();
+                let extra_data_bytes =
+                    [&[0u8; 32][..], clique_addr.as_ref(), &[0u8; 65][..]].concat();
                 let extra_data = Bytes::from(extra_data_bytes);
                 genesis.extra_data = extra_data;
+
+                // we must set the etherbase if using clique
+                cmd.arg("--miner.etherbase").arg(clique_addr.to_string());
             }
         } else if is_clique {
+            let clique_addr =
+                secret_key_to_address(self.clique_private_key.as_ref().expect("is_clique == true"));
+
             self.genesis = Some(Genesis::new(
                 self.chain_id.expect("chain id must be set in clique mode"),
-                secret_key_to_address(self.clique_private_key.as_ref().expect("is_clique == true")),
+                clique_addr,
             ));
+
+            // we must set the etherbase if using clique
+            cmd.arg("--miner.etherbase").arg(clique_addr.to_string());
         }
 
         if let Some(ref genesis) = self.genesis {
