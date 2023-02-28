@@ -1,4 +1,4 @@
-use super::{unused_port, CliqueConfig, Genesis};
+use super::{unused_ports, CliqueConfig, Genesis};
 use crate::{
     types::{Bytes, H256},
     utils::secret_key_to_address,
@@ -362,6 +362,9 @@ impl Geth {
         let mut cmd = Command::new(&bin_path);
         // geth uses stderr for its logs
         cmd.stderr(Stdio::piped());
+
+        let mut unused_ports = unused_ports::<3>().into_iter();
+        let mut unused_port = || unused_ports.next().unwrap();
         let port = if let Some(port) = self.port { port } else { unused_port() };
         let authrpc_port = if let Some(port) = self.authrpc_port { port } else { unused_port() };
 
