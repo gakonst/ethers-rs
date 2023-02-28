@@ -406,8 +406,8 @@ impl Geth {
                 genesis.extra_data = extra_data;
 
                 // we must set the etherbase if using clique
-                // need to use format! / Debug here because the Address Display impl doesn't show the
-                // entire address
+                // need to use format! / Debug here because the Address Display impl doesn't show
+                // the entire address
                 cmd.arg("--miner.etherbase").arg(format!("{clique_addr:?}"));
             }
         } else if is_clique {
