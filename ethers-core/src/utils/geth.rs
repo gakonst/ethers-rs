@@ -415,6 +415,8 @@ impl Geth {
             ));
 
             // we must set the etherbase if using clique
+            // need to use format! / Debug here because the Address Display impl doesn't show the
+            // entire address
             cmd.arg("--miner.etherbase").arg(format!("{clique_addr:?}"));
         }
 
