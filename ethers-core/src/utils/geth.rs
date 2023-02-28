@@ -241,8 +241,11 @@ impl Geth {
         self
     }
 
-    /// Sets the Clique Private Key  to the `geth` executable, which will be later
+    /// Sets the Clique Private Key to the `geth` executable, which will be later
     /// loaded on the node.
+    ///
+    /// The address derived from this private key will be used to set the `miner.etherbase` field
+    /// on the node.
     #[must_use]
     pub fn set_clique_private_key<T: Into<SigningKey>>(mut self, private_key: T) -> Self {
         self.clique_private_key = Some(private_key.into());
