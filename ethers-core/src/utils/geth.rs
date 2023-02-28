@@ -415,7 +415,7 @@ impl Geth {
             ));
 
             // we must set the etherbase if using clique
-            cmd.arg("--miner.etherbase").arg(clique_addr.to_string());
+            cmd.arg("--miner.etherbase").arg(format!("{clique_addr:?}"));
         }
 
         if let Some(ref genesis) = self.genesis {
