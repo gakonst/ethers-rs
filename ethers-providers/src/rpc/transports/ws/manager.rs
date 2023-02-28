@@ -23,6 +23,12 @@ pub type SharedChannelMap = Arc<Mutex<HashMap<U256, mpsc::UnboundedReceiver<Box<
 
 pub const DEFAULT_RECONNECTS: usize = 5;
 
+/// This struct manages the relationship between the u64 request ID, and U256
+/// server-side subscription ID. It does this by aliasing the server ID to the
+/// request ID, and returning the Request ID to the caller (hiding the server
+/// ID in the SubscriptionManager internals.) Giving the caller a "fake"
+/// subscription id allows the subscription to behave consistently across
+/// reconnections
 pub struct SubscriptionManager {
     subs: BTreeMap<u64, ActiveSub>,
     aliases: HashMap<U256, u64>,
@@ -157,6 +163,27 @@ impl SubscriptionManager {
     }
 }
 
+/// The `RequestManager` holds copies of all pending requests (as `InFlight`),
+/// and active subscriptions (as `ActiveSub`). When reconnection occurs, all
+/// pending requests are re-dispatched to the new backend, and all active subs
+/// are re-subscribed
+///
+///  `RequestManager` holds a `BackendDriver`, to communicate with the current
+/// backend. Reconnection is accomplished by instantiating a new `WsBackend` and
+/// swapping out the manager's `BackendDriver`.
+///
+/// In order to provide continuity of subscription IDs to the client, the
+/// `RequestManager` also keeps a `SubscriptionManager`. See the
+/// `SubscriptionManager` docstring for more complete details
+///
+/// The behavior is accessed by the WsClient frontend, which implements ]
+/// `JsonRpcClient`. The `WsClient` is cloneable, so no need for an arc :). It
+/// communicates to the request manager via a channel, and receives
+/// notifications in a shared map for the client to retrieve
+///
+/// The `RequestManager` shuts down and drops when all `WsClient` instances have
+/// been dropped (because all instruction channel `UnboundedSender` instances
+/// will have dropped).
 pub struct RequestManager {
     id: AtomicU64,
     subs: SubscriptionManager,

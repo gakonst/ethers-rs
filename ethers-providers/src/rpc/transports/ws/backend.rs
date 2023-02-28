@@ -6,6 +6,12 @@ use serde_json::value::RawValue;
 use super::{types::*, WsClientError};
 use tracing::{error, trace};
 
+/// `WsBackend` dispatches requests and routes responses and notifications. It
+/// also has a simple ping-based keepalive (when not compiled to wasm), to
+/// prevent inactivity from triggering server-side closes
+///
+/// The `WsBackend` shuts down when instructed to by the `RequestManager` or
+/// when the `RequestManager` drops (because the inbound channel will close)
 pub struct WsBackend {
     server: InternalStream,
 
@@ -16,6 +22,8 @@ pub struct WsBackend {
     shutdown: oneshot::Receiver<()>,
 }
 
+/// `BackendDriver` drives a specific `WsBackend`. It can be used to issue
+/// requests, receive responses, see errors, and shut down the backend.
 pub struct BackendDriver {
     pub to_handle: mpsc::UnboundedReceiver<PubSubItem>,
     pub error: oneshot::Receiver<()>,
