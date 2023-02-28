@@ -25,7 +25,9 @@ use crate::Authorization;
 
 #[derive(Debug, Clone)]
 pub struct WsClient {
+    //
     instructions: mpsc::UnboundedSender<Instruction>,
+    // Used to receive sub notifications channels with the backend
     channel_map: SharedChannelMap,
 }
 
