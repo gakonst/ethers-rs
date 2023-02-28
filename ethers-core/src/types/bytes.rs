@@ -16,6 +16,18 @@ pub struct Bytes(
     pub  bytes::Bytes,
 );
 
+impl FromIterator<u8> for Bytes {
+    fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {
+        iter.into_iter().collect::<bytes::Bytes>().into()
+    }
+}
+
+impl<'a> FromIterator<&'a u8> for Bytes {
+    fn from_iter<T: IntoIterator<Item = &'a u8>>(iter: T) -> Self {
+        iter.into_iter().copied().collect::<bytes::Bytes>().into()
+    }
+}
+
 impl Bytes {
     /// Creates a new empty `Bytes`.
     ///

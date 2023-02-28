@@ -1,6 +1,6 @@
 #![allow(clippy::return_self_not_must_use)]
 
-use crate::EthError;
+use crate::{error::ContractRevert, EthError};
 
 use super::base::{decode_function_data, AbiError};
 use ethers_core::{
@@ -112,6 +112,15 @@ impl<M: Middleware> ContractError<M> {
     /// Decode revert data into an [`EthError`] type. Returns `None` if
     /// decoding fails, or if this is not a revert
     pub fn decode_revert<Err: EthError>(&self) -> Option<Err> {
+        self.as_revert().and_then(|data| Err::decode_with_selector(data))
+    }
+
+    /// Decode revert data into a [`ContractRevert`] type. Returns `None` if
+    /// decoding fails, or if this is not a revert
+    ///
+    /// This is intended to be used with error enum outputs from `abigen!`
+    /// contracts
+    pub fn decode_contract_revert<Err: ContractRevert>(&self) -> Option<Err> {
         self.as_revert().and_then(|data| Err::decode_with_selector(data))
     }
 

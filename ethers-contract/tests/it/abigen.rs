@@ -1,9 +1,9 @@
 //! Test cases to validate the `abigen!` macro
 
-use ethers_contract::{abigen, EthCall, EthEvent};
+use ethers_contract::{abigen, ContractError, EthCall, EthError, EthEvent};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
-    types::{transaction::eip2718::TypedTransaction, Eip1559TransactionRequest, U256},
+    types::{transaction::eip2718::TypedTransaction, Bytes, Eip1559TransactionRequest, U256},
     utils::Anvil,
 };
 use ethers_providers::{MockProvider, Provider};
@@ -648,7 +648,13 @@ fn can_generate_seaport_1_0() {
     let err = SeaportErrors::BadContractSignature(BadContractSignature::default());
 
     let encoded = err.clone().encode();
-    assert_eq!(err, SeaportErrors::decode(encoded).unwrap());
+    assert_eq!(err, SeaportErrors::decode(encoded.clone()).unwrap());
+
+    let with_selector: Bytes =
+        BadContractSignature::selector().into_iter().chain(encoded).collect();
+    let contract_err = ContractError::<Provider<MockProvider>>::Revert(with_selector);
+
+    assert_eq!(contract_err.decode_contract_revert(), Some(err));
 
     let _err = SeaportErrors::ConsiderationNotMet(ConsiderationNotMet {
         order_index: U256::zero(),
