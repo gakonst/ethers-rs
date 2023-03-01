@@ -1,6 +1,6 @@
 # ethers-signers
 
-A unified interface for locally signing transactions.
+A unified interface for locally signing Ethereum transactions.
 
 You can implement the `Signer` trait to extend functionality to other signers
 such as Hardware Security Modules, KMS etc.

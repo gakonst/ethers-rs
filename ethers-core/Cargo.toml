@@ -1,14 +1,18 @@
 [package]
 name = "ethers-core"
-version = "1.0.2"
-edition = "2021"
-rust-version = "1.64"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
-license = "MIT OR Apache-2.0"
-description = "Core structures for the ethers-rs crate"
-homepage = "https://docs.rs/ethers"
-repository = "https://github.com/gakonst/ethers-rs"
-keywords = ["ethereum", "web3", "celo", "ethers"]
+readme = "README.md"
+description = "Ethereum data types, cryptography and utilities"
+
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
+keywords.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

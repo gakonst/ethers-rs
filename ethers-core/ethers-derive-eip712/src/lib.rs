@@ -1,4 +1,5 @@
 //! # EIP-712 Derive Macro
+//!
 //! This crate provides a derive macro `Eip712` that is used to encode a rust struct
 //! into a payload hash, according to [https://eips.ethereum.org/EIPS/eip-712](https://eips.ethereum.org/EIPS/eip-712)
 //!

@@ -1,19 +1,21 @@
 [package]
 name = "ethers-etherscan"
-version = "1.0.2"
-edition = "2021"
-rust-version = "1.64"
 authors = [
     "Matthias Seitz <matthias.seitz@outlook.de>",
     "Georgios Konstantopoulos <me@gakonst.com>",
 ]
-license = "MIT OR Apache-2.0"
-readme = "../README.md"
-documentation = "https://docs.rs/ethers"
-repository = "https://github.com/gakonst/ethers-rs"
-homepage = "https://docs.rs/ethers"
-description = "Rust API bindings for the etherscan.io web API"
-keywords = ["ethereum", "web3", "etherscan", "ethers"]
+readme = "README.md"
+description = "Bindings for the etherscan.io web API"
+keywords = ["crypto", "ethers", "ethereum", "web3", "etherscan"]
+
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

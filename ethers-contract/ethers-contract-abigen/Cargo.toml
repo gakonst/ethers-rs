@@ -1,17 +1,21 @@
 [package]
 name = "ethers-contract-abigen"
-version = "1.0.2"
-edition = "2021"
-rust-version = "1.64"
 authors = [
     "Nicholas Rodrigues Lordello <nlordell@gmail.com>",
     "Georgios Konstantopoulos <me@gakonst.com>",
 ]
-license = "MIT OR Apache-2.0"
+readme = "README.md"
 description = "Code generation for type-safe bindings to Ethereum smart contracts"
-homepage = "https://docs.rs/ethers"
-repository = "https://github.com/gakonst/ethers-rs"
-keywords = ["ethereum", "web3", "celo", "ethers"]
+
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
+keywords.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

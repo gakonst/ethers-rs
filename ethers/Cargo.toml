@@ -1,15 +1,18 @@
 [package]
 name = "ethers"
-version = "1.0.2"
-edition = "2021"
-rust-version = "1.64" # must also be changed in **/Cargo.toml and .clippy.toml
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
-license = "MIT OR Apache-2.0"
-readme = "README.md"
-documentation = "https://docs.rs/ethers"
-repository = "https://github.com/gakonst/ethers-rs"
-homepage = "https://docs.rs/ethers"
+readme = "../README.md"
 description = "A complete Ethereum and Celo Rust library"
+
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
+keywords.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

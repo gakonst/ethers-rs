@@ -1,3 +1,14 @@
+[workspace.package]
+version = "1.0.2"
+edition = "2021"
+rust-version = "1.64"
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/ethers"
+repository = "https://github.com/gakonst/ethers-rs"
+homepage = "https://github.com/gakonst/ethers-rs"
+categories = ["cryptography::cryptocurrencies"]
+keywords = ["crypto", "ethers", "ethereum", "web3", "celo"]
+
 [workspace]
 members = [
     "ethers",
