@@ -1597,7 +1597,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-wasm"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "console_error_panic_hook",
  "ethers",
@@ -1614,7 +1614,7 @@ dependencies = [
 
 [[package]]
 name = "examples-anvil"
-version = "1.0.2"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1623,14 +1623,14 @@ dependencies = [
 
 [[package]]
 name = "examples-big-numbers"
-version = "1.0.2"
+version = "0.0.0"
 dependencies = [
  "ethers",
 ]
 
 [[package]]
 name = "examples-contracts"
-version = "1.0.2"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1641,7 +1641,7 @@ dependencies = [
 
 [[package]]
 name = "examples-events"
-version = "1.0.2"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1652,7 +1652,7 @@ dependencies = [
 
 [[package]]
 name = "examples-middleware"
-version = "1.0.2"
+version = "0.0.0"
 dependencies = [
  "async-trait",
  "ethers",
@@ -1664,7 +1664,7 @@ dependencies = [
 
 [[package]]
 name = "examples-providers"
-version = "1.0.2"
+version = "0.0.0"
 dependencies = [
  "async-trait",
  "ethers",
@@ -1679,7 +1679,7 @@ dependencies = [
 
 [[package]]
 name = "examples-queries"
-version = "1.0.2"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1690,7 +1690,7 @@ dependencies = [
 
 [[package]]
 name = "examples-subscriptions"
-version = "1.0.2"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1701,7 +1701,7 @@ dependencies = [
 
 [[package]]
 name = "examples-transactions"
-version = "1.0.2"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1712,7 +1712,7 @@ dependencies = [
 
 [[package]]
 name = "examples-wallets"
-version = "1.0.2"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",

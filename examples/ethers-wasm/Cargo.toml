@@ -1,15 +1,10 @@
 [package]
 name = "ethers-wasm"
-version = "0.1.0"
-edition = "2021"
-rust-version = "1.64"
+version = "0.0.0"
 authors = ["Matthias Seitz <matthias.seitz@outlook.de>"]
-license = "MIT OR Apache-2.0"
-readme = "README.md"
-documentation = "https://docs.rs/ethers"
-repository = "https://github.com/gakonst/ethers-rs"
-homepage = "https://docs.rs/ethers"
-description = "How to use ethers in the browser with WASM."
+
+rust-version.workspace = true
+edition.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]

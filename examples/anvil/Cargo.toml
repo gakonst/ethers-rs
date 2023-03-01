@@ -1,8 +1,11 @@
 [package]
 name = "examples-anvil"
-version = "1.0.2"
+version = "0.0.0"
+publish = false
 authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
-edition = "2021"
+
+rust-version.workspace = true
+edition.workspace = true
 
 [dev-dependencies]
 ethers = { path = "../../ethers" }
