@@ -375,7 +375,7 @@ mod tests {
 
             let krate = s.crate_name.as_ref().and_then(|x| x.parse::<EthersCrate>().ok());
             let is_internal = krate.is_some();
-            let mut expected: CrateNames = match (is_internal, ethers) {
+            let expected: CrateNames = match (is_internal, ethers) {
                 // internal
                 (true, _) => EthersCrate::path_names().collect(),
 
@@ -391,10 +391,6 @@ mod tests {
                     n
                 }
             };
-
-            if is_internal {
-                expected.insert(krate.unwrap(), "crate");
-            }
 
             // don't use assert for a better custom message
             if names != expected {
