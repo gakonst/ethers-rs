@@ -1,10 +1,10 @@
 use ethers_core::types::Filter;
-use ethers_providers::{Middleware, Provider, StreamExt, Ws};
+use ethers_providers::{Middleware, Provider, StreamExt};
 use futures_util::SinkExt;
 use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{
-    accept_async, connect_async,
+    accept_async,
     tungstenite::{
         self,
         protocol::{frame::coding::CloseCode, CloseFrame},
