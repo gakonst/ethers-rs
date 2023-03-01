@@ -25,8 +25,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
-ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
-ethers-solc = { version = "^1.0.0", path = "../ethers-solc", default-features = false, optional = true }
+ethers-core.workspace = true
+
+ethers-solc = { workspace = true, optional = true }
+
 reqwest = { version = "0.11.14", default-features = false, features = ["json"] }
 serde = { version = "1.0.152", default-features = false, features = ["derive"] }
 serde_json = { version = "1.0.93", default-features = false }
@@ -40,7 +42,7 @@ semver = "1.0.16"
 getrandom = { version = "0.2", features = ["js"] }
 
 [dev-dependencies]
-ethers-solc = { version = "^1.0.0", path = "../ethers-solc", default-features = false }
+ethers-solc.workspace = true
 
 tempfile = "3.4.0"
 tokio = { version = "1.25", features = ["macros", "rt-multi-thread", "time"] }

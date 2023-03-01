@@ -22,7 +22,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
-ethers-core = { version = "^1.0.0", path = "../ethers-core", features = ["eip712"] }
+ethers-core = { workspace = true, features = ["eip712"] }
+
 thiserror = { version = "1.0.38", default-features = false }
 coins-bip32 = "0.7.0"
 coins-bip39 = "0.7.0"
@@ -51,8 +52,8 @@ eth-keystore = { version = "0.5.0" }
 home = { version = "0.5.4", optional = true }
 
 [dev-dependencies]
-ethers-contract-derive = { version = "^1.0.0", path = "../ethers-contract/ethers-contract-derive" }
-ethers-derive-eip712 = { version = "^1.0.0", path = "../ethers-core/ethers-derive-eip712" }
+ethers-contract-derive.workspace = true
+ethers-derive-eip712.workspace = true
 
 serde_json = { version = "1.0.93" }
 yubihsm = { version = "0.41.0", features = ["secp256k1", "usb", "mockhsm"] }

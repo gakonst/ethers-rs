@@ -22,7 +22,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
-ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
+ethers-core.workspace = true
 
 async-trait = { version = "0.1.64", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }

@@ -22,13 +22,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
-ethers-contract = { version = "^1.0.0", path = "../ethers-contract", default-features = false, features = [
-    "abigen",
-] }
-ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
-ethers-etherscan = { version = "^1.0.0", path = "../ethers-etherscan", default-features = false }
-ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-features = false }
-ethers-signers = { version = "^1.0.0", path = "../ethers-signers", default-features = false }
+ethers-contract = { workspace = true, features = ["abigen"] }
+ethers-core.workspace = true
+ethers-etherscan.workspace = true
+ethers-providers.workspace = true
+ethers-signers.workspace = true
 
 async-trait = { version = "0.1.64", default-features = false }
 auto_impl = { version = "1.0.1", default-features = false }
@@ -50,11 +48,8 @@ instant = { version = "0.1.12", features = ["now"] }
 tokio = { version = "1.25" }
 
 [dev-dependencies]
-ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-features = false, features = [
-    "ws",
-    "rustls",
-] }
-ethers-solc = { version = "^1.0.0", path = "../ethers-solc" }
+ethers-providers = { workspace = true, features = ["ws", "rustls"] }
+ethers-solc.workspace = true
 
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 rand = { version = "0.8.5", default-features = false }

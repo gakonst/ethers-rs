@@ -71,25 +71,19 @@ solc-tests = ["ethers-solc", "ethers-solc/tests"]
 solc-sha2-asm = ["ethers-solc", "ethers-solc/asm"]
 
 [dependencies]
-ethers-addressbook = { version = "^1.0.0", default-features = false, path = "../ethers-addressbook" }
-ethers-contract = { version = "^1.0.0", default-features = false, path = "../ethers-contract" }
-ethers-core = { version = "^1.0.0", default-features = false, path = "../ethers-core" }
-ethers-providers = { version = "^1.0.0", default-features = false, path = "../ethers-providers" }
-ethers-signers = { version = "^1.0.0", default-features = false, path = "../ethers-signers" }
-ethers-middleware = { version = "^1.0.0", default-features = false, path = "../ethers-middleware" }
-ethers-etherscan = { version = "^1.0.0", default-features = false, path = "../ethers-etherscan" }
+ethers-addressbook.workspace = true
+ethers-contract.workspace = true
+ethers-core.workspace = true
+ethers-etherscan.workspace = true
+ethers-middleware.workspace = true
+ethers-providers.workspace = true
+ethers-signers.workspace = true
 
-ethers-solc = { version = "^1.0.0", default-features = false, path = "../ethers-solc", optional = true }
+ethers-solc = { workspace = true, optional = true }
 
 [dev-dependencies]
-ethers-contract = { version = "^1.0.0", default-features = false, path = "../ethers-contract", features = [
-    "abigen",
-    "eip712",
-] }
-ethers-providers = { version = "^1.0.0", default-features = false, path = "../ethers-providers", features = [
-    "ws",
-    "ipc",
-] }
+ethers-contract = { workspace = true, features = ["abigen", "eip712"] }
+ethers-providers = { workspace = true, features = ["ws", "ipc"] }
 
 bytes = "1.4.0"
 eyre = "0.6"

@@ -21,8 +21,8 @@ keywords.workspace = true
 proc-macro = true
 
 [dependencies]
-ethers-core = { version = "^1.0.0", path = "../../ethers-core" }
-ethers-contract-abigen = { version = "^1.0.0", path = "../ethers-contract-abigen", default-features = false }
+ethers-core.workspace = true
+ethers-contract-abigen.workspace = true
 
 proc-macro2 = "1.0"
 quote = "1.0"
