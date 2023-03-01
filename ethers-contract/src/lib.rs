@@ -3,8 +3,9 @@
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 
-mod contract;
-pub use contract::{Contract, ContractInstance};
+#[path = "contract.rs"]
+mod _contract;
+pub use _contract::{Contract, ContractInstance};
 
 mod base;
 pub use base::{decode_function_data, encode_function_data, AbiError, BaseContract};
@@ -67,3 +68,32 @@ pub use once_cell::sync::Lazy;
 
 #[cfg(feature = "eip712")]
 pub use ethers_derive_eip712::*;
+
+// For Abigen expansions in docs.rs builds.
+
+#[doc(hidden)]
+#[allow(unused_extern_crates)]
+extern crate self as ethers_contract;
+
+#[doc(hidden)]
+#[allow(unused_extern_crates)]
+#[cfg(docsrs)]
+extern crate self as ethers;
+
+#[doc(hidden)]
+#[cfg(docsrs)]
+pub mod core {
+    pub use ethers_core::*;
+}
+
+#[doc(hidden)]
+#[cfg(docsrs)]
+pub mod contract {
+    pub use crate::*;
+}
+
+#[doc(hidden)]
+#[cfg(docsrs)]
+pub mod providers {
+    pub use ethers_providers::*;
+}

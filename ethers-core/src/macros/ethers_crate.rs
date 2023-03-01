@@ -56,10 +56,13 @@ pub struct ProjectEnvironment {
 }
 
 impl ProjectEnvironment {
+    /// Creates a new instance using the given manifest dir and crate name.
     pub fn new<T: Into<PathBuf>, U: Into<String>>(manifest_dir: T, crate_name: U) -> Self {
         Self { manifest_dir: manifest_dir.into(), crate_name: Some(crate_name.into()) }
     }
 
+    /// Creates a new instance using the the `CARGO_MANIFEST_DIR` and `CARGO_CRATE_NAME` environment
+    /// variables.
     pub fn new_from_env() -> Option<Self> {
         Some(Self {
             manifest_dir: env::var_os("CARGO_MANIFEST_DIR")?.into(),
@@ -90,29 +93,15 @@ impl ProjectEnvironment {
     }
 
     #[inline]
-    pub fn crate_names_from_metadata(&self) -> Option<CrateNames> {
+    fn crate_names_from_metadata(&self) -> Option<CrateNames> {
         let metadata = MetadataCommand::new().current_dir(&self.manifest_dir).exec().ok()?;
         let pkg = metadata.root_package()?;
 
         // return ethers_* if the root package is an internal ethers crate since `ethers` is not
         // available
-        let crate_is_root = self.is_crate_root();
-        if let Ok(current_pkg) = pkg.name.parse::<EthersCrate>() {
-            // replace `current_pkg`'s name with "crate"
-            let names =
-                EthersCrate::path_names()
-                    .map(|(pkg, name)| {
-                        if crate_is_root && pkg == current_pkg {
-                            (pkg, "crate")
-                        } else {
-                            (pkg, name)
-                        }
-                    })
-                    .collect();
-            return Some(names)
-        } /* else if pkg.name == "ethers" {
-              // should not happen (the root package the `ethers` workspace package itself)
-          } */
+        if pkg.name.parse::<EthersCrate>().is_ok() || pkg.name == "ethers" {
+            return Some(EthersCrate::path_names().collect())
+        }
 
         let mut names: CrateNames = EthersCrate::ethers_path_names().collect();
         for dep in pkg.dependencies.iter() {
@@ -293,7 +282,7 @@ impl EthersCrate {
     pub const fn ethers_path_name(self) -> &'static str {
         match self {
             // re-exported in ethers::contract
-            Self::EthersContractAbigen => "::ethers::contract", // partly
+            Self::EthersContractAbigen => "::ethers::contract", // partially
             Self::EthersContractDerive => "::ethers::contract",
             Self::EthersDeriveEip712 => "::ethers::contract",
 

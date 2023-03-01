@@ -1,4 +1,4 @@
-# ethers-core
+# ethers-contract
 
 Type-safe abstractions for interacting with Ethereum smart contracts.
 
