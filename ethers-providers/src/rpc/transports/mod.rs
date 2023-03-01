@@ -18,15 +18,15 @@ pub use rw::{RwClient, RwClientError};
 mod retry;
 pub use retry::*;
 
-#[cfg(all(feature = "ws", not(feature = "legacy_ws")))]
+#[cfg(all(feature = "ws", not(feature = "legacy-ws")))]
 mod ws;
-#[cfg(all(feature = "ws", not(feature = "legacy_ws")))]
+#[cfg(all(feature = "ws", not(feature = "legacy-ws")))]
 pub use ws::{ConnectionDetails, WsClient as Ws, WsClientError};
 
 /// archival websocket
-#[cfg(feature = "legacy_ws")]
+#[cfg(feature = "legacy-ws")]
 pub mod legacy_ws;
-#[cfg(feature = "legacy_ws")]
+#[cfg(feature = "legacy-ws")]
 pub use legacy_ws::Ws;
 
 mod mock;
