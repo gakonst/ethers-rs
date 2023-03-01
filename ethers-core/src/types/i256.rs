@@ -265,13 +265,13 @@ impl I256 {
     }
 
     /// Returns `true` if `self` is negative and `false` if the number is zero
-    /// or negative.
+    /// or positive.
     #[inline(always)]
     pub const fn is_negative(self) -> bool {
         self.signum64().is_negative()
     }
 
-    /// Returns `true` if `self` is negative and `false` if the number is zero
+    /// Returns `true` if `self` is zero and `false` if the number is negative
     /// or positive.
     #[inline(always)]
     pub const fn is_zero(self) -> bool {
