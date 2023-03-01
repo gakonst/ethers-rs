@@ -11,8 +11,6 @@ use crate::{
     MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient,
 };
 
-#[cfg(all(not(target_arch = "wasm32"), feature = "ws"))]
-use crate::Authorization;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{HttpRateLimitRetryPolicy, RetryClient};
 
@@ -1214,35 +1212,6 @@ impl<P: JsonRpcClient> Provider<P> {
     /// and pending transactions (default: 7 seconds)
     pub fn get_interval(&self) -> Duration {
         self.interval.unwrap_or(DEFAULT_POLL_INTERVAL)
-    }
-}
-
-#[cfg(feature = "ws")]
-impl Provider<crate::Ws> {
-    /// Direct connection to a websocket endpoint
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn connect(
-        url: impl tokio_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
-    ) -> Result<Self, ProviderError> {
-        let ws = crate::Ws::connect(url).await?;
-        Ok(Self::new(ws))
-    }
-
-    /// Direct connection to a websocket endpoint
-    #[cfg(target_arch = "wasm32")]
-    pub async fn connect(url: &str) -> Result<Self, ProviderError> {
-        let ws = crate::Ws::connect(url).await?;
-        Ok(Self::new(ws))
-    }
-
-    /// Connect to a WS RPC provider with authentication details
-    #[cfg(not(target_arch = "wasm32"))]
-    pub async fn connect_with_auth(
-        url: impl tokio_tungstenite::tungstenite::client::IntoClientRequest + Unpin,
-        auth: Authorization,
-    ) -> Result<Self, ProviderError> {
-        let ws = crate::Ws::connect_with_auth(url, auth).await?;
-        Ok(Self::new(ws))
     }
 }
 
