@@ -78,9 +78,9 @@ reqwest = { version = "0.11.14", default-features = false }
 url = { version = "2", default-features = false }
 
 # crypto
-elliptic-curve = { version = "0.12", default-features = false }
+elliptic-curve = { version = "0.12.3", default-features = false }
 generic-array = { version = "0.14", default-features = false }
-k256 = { version = "0.11", default-features = false }
+k256 = { version = "0.11.6", default-features = false }
 sha2 = { version = "0.10.6", default-features = false }
 tiny-keccak = { version = "2.0", default-features = false }
 spki = { version = "0.6.0", default-features = false }
