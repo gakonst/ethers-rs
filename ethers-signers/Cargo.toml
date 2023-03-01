@@ -49,7 +49,7 @@ ethers-derive-eip712 = { version = "^1.0.0", path = "../ethers-core/ethers-deriv
 
 serde_json = { version = "1.0.64" }
 yubihsm = { version = "0.41.0", features = ["secp256k1", "usb", "mockhsm"] }
-tokio = { version = "1.18", default-features = false, features = ["macros", "rt"] }
+tokio = { version = "1.25", default-features = false, features = ["macros", "rt"] }
 tempfile = "3.4.0"
 
 [features]

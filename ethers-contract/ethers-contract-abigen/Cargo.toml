@@ -34,7 +34,7 @@ regex = "1.6.0"
 toml = "0.5.9"
 
 reqwest = { version = "0.11.3", default-features = false, features = ["blocking"], optional = true }
-tokio = { version = "1.0", default-features = false, features = ["sync"], optional = true }
+tokio = { version = "1.25", default-features = false, features = ["sync"], optional = true }
 url = { version = "2.3.1", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

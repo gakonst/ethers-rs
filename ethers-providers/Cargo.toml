@@ -51,7 +51,7 @@ winapi = { version = "0.3", optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # tokio
-tokio = { version = "1.18", default-features = false, features = ["time"] }
+tokio = { version = "1.25", default-features = false, features = ["time"] }
 tokio-tungstenite = { version = "0.18.0", default-features = false, features = [
     "connect",
 ], optional = true }
@@ -68,7 +68,7 @@ parking_lot = { version = "0.11", features = ["wasm-bindgen"] }
 getrandom = { version = "0.2", features = ["js"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { version = "1.18", default-features = false, features = ["rt", "macros", "time"] }
+tokio = { version = "1.25", default-features = false, features = ["rt", "macros", "time"] }
 tempfile = "3.4.0"
 
 [features]

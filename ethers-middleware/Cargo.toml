@@ -40,7 +40,7 @@ serde_json = { version = "1.0.64", default-features = false }
 instant = { version = "0.1.12", features = ["now"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.18" }
+tokio = { version = "1.25" }
 
 [dev-dependencies]
 ethers-providers = { version = "^1.0.0", path = "../ethers-providers", default-features = false, features = [
@@ -55,7 +55,7 @@ once_cell = "1.17.1"
 reqwest = { version = "0.11.14", default-features = false, features = ["json", "rustls"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { version = "1.18", default-features = false, features = ["rt", "macros", "time"] }
+tokio = { version = "1.25", default-features = false, features = ["rt", "macros", "time"] }
 
 [features]
 default = ["rustls"]
