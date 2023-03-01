@@ -5,6 +5,7 @@ authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
 edition = "2021"
 
 [dev-dependencies]
-ethers = { path = "../..", version = "1.0.0" }
+ethers = { path = "../../ethers" }
+
 eyre = "0.6"
 tokio = { version = "1.25", features = ["full"] }

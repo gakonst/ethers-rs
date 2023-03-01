@@ -5,6 +5,4 @@ authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
 edition = "2021"
 
 [dev-dependencies]
-#ethers-core = { version = "^1.0.0", path = "../../ethers-core" }
-ethers = { path = "../..", version = "1.0.0" }
-
+ethers = { path = "../../ethers" }

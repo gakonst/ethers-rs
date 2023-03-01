@@ -1,0 +1,98 @@
+[package]
+name = "ethers"
+version = "1.0.2"
+edition = "2021"
+rust-version = "1.64" # must also be changed in **/Cargo.toml and .clippy.toml
+authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+documentation = "https://docs.rs/ethers"
+repository = "https://github.com/gakonst/ethers-rs"
+homepage = "https://docs.rs/ethers"
+description = "A complete Ethereum and Celo Rust library"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+features = ["full"]
+
+[features]
+default = ["abigen"]
+
+celo = [
+    "ethers-core/celo",
+    "ethers-providers/celo",
+    "ethers-signers/celo",
+    "ethers-contract/celo",
+    "ethers-middleware/celo",
+    "legacy",
+]
+
+legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
+
+# individual features per sub-crate
+## core
+eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
+## providers
+ws = ["ethers-providers/ws"]
+ipc = ["ethers-providers/ipc"]
+rustls = [
+    "ethers-middleware/rustls",
+    "ethers-providers/rustls",
+    "ethers-etherscan/rustls",
+    "ethers-contract/rustls",
+    "ethers-solc/rustls",
+]
+openssl = [
+    "ethers-middleware/openssl",
+    "ethers-providers/openssl",
+    "ethers-etherscan/openssl",
+    "ethers-contract/openssl",
+    "ethers-solc/openssl",
+]
+dev-rpc = ["ethers-providers/dev-rpc"]
+## signers
+ledger = ["ethers-signers/ledger"]
+trezor = ["ethers-signers/trezor"]
+yubi = ["ethers-signers/yubi"]
+## contracts
+abigen = ["ethers-contract/abigen"]
+### abigen without reqwest
+abigen-offline = ["ethers-contract/abigen-offline"]
+## solc
+ethers-solc = ["dep:ethers-solc", "ethers-etherscan/ethers-solc"]
+solc-full = ["ethers-solc", "ethers-solc/full"]
+solc-tests = ["ethers-solc", "ethers-solc/tests"]
+solc-sha2-asm = ["ethers-solc", "ethers-solc/asm"]
+
+[dependencies]
+ethers-addressbook = { version = "^1.0.0", default-features = false, path = "../ethers-addressbook" }
+ethers-contract = { version = "^1.0.0", default-features = false, path = "../ethers-contract" }
+ethers-core = { version = "^1.0.0", default-features = false, path = "../ethers-core" }
+ethers-providers = { version = "^1.0.0", default-features = false, path = "../ethers-providers" }
+ethers-signers = { version = "^1.0.0", default-features = false, path = "../ethers-signers" }
+ethers-middleware = { version = "^1.0.0", default-features = false, path = "../ethers-middleware" }
+ethers-etherscan = { version = "^1.0.0", default-features = false, path = "../ethers-etherscan" }
+
+ethers-solc = { version = "^1.0.0", default-features = false, path = "../ethers-solc", optional = true }
+
+[dev-dependencies]
+ethers-contract = { version = "^1.0.0", default-features = false, path = "../ethers-contract", features = [
+    "abigen",
+    "eip712",
+] }
+ethers-providers = { version = "^1.0.0", default-features = false, path = "../ethers-providers", features = [
+    "ws",
+    "ipc",
+] }
+
+bytes = "1.4.0"
+eyre = "0.6"
+hex = "0.4.3"
+rand = "0.8.5"
+serde = { version = "1.0.152", features = ["derive"] }
+serde_json = "1.0.93"
+tempfile = "3.4.0"
+tokio = { version = "1.25", features = ["macros", "rt-multi-thread"] }

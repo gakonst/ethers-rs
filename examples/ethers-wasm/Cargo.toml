@@ -18,7 +18,7 @@ crate-type = ["cdylib", "rlib"]
 default = ["console_error_panic_hook"]
 
 [dependencies]
-ethers = { path = "../..", version = "1.0.0", features = ["abigen", "legacy", "ws"] }
+ethers = { path = "../../ethers", features = ["abigen", "legacy", "ws"] }
 
 wasm-bindgen-futures = "0.4.34"
 wasm-bindgen = { version = "0.2.84", features = ["serde-serialize"] }
