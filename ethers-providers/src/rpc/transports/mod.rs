@@ -27,7 +27,7 @@ pub use ws::{ConnectionDetails, WsClient as Ws, WsClientError};
 #[cfg(feature = "legacy-ws")]
 pub mod legacy_ws;
 #[cfg(feature = "legacy-ws")]
-pub use legacy_ws::Ws;
+pub use legacy_ws::{ClientError as WsClientError, Ws};
 
 mod mock;
 pub use mock::{MockError, MockProvider};

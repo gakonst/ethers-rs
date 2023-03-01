@@ -1550,6 +1550,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "tracing-subscriber",
  "trezor-client",
  "yubihsm",
 ]
