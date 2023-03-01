@@ -19,6 +19,7 @@ jobs:
         name: deny (${{ matrix.checks }})
         runs-on: ubuntu-latest
         strategy:
+            fail-fast: false
             matrix:
                 checks:
                     - advisories
