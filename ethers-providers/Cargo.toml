@@ -39,7 +39,7 @@ pin-project = { version = "1.0.11", default-features = false }
 enr = { version = "0.7.0", default-features = false, features = ["k256", "serde"] }
 
 # tracing
-tracing = { version = "0.1.37", default-features = false }
+tracing = { version = "0.1.37", default-features = false, features = ["attributes"] }
 tracing-futures = { version = "0.2.5", default-features = false, features = ["std-future"] }
 
 bytes = { version = "1.4.0", default-features = false, optional = true }
@@ -76,6 +76,7 @@ default = ["ws", "rustls"]
 celo = ["ethers-core/celo"]
 
 ws = ["tokio-tungstenite", "futures-channel"]
+legacy-ws = ["ws"]
 ipc = ["tokio/io-util", "bytes", "futures-channel", "winapi"]
 
 openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
@@ -83,3 +84,6 @@ openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
 # on the host
 rustls = ["tokio-tungstenite/rustls-tls-webpki-roots", "reqwest/rustls-tls"]
 dev-rpc = []
+
+[dev-dependencies]
+tracing-test = { version = "0.2.4", features = ["no-env-filter"] }
