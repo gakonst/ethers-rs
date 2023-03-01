@@ -14,6 +14,7 @@ members = [
     "examples/*",
 ]
 
+# Do not include example crates in default members
 default-members = [
     "ethers",
     "ethers-addressbook",
@@ -25,6 +26,15 @@ default-members = [
     "ethers-signers",
     "ethers-solc",
 ]
+
+# https://github.com/rust-lang/docs.rs/blob/59eea6cbcc1bc99ba8712e5adce4f4dfd0b584a3/crates/metadata/lib.rs#L80-L100
+[workspace.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+# https://docs.rs/about/metadata
+[workspace.metadata.playground]
+all-features = true
 
 # profile for the wasm example
 [profile.release.package.ethers-wasm]

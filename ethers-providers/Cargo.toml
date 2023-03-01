@@ -14,6 +14,9 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[package.metadata.playground]
+all-features = true
+
 [dependencies]
 ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
 

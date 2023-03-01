@@ -10,6 +10,13 @@ homepage = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+all-features = true
+
 [dependencies]
 ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
 

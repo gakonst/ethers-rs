@@ -15,6 +15,13 @@ homepage = "https://docs.rs/ethers"
 description = "Utilites for working with solc"
 keywords = ["ethereum", "web3", "solc", "solidity", "ethers"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+all-features = true
+
 [dependencies]
 ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
 serde_json = "1.0.93"

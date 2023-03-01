@@ -10,6 +10,13 @@ homepage = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+all-features = true
+
 [dependencies]
 open-fastrlp = { version = "0.1.4", features = ["std", "derive", "ethereum-types"] }
 rlp = { version = "0.5.2", default-features = false, features = ["std"] }
@@ -63,7 +70,3 @@ celo = ["legacy"] # celo support extends the transaction format with extra field
 legacy = []
 eip712 = ["convert_case", "syn", "proc-macro2"]
 macros = ["syn", "cargo_metadata", "once_cell"]
-
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]

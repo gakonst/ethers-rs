@@ -13,6 +13,13 @@ homepage = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 keywords = ["ethereum", "web3", "celo", "ethers"]
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+all-features = true
+
 [dependencies]
 ethers-core = { version = "^1.0.0", path = "../../ethers-core", features = ["macros"] }
 ethers-etherscan = { path = "../../ethers-etherscan", default-features = false, optional = true }
@@ -33,17 +40,15 @@ eyre = "0.6"
 regex = "1.7.1"
 toml = "0.7.2"
 
-reqwest = { version = "0.11.14", default-features = false, features = ["blocking"], optional = true }
+reqwest = { version = "0.11.14", default-features = false, features = [
+    "blocking",
+], optional = true }
 tokio = { version = "1.25", default-features = false, features = ["sync"], optional = true }
 url = { version = "2.3.1", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly
 getrandom = { version = "0.2", features = ["js"] }
-
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 online = ["reqwest", "ethers-etherscan", "url", "tokio"]

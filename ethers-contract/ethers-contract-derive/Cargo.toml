@@ -27,7 +27,3 @@ syn = "1.0.109"
 serde_json = "1.0.93"
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 eyre = "0.6"
-
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]

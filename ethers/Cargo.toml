@@ -16,7 +16,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]
-features = ["full"]
+all-features = true
 
 [features]
 default = ["abigen"]

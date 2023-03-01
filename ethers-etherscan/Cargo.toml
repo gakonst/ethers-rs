@@ -12,10 +12,15 @@ readme = "../README.md"
 documentation = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
 homepage = "https://docs.rs/ethers"
-description = """
-Rust API bindings for the etherscan.io web API
-"""
+description = "Rust API bindings for the etherscan.io web API"
 keywords = ["ethereum", "web3", "etherscan", "ethers"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+all-features = true
 
 [dependencies]
 ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
@@ -39,10 +44,6 @@ tempfile = "3.4.0"
 tokio = { version = "1.25", features = ["macros", "rt-multi-thread", "time"] }
 serial_test = "1.0.0"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
-
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
 default = ["rustls"]
