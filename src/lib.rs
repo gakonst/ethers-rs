@@ -1,9 +1,3 @@
-#![warn(missing_debug_implementations, missing_docs, rust_2018_idioms, unreachable_pub)]
-#![allow(rustdoc::broken_intra_doc_links)]
-#![doc(test(
-    no_crate_inject,
-    attr(deny(warnings, rust_2018_idioms), allow(dead_code, unused_variables))
-))]
 //! # ethers-rs
 //!
 //! A complete Ethereum and Celo Rust library.

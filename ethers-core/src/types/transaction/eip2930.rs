@@ -95,6 +95,7 @@ pub enum Eip2930RequestError {
 pub struct Eip2930TransactionRequest {
     #[serde(flatten)]
     pub tx: TransactionRequest,
+    #[serde(rename = "accessList")]
     pub access_list: AccessList,
 }
 

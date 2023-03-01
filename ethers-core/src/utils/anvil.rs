@@ -1,6 +1,6 @@
 use crate::{
     types::{Address, Chain},
-    utils::{secret_key_to_address, unused_port},
+    utils::{secret_key_to_address, unused_ports},
 };
 use k256::{ecdsa::SigningKey, SecretKey as K256SecretKey};
 use std::{
@@ -161,7 +161,7 @@ impl Anvil {
         self
     }
 
-    /// Sets the block-time which will be used when the `anvil` instance is launched.
+    /// Sets the block-time in seconds which will be used when the `anvil` instance is launched.
     #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
@@ -223,7 +223,7 @@ impl Anvil {
             Command::new("anvil")
         };
         cmd.stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::inherit());
-        let port = if let Some(port) = self.port { port } else { unused_port() };
+        let port = if let Some(port) = self.port { port } else { unused_ports::<1>()[0] };
         cmd.arg("-p").arg(port.to_string());
 
         if let Some(mnemonic) = self.mnemonic {

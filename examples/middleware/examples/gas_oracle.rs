@@ -38,15 +38,7 @@ async fn blocknative() {
 }
 
 async fn etherscan() {
-    let chain = Chain::Mainnet;
-    let client = match Client::new_from_env(chain) {
-        Ok(client) => client,
-        Err(_) => Client::builder()
-            .chain(chain)
-            .expect("Mainnet is valid")
-            .build()
-            .expect("Mainnet is valid"),
-    };
+    let client = Client::new_from_opt_env(Chain::Mainnet).unwrap();
     let oracle = Etherscan::new(client).category(GasCategory::Fast);
     match oracle.fetch().await {
         Ok(gas_price) => println!("[Etherscan]: Gas price is {gas_price:?}"),

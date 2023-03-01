@@ -164,7 +164,7 @@ mod tests {
     #[test]
     fn parse_pk() {
         let s = "6f142508b4eea641e33cb2a0161221105086a84584c74245ca463a49effea30b";
-        let pk: Wallet<SigningKey> = s.parse().unwrap();
+        let _pk: Wallet<SigningKey> = s.parse().unwrap();
     }
 
     #[tokio::test]

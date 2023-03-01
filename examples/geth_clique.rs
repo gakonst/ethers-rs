@@ -1,3 +1,5 @@
+//! Instantiate `Geth` with Clique enabled.
+
 use ethers::{
     core::{rand::thread_rng, utils::Geth},
     signers::LocalWallet,
@@ -5,7 +7,6 @@ use ethers::{
 use eyre::Result;
 
 #[tokio::main]
-/// Shows how to instantiate a Geth with Clique enabled.
 async fn main() -> Result<()> {
     // Generate a random clique signer and set it on Geth.
     let data_dir = tempfile::tempdir().expect("should be able to create temp geth datadir");

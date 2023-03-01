@@ -261,8 +261,9 @@ fn can_derive_indexed_and_anonymous_attribute() {
 
 #[test]
 fn can_generate_ethevent_from_json() {
-    abigen!(DsProxyFactory,
-        "ethers-middleware/contracts/DsProxyFactory.json",
+    abigen!(
+        DsProxyFactory,
+        "./../ethers-middleware/contracts/DSProxyFactory.json",
         methods {
             build(address) as build_with_owner;
         }
@@ -399,7 +400,7 @@ fn eth_display_works() {
 
 #[test]
 fn eth_display_works_for_human_readable() {
-    ethers_contract::abigen!(
+    abigen!(
         HevmConsole,
         r#"[
             event log(string)

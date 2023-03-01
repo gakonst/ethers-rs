@@ -513,6 +513,7 @@ impl crate::RpcError for IpcError {
 mod tests {
     use super::*;
     use ethers_core::utils::{Geth, GethInstance};
+    use std::time::Duration;
     use tempfile::NamedTempFile;
 
     async fn connect() -> (Ipc, GethInstance) {
@@ -534,7 +535,7 @@ mod tests {
         let (ipc, _geth) = connect().await;
 
         let block_num: U256 = ipc.request("eth_blockNumber", ()).await.unwrap();
-        std::thread::sleep(std::time::Duration::new(3, 0));
+        tokio::time::sleep(Duration::from_secs(2)).await;
         let block_num2: U256 = ipc.request("eth_blockNumber", ()).await.unwrap();
         assert!(block_num2 > block_num);
     }
@@ -559,6 +560,8 @@ mod tests {
             })
             .collect()
             .await;
-        assert_eq!(blocks, vec![1, 2, 3]);
+        // `[1, 2, 3]` or `[2, 3, 4]` etc, depending on test latency
+        assert_eq!(blocks[2], blocks[1] + 1);
+        assert_eq!(blocks[1], blocks[0] + 1);
     }
 }

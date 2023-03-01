@@ -499,6 +499,9 @@ mod tests {
                 None,
             )
             .await
+            .unwrap()
+            .await
+            .unwrap()
             .unwrap();
         let client = SignerMiddleware::new_with_provider_chain(provider, key).await.unwrap();
 

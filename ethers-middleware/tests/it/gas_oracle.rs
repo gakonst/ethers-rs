@@ -1,14 +1,11 @@
-#![cfg(not(target_arch = "wasm32"))]
-
 use async_trait::async_trait;
 use ethers_core::{types::*, utils::Anvil};
+use ethers_etherscan::Client;
 use ethers_middleware::gas_oracle::{
     BlockNative, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, GasOracleError,
     GasOracleMiddleware, Polygon, ProviderOracle, Result,
 };
 use ethers_providers::{Http, Middleware, Provider};
-use serial_test::serial;
-use std::convert::TryFrom;
 
 #[derive(Debug)]
 struct FakeGasOracle {
@@ -28,7 +25,6 @@ impl GasOracle for FakeGasOracle {
 }
 
 #[tokio::test]
-#[serial]
 async fn provider_using_gas_oracle() {
     let anvil = Anvil::new().spawn();
 
@@ -54,7 +50,6 @@ async fn provider_using_gas_oracle() {
 }
 
 #[tokio::test]
-#[serial]
 async fn provider_oracle() {
     // spawn anvil and connect to it
     let anvil = Anvil::new().spawn();
@@ -93,7 +88,8 @@ async fn etherchain() {
 
 #[tokio::test]
 async fn etherscan() {
-    let etherscan_client = ethers_etherscan::Client::new_from_env(Chain::Mainnet).unwrap();
+    let chain = Chain::Mainnet;
+    let etherscan_client = Client::new_from_opt_env(chain).unwrap();
 
     // initialize and fetch gas estimates from Etherscan
     // since etherscan does not support `fastest` category, we expect an error

@@ -1,18 +1,13 @@
-#![cfg(all(not(target_arch = "wasm32"), not(feature = "celo")))]
-
-use ethers_core::{types::*, utils::Anvil};
+use crate::spawn_anvil;
+use ethers_core::types::*;
 use ethers_middleware::MiddlewareBuilder;
-use ethers_providers::{Http, Middleware, Provider};
+use ethers_providers::Middleware;
 
 #[tokio::test]
 async fn nonce_manager() {
-    let anvil = Anvil::new().spawn();
-    let endpoint = anvil.endpoint();
-
-    let provider = Provider::<Http>::try_from(endpoint).unwrap();
-    let accounts = provider.get_accounts().await.unwrap();
-    let address = accounts[0];
-    let to = accounts[1];
+    let (provider, anvil) = spawn_anvil();
+    let address = anvil.addresses()[0];
+    let to = anvil.addresses()[1];
 
     // the nonce manager must be over the Client so that it overrides the nonce
     // before the client gets it

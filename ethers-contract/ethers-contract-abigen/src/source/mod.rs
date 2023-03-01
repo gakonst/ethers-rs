@@ -23,16 +23,16 @@ pub enum Source {
     Local(PathBuf),
 
     /// An address of a smart contract address verified at a supported blockchain explorer.
-    #[cfg(feature = "online")]
+    #[cfg(all(feature = "online", not(target_arch = "wasm32")))]
     Explorer(Explorer, ethers_core::types::Address),
 
     /// The package identifier of an npm package with a path to a Truffle artifact or ABI to be
     /// retrieved from `unpkg.io`.
-    #[cfg(feature = "online")]
+    #[cfg(all(feature = "online", not(target_arch = "wasm32")))]
     Npm(String),
 
     /// An ABI to be retrieved over HTTP(S).
-    #[cfg(feature = "online")]
+    #[cfg(all(feature = "online", not(target_arch = "wasm32")))]
     Http(url::Url),
 }
 
@@ -77,12 +77,12 @@ impl Source {
         match source.chars().next() {
             Some('[' | '{') => Ok(Self::String(source.to_string())),
 
-            #[cfg(not(feature = "online"))]
+            #[cfg(any(not(feature = "online"), target_arch = "wasm32"))]
             _ => Ok(Self::local(source)?),
 
-            #[cfg(feature = "online")]
+            #[cfg(all(feature = "online", not(target_arch = "wasm32")))]
             Some('/') => Self::local(source),
-            #[cfg(feature = "online")]
+            #[cfg(all(feature = "online", not(target_arch = "wasm32")))]
             _ => Self::parse_online(source),
         }
     }
@@ -120,16 +120,8 @@ impl Source {
             Self::Local(path) => Ok(fs::read_to_string(path)?),
             Self::String(abi) => Ok(abi.clone()),
 
-            #[cfg(feature = "online")]
-            _ => {
-                cfg_if::cfg_if! {
-                    if #[cfg(target_arch = "wasm32")] {
-                        Err(eyre::eyre!("Online ABI locations are currently unsupported for WASM builds."))
-                    } else {
-                        self.get_online()
-                    }
-                }
-            }
+            #[cfg(all(feature = "online", not(target_arch = "wasm32")))]
+            _ => self.get_online(),
         }
     }
 }
@@ -148,7 +140,7 @@ mod tests {
             env!("CARGO_MANIFEST_DIR"),
             "/../tests/solidity-contracts/console.json"
         );
-        let exp = Source::Local(Path::new(rel).canonicalize().unwrap());
+        let exp = Source::Local(dunce::canonicalize(Path::new(rel)).unwrap());
         assert_eq!(Source::parse(rel).unwrap(), exp);
         assert_eq!(Source::parse(abs).unwrap(), exp);
         assert_eq!(Source::parse(abs_url).unwrap(), exp);

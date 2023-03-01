@@ -1,4 +1,3 @@
-#![cfg(not(target_arch = "wasm32"))]
 use ethers_core::{
     types::{TransactionRequest, U256},
     utils::Anvil,
@@ -8,8 +7,8 @@ use std::convert::TryFrom;
 
 #[tokio::test]
 async fn txpool() {
-    let geth = Anvil::new().block_time(20u64).spawn();
-    let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
+    let anvil = Anvil::new().block_time(5u64).spawn();
+    let provider = Provider::<Http>::try_from(anvil.endpoint()).unwrap();
 
     let account = provider.get_accounts().await.unwrap()[0];
     let value: u64 = 42;
@@ -17,13 +16,11 @@ async fn txpool() {
     let tx = TransactionRequest::new().to(account).from(account).value(value).gas_price(gas_price);
 
     // send a few transactions
-    let mut txs = Vec::new();
     for _ in 0..10 {
-        let tx_hash = provider.send_transaction(tx.clone(), None).await.unwrap();
-        txs.push(tx_hash);
+        drop(provider.send_transaction(tx.clone(), None).await.unwrap());
     }
 
-    // we gave a 20s block time, should be plenty for us to get the txpool's content
+    // we gave a 5s block time, should be plenty for us to get the txpool's content
     let status = provider.txpool_status().await.unwrap();
     assert_eq!(status.pending.as_u64(), 10);
     assert_eq!(status.queued.as_u64(), 0);

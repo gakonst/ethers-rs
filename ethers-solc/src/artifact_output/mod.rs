@@ -1082,6 +1082,7 @@ impl ArtifactOutput for MinimalCombinedArtifactsHardhatFallback {
 }
 
 #[cfg(test)]
+#[allow(clippy::extra_unused_type_parameters)]
 mod tests {
     use super::*;
 

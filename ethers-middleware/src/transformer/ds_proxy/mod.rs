@@ -1,4 +1,4 @@
-mod factory;
+pub mod factory;
 use factory::{CreatedFilter, DsProxyFactory, ADDRESS_BOOK};
 
 use super::{Transformer, TransformerError};
@@ -18,7 +18,6 @@ const DS_PROXY_EXECUTE_TARGET: &str =
 const DS_PROXY_EXECUTE_CODE: &str =
     "function execute(bytes memory code, bytes memory data) public payable returns (address target, bytes memory response)";
 
-#[derive(Debug, Clone)]
 /// Represents the DsProxy type that implements the [Transformer](super::Transformer) trait.
 ///
 /// # Example
@@ -57,6 +56,7 @@ const DS_PROXY_EXECUTE_CODE: &str =
 /// # Ok(())
 /// # }
 /// ```
+#[derive(Clone, Debug)]
 pub struct DsProxy {
     address: Address,
     contract: BaseContract,

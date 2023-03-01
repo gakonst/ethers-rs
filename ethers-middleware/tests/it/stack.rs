@@ -1,5 +1,3 @@
-#![cfg(all(not(target_arch = "wasm32"), not(feature = "celo")))]
-
 use ethers_core::{rand::thread_rng, types::TransactionRequest, utils::Anvil};
 use ethers_middleware::{
     gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},

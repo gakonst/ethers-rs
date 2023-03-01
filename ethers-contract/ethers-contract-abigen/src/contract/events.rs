@@ -230,19 +230,7 @@ pub(crate) fn event_struct_alias(event_name: &str) -> Ident {
 mod tests {
     use super::*;
     use crate::Abigen;
-    use ethers_core::abi::{EventParam, Hash, ParamType};
-    use proc_macro2::Literal;
-
-    /// Expands a 256-bit `Hash` into a literal representation that can be used with
-    /// quasi-quoting for code generation. We do this to avoid allocating at runtime
-    fn expand_hash(hash: Hash) -> TokenStream {
-        let bytes = hash.as_bytes().iter().copied().map(Literal::u8_unsuffixed);
-        let ethers_core = ethers_core_crate();
-
-        quote! {
-            #ethers_core::types::H256([#( #bytes ),*])
-        }
-    }
+    use ethers_core::abi::{EventParam, ParamType};
 
     fn test_context() -> Context {
         Context::from_abigen(Abigen::new("TestToken", "[]").unwrap()).unwrap()
@@ -254,44 +242,30 @@ mod tests {
     }
 
     #[test]
-    #[rustfmt::skip]
     fn expand_transfer_filter_with_alias() {
         let event = Event {
             name: "Transfer".into(),
             inputs: vec![
-                EventParam {
-                    name: "from".into(),
-                    kind: ParamType::Address,
-                    indexed: true,
-                },
-                EventParam {
-                    name: "to".into(),
-                    kind: ParamType::Address,
-                    indexed: true,
-                },
-                EventParam {
-                    name: "amount".into(),
-                    kind: ParamType::Uint(256),
-                    indexed: false,
-                },
+                EventParam { name: "from".into(), kind: ParamType::Address, indexed: true },
+                EventParam { name: "to".into(), kind: ParamType::Address, indexed: true },
+                EventParam { name: "amount".into(), kind: ParamType::Uint(256), indexed: false },
             ],
             anonymous: false,
         };
         let sig = "Transfer(address,address,uint256)";
         let cx = test_context_with_alias(sig, "TransferEvent");
+        #[rustfmt::skip]
         assert_quote!(cx.expand_filter(&event), {
             #[doc = "Gets the contract's `Transfer` event"]
             pub fn transfer_event_filter(
                 &self
-            ) -> ::ethers_contract::builders::Event<
-                ::std::sync::Arc<M>,
-                M,
-                TransferEventFilter,
-            > {
+            ) -> ::ethers_contract::builders::Event<::std::sync::Arc<M>, M, TransferEventFilter>
+            {
                 self.0.event()
             }
         });
     }
+
     #[test]
     fn expand_transfer_filter() {
         let event = Event {
@@ -304,10 +278,11 @@ mod tests {
             anonymous: false,
         };
         let cx = test_context();
+        #[rustfmt::skip]
         assert_quote!(cx.expand_filter(&event), {
             #[doc = "Gets the contract's `Transfer` event"]
             pub fn transfer_filter(
-                &self,
+                &self
             ) -> ::ethers_contract::builders::Event<::std::sync::Arc<M>, M, TransferFilter>
             {
                 self.0.event()
@@ -405,21 +380,5 @@ mod tests {
         assert_quote!(definition, {
             struct FooAliasedFilter(pub bool, pub ::ethers_core::types::Address);
         });
-    }
-
-    #[test]
-    #[rustfmt::skip]
-    fn expand_hash_value() {
-        assert_quote!(
-            expand_hash(
-                "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f".parse().unwrap()
-            ),
-            {
-                ::ethers_core::types::H256([
-                    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-                    16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31
-                ])
-            },
-        );
     }
 }

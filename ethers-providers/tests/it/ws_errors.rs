@@ -1,11 +1,10 @@
-#![cfg(not(feature = "celo"))]
-
+use ethers_core::types::Filter;
 use ethers_providers::{Middleware, Provider, StreamExt, Ws};
 use futures_util::SinkExt;
 use std::time::Duration;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::{
-    accept_async,
+    accept_async, connect_async,
     tungstenite::{
         self,
         protocol::{frame::coding::CloseCode, CloseFrame},
@@ -15,9 +14,6 @@ use tokio_tungstenite::{
 use tungstenite::protocol::Message;
 
 const WS_ENDPOINT: &str = "127.0.0.1:9002";
-
-use ethers_core::types::Filter;
-use tokio_tungstenite::connect_async;
 
 #[tokio::test]
 async fn graceful_disconnect_on_ws_errors() {

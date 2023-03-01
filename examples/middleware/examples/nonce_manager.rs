@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
 
     assert_eq!(curr_nonce, 0);
 
-    nonce_manager.send_transaction(tx, None).await?;
+    nonce_manager.send_transaction(tx, None).await?.await?.unwrap();
     let next_nonce = nonce_manager.next().as_u64();
 
     assert_eq!(next_nonce, 1);

@@ -1,10 +1,9 @@
-use k256::ecdsa::SigningKey;
-
-use super::{unused_port, Genesis};
+use super::{unused_ports, CliqueConfig, Genesis};
 use crate::{
     types::{Bytes, H256},
     utils::secret_key_to_address,
 };
+use k256::ecdsa::SigningKey;
 use std::{
     fs::{create_dir, File},
     io::{BufRead, BufReader},
@@ -15,10 +14,10 @@ use std::{
 use tempfile::tempdir;
 
 /// How long we will wait for geth to indicate that it is ready.
-const GETH_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
+const GETH_STARTUP_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Timeout for waiting for geth to add a peer.
-const GETH_DIAL_LOOP_TIMEOUT: Duration = Duration::new(20, 0);
+const GETH_DIAL_LOOP_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// The exposed APIs
 const API: &str = "eth,net,web3,txpool,admin,personal,miner,debug";
@@ -354,13 +353,21 @@ impl Geth {
         self
     }
 
-    /// Consumes the builder and spawns `geth` with stdout redirected
-    /// to /dev/null.
+    /// Consumes the builder and spawns `geth` with stdout redirected to /dev/null.
+    #[must_use]
+    #[track_caller]
     pub fn spawn(mut self) -> GethInstance {
-        let mut cmd =
-            if let Some(ref prg) = self.program { Command::new(prg) } else { Command::new(GETH) };
+        let bin_path = match self.program.as_ref() {
+            Some(bin) => bin.as_os_str(),
+            None => GETH.as_ref(),
+        }
+        .to_os_string();
+        let mut cmd = Command::new(&bin_path);
         // geth uses stderr for its logs
         cmd.stderr(Stdio::piped());
+
+        let mut unused_ports = unused_ports::<3>().into_iter();
+        let mut unused_port = || unused_ports.next().unwrap();
         let port = if let Some(port) = self.port { port } else { unused_port() };
         let authrpc_port = if let Some(port) = self.authrpc_port { port } else { unused_port() };
 
@@ -390,7 +397,6 @@ impl Geth {
         // use geth init to initialize the datadir if the genesis exists
         if let Some(ref mut genesis) = self.genesis {
             if is_clique {
-                use super::CliqueConfig;
                 // set up a clique config with an instant sealing period and short (8 block) epoch
                 let clique_config = CliqueConfig { period: Some(0), epoch: Some(8) };
                 genesis.config.clique = Some(clique_config);
@@ -440,7 +446,7 @@ impl Geth {
             serde_json::to_writer_pretty(&mut file, &genesis)
                 .expect("could not write genesis to file");
 
-            let mut init_cmd = Command::new(GETH);
+            let mut init_cmd = Command::new(bin_path);
             if let Some(ref data_dir) = self.data_dir {
                 init_cmd.arg("--datadir").arg(data_dir);
             }
@@ -514,11 +520,11 @@ impl Geth {
         let mut http_started = false;
 
         loop {
-            if start + Duration::from_millis(GETH_STARTUP_TIMEOUT_MILLIS) <= Instant::now() {
+            if start + GETH_STARTUP_TIMEOUT <= Instant::now() {
                 panic!("Timed out waiting for geth to start. Is geth installed?")
             }
 
-            let mut line = String::new();
+            let mut line = String::with_capacity(120);
             reader.read_line(&mut line).expect("Failed to read line from geth process");
 
             if matches!(self.mode, GethMode::NonDev(_)) && line.contains("Started P2P networking") {

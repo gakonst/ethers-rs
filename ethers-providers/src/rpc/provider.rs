@@ -1864,26 +1864,13 @@ mod tests {
     #[tokio::test]
     async fn geth_admin_nodeinfo() {
         // we can't use the test provider because infura does not expose admin endpoints
-        let port = 8546u16;
-        let p2p_listener_port = 13337u16;
-        let authrpc_port = 8552u16;
         let network = 1337u64;
         let temp_dir = tempfile::tempdir().unwrap().into_path();
 
-        let (geth, provider) = spawn_geth_and_create_provider(
-            network,
-            port,
-            p2p_listener_port,
-            authrpc_port,
-            Some(temp_dir),
-            None,
-        );
+        let (geth, provider) = spawn_geth_and_create_provider(network, Some(temp_dir), None);
 
         let info = provider.node_info().await.unwrap();
         drop(geth);
-
-        // check that the port we set works
-        assert_eq!(info.ports.listener, p2p_listener_port);
 
         // make sure it is running eth
         assert!(info.protocols.eth.is_some());
@@ -1897,18 +1884,10 @@ mod tests {
     /// These will all use the same genesis config.
     fn spawn_geth_and_create_provider(
         chain_id: u64,
-        rpc_port: u16,
-        p2p_port: u16,
-        authrpc_port: u16,
         datadir: Option<PathBuf>,
         genesis: Option<Genesis>,
     ) -> (GethInstance, Provider<HttpProvider>) {
-        let geth = Geth::new()
-            .port(rpc_port)
-            .p2p_port(p2p_port)
-            .authrpc_port(authrpc_port)
-            .chain_id(chain_id)
-            .disable_discovery();
+        let geth = Geth::new().chain_id(chain_id).disable_discovery();
 
         let geth = match genesis {
             Some(genesis) => geth.genesis(genesis),
@@ -1921,8 +1900,7 @@ mod tests {
         }
         .spawn();
 
-        let url = format!("http://127.0.0.1:{rpc_port}");
-        let provider = Provider::try_from(url).unwrap();
+        let provider = Provider::try_from(geth.endpoint()).unwrap();
         (geth, provider)
     }
 
@@ -1934,26 +1912,13 @@ mod tests {
         chain_id: u64,
         genesis: Option<Genesis>,
     ) -> Vec<(GethInstance, Provider<HttpProvider>)> {
-        let mut geths = Vec::new();
-        let mut p2p_port = 30303;
-        let mut rpc_port = 8545;
-        let mut authrpc_port = 8551;
+        let mut geths = Vec::with_capacity(datadirs.len());
 
         for dir in datadirs {
-            let (geth, provider) = spawn_geth_and_create_provider(
-                chain_id,
-                rpc_port,
-                p2p_port,
-                authrpc_port,
-                Some(dir),
-                genesis.clone(),
-            );
+            let (geth, provider) =
+                spawn_geth_and_create_provider(chain_id, Some(dir), genesis.clone());
 
             geths.push((geth, provider));
-
-            p2p_port += 1;
-            rpc_port += 1;
-            authrpc_port += 1;
         }
 
         geths

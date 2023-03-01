@@ -1,6 +1,6 @@
 use crate::{
     types::Address,
-    utils::{secret_key_to_address, unused_port},
+    utils::{secret_key_to_address, unused_ports},
 };
 use k256::{ecdsa::SigningKey, SecretKey as K256SecretKey};
 use std::{
@@ -157,7 +157,7 @@ impl Ganache {
     pub fn spawn(self) -> GanacheInstance {
         let mut cmd = Command::new("ganache-cli");
         cmd.stdout(std::process::Stdio::piped());
-        let port = if let Some(port) = self.port { port } else { unused_port() };
+        let port = if let Some(port) = self.port { port } else { unused_ports::<1>()[0] };
         cmd.arg("-p").arg(port.to_string());
 
         if let Some(mnemonic) = self.mnemonic {
