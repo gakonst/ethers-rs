@@ -25,20 +25,20 @@ all-features = true
 ethers-providers.workspace = true
 ethers-core.workspace = true
 
+serde.workspace = true
+serde_json.workspace = true
+futures-util.workspace = true
+pin-project.workspace = true
+thiserror.workspace = true
+once_cell.workspace = true
+hex.workspace = true
+
 # abigen
 ethers-contract-abigen = { workspace = true, optional = true }
 ethers-contract-derive = { workspace = true, optional = true }
 
 # eip712
 ethers-derive-eip712 = { workspace = true, optional = true }
-
-serde.workspace = true
-serde_json.workspace = true
-thiserror.workspace = true
-once_cell.workspace = true
-pin-project = { version = "1.0.12", default-features = false }
-futures-util = "^0.3"
-hex = { version = "0.4.3", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 ethers-signers.workspace = true

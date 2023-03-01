@@ -8,4 +8,4 @@ rust-version.workspace = true
 edition.workspace = true
 
 [dev-dependencies]
-ethers = { path = "../../ethers" }
+ethers.workspace = true

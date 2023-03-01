@@ -8,7 +8,6 @@ rust-version.workspace = true
 edition.workspace = true
 
 [dev-dependencies]
-ethers = { path = "../../ethers" }
-
-eyre = "0.6"
-tokio = { version = "1.25", features = ["full"] }
+ethers.workspace = true
+tokio = { workspace = true, features = ["macros"] }
+eyre.workspace = true

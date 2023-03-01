@@ -9,8 +9,7 @@ use async_trait::async_trait;
 use ethers_core::types::{BlockId, TransactionRequest, TxHash, U256};
 use ethers_providers::{interval, Middleware, MiddlewareError, PendingTransaction, StreamExt};
 use futures_util::lock::Mutex;
-use instant::Instant;
-use std::{pin::Pin, sync::Arc};
+use std::{pin::Pin, sync::Arc, time::Instant};
 use thiserror::Error;
 
 #[cfg(not(target_arch = "wasm32"))]

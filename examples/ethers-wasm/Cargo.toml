@@ -13,14 +13,15 @@ crate-type = ["cdylib", "rlib"]
 default = ["console_error_panic_hook"]
 
 [dependencies]
-ethers = { path = "../../ethers", features = ["abigen", "legacy", "ws"] }
+ethers = { workspace = true, features = ["abigen", "ethers-solc", "rustls", "ws"] }
+
+serde.workspace = true
+serde_json.workspace = true
+serde-wasm-bindgen = "0.4.5"
+hex.workspace = true
 
 wasm-bindgen-futures = "0.4.34"
 wasm-bindgen = { version = "0.2.84", features = ["serde-serialize"] }
-
-serde = { version = "1.0.152", features = ["derive"] }
-serde_json = "1.0.93"
-serde-wasm-bindgen = "0.4.5"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
@@ -28,16 +29,7 @@ serde-wasm-bindgen = "0.4.5"
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.7", optional = true }
 
-# `wee_alloc` is a tiny allocator for wasm that is only ~1K in code size
-# compared to the default allocator's ~10K. It is slower than the default
-# allocator, however.
-#
-# Unfortunately, `wee_alloc` requires nightly Rust when targeting wasm for now.
-wee_alloc = { version = "0.4.5", optional = true }
-
 web-sys = { version = "0.3.61", features = ["console"] }
-
-hex = "0.4.3"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"

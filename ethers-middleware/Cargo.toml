@@ -28,36 +28,35 @@ ethers-etherscan.workspace = true
 ethers-providers.workspace = true
 ethers-signers.workspace = true
 
-async-trait = { version = "0.1.64", default-features = false }
-auto_impl = { version = "1.0.1", default-features = false }
-serde = { version = "1.0.152", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0", default-features = false }
-futures-util = { version = "^0.3" }
-futures-locks = { version = "0.7", default-features = false }
-tracing = { version = "0.1.37", default-features = false }
-tracing-futures = { version = "0.2.5", default-features = false }
+async-trait.workspace = true
+auto_impl.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+futures-util.workspace = true
+futures-locks.workspace = true
+tracing.workspace = true
+tracing-futures.workspace = true
 
 # for gas oracles
-reqwest = { version = "0.11.14", default-features = false, features = ["json", "rustls-tls"] }
-url = { version = "2.3.1", default-features = false }
+reqwest.workspace = true
+url.workspace = true
 
-serde_json = { version = "1.0.93", default-features = false }
-instant = { version = "0.1.12", features = ["now"] }
+serde_json.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.25" }
+tokio.workspace = true
 
 [dev-dependencies]
 ethers-providers = { workspace = true, features = ["ws", "rustls"] }
 ethers-solc.workspace = true
 
-hex = { version = "0.4.3", default-features = false, features = ["std"] }
-rand = { version = "0.8.5", default-features = false }
-once_cell = "1.17.1"
-reqwest = { version = "0.11.14", default-features = false, features = ["json", "rustls"] }
+hex.workspace = true
+rand.workspace = true
+once_cell.workspace = true
+reqwest = { workspace = true, features = ["json", "rustls"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { version = "1.25", default-features = false, features = ["rt", "macros", "time"] }
+tokio = { workspace = true, features = ["rt", "macros", "time"] }
 
 [features]
 default = ["rustls"]

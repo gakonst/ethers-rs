@@ -8,10 +8,10 @@ rust-version.workspace = true
 edition.workspace = true
 
 [dev-dependencies]
-ethers = { path = "../../ethers" }
-
-async-trait = { version = "0.1.64", default-features = false }
-eyre = "0.6"
-serde_json = "1.0.93"
-thiserror = { version = "1.0", default-features = false }
-tokio = { version = "1.25", features = ["macros", "rt", "rt-multi-thread"] }
+ethers.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["macros"] }
+async-trait.workspace = true
+thiserror.workspace = true
+eyre.workspace = true

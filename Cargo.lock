@@ -1297,7 +1297,6 @@ dependencies = [
 name = "ethers"
 version = "1.0.2"
 dependencies = [
- "bytes",
  "ethers-addressbook",
  "ethers-contract",
  "ethers-core",
@@ -1306,13 +1305,6 @@ dependencies = [
  "ethers-providers",
  "ethers-signers",
  "ethers-solc",
- "eyre",
- "hex",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
 ]
 
 [[package]]
@@ -1351,7 +1343,6 @@ name = "ethers-contract-abigen"
 version = "1.0.2"
 dependencies = [
  "Inflector",
- "cfg-if 1.0.0",
  "dunce",
  "ethers-core",
  "ethers-etherscan",
@@ -1411,7 +1402,6 @@ dependencies = [
  "proc-macro2",
  "rand 0.8.5",
  "rlp",
- "rlp-derive",
  "serde",
  "serde_json",
  "strum",
@@ -1444,7 +1434,6 @@ dependencies = [
  "reqwest",
  "semver",
  "serde",
- "serde-aux",
  "serde_json",
  "serial_test",
  "tempfile",
@@ -1469,7 +1458,6 @@ dependencies = [
  "futures-locks",
  "futures-util",
  "hex",
- "instant",
  "once_cell",
  "rand 0.8.5",
  "reqwest",
@@ -1609,7 +1597,6 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-bindgen-test",
  "web-sys",
- "wee_alloc",
 ]
 
 [[package]]
@@ -1651,12 +1638,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "examples-geth"
+version = "0.0.0"
+dependencies = [
+ "ethers",
+ "eyre",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
+
+[[package]]
 name = "examples-middleware"
 version = "0.0.0"
 dependencies = [
  "async-trait",
  "ethers",
  "eyre",
+ "serde",
  "serde_json",
  "thiserror",
  "tokio",
@@ -2576,12 +2576,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "memory_units"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8452105ba047068f40ff7093dd1d9da90898e63dd61736462e9cdda6a90ad3c3"
-
-[[package]]
 name = "mime"
 version = "0.3.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3452,6 +3446,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb919243f34364b6bd2fc10ef797edbfa75f33c252e7998527479c6d6b47e1ec"
 dependencies = [
  "bytes",
+ "rlp-derive",
  "rustc-hex",
 ]
 
@@ -3783,16 +3778,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb7d1f0d3021d347a83e556fc4683dea2ea09d87bccdf88ff5c12545d89d5efb"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-aux"
-version = "4.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c599b3fd89a75e0c18d6d2be693ddb12cccaf771db4ff9e39097104808a014c0"
-dependencies = [
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -4868,18 +4853,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c71e40d7d2c34a5106301fb632274ca37242cd0c9d3e64dbece371a40a2d87"
 dependencies = [
  "webpki",
-]
-
-[[package]]
-name = "wee_alloc"
-version = "0.4.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbb3b5a6b2bb17cb6ad44a2e68a43e8d2722c997da10e928665c72ec6c0a0b8e"
-dependencies = [
- "cfg-if 0.1.10",
- "libc",
- "memory_units",
- "winapi",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 [package]
-name = "examples-providers"
+name = "examples-geth"
 version = "0.0.0"
 publish = false
 authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
@@ -8,15 +8,12 @@ rust-version.workspace = true
 edition.workspace = true
 
 [dev-dependencies]
-ethers = { workspace = true, features = ["abigen", "ipc", "rustls", "ws"] }
+ethers.workspace = true
 
 tokio = { workspace = true, features = ["macros"] }
-async-trait.workspace = true
-reqwest.workspace = true
-url.workspace = true
 
 serde.workspace = true
 serde_json.workspace = true
 
-thiserror.workspace = true
 eyre.workspace = true
+tempfile.workspace = true

@@ -14,9 +14,11 @@ trezor = ["ethers/trezor"]
 yubi = ["ethers/yubi"]
 
 [dev-dependencies]
-ethers = { path = "../../ethers", features = ["abigen", "eip712", "rustls", "ws"] }
+ethers = { workspace = true, features = ["abigen", "eip712", "ws", "rustls"] }
 
-eyre = "0.6"
-serde = { version = "1.0.152", features = ["derive"] }
-serde_json = "1.0.93"
-tokio = { version = "1.25", features = ["macros"] }
+tokio = { workspace = true, features = ["macros"] }
+
+serde.workspace = true
+serde_json.workspace = true
+
+eyre.workspace = true

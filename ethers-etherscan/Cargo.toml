@@ -29,25 +29,24 @@ ethers-core.workspace = true
 
 ethers-solc = { workspace = true, optional = true }
 
-reqwest = { version = "0.11.14", default-features = false, features = ["json"] }
-serde = { version = "1.0.152", default-features = false, features = ["derive"] }
-serde_json = { version = "1.0.93", default-features = false }
-serde-aux = { version = "4.1.2", default-features = false }
-thiserror = "1.0"
-tracing = "0.1.37"
-semver = "1.0.16"
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+semver.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly
-getrandom = { version = "0.2", features = ["js"] }
+getrandom.workspace = true
 
 [dev-dependencies]
 ethers-solc.workspace = true
 
-tempfile = "3.4.0"
-tokio = { version = "1.25", features = ["macros", "rt-multi-thread", "time"] }
+tempfile.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 serial_test = "1.0.0"
-tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt"] }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 
 [features]
 default = ["rustls"]
