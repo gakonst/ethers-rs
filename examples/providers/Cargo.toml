@@ -9,9 +9,9 @@ ethers = { path = "../..", version = "1.0.0", features = ["abigen", "ipc", "rust
 
 eyre = "0.6"
 reqwest = { version = "0.11.14", default-features = false }
-serde = { version = "1.0.144", features = ["derive"] }
-serde_json = "1.0.64"
-tokio = { version = "1.18", features = ["macros"] }
+serde = { version = "1.0.152", features = ["derive"] }
+serde_json = "1.0.93"
+tokio = { version = "1.25", features = ["macros"] }
 
 async-trait = "0.1"
 url = "2.3"

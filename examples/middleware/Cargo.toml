@@ -7,9 +7,9 @@ edition = "2021"
 [dev-dependencies]
 ethers = { path = "../..", version = "1.0.0", features = ["rustls", "ws"] }
 
-async-trait = { version = "0.1.50", default-features = false }
+async-trait = { version = "0.1.64", default-features = false }
 eyre = "0.6"
-serde_json = "1.0.61"
+serde_json = "1.0.93"
 thiserror = { version = "1.0", default-features = false }
-tokio = { version = "1.18", features = ["macros", "rt", "rt-multi-thread"] }
+tokio = { version = "1.25", features = ["macros", "rt", "rt-multi-thread"] }
 

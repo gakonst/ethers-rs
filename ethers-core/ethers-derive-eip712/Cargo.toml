@@ -10,14 +10,14 @@ license = "MIT OR Apache-2.0"
 proc-macro = true
 
 [dependencies]
-quote = "1.0.9"
-syn = "1.0.77"
+quote = "1.0.23"
+syn = "1.0.109"
 ethers-core = { version = "^1.0.0", path = "../", default-features = false, features = [
     "eip712",
     "macros",
 ] }
 hex = "0.4.3"
-serde_json = "1.0.68"
+serde_json = "1.0.93"
 
 [dev-dependencies]
 ethers-contract-derive = { version = "^1.0.0", path = "../../ethers-contract/ethers-contract-derive" }

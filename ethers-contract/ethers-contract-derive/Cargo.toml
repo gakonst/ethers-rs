@@ -22,9 +22,9 @@ ethers-contract-abigen = { version = "^1.0.0", path = "../ethers-contract-abigen
 
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = "1.0.12"
+syn = "1.0.109"
 
-serde_json = "1.0.53"
+serde_json = "1.0.93"
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 eyre = "0.6"
 

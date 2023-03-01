@@ -19,22 +19,22 @@ ethers-etherscan = { path = "../../ethers-etherscan", default-features = false, 
 
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = { version = "1.0.12", default-features = false, features = ["full"] }
+syn = { version = "1.0.109", default-features = false, features = ["full"] }
 prettyplease = "0.1.23"
 
 Inflector = "0.11"
-serde_json = "1.0.61"
-serde = { version = "1.0.124", features = ["derive"] }
-hex = { version = "0.4.2", default-features = false, features = ["std"] }
+serde_json = "1.0.93"
+serde = { version = "1.0.152", features = ["derive"] }
+hex = { version = "0.4.3", default-features = false, features = ["std"] }
 cfg-if = "1.0.0"
-dunce = "1.0.2"
+dunce = "1.0.3"
 walkdir = "2.3.2"
 eyre = "0.6"
-regex = "1.6.0"
-toml = "0.5.9"
+regex = "1.7.1"
+toml = "0.7.2"
 
-reqwest = { version = "0.11.3", default-features = false, features = ["blocking"], optional = true }
-tokio = { version = "1.0", default-features = false, features = ["sync"], optional = true }
+reqwest = { version = "0.11.14", default-features = false, features = ["blocking"], optional = true }
+tokio = { version = "1.25", default-features = false, features = ["sync"], optional = true }
 url = { version = "2.3.1", default-features = false, optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -51,7 +51,7 @@ openssl = ["online", "reqwest/native-tls", "ethers-etherscan/openssl"]
 rustls = ["online", "reqwest/rustls-tls", "ethers-etherscan/rustls"]
 
 [dev-dependencies]
-tempfile = "3.2.0"
+tempfile = "3.4.0"
 ethers-solc = { version = "^1.0.0", path = "../../ethers-solc", default-features = false, features = [
     "project-util",
     "svm-solc",

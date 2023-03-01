@@ -17,11 +17,11 @@ ethers-contract-abigen = { version = "^1.0.0", path = "ethers-contract-abigen", 
 ethers-contract-derive = { version = "^1.0.0", path = "ethers-contract-derive", optional = true }
 ethers-derive-eip712 = { version = "^1.0.0", path = "../ethers-core/ethers-derive-eip712", optional = true }
 
-serde = { version = "1.0.124", default-features = false }
-serde_json = { version = "1.0.64", default-features = false }
+serde = { version = "1.0.152", default-features = false }
+serde_json = { version = "1.0.93", default-features = false }
 thiserror = { version = "1.0", default-features = false }
 once_cell = { version = "1.17.1" }
-pin-project = { version = "1.0.11", default-features = false }
+pin-project = { version = "1.0.12", default-features = false }
 futures-util = { version = "^0.3" }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 
@@ -39,7 +39,7 @@ ethers-derive-eip712 = { version = "^1.0.0", path = "../ethers-core/ethers-deriv
 ethers-solc = { version = "^1.0.0", path = "../ethers-solc", default-features = false }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { version = "1.18", default-features = false, features = ["macros"] }
+tokio = { version = "1.25", default-features = false, features = ["macros"] }
 
 [features]
 default = ["abigen"]
