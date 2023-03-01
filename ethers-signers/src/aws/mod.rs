@@ -279,19 +279,12 @@ impl super::Signer for AwsSigner {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::Signer;
     use rusoto_core::{
         credential::{EnvironmentProvider, StaticProvider},
         Client, HttpClient, Region,
     };
-    use tracing::metadata::LevelFilter;
-
-    use super::*;
-    use crate::Signer;
-
-    #[allow(dead_code)]
-    fn setup_tracing() {
-        tracing_subscriber::fmt().with_max_level(LevelFilter::DEBUG).try_init().unwrap();
-    }
 
     #[allow(dead_code)]
     fn static_client() -> KmsClient {
@@ -318,7 +311,6 @@ mod tests {
             Ok(id) => id,
             _ => return,
         };
-        setup_tracing();
         let client = env_client();
         let signer = AwsSigner::new(client, key_id, chain_id).await.unwrap();
 
