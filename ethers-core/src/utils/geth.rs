@@ -572,10 +572,6 @@ mod tests {
         // p2p port.
         let geth = Geth::new().disable_discovery().data_dir(temp_dir_path).spawn();
         let p2p_port = geth.p2p_port();
-
-        drop(geth);
-        temp_dir.close().unwrap();
-
         assert!(p2p_port.is_some());
     }
 
@@ -587,10 +583,6 @@ mod tests {
         // if a p2p port is explicitly set, it should be used
         let geth = Geth::new().p2p_port(1234).data_dir(temp_dir_path).spawn();
         let p2p_port = geth.p2p_port();
-
-        drop(geth);
-        temp_dir.close().unwrap();
-
         assert_eq!(p2p_port, Some(1234));
     }
 
@@ -602,10 +594,6 @@ mod tests {
         // dev mode should not have a p2p port, and dev should be the default
         let geth = Geth::new().data_dir(temp_dir_path).spawn();
         let p2p_port = geth.p2p_port();
-
-        drop(geth);
-        temp_dir.close().unwrap();
-
         assert!(p2p_port.is_none());
     }
 
@@ -622,10 +610,6 @@ mod tests {
             .spawn();
 
         let clique_private_key = geth.clique_private_key().clone();
-
-        drop(geth);
-        temp_dir.close().unwrap();
-
         assert!(clique_private_key.is_some());
     }
 
@@ -642,10 +626,6 @@ mod tests {
             .spawn();
 
         let genesis = geth.genesis().clone();
-
-        drop(geth);
-        temp_dir.close().unwrap();
-
         assert!(genesis.is_some());
     }
 
@@ -662,10 +642,6 @@ mod tests {
             .spawn();
 
         let p2p_port = geth.p2p_port();
-
-        drop(geth);
-        temp_dir.close().unwrap();
-
         assert!(p2p_port.is_some());
     }
 }
