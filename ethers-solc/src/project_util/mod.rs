@@ -9,7 +9,7 @@ use crate::{
     utils,
     utils::tempdir,
     Artifact, ArtifactOutput, Artifacts, ConfigurableArtifacts, ConfigurableContractArtifact,
-    FileFilter, PathStyle, Project, ProjectCompileOutput, ProjectPathsConfig, SolFilesCache, Solc,
+    FileFilter, PathStyle, Project, ProjectCompileOutput, ProjectPathsConfig, SolFilesCache,
     SolcIoError,
 };
 use fs_extra::{dir, file};
@@ -69,8 +69,9 @@ impl<T: ArtifactOutput> TempProject<T> {
     }
 
     /// Explicitly sets the solc version for the project
+    #[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
     pub fn set_solc(&mut self, solc: impl AsRef<str>) -> &mut Self {
-        self.inner.solc = Solc::find_or_install_svm_version(solc).unwrap();
+        self.inner.solc = crate::Solc::find_or_install_svm_version(solc).unwrap();
         self.inner.auto_detect = false;
         self
     }

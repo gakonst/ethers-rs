@@ -10,7 +10,7 @@ pub use coins_bip39;
 /// A wallet instantiated with a locally stored private key
 pub type LocalWallet = Wallet<ethers_core::k256::ecdsa::SigningKey>;
 
-#[cfg(feature = "yubi")]
+#[cfg(all(feature = "yubihsm", not(target_arch = "wasm32")))]
 /// A wallet instantiated with a YubiHSM
 pub type YubiWallet = Wallet<yubihsm::ecdsa::Signer<ethers_core::k256::Secp256k1>>;
 
@@ -30,7 +30,7 @@ pub use trezor::{
     types::{DerivationType as TrezorHDPath, TrezorError},
 };
 
-#[cfg(feature = "yubi")]
+#[cfg(all(feature = "yubihsm", not(target_arch = "wasm32")))]
 pub use yubihsm;
 
 #[cfg(feature = "aws")]

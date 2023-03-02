@@ -145,9 +145,6 @@ jobs:
             - uses: Swatinem/rust-cache@v2
             - name: Check
               run: cargo check --workspace --target wasm32-unknown-unknown
-            # TODO: [#2191](https://github.com/gakonst/ethers-rs/issues/2191)
-            # - name: Check all features
-            #   run: cargo check --workspace --target wasm32-unknown-unknown --all-features
 
             - name: Install wasm-pack
               run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
