@@ -564,13 +564,14 @@ mod tests {
             String::with_capacity(150 * (ethers as usize + dependencies.len()));
 
         if ethers {
-            let ethers = format!("ethers = {{ path = {ethers_root:?} }}\n");
+            let path = ethers_root.join("ethers");
+            let ethers = format!("ethers = {{ path = \"{}\" }}\n", path.display());
             dependencies_toml.push_str(&ethers);
         }
 
         for dep in dependencies.iter() {
             let path = ethers_root.join(dep.fs_path());
-            let dep = format!("{dep} = {{ path = {path:?} }}\n");
+            let dep = format!("{dep} = {{ path = \"{}\" }}\n", path.display());
             dependencies_toml.push_str(&dep);
         }
 
