@@ -267,7 +267,7 @@ impl<T: ArtifactOutput> Project<T> {
         let sources = self.paths.read_input_files()?;
         tracing::trace!("found {} sources to compile: {:?}", sources.len(), sources.keys());
 
-        #[cfg(all(feature = "svm-solc"))]
+        #[cfg(feature = "svm-solc")]
         if self.auto_detect {
             tracing::trace!("using solc auto detection to compile sources");
             return self.svm_compile(sources)
@@ -299,7 +299,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// let output = project.svm_compile(sources).unwrap();
     /// # }
     /// ```
-    #[cfg(all(feature = "svm-solc"))]
+    #[cfg(feature = "svm-solc")]
     pub fn svm_compile(&self, sources: Sources) -> Result<ProjectCompileOutput<T>> {
         project::ProjectCompiler::with_sources(self, sources)?.compile()
     }
@@ -316,7 +316,7 @@ impl<T: ArtifactOutput> Project<T> {
     /// let output = project.compile_file("example/Greeter.sol").unwrap();
     /// # }
     /// ```
-    #[cfg(all(feature = "svm-solc"))]
+    #[cfg(feature = "svm-solc")]
     pub fn compile_file(&self, file: impl Into<PathBuf>) -> Result<ProjectCompileOutput<T>> {
         let file = file.into();
         let source = Source::read(&file)?;
@@ -345,7 +345,7 @@ impl<T: ArtifactOutput> Project<T> {
     {
         let sources = Source::read_all(files)?;
 
-        #[cfg(all(feature = "svm-solc"))]
+        #[cfg(feature = "svm-solc")]
         if self.auto_detect {
             return project::ProjectCompiler::with_sources(self, sources)?.compile()
         }
@@ -392,7 +392,7 @@ impl<T: ArtifactOutput> Project<T> {
             Source::read_all(self.paths.input_files().into_iter().filter(|p| filter.is_match(p)))?;
         let filter: Box<dyn FileFilter> = Box::new(filter);
 
-        #[cfg(all(feature = "svm-solc"))]
+        #[cfg(feature = "svm-solc")]
         if self.auto_detect {
             return project::ProjectCompiler::with_sources(self, sources)?
                 .with_sparse_output(filter)
@@ -963,7 +963,7 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
 }
 
 #[cfg(test)]
-#[cfg(all(feature = "svm-solc"))]
+#[cfg(feature = "svm-solc")]
 mod tests {
     use crate::remappings::Remapping;
 

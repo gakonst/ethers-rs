@@ -70,7 +70,7 @@ pub(crate) fn take_solc_installer_lock() -> std::sync::MutexGuard<'static, ()> {
 /// A list of upstream Solc releases, used to check which version
 /// we should download.
 /// The boolean value marks whether there was an error accessing the release list
-#[cfg(all(feature = "svm-solc"))]
+#[cfg(feature = "svm-solc")]
 pub static RELEASES: once_cell::sync::Lazy<(svm::Releases, Vec<Version>, bool)> =
     once_cell::sync::Lazy::new(|| {
         match serde_json::from_str::<svm::Releases>(svm_builds::RELEASE_LIST_JSON) {
@@ -240,7 +240,7 @@ impl Solc {
 
     /// Returns the list of all versions that are available to download and marking those which are
     /// already installed.
-    #[cfg(all(feature = "svm-solc"))]
+    #[cfg(feature = "svm-solc")]
     pub fn all_versions() -> Vec<SolcVersion> {
         let mut all_versions = Self::installed_versions();
         let mut uniques = all_versions
@@ -324,7 +324,7 @@ impl Solc {
     /// to build it, and returns it.
     ///
     /// If the required compiler version is not installed, it also proceeds to install it.
-    #[cfg(all(feature = "svm-solc"))]
+    #[cfg(feature = "svm-solc")]
     pub fn detect_version(source: &Source) -> Result<Version> {
         // detects the required solc version
         let sol_version = Self::source_version_req(source)?;
@@ -335,7 +335,7 @@ impl Solc {
     /// used to build it, and returns it.
     ///
     /// If the required compiler version is not installed, it also proceeds to install it.
-    #[cfg(all(feature = "svm-solc"))]
+    #[cfg(feature = "svm-solc")]
     pub fn ensure_installed(sol_version: &VersionReq) -> Result<Version> {
         #[cfg(any(test, feature = "tests"))]
         let _lock = take_solc_installer_lock();
@@ -410,7 +410,7 @@ impl Solc {
     }
 
     /// Blocking version of `Self::install`
-    #[cfg(all(feature = "svm-solc"))]
+    #[cfg(feature = "svm-solc")]
     pub fn blocking_install(version: &Version) -> std::result::Result<Self, svm::SolcVmError> {
         use crate::utils::RuntimeOrHandle;
 
@@ -440,7 +440,7 @@ impl Solc {
 
     /// Verify that the checksum for this version of solc is correct. We check against the SHA256
     /// checksum from the build information published by [binaries.soliditylang.org](https://binaries.soliditylang.org/)
-    #[cfg(all(feature = "svm-solc"))]
+    #[cfg(feature = "svm-solc")]
     pub fn verify_checksum(&self) -> Result<()> {
         let version = self.version_short()?;
         let mut version_path = svm::version_path(version.to_string().as_str());
@@ -817,7 +817,7 @@ mod tests {
 
     #[test]
     // This test might be a bit hard to maintain
-    #[cfg(all(feature = "svm-solc"))]
+    #[cfg(feature = "svm-solc")]
     fn test_detect_version() {
         for (pragma, expected) in [
             // pinned
