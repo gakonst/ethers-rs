@@ -9,7 +9,7 @@ rust-version.workspace = true
 edition.workspace = true
 
 [dev-dependencies]
-ethers.workspace = true
+ethers = { workspace = true, features = ["rustls"] }
 
 tokio = { workspace = true, features = ["macros"] }
 

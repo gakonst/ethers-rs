@@ -25,7 +25,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
-ethers-core.workspace = true
+ethers-core = { workspace = true, features = ["macros"] }
 
 proc-macro2.workspace = true
 quote.workspace = true
@@ -42,6 +42,7 @@ eyre.workspace = true
 regex.workspace = true
 toml.workspace = true
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # online
 ethers-etherscan = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["blocking"], optional = true }

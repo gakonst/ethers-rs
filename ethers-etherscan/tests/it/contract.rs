@@ -4,7 +4,7 @@ use ethers_etherscan::contract::SourceCodeMetadata;
 use serial_test::serial;
 
 /// Abi of [0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413](https://api.etherscan.io/api?module=contract&action=getsourcecode&address=0xBB9bc244D798123fDe783fCc1C72d3Bb8C189413).
-const DAO_ABI: &str = include!("../../../tests/testdata/the_dao_abi.expr");
+const DAO_ABI: &str = include!("../../../testdata/the_dao_abi.expr");
 
 #[tokio::test]
 #[serial]

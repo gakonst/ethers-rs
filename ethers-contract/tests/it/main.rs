@@ -7,8 +7,8 @@ mod derive;
 
 mod contract_call;
 
-// #[cfg(all(not(target_arch = "wasm32"), not(feature = "celo")))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "celo")))]
 mod common;
 
-// #[cfg(all(not(target_arch = "wasm32"), not(feature = "celo")))]
+#[cfg(all(not(target_arch = "wasm32"), not(feature = "celo")))]
 mod contract;

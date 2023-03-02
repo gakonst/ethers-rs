@@ -22,7 +22,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [features]
-default = ["abigen"]
+default = ["abigen", "rustls"]
 
 celo = [
     "ethers-core/celo",
@@ -80,3 +80,6 @@ ethers-providers.workspace = true
 ethers-signers.workspace = true
 
 ethers-solc = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
