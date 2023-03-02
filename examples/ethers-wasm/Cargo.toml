@@ -2,8 +2,8 @@
 name = "ethers-wasm"
 version = "0.0.0"
 authors = ["Matthias Seitz <matthias.seitz@outlook.de>"]
+license = "MIT OR Apache-2.0"
 
-license.workspace = true
 rust-version.workspace = true
 edition.workspace = true
 
