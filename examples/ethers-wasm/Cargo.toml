@@ -14,7 +14,7 @@ crate-type = ["cdylib", "rlib"]
 default = ["console_error_panic_hook"]
 
 [dependencies]
-ethers = { workspace = true, features = ["abigen", "ethers-solc", "rustls", "ws"] }
+ethers = { workspace = true, features = ["abigen", "ws"] }
 
 serde.workspace = true
 serde_json.workspace = true

@@ -36,6 +36,7 @@ futures-util.workspace = true
 futures-locks.workspace = true
 tracing.workspace = true
 tracing-futures.workspace = true
+instant.workspace = true
 
 # for gas oracles
 reqwest.workspace = true

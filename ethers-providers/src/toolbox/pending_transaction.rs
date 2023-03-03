@@ -4,7 +4,9 @@ use crate::{
 };
 use ethers_core::types::{Transaction, TransactionReceipt, TxHash, U64};
 use futures_core::stream::Stream;
+use futures_timer::Delay;
 use futures_util::stream::StreamExt;
+use instant::Duration;
 use pin_project::pin_project;
 use std::{
     fmt,
@@ -12,13 +14,7 @@ use std::{
     ops::Deref,
     pin::Pin,
     task::{Context, Poll},
-    time::Duration,
 };
-
-#[cfg(not(target_arch = "wasm32"))]
-use futures_timer::Delay;
-#[cfg(target_arch = "wasm32")]
-use wasm_timer::Delay;
 
 /// A pending transaction is a transaction which has been submitted but is not yet mined.
 /// `await`'ing on a pending transaction will resolve to a transaction receipt

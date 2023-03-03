@@ -72,7 +72,7 @@ futures-util = { version = "0.3.26", default-features = false }
 futures-executor = { version = "0.3.26", default-features = false }
 futures-channel = { version = "0.3.26", default-features = false }
 futures-locks = { version = "0.7.1", default-features = false }
-futures-timer = { version = "3.0.2", default-features = false }
+futures-timer = { version = "3.0.2", default-features = false, features = ["wasm-bindgen"] }
 pin-project = "1.0"
 reqwest = { version = "0.11.14", default-features = false }
 url = { version = "2.3", default-features = false }
@@ -120,8 +120,4 @@ tracing-futures = "0.2.5"
 
 # wasm
 getrandom = { version = "0.2", features = ["js"] }
-
-# profile for the wasm example
-[profile.release.package.ethers-wasm]
-# Tell `rustc` to optimize for small code size.
-opt-level = "s"
+instant = "0.1.12"
