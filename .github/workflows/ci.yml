@@ -35,14 +35,18 @@ jobs:
                     # not all features because of sha2-asm
                     - os: windows-latest
                       flags:
-                          - name: no default features
-                            flags: -p ethers --no-default-features
-                          - name: default features
-                            flags: -p ethers
-                          - name: all features
-                            flags:
-                                -p ethers --features
-                                rustls,ws,ipc,ethers-solc,solc-full,solc-tests,ledger,trezor,yubi
+                          name: no default features
+                          flags: -p ethers --no-default-features
+                    - os: windows-latest
+                      flags:
+                          name: default features
+                          flags: -p ethers
+                    - os: windows-latest
+                      flags:
+                          name: all features
+                          flags:
+                              -p ethers --features
+                              rustls,ws,ipc,ethers-solc,solc-full,solc-tests,ledger,trezor,yubi
         steps:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@stable
