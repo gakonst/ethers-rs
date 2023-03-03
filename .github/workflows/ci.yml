@@ -17,17 +17,32 @@ env:
 
 jobs:
     test:
-        name: test ${{ matrix.os }} ${{ matrix.flags }}
+        name: test ${{ matrix.os }} (${{ matrix.flags.name }})
         runs-on: ${{ matrix.os }}
         strategy:
             fail-fast: false
             matrix:
-                os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-                flags: ["--workspace", "--workspace --all-features"]
-                exclude:
-                    # sha2-asm
-                    - os: windows-latest
+                os: ["ubuntu-latest", "macos-latest"]
+                flags:
+                    - name: no default features
+                      flags: --workspace --no-default-features
+                    - name: default features
+                      flags: --workspace
+                    - name: all features
                       flags: --workspace --all-features
+                include:
+                    # not workspace because compiling examples fails for no reason in CI,
+                    # not all features because of sha2-asm
+                    - os: windows-latest
+                      flags:
+                          - name: no default features
+                            flags: -p ethers --no-default-features
+                          - name: default features
+                            flags: -p ethers
+                          - name: all features
+                            flags:
+                                -p ethers --features
+                                rustls,ws,ipc,ethers-solc,solc-full,solc-tests,ledger,trezor,yubi
         steps:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@stable
@@ -41,12 +56,12 @@ jobs:
             - name: Install nextest
               uses: taiki-e/install-action@nextest
             - uses: Swatinem/rust-cache@v2
-            - name: test
+            - name: test ${{ matrix.flags.flags }}
               shell: bash
               # skip `ethers_etherscan::it` and `ethers::live`
               run: |
                   cargo nextest run \
-                  ${{ matrix.flags }} \
+                  ${{ matrix.flags.flags }} \
                   -E "!binary(~live) & !(deps(ethers-etherscan) & kind(test))"
 
     etherscan-tests:
