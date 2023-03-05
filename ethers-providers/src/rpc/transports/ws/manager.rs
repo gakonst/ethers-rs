@@ -1,22 +1,19 @@
+use super::{
+    backend::{BackendDriver, WsBackend},
+    ActiveSub, ConnectionDetails, InFlight, Instruction, Notification, PubSubItem, Response, SubId,
+    WsClient, WsClientError,
+};
+use crate::JsonRpcError;
+use ethers_core::types::U256;
+use futures_channel::{mpsc, oneshot};
+use futures_util::{select_biased, StreamExt};
+use serde_json::value::RawValue;
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{
         atomic::{AtomicU64, Ordering},
         Arc, Mutex,
     },
-};
-
-use ethers_core::types::U256;
-use futures_channel::{mpsc, oneshot};
-use futures_util::{select_biased, StreamExt};
-use serde_json::value::RawValue;
-
-use crate::JsonRpcError;
-
-use super::{
-    backend::{BackendDriver, WsBackend},
-    ActiveSub, ConnectionDetails, InFlight, Instruction, Notification, PubSubItem, Response, SubId,
-    WsClient, WsClientError,
 };
 
 pub type SharedChannelMap = Arc<Mutex<HashMap<U256, mpsc::UnboundedReceiver<Box<RawValue>>>>>;

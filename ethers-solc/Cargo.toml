@@ -27,7 +27,7 @@ all-features = true
 [dependencies]
 ethers-core.workspace = true
 
-solang-parser = { version = "=0.2.2", default-features = false }
+solang-parser = { version = "=0.2.3", default-features = false }
 
 serde = { workspace = true, features = ["derive", "rc"] }
 serde_json.workspace = true

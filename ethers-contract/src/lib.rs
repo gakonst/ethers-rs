@@ -20,7 +20,7 @@ mod factory;
 pub use factory::{ContractDeployer, ContractDeploymentTx, ContractFactory, DeploymentTxFactory};
 
 mod event;
-pub use event::{EthEvent, Event};
+pub use event::{parse_log, EthEvent, Event};
 
 mod log;
 pub use log::{decode_logs, EthLogDecode, LogMeta};
