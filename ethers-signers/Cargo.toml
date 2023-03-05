@@ -1,6 +1,6 @@
 [package]
 name = "ethers-signers"
-version = "1.0.2"
+version = "2.0.0"
 edition = "2021"
 rust-version = "1.64"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
@@ -16,7 +16,7 @@ rustc-args = ["--cfg", "docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-ethers-core = { version = "^1.0.0", path = "../ethers-core", features = ["eip712"] }
+ethers-core = { version = "^2.0.0", path = "../ethers-core", features = ["eip712"] }
 thiserror = { version = "1.0.39", default-features = false }
 coins-bip32 = "0.7.0"
 coins-bip39 = "0.7.0"
@@ -45,8 +45,8 @@ eth-keystore = { version = "0.5.0" }
 home = { version = "0.5.4", optional = true }
 
 [dev-dependencies]
-ethers-contract-derive = { version = "^1.0.0", path = "../ethers-contract/ethers-contract-derive" }
-ethers-derive-eip712 = { version = "^1.0.0", path = "../ethers-core/ethers-derive-eip712" }
+ethers-contract-derive = { version = "^2.0.0", path = "../ethers-contract/ethers-contract-derive" }
+ethers-derive-eip712 = { version = "^2.0.0", path = "../ethers-core/ethers-derive-eip712" }
 
 serde_json = { version = "1.0.64" }
 yubihsm = { version = "0.41.0", features = ["secp256k1", "usb", "mockhsm"] }

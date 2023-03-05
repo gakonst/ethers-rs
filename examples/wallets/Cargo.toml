@@ -1,6 +1,6 @@
 [package]
 name = "examples-wallets"
-version = "1.0.2"
+version = "2.0.0"
 authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
 edition = "2021"
 
@@ -11,7 +11,7 @@ trezor = []
 yubi = []
 
 [dev-dependencies]
-ethers = { path = "../..", version = "1.0.0", features = ["abigen", "eip712", "ledger", "rustls", "trezor", "ws", "yubi"] }
+ethers = { path = "../..", version = "2.0.0", features = ["abigen", "eip712", "ledger", "rustls", "trezor", "ws", "yubi"] }
 
 eyre = "0.6"
 serde = { version = "1.0.144", features = ["derive"] }

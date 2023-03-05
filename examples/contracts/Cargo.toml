@@ -1,6 +1,6 @@
 [package]
 name = "examples-contracts"
-version = "1.0.2"
+version = "2.0.0"
 authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
 edition = "2021"
 
@@ -9,7 +9,7 @@ default = ["legacy"]
 legacy = []
 
 [dev-dependencies]
-ethers = { path = "../..", version = "1.0.0", features = ["abigen", "ethers-solc", "legacy", "rustls", "ws"] }
+ethers = { path = "../..", version = "2.0.0", features = ["abigen", "ethers-solc", "legacy", "rustls", "ws"] }
 
 eyre = "0.6"
 serde = { version = "1.0.144", features = ["derive"] }

@@ -1,6 +1,6 @@
 [package]
 name = "ethers-providers"
-version = "1.0.2"
+version = "2.0.0"
 edition = "2021"
 rust-version = "1.64"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
@@ -16,7 +16,7 @@ rustc-args = ["--cfg", "docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
+ethers-core = { version = "^2.0.0", path = "../ethers-core", default-features = false }
 
 async-trait = { version = "0.1.50", default-features = false }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
