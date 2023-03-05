@@ -1,11 +1,11 @@
 [package]
 name = "examples-providers"
-version = "1.0.2"
+version = "2.0.0"
 authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
 edition = "2021"
 
 [dev-dependencies]
-ethers = { path = "../..", version = "1.0.0", features = ["abigen", "ipc", "rustls", "ws"] }
+ethers = { path = "../..", version = "2.0.0", features = ["abigen", "ipc", "rustls", "ws"] }
 
 eyre = "0.6"
 reqwest = { version = "0.11.14", default-features = false }

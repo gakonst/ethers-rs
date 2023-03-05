@@ -1,6 +1,6 @@
 [package]
 name = "ethers-solc"
-version = "1.0.2"
+version = "2.0.0"
 edition = "2021"
 rust-version = "1.64"
 authors = [
@@ -16,7 +16,7 @@ description = "Utilites for working with solc"
 keywords = ["ethereum", "web3", "solc", "solidity", "ethers"]
 
 [dependencies]
-ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
+ethers-core = { version = "^2.0.0", path = "../ethers-core", default-features = false }
 serde_json = "1.0.68"
 serde = { version = "1.0.130", features = ["derive", "rc"] }
 semver = { version = "1.0.16", features = ["serde"] }

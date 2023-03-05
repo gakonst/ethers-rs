@@ -1,6 +1,6 @@
 [package]
 name = "ethers"
-version = "1.0.2"
+version = "2.0.0"
 edition = "2021"
 rust-version = "1.64" # must also be changed in **/Cargo.toml and .clippy.toml
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
@@ -94,21 +94,21 @@ solc-tests = ["ethers-solc", "ethers-solc/tests"]
 solc-sha2-asm = ["ethers-solc", "ethers-solc/asm"]
 
 [dependencies]
-ethers-addressbook = { version = "^1.0.0", default-features = false, path = "./ethers-addressbook" }
-ethers-contract = { version = "^1.0.0", default-features = false, path = "./ethers-contract" }
-ethers-core = { version = "^1.0.0", default-features = false, path = "./ethers-core" }
-ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers" }
-ethers-signers = { version = "^1.0.0", default-features = false, path = "./ethers-signers" }
-ethers-middleware = { version = "^1.0.0", default-features = false, path = "./ethers-middleware" }
-ethers-solc = { version = "^1.0.0", default-features = false, path = "./ethers-solc", optional = true }
-ethers-etherscan = { version = "^1.0.0", default-features = false, path = "./ethers-etherscan" }
+ethers-addressbook = { version = "^2.0.0", default-features = false, path = "./ethers-addressbook" }
+ethers-contract = { version = "^2.0.0", default-features = false, path = "./ethers-contract" }
+ethers-core = { version = "^2.0.0", default-features = false, path = "./ethers-core" }
+ethers-providers = { version = "^2.0.0", default-features = false, path = "./ethers-providers" }
+ethers-signers = { version = "^2.0.0", default-features = false, path = "./ethers-signers" }
+ethers-middleware = { version = "^2.0.0", default-features = false, path = "./ethers-middleware" }
+ethers-solc = { version = "^2.0.0", default-features = false, path = "./ethers-solc", optional = true }
+ethers-etherscan = { version = "^2.0.0", default-features = false, path = "./ethers-etherscan" }
 
 [dev-dependencies]
-ethers-contract = { version = "^1.0.0", default-features = false, path = "./ethers-contract", features = [
+ethers-contract = { version = "^2.0.0", default-features = false, path = "./ethers-contract", features = [
     "abigen",
     "eip712",
 ] }
-ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers", features = [
+ethers-providers = { version = "^2.0.0", default-features = false, path = "./ethers-providers", features = [
     "ws",
     "ipc",
 ] }
