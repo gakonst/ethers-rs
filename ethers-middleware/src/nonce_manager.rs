@@ -9,6 +9,7 @@ use thiserror::Error;
 /// consecutive transactions without waiting for them to hit the mempool
 pub struct NonceManagerMiddleware<M> {
     inner: M,
+    init_guard: futures_locks::Mutex<()>,
     initialized: AtomicBool,
     nonce: AtomicU64,
     address: Address,
@@ -21,7 +22,13 @@ where
     /// Instantiates the nonce manager with a 0 nonce. The `address` should be the
     /// address which you'll be sending transactions from
     pub fn new(inner: M, address: Address) -> Self {
-        Self { initialized: false.into(), nonce: 0.into(), inner, address }
+        Self {
+            inner,
+            init_guard: Default::default(),
+            initialized: Default::default(),
+            nonce: Default::default(),
+            address,
+        }
     }
 
     /// Returns the next nonce to be used
@@ -34,21 +41,29 @@ where
         &self,
         block: Option<BlockId>,
     ) -> Result<U256, NonceManagerError<M>> {
-        // initialize the nonce the first time the manager is called
-        if !self.initialized.load(Ordering::SeqCst) {
-            let nonce = self
-                .inner
-                .get_transaction_count(self.address, block)
-                .await
-                .map_err(MiddlewareError::from_err)?;
-            self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
-            self.initialized.store(true, Ordering::SeqCst);
-            Ok(nonce)
-        } else {
+        if self.initialized.load(Ordering::SeqCst) {
             // return current nonce
-            Ok(self.nonce.load(Ordering::SeqCst).into())
+            return Ok(self.nonce.load(Ordering::SeqCst).into())
         }
-    }
+
+        let _guard = self.init_guard.lock().await;
+
+        // do this again in case multiple tasks enter this codepath
+        if self.initialized.load(Ordering::SeqCst) {
+            // return current nonce
+            return Ok(self.nonce.load(Ordering::SeqCst).into())
+        }
+
+        // initialize the nonce the first time the manager is called
+        let nonce = self
+            .inner
+            .get_transaction_count(self.address, block)
+            .await
+            .map_err(MiddlewareError::from_err)?;
+        self.nonce.store(nonce.as_u64(), Ordering::SeqCst);
+        self.initialized.store(true, Ordering::SeqCst);
+        Ok(nonce)
+    } // guard dropped here
 
     async fn get_transaction_count_with_manager(
         &self,
