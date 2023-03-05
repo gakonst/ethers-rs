@@ -1,12 +1,10 @@
-use crate::contract::ContractInstance;
-
+use crate::ContractInstance;
 pub use ethers_core::abi::AbiError;
 use ethers_core::{
     abi::{Abi, Detokenize, Error, Event, Function, FunctionExt, RawLog, Token, Tokenize},
     types::{Address, Bytes, Selector, H256},
 };
 use ethers_providers::Middleware;
-
 use std::{
     borrow::Borrow,
     collections::{BTreeMap, HashMap},
