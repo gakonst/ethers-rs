@@ -3,7 +3,9 @@
 mod backend;
 
 mod manager;
+
 use manager::{RequestManager, SharedChannelMap};
+use std::fmt;
 
 mod types;
 pub use types::ConnectionDetails;
@@ -12,18 +14,17 @@ pub(self) use types::*;
 mod error;
 pub use error::*;
 
+use crate::{JsonRpcClient, ProviderError, PubsubClient};
 use async_trait::async_trait;
 use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::value::RawValue;
 
-use crate::{JsonRpcClient, ProviderError, PubsubClient};
-
 #[cfg(not(target_arch = "wasm32"))]
 use crate::Authorization;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct WsClient {
     // Used to send instructions to the `RequestManager`
     instructions: mpsc::UnboundedSender<Instruction>,
@@ -32,12 +33,14 @@ pub struct WsClient {
 }
 
 impl WsClient {
+    /// Establishes a new websocket connection
     pub async fn connect(conn: impl Into<ConnectionDetails>) -> Result<Self, WsClientError> {
         let (man, this) = RequestManager::connect(conn.into()).await?;
         man.spawn();
         Ok(this)
     }
 
+    /// Establishes a new websocket connection with auto-reconnects.
     pub async fn connect_with_reconnects(
         conn: impl Into<ConnectionDetails>,
         reconnects: usize,
@@ -63,6 +66,12 @@ impl WsClient {
         let resp = serde_json::from_str(res.get())?;
         tracing::trace!("Deserialization success");
         Ok(resp)
+    }
+}
+
+impl fmt::Debug for WsClient {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Ws").finish_non_exhaustive()
     }
 }
 
@@ -104,6 +113,31 @@ impl PubsubClient for WsClient {
 
 impl crate::Provider<WsClient> {
     /// Direct connection to a websocket endpoint. Defaults to 5 reconnects.
+    ///
+    /// # Examples
+    ///
+    /// Connect to server via URL
+    ///
+    /// ```
+    /// use ethers_providers::{Ws, Provider};
+    /// use ethers_providers::Middleware;
+    /// # async fn t() {
+    ///     let ws = Provider::<Ws>::connect("ws://localhost:8545").await.unwrap();
+    ///     let _num = ws.get_block_number().await.unwrap();
+    /// # }
+    /// ```
+    ///
+    /// Connect with authentication, see also [Self::connect_with_auth]
+    ///
+    /// ```
+    /// use ethers_providers::{Ws, Provider, Middleware, ConnectionDetails, Authorization };
+    /// # async fn t() {
+    ///     let auth = Authorization::basic("user", "pass");
+    ///     let opts = ConnectionDetails::new("ws://localhost:8545", Some(auth));
+    ///     let ws = Provider::<Ws>::connect(opts).await.unwrap();
+    ///     let _num = ws.get_block_number().await.unwrap();
+    /// # }
+    /// ```
     pub async fn connect(url: impl Into<ConnectionDetails>) -> Result<Self, ProviderError> {
         let ws = crate::Ws::connect(url).await?;
         Ok(Self::new(ws))
