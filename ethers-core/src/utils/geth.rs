@@ -563,109 +563,76 @@ impl Geth {
 mod tests {
     use super::*;
 
-    #[test]
-    fn p2p_port() {
+    fn run_geth<F, R>(geth: Geth, f: F) -> R
+    where
+        F: FnOnce(&GethInstance) -> R,
+    {
         let temp_dir = tempfile::tempdir().unwrap();
         let temp_dir_path = temp_dir.path().to_path_buf();
 
-        // disabling discovery should put the geth instance into non-dev mode, and it should have a
-        // p2p port.
-        let geth = Geth::new().disable_discovery().data_dir(temp_dir_path).spawn();
-        let p2p_port = geth.p2p_port();
+        let geth = geth.data_dir(temp_dir_path.clone()).spawn();
+
+        let result = f(&geth);
 
         drop(geth);
+        // Tests on windows throw an error if the temp dir is closed immediately:
+        // "The process cannot access the file because it is being used by another process."
+        std::thread::sleep(Duration::from_secs(1));
         temp_dir.close().unwrap();
 
+        result
+    }
+
+    #[test]
+    fn p2p_port() {
+        // disabling discovery should put the geth instance into non-dev mode, and it should have a
+        // p2p port.
+        let p2p_port = run_geth(Geth::new().disable_discovery(), |geth| geth.p2p_port());
         assert!(p2p_port.is_some());
     }
 
     #[test]
     fn explicit_p2p_port() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let temp_dir_path = temp_dir.path().to_path_buf();
-
         // if a p2p port is explicitly set, it should be used
-        let geth = Geth::new().p2p_port(1234).data_dir(temp_dir_path).spawn();
-        let p2p_port = geth.p2p_port();
-
-        drop(geth);
-        temp_dir.close().unwrap();
-
-        assert_eq!(p2p_port, Some(1234));
+        let explicit_p2p_port = 1234;
+        let p2p_port = run_geth(Geth::new().p2p_port(explicit_p2p_port), |geth| geth.p2p_port());
+        assert_eq!(p2p_port, Some(explicit_p2p_port));
     }
 
     #[test]
     fn dev_mode() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let temp_dir_path = temp_dir.path().to_path_buf();
-
         // dev mode should not have a p2p port, and dev should be the default
-        let geth = Geth::new().data_dir(temp_dir_path).spawn();
-        let p2p_port = geth.p2p_port();
-
-        drop(geth);
-        temp_dir.close().unwrap();
-
+        let p2p_port = run_geth(Geth::new(), |geth| geth.p2p_port());
         assert!(p2p_port.is_none());
     }
 
     #[test]
     fn clique_private_key_configured() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let temp_dir_path = temp_dir.path().to_path_buf();
-
         let private_key = SigningKey::random(&mut rand::thread_rng());
-        let geth = Geth::new()
-            .set_clique_private_key(private_key)
-            .chain_id(1337u64)
-            .data_dir(temp_dir_path)
-            .spawn();
-
-        let clique_private_key = geth.clique_private_key().clone();
-
-        drop(geth);
-        temp_dir.close().unwrap();
-
+        let clique_private_key =
+            run_geth(Geth::new().set_clique_private_key(private_key).chain_id(1337u64), |geth| {
+                geth.clique_private_key().clone()
+            });
         assert!(clique_private_key.is_some());
     }
 
     #[test]
     fn clique_genesis_configured() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let temp_dir_path = temp_dir.path().to_path_buf();
-
         let private_key = SigningKey::random(&mut rand::thread_rng());
-        let geth = Geth::new()
-            .set_clique_private_key(private_key)
-            .chain_id(1337u64)
-            .data_dir(temp_dir_path)
-            .spawn();
-
-        let genesis = geth.genesis().clone();
-
-        drop(geth);
-        temp_dir.close().unwrap();
-
+        let genesis =
+            run_geth(Geth::new().set_clique_private_key(private_key).chain_id(1337u64), |geth| {
+                geth.genesis().clone()
+            });
         assert!(genesis.is_some());
     }
 
     #[test]
     fn clique_p2p_configured() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let temp_dir_path = temp_dir.path().to_path_buf();
-
         let private_key = SigningKey::random(&mut rand::thread_rng());
-        let geth = Geth::new()
-            .set_clique_private_key(private_key)
-            .chain_id(1337u64)
-            .data_dir(temp_dir_path)
-            .spawn();
-
-        let p2p_port = geth.p2p_port();
-
-        drop(geth);
-        temp_dir.close().unwrap();
-
+        let p2p_port =
+            run_geth(Geth::new().set_clique_private_key(private_key).chain_id(1337u64), |geth| {
+                geth.p2p_port()
+            });
         assert!(p2p_port.is_some());
     }
 }
