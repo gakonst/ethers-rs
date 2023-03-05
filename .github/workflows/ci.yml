@@ -31,6 +31,8 @@ jobs:
         steps:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@stable
+              with:
+                toolchain: ${{ matrix.os == 'windows-latest' && 'stable-x86_64-pc-windows-gnu' || 'stable' }}
             - name: Install Anvil
               uses: foundry-rs/foundry-toolchain@v1
               with:
