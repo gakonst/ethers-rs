@@ -40,3 +40,18 @@ pub use timelag::TimeLag;
 /// [`Middleware`](ethers_providers::Middleware) in a concise way
 pub mod builder;
 pub use builder::MiddlewareBuilder;
+
+// For macro expansions only, not public API.
+
+#[doc(hidden)]
+#[allow(unused_extern_crates)]
+extern crate self as ethers;
+
+#[doc(hidden)]
+pub use ethers_contract as contract;
+
+#[doc(hidden)]
+pub use ethers_core as core;
+
+#[doc(hidden)]
+pub use ethers_providers as providers;
