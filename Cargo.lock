@@ -1295,7 +1295,7 @@ dependencies = [
 
 [[package]]
 name = "ethers"
-version = "1.0.2"
+version = "2.0.0"
 dependencies = [
  "ethers-addressbook",
  "ethers-contract",
@@ -1310,7 +1310,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-addressbook"
-version = "1.0.2"
+version = "2.0.0"
 dependencies = [
  "ethers-core",
  "once_cell",
@@ -1320,7 +1320,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract"
-version = "1.0.2"
+version = "2.0.0"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-contract-derive",
@@ -1341,7 +1341,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-abigen"
-version = "1.0.2"
+version = "2.0.0"
 dependencies = [
  "Inflector",
  "dunce",
@@ -1368,7 +1368,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-derive"
-version = "1.0.2"
+version = "2.0.0"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-core",
@@ -1382,7 +1382,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-core"
-version = "1.0.2"
+version = "2.0.0"
 dependencies = [
  "arrayvec 0.7.2",
  "bincode",
@@ -1415,7 +1415,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-derive-eip712"
-version = "1.0.2"
+version = "2.0.0"
 dependencies = [
  "ethers-contract-derive",
  "ethers-core",
@@ -1427,7 +1427,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-etherscan"
-version = "1.0.2"
+version = "2.0.0"
 dependencies = [
  "ethers-core",
  "ethers-solc",
@@ -1446,7 +1446,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-middleware"
-version = "1.0.2"
+version = "2.0.0"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -1474,7 +1474,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-providers"
-version = "1.0.2"
+version = "2.0.0"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -1513,7 +1513,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-signers"
-version = "1.0.2"
+version = "2.0.0"
 dependencies = [
  "async-trait",
  "coins-bip32",
@@ -1546,7 +1546,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-solc"
-version = "1.0.2"
+version = "2.0.0"
 dependencies = [
  "cfg-if 1.0.0",
  "criterion",
