@@ -8,6 +8,16 @@ repository = "https://github.com/gakonst/ethers-rs"
 homepage = "https://github.com/gakonst/ethers-rs"
 categories = ["cryptography::cryptocurrencies"]
 keywords = ["crypto", "ethers", "ethereum", "web3", "celo"]
+exclude = [
+    ".github/",
+    "bin/",
+    "book/",
+    "**/tests/",
+    "**/test-data/",
+    "**/testdata/",
+    "examples",
+    "scripts/",
+]
 
 # https://docs.rs/about/metadata
 [workspace.metadata.docs.rs]

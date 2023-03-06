@@ -16,6 +16,7 @@ documentation.workspace = true
 repository.workspace = true
 homepage.workspace = true
 categories.workspace = true
+exclude.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
