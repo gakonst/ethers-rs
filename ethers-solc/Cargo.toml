@@ -119,4 +119,6 @@ project-util = ["tempfile", "fs_extra", "rand"]
 tests = []
 openssl = ["svm/openssl"]
 rustls = ["svm/rustls"]
-asm = ["sha2/asm", "svm/sha2-asm"]
+
+# Deprecated
+asm = []

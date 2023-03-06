@@ -68,9 +68,11 @@ abigen = ["ethers-contract/abigen"]
 abigen-offline = ["ethers-contract/abigen-offline"]
 ## solc
 ethers-solc = ["dep:ethers-solc", "ethers-etherscan/ethers-solc"]
-solc-full = ["ethers-solc", "ethers-solc/full"]
-solc-tests = ["ethers-solc", "ethers-solc/tests"]
-solc-sha2-asm = ["ethers-solc", "ethers-solc/asm"]
+solc-full = ["ethers-solc?/full"]
+solc-tests = ["ethers-solc?/tests"]
+
+# Deprecated
+solc-sha2-asm = []
 
 [dependencies]
 ethers-addressbook.workspace = true
