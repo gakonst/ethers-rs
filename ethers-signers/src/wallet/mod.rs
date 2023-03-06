@@ -71,12 +71,21 @@ pub struct Wallet<D: DigestSigner<Sha256Proxy, RecoverableSignature>> {
     pub(crate) address: Address,
     /// The wallet's chain id (for EIP-155)
     pub(crate) chain_id: u64,
+    // The wallet's mnemonic
+    pub mnemonic: Option<String>,
+    // The wallet's private key
+    pub private_key: Option<String>,
+    // The wallet's public key
+    pub public_key: Option<String>
 }
 
 impl<D: DigestSigner<Sha256Proxy, RecoverableSignature>> Wallet<D> {
     /// Construct a new wallet with an external Signer
     pub fn new_with_signer(signer: D, address: Address, chain_id: u64) -> Self {
-        Wallet { signer, address, chain_id }
+        let mnemonic = None;
+        let private_key = None;
+        let public_key = None;
+        Wallet { signer, address, chain_id, mnemonic, private_key, public_key }
     }
 }
 

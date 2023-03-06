@@ -67,8 +67,11 @@ impl Wallet<SigningKey> {
     {
         let (secret, uuid) = eth_keystore::new(dir, rng, password, name)?;
         let signer = SigningKey::from_bytes(secret.as_slice())?;
+        let mnemonic = None;
+        let private_key = Some(format!("0x{:02X?}", signer.to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
+        let public_key = Some(format!("0x{:02X?}", signer.verifying_key().to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
         let address = secret_key_to_address(&signer);
-        Ok((Self { signer, address, chain_id: 1 }, uuid))
+        Ok((Self { signer, address, chain_id: 1, mnemonic, private_key, public_key }, uuid))
     }
 
     /// Decrypts an encrypted JSON from the provided path to construct a Wallet instance
@@ -80,22 +83,31 @@ impl Wallet<SigningKey> {
     {
         let secret = eth_keystore::decrypt_key(keypath, password)?;
         let signer = SigningKey::from_bytes(secret.as_slice())?;
+        let mnemonic = None;
+        let private_key = Some(format!("0x{:02X?}", signer.to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
+        let public_key = Some(format!("0x{:02X?}", signer.verifying_key().to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
         let address = secret_key_to_address(&signer);
-        Ok(Self { signer, address, chain_id: 1 })
+        Ok(Self { signer, address, chain_id: 1, mnemonic, private_key, public_key })
     }
 
     /// Creates a new random keypair seeded with the provided RNG
     pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         let signer = SigningKey::random(rng);
+        let mnemonic = None;
+        let private_key = Some(format!("0x{:02X?}", signer.to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
+        let public_key = Some(format!("0x{:02X?}", signer.verifying_key().to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
         let address = secret_key_to_address(&signer);
-        Self { signer, address, chain_id: 1 }
+        Self { signer, address, chain_id: 1, mnemonic, private_key, public_key }
     }
 
     /// Creates a new Wallet instance from a raw scalar value (big endian).
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, WalletError> {
         let signer = SigningKey::from_bytes(bytes)?;
+        let mnemonic = None;
+        let private_key = Some(format!("0x{:02X?}", signer.to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
+        let public_key = Some(format!("0x{:02X?}", signer.verifying_key().to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
         let address = secret_key_to_address(&signer);
-        Ok(Self { signer, address, chain_id: 1 })
+        Ok(Self { signer, address, chain_id: 1, mnemonic, private_key, public_key })
     }
 }
 
@@ -110,8 +122,10 @@ impl PartialEq for Wallet<SigningKey> {
 impl From<SigningKey> for Wallet<SigningKey> {
     fn from(signer: SigningKey) -> Self {
         let address = secret_key_to_address(&signer);
-
-        Self { signer, address, chain_id: 1 }
+        let mnemonic = None;
+        let private_key = Some(format!("0x{:02X?}", signer.to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
+        let public_key = Some(format!("0x{:02X?}", signer.verifying_key().to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
+        Self { signer, address, chain_id: 1, mnemonic, private_key, public_key }
     }
 }
 
@@ -121,8 +135,10 @@ impl From<K256SecretKey> for Wallet<SigningKey> {
     fn from(key: K256SecretKey) -> Self {
         let signer = key.into();
         let address = secret_key_to_address(&signer);
-
-        Self { signer, address, chain_id: 1 }
+        let mnemonic = None;
+        let private_key = Some(format!("0x{:02X?}", signer.to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
+        let public_key = Some(format!("0x{:02X?}", signer.verifying_key().to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
+        Self { signer, address, chain_id: 1, mnemonic, private_key, public_key }
     }
 }
 

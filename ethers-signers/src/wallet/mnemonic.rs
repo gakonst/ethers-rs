@@ -11,6 +11,7 @@ use ethers_core::{
 };
 use rand::Rng;
 use std::{fs::File, io::Write, marker::PhantomData, path::PathBuf, str::FromStr};
+
 use thiserror::Error;
 
 const DEFAULT_DERIVATION_PATH_PREFIX: &str = "m/44'/60'/0'/0/";
@@ -184,7 +185,11 @@ impl<W: Wordlist> MnemonicBuilder<W> {
         let signer = SigningKey::from_bytes(&key.to_bytes())?;
         let address = secret_key_to_address(&signer);
 
-        Ok(Wallet::<SigningKey> { signer, address, chain_id: 1 })
+        let mnemonic = Some(mnemonic.to_phrase().unwrap());
+        let private_key = Some(format!("0x{:02X?}", signer.to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
+        let public_key = Some(format!("0x{:02X?}", signer.verifying_key().to_bytes()).replace(", ", "").replace("[", "").replace("]", ""));
+
+        Ok(Wallet::<SigningKey> { signer, address, chain_id: 1, mnemonic, private_key, public_key })
     }
 }
 
