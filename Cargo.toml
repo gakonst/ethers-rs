@@ -9,12 +9,13 @@ homepage = "https://github.com/gakonst/ethers-rs"
 categories = ["cryptography::cryptocurrencies"]
 keywords = ["crypto", "ethers", "ethereum", "web3", "celo"]
 
-# https://github.com/rust-lang/docs.rs/blob/59eea6cbcc1bc99ba8712e5adce4f4dfd0b584a3/crates/metadata/lib.rs#L80-L100
+# https://docs.rs/about/metadata
 [workspace.metadata.docs.rs]
 all-features = true
+rustc-args = ["--cfg", "docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
-# https://docs.rs/about/metadata
+# https://github.com/integer32llc/rust-playground/blob/c6165a36923db5d99313e6056b5b610a2ede5bb0/top-crates/src/lib.rs#L175-L184
 [workspace.metadata.playground]
 all-features = true
 
