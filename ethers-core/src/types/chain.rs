@@ -125,6 +125,8 @@ pub enum Chain {
 
     Canto = 7700,
     CantoTestnet = 740,
+
+    Boba = 288,
 }
 
 // === impl Chain ===
@@ -256,7 +258,7 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
-            EmeraldTestnet => return None,
+            EmeraldTestnet | Boba => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -295,7 +297,8 @@ impl Chain {
             EmeraldTestnet |
             Celo |
             CeloAlfajores |
-            CeloBaklava => true,
+            CeloBaklava |
+            Boba => true,
 
             // Known EIP-1559 chains
             Mainnet |
@@ -442,6 +445,8 @@ impl Chain {
                 "https://testnet-explorer.canto.neobase.one/",
             ),
 
+            Boba => ("https://api.bobascan.com/api", "https://bobascan.com"),
+
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
@@ -488,6 +493,7 @@ impl Chain {
             Celo |
             CeloAlfajores |
             CeloBaklava => "ETHERSCAN_API_KEY",
+
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
             Polygon | PolygonMumbai => "POLYGONSCAN_API_KEY",
@@ -497,6 +503,8 @@ impl Chain {
             Moonbeam | Moonbase | MoonbeamDev | Moonriver => "MOONSCAN_API_KEY",
 
             Canto | CantoTestnet => "BLOCKSCOUT_API_KEY",
+
+            Boba => "BOBASCAN_API_KEY",
 
             // Explicitly exhaustive. See NB above.
             XDai |
