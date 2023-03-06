@@ -43,6 +43,7 @@ getrandom = { version = "0.2", features = ["js"] }
 
 [package.metadata.docs.rs]
 all-features = true
+rustc-args = ["--cfg", "docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
