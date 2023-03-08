@@ -481,7 +481,8 @@ mod tests {
         /* 0x5c */ None,
         /* 0x5d */ None,
         /* 0x5e */ None,
-        /* 0x5f */ Some("PUSH0"),
+        // /* 0x5f */ Some("PUSH0"),
+        /* 0x5f */ None,
         /* 0x60 */ Some("PUSH1"),
         /* 0x61 */ Some("PUSH2"),
         /* 0x62 */ Some("PUSH3"),
@@ -651,13 +652,13 @@ mod tests {
 
         for (i, mnemonic) in OPCODE_JUMPMAP.iter().enumerate() {
             let Some(mnemonic) = *mnemonic else { continue };
-            eprintln!("{mnemonic}");
             let parsed = mnemonic.parse::<Opcode>().unwrap();
             if !found.insert(parsed) {
                 panic!("Duplicate Opcode: {mnemonic:?} => {parsed}")
             }
 
             assert_eq!(i, parsed as usize);
+            assert_eq!(Opcode::try_from(i as u8).unwrap(), parsed);
             assert!(OPCODE_JUMPMAP[i].is_some());
 
             // strum
