@@ -659,7 +659,7 @@ mod tests {
 
             assert_eq!(i, parsed as usize);
             assert_eq!(Opcode::try_from(i as u8).unwrap(), parsed);
-            assert!(OPCODE_JUMPMAP[i].is_some());
+            assert_eq!(OPCODE_JUMPMAP[i].unwrap(), mnemonic);
 
             // strum
             assert_eq!(parsed.as_ref(), mnemonic);
