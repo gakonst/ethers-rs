@@ -83,11 +83,6 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![doc(test(no_crate_inject, attr(deny(rust_2018_idioms), allow(dead_code, unused_variables))))]
 
-// For macro expansion
-#[doc(hidden)]
-#[allow(unused_extern_crates)]
-extern crate self as ethers;
-
 #[doc(inline)]
 pub use ethers_addressbook as addressbook;
 #[doc(inline)]
@@ -129,3 +124,8 @@ pub mod prelude {
     #[cfg(feature = "ethers-solc")]
     pub use super::solc::*;
 }
+
+// For macro expansions only, not public API.
+#[doc(hidden)]
+#[allow(unused_extern_crates)]
+extern crate self as ethers;

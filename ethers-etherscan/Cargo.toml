@@ -42,6 +42,7 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["e
 
 [package.metadata.docs.rs]
 all-features = true
+rustc-args = ["--cfg", "docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]

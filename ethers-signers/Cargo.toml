@@ -12,6 +12,7 @@ keywords = ["ethereum", "web3", "celo", "ethers"]
 
 [package.metadata.docs.rs]
 all-features = true
+rustc-args = ["--cfg", "docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]

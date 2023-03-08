@@ -69,7 +69,8 @@ pub use once_cell::sync::Lazy;
 #[cfg(feature = "eip712")]
 pub use ethers_derive_eip712::*;
 
-// For Abigen expansions in docs.rs builds.
+// For macro expansions only, not public API.
+// See: [#2235](https://github.com/gakonst/ethers-rs/pull/2235)
 
 #[doc(hidden)]
 #[allow(unused_extern_crates)]
@@ -77,23 +78,15 @@ extern crate self as ethers_contract;
 
 #[doc(hidden)]
 #[allow(unused_extern_crates)]
-#[cfg(docsrs)]
 extern crate self as ethers;
 
 #[doc(hidden)]
-#[cfg(docsrs)]
-pub mod core {
-    pub use ethers_core::*;
-}
-
-#[doc(hidden)]
-#[cfg(docsrs)]
 pub mod contract {
     pub use crate::*;
 }
 
 #[doc(hidden)]
-#[cfg(docsrs)]
-pub mod providers {
-    pub use ethers_providers::*;
-}
+pub use ethers_core as core;
+
+#[doc(hidden)]
+pub use ethers_providers as providers;
