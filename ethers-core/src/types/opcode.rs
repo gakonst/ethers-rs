@@ -285,37 +285,37 @@ pub enum Opcode {
     DUP16,
 
     // 0x90 range - swaps.
-    /// Opcode 0x90 - Exchange 1st and 1st stack items
+    /// Opcode 0x90 - Exchange 1st and 2nd stack items
     SWAP1 = 0x90,
-    /// Opcode 0x91 - Exchange 1st and 2nd stack items
+    /// Opcode 0x91 - Exchange 1st and 3rd stack items
     SWAP2,
-    /// Opcode 0x92 - Exchange 1st and 3rd stack items
+    /// Opcode 0x92 - Exchange 1st and 4th stack items
     SWAP3,
-    /// Opcode 0x93 - Exchange 1st and 4th stack items
+    /// Opcode 0x93 - Exchange 1st and 5th stack items
     SWAP4,
-    /// Opcode 0x94 - Exchange 1st and 5th stack items
+    /// Opcode 0x94 - Exchange 1st and 6th stack items
     SWAP5,
-    /// Opcode 0x95 - Exchange 1st and 6th stack items
+    /// Opcode 0x95 - Exchange 1st and 7th stack items
     SWAP6,
-    /// Opcode 0x96 - Exchange 1st and 7th stack items
+    /// Opcode 0x96 - Exchange 1st and 8th stack items
     SWAP7,
-    /// Opcode 0x97 - Exchange 1st and 8th stack items
+    /// Opcode 0x97 - Exchange 1st and 9th stack items
     SWAP8,
-    /// Opcode 0x98 - Exchange 1st and 9th stack items
+    /// Opcode 0x98 - Exchange 1st and 10th stack items
     SWAP9,
-    /// Opcode 0x99 - Exchange 1st and 10th stack items
+    /// Opcode 0x99 - Exchange 1st and 11th stack items
     SWAP10,
-    /// Opcode 0x9A - Exchange 1st and 11th stack items
+    /// Opcode 0x9A - Exchange 1st and 12th stack items
     SWAP11,
-    /// Opcode 0x9B - Exchange 1st and 12th stack items
+    /// Opcode 0x9B - Exchange 1st and 13th stack items
     SWAP12,
-    /// Opcode 0x9C - Exchange 1st and 13th stack items
+    /// Opcode 0x9C - Exchange 1st and 14th stack items
     SWAP13,
-    /// Opcode 0x9D - Exchange 1st and 14th stack items
+    /// Opcode 0x9D - Exchange 1st and 15th stack items
     SWAP14,
-    /// Opcode 0x9E - Exchange 1st and 15th stack items
+    /// Opcode 0x9E - Exchange 1st and 16th stack items
     SWAP15,
-    /// Opcode 0x9F - Exchange 1st and 16th stack items
+    /// Opcode 0x9F - Exchange 1st and 17th stack items
     SWAP16,
 
     // 0xA0 range - logging ops.
