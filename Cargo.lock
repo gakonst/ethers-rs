@@ -598,9 +598,9 @@ dependencies = [
 
 [[package]]
 name = "coins-bip32"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "634c509653de24b439672164bbf56f5f582a2ab0e313d3b0f6af0b7345cf2560"
+checksum = "8a3b95d26eace980ade01e0ea8d996f7d5ae7031f9c5f258317ec82e400f33c1"
 dependencies = [
  "bincode",
  "bs58",
@@ -617,26 +617,28 @@ dependencies = [
 
 [[package]]
 name = "coins-bip39"
-version = "0.7.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a11892bcac83b4c6e95ab84b5b06c76d9d70ad73548dd07418269c5c7977171"
+checksum = "a05ceda6ab4876de899fe23e8a171b200be9a346289bce12d41311e4bce2f104"
 dependencies = [
  "bitvec 0.17.4",
  "coins-bip32",
  "getrandom 0.2.8",
  "hex",
  "hmac 0.12.1",
+ "once_cell",
  "pbkdf2",
  "rand 0.8.5",
  "sha2 0.10.6",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]
 name = "coins-core"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c94090a6663f224feae66ab01e41a2555a8296ee07b5f20dab8888bdefc9f617"
+checksum = "87637d08a1dd6bfa3bcd697f0a4de6c1b3a03e085b9d841a7e9cde4ccb61514b"
 dependencies = [
  "base58check",
  "base64 0.12.3",
