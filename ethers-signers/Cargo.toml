@@ -19,7 +19,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 ethers-core = { version = "^1.0.0", path = "../ethers-core", features = ["eip712"] }
 thiserror = { version = "1.0.39", default-features = false }
 coins-bip32 = "0.7.0"
-coins-bip39 = "0.7.0"
+coins-bip39 = "0.8.1"
 coins-ledger = { version = "0.7.1", default-features = false, optional = true }
 hex = { version = "0.4.3", default-features = false, features = ["std"] }
 async-trait = { version = "0.1.50", default-features = false }
