@@ -78,3 +78,6 @@ pub mod serde_helpers;
 
 mod syncing;
 pub use syncing::{SyncProgress, SyncingStatus};
+
+mod opcode;
+pub use opcode::Opcode;
