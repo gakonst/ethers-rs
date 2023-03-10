@@ -129,7 +129,7 @@ impl MultiAbigen {
 
     /// Removes all `Abigen` items that should not be included based on the given filter
     pub fn apply_filter(&mut self, filter: &ContractFilter) {
-        self.abigens.retain(|abi| filter.is_match(&abi.contract_name))
+        self.abigens.retain(|abi| filter.is_match(&abi.contract_name.to_string()))
     }
 
     /// Add another Abigen to the module or lib

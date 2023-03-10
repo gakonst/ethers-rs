@@ -101,8 +101,11 @@ pub(crate) mod utils;
 #[proc_macro]
 pub fn abigen(input: TokenStream) -> TokenStream {
     let contracts = parse_macro_input!(input as Contracts);
-
-    contracts.expand().unwrap_or_else(|err| err.to_compile_error()).into()
+    match contracts.expand() {
+        Ok(tokens) => tokens,
+        Err(err) => err.to_compile_error(),
+    }
+    .into()
 }
 
 /// Derives the `AbiType` and all `Tokenizable` traits for the labeled type.
@@ -146,7 +149,7 @@ pub fn derive_abi_type(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(EthAbiCodec)]
 pub fn derive_abi_codec(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    TokenStream::from(codec::derive_codec_impl(&input))
+    codec::derive_codec_impl(&input).into()
 }
 
 /// Derives `fmt::Display` trait and generates a convenient format for all the

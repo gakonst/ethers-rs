@@ -36,7 +36,7 @@ pub use ethers_core::types::Address;
 
 use contract::{Context, ExpandedContract};
 use eyre::{Context as _, Result};
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::ToTokens;
 use std::{collections::HashMap, fmt, fs, io, path::Path};
 
@@ -66,34 +66,34 @@ use std::{collections::HashMap, fmt, fs, io, path::Path};
 #[must_use = "Abigen does nothing unless you generate or expand it."]
 pub struct Abigen {
     /// The source of the ABI JSON for the contract whose bindings are being generated.
-    abi_source: Source,
+    pub abi_source: Source,
 
     /// The contract's name to use for the generated type.
-    contract_name: String,
-
-    /// Manually specified contract method aliases.
-    method_aliases: HashMap<String, String>,
-
-    /// Manually specified `derive` macros added to all structs and enums.
-    derives: Vec<String>,
+    pub contract_name: Ident,
 
     /// Whether to format the generated bindings using [`prettyplease`].
-    format: bool,
+    pub format: bool,
+
+    /// Manually specified contract method aliases.
+    pub method_aliases: HashMap<String, String>,
 
     /// Manually specified event name aliases.
-    event_aliases: HashMap<String, String>,
+    pub event_aliases: HashMap<String, String>,
 
     /// Manually specified error name aliases.
-    error_aliases: HashMap<String, String>,
+    pub error_aliases: HashMap<String, String>,
+
+    /// Manually specified `derive` macros added to all structs and enums.
+    pub derives: Vec<syn::Path>,
 }
 
 impl Abigen {
     /// Creates a new builder with the given [ABI Source][Source].
-    pub fn new<T: Into<String>, S: AsRef<str>>(contract_name: T, abi_source: S) -> Result<Self> {
+    pub fn new<T: AsRef<str>, S: AsRef<str>>(contract_name: T, abi_source: S) -> Result<Self> {
         let abi_source = abi_source.as_ref().parse()?;
         Ok(Self {
             abi_source,
-            contract_name: contract_name.into(),
+            contract_name: syn::parse_str(contract_name.as_ref())?,
             format: true,
             method_aliases: Default::default(),
             derives: Default::default(),
@@ -157,17 +157,16 @@ impl Abigen {
 
     #[deprecated = "Use add_derive instead"]
     #[doc(hidden)]
-    pub fn add_event_derive<S: Into<String>>(mut self, derive: S) -> Self {
-        self.derives.push(derive.into());
-        self
+    pub fn add_event_derive<S: AsRef<str>>(self, derive: S) -> Result<Self> {
+        self.add_derive(derive)
     }
 
     /// Add a custom derive to the derives for all structs and enums.
     ///
     /// For example, this makes it possible to derive serde::Serialize and serde::Deserialize.
-    pub fn add_derive<S: Into<String>>(mut self, derive: S) -> Self {
-        self.derives.push(derive.into());
-        self
+    pub fn add_derive<S: AsRef<str>>(mut self, derive: S) -> Result<Self> {
+        self.derives.push(syn::parse_str(derive.as_ref())?);
+        Ok(self)
     }
 
     #[deprecated = "Use format instead"]
@@ -189,7 +188,7 @@ impl Abigen {
     /// Generates the contract bindings.
     pub fn generate(self) -> Result<ContractBindings> {
         let format = self.format;
-        let name = self.contract_name.clone();
+        let name = self.contract_name.to_string();
         let (expanded, _) = self.expand()?;
         Ok(ContractBindings { tokens: expanded.into_tokens(), format, name })
     }

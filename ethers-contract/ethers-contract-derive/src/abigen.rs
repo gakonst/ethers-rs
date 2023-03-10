@@ -1,129 +1,122 @@
 //! Implementation of procedural macro for generating type-safe bindings to an Ethereum smart
 //! contract.
 
-use crate::spanned::{ParseInner, Spanned};
-use ethers_contract_abigen::{
-    contract::{Context, ExpandedContract},
-    multi::MultiExpansion,
-    Abigen,
-};
-use ethers_core::abi::{Function, FunctionExt, Param, StateMutability};
-use eyre::Result;
-use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::ToTokens;
+use crate::spanned::Spanned;
+use ethers_contract_abigen::{multi::MultiExpansion, Abigen};
+use proc_macro2::TokenStream;
 use std::collections::HashSet;
 use syn::{
     braced,
     ext::IdentExt,
     parenthesized,
-    parse::{Error, Parse, ParseStream, Result as ParseResult},
+    parse::{Error, Parse, ParseStream, Result},
+    punctuated::Punctuated,
     Ident, LitStr, Path, Token,
 };
 
 /// A series of `ContractArgs` separated by `;`
 #[derive(Clone, Debug)]
 pub(crate) struct Contracts {
-    pub(crate) inner: Vec<(Span, ContractArgs)>,
+    pub(crate) inner: Vec<ContractArgs>,
 }
 
 impl Contracts {
-    pub(crate) fn expand(self) -> Result<TokenStream2, Error> {
+    pub(crate) fn expand(self) -> Result<TokenStream> {
         let mut expansions = Vec::with_capacity(self.inner.len());
 
         // expand all contracts
-        for (span, contract) in self.inner {
-            let contract =
-                Self::expand_contract(contract).map_err(|err| Error::new(span, err.to_string()))?;
+        for contract in self.inner {
+            let span = contract.abi.span();
+            let contract = contract
+                .into_builder()
+                .and_then(Abigen::expand)
+                .map_err(|err| Error::new(span, err))?;
             expansions.push(contract);
         }
 
         // expand all contract expansions
         Ok(MultiExpansion::new(expansions).expand_inplace())
     }
-
-    fn expand_contract(contract: ContractArgs) -> Result<(ExpandedContract, Context)> {
-        contract.into_builder()?.expand()
-    }
 }
 
 impl Parse for Contracts {
-    fn parse(input: ParseStream) -> ParseResult<Self> {
-        let inner = input
-            .parse_terminated::<_, Token![;]>(ContractArgs::spanned_parse)?
-            .into_iter()
-            .collect();
-        Ok(Self { inner })
+    fn parse(input: ParseStream) -> Result<Self> {
+        Ok(Self {
+            inner: input
+                .parse_terminated::<_, Token![;]>(ContractArgs::parse)?
+                .into_iter()
+                .collect(),
+        })
     }
 }
 
 /// Contract procedural macro arguments.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ContractArgs {
-    name: String,
-    abi: String,
-    parameters: Vec<Parameter>,
+    name: Ident,
+    abi: LitStr,
+    parameters: Punctuated<Parameter, Token![,]>,
 }
 
 impl ContractArgs {
-    fn into_builder(self) -> Result<Abigen> {
-        let mut builder = Abigen::new(&self.name, &self.abi)?;
+    fn into_builder(self) -> eyre::Result<Abigen> {
+        // use the name's ident
+        let contract_name = self.name;
+        let abi = self.abi.value();
+        let abi_source = abi.parse().map_err(|e| Error::new(self.abi.span(), e))?;
+        let mut builder = Abigen {
+            abi_source,
+            contract_name,
+            derives: Default::default(),
+            error_aliases: Default::default(),
+            event_aliases: Default::default(),
+            method_aliases: Default::default(),
+            format: Default::default(),
+        };
 
-        for parameter in self.parameters.into_iter() {
-            builder = match parameter {
-                Parameter::Methods(methods) => methods
-                    .into_iter()
-                    .fold(builder, |builder, m| builder.add_method_alias(m.signature, m.alias)),
-                Parameter::Derives(derives) => {
-                    derives.into_iter().fold(builder, |builder, derive| builder.add_derive(derive))
-                }
-            };
+        for parameter in self.parameters {
+            match parameter {
+                Parameter::Methods(methods) => builder
+                    .method_aliases
+                    .extend(methods.into_iter().map(|m| (m.signature, m.alias.to_string()))),
+                Parameter::Derives(derives) => builder.derives.extend(derives),
+            }
         }
 
         Ok(builder)
     }
 }
 
-impl ParseInner for ContractArgs {
-    fn spanned_parse(input: ParseStream) -> ParseResult<(Span, Self)> {
-        // read the contract name
-        let name = input.parse::<Ident>()?.to_string();
+impl Parse for ContractArgs {
+    fn parse(input: ParseStream) -> Result<Self> {
+        // name
+        let name = input.parse::<Ident>()?;
 
-        // skip the comma
         input.parse::<Token![,]>()?;
 
+        // abi
         // TODO(nlordell): Due to limitation with the proc-macro Span API, we
         //   can't currently get a path the the file where we were called from;
         //   therefore, the path will always be rooted on the cargo manifest
         //   directory. Eventually we can use the `Span::source_file` API to
         //   have a better experience.
-        let (span, abi) = {
-            let literal = input.parse::<LitStr>()?;
-            (literal.span(), literal.value())
-        };
+        let abi = input.parse::<LitStr>()?;
 
-        let mut parameters = Vec::new();
-        let lookahead = input.lookahead1();
-        if lookahead.peek(Token![,]) {
-            input.parse::<Token![,]>()?;
-
+        // optional parameters
+        let mut parameters = Punctuated::default();
+        if input.parse::<Token![,]>().is_ok() {
             loop {
-                if input.is_empty() {
+                if input.is_empty() || input.peek(Token![;]) {
                     break
                 }
-                let lookahead = input.lookahead1();
-                if lookahead.peek(Token![;]) {
-                    break
-                }
-                let param = Parameter::parse(input)?;
-                parameters.push(param);
-                let lookahead = input.lookahead1();
-                if lookahead.peek(Token![,]) {
-                    input.parse::<Token![,]>()?;
+                parameters.push_value(input.parse()?);
+                if let Ok(comma) = input.parse() {
+                    parameters.push_punct(comma);
                 }
             }
         }
 
-        Ok((span, ContractArgs { name, abi, parameters }))
+        Ok(ContractArgs { name, abi, parameters })
     }
 }
 
@@ -131,60 +124,40 @@ impl ParseInner for ContractArgs {
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Parameter {
     Methods(Vec<Method>),
-    Derives(Vec<String>),
+    Derives(Punctuated<Path, Token![,]>),
 }
 
 impl Parse for Parameter {
-    fn parse(input: ParseStream) -> ParseResult<Self> {
-        let name = input.call(Ident::parse_any)?;
-        let param = match name.to_string().as_str() {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let name = Ident::parse_any(input)?;
+        match name.to_string().as_str() {
             "methods" => {
                 let content;
                 braced!(content in input);
-                let methods = {
-                    let parsed =
-                        content.parse_terminated::<_, Token![;]>(Spanned::<Method>::parse)?;
+                let parsed = content.parse_terminated::<_, Token![;]>(Spanned::<Method>::parse)?;
 
-                    let mut methods = Vec::with_capacity(parsed.len());
-                    let mut signatures = HashSet::new();
-                    let mut aliases = HashSet::new();
-                    for method in parsed {
-                        if !signatures.insert(method.signature.clone()) {
-                            return Err(Error::new(
-                                method.span(),
-                                "duplicate method signature in `abigen!` macro invocation",
-                            ))
-                        }
-                        if !aliases.insert(method.alias.clone()) {
-                            return Err(Error::new(
-                                method.span(),
-                                "duplicate method alias in `abigen!` macro invocation",
-                            ))
-                        }
-                        methods.push(method.into_inner())
+                let mut methods = Vec::with_capacity(parsed.len());
+                let mut signatures = HashSet::new();
+                let mut aliases = HashSet::new();
+                for method in parsed {
+                    if !signatures.insert(method.signature.clone()) {
+                        return Err(Error::new(method.span(), "duplicate method signature"))
                     }
-
-                    methods
-                };
-
-                Parameter::Methods(methods)
+                    if !aliases.insert(method.alias.clone()) {
+                        return Err(Error::new(method.alias.span(), "duplicate method alias"))
+                    }
+                    methods.push(method.into_inner());
+                }
+                Ok(Parameter::Methods(methods))
             }
             "derives" | "event_derives" => {
                 let content;
                 parenthesized!(content in input);
-                let derives = content
-                    .parse_terminated::<_, Token![,]>(Path::parse)?
-                    .into_iter()
-                    .map(|path| path.to_token_stream().to_string())
-                    .collect();
-                Parameter::Derives(derives)
+                let derives = content.parse_terminated::<_, Token![,]>(Path::parse)?;
+                Ok(Parameter::Derives(derives))
             }
-            _ => {
-                return Err(Error::new(name.span(), format!("unexpected named parameter `{name}`")))
-            }
-        };
-
-        Ok(param)
+            _ => Err(Error::new(name.span(), "unexpected named parameter")),
+        }
     }
 }
 
@@ -192,44 +165,40 @@ impl Parse for Parameter {
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct Method {
     signature: String,
-    alias: String,
+    alias: Ident,
 }
 
 impl Parse for Method {
-    fn parse(input: ParseStream) -> ParseResult<Self> {
-        let function = {
-            let name = input.parse::<Ident>()?.to_string();
+    fn parse(input: ParseStream) -> Result<Self> {
+        // `{name}({params.join(",")})`
+        let mut signature = String::with_capacity(64);
 
-            let content;
-            parenthesized!(content in input);
-            let inputs = content
-                .parse_terminated::<_, Token![,]>(Ident::parse)?
-                .iter()
-                .map(|ident| {
-                    let kind = serde_json::from_value(serde_json::json!(&ident.to_string()))
-                        .map_err(|err| Error::new(ident.span(), err))?;
-                    Ok(Param { name: "".into(), kind, internal_type: None })
-                })
-                .collect::<ParseResult<Vec<_>>>()?;
+        // function name
+        let name = input.parse::<Ident>()?;
+        signature.push_str(&name.to_string());
 
-            #[allow(deprecated)]
-            Function {
-                name,
-                inputs,
+        // function params
+        let content;
+        parenthesized!(content in input);
+        let params = content.parse_terminated::<_, Token![,]>(Ident::parse)?;
+        let last_i = params.len().saturating_sub(1);
 
-                // NOTE: The output types and const-ness of the function do not
-                //   affect its signature.
-                outputs: vec![],
-                state_mutability: StateMutability::NonPayable,
-                constant: None,
+        signature.push('(');
+        for (i, param) in params.into_iter().enumerate() {
+            let s = param.to_string();
+            // validate
+            ethers_core::abi::ethabi::param_type::Reader::read(&s)
+                .map_err(|e| Error::new(param.span(), e))?;
+            signature.push_str(&s);
+            if i < last_i {
+                signature.push(',');
             }
-        };
-        let signature = function.abi_signature();
+        }
+        signature.push(')');
+
         input.parse::<Token![as]>()?;
-        let alias = {
-            let ident = input.parse::<Ident>()?;
-            ident.to_string()
-        };
+
+        let alias = input.parse()?;
 
         Ok(Method { signature, alias })
     }
@@ -238,43 +207,76 @@ impl Parse for Method {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proc_macro2::Span;
+    use quote::quote;
+    use syn::parse::Parser;
 
     macro_rules! contract_args_result {
-        ($($arg:tt)*) => {{
-            use syn::parse::Parser;
-            <Spanned<ContractArgs> as Parse>::parse
-                .parse2(quote::quote! { $($arg)* })
+        ($($tt:tt)+) => {{
+            Parser::parse2(Contracts::parse, quote!($($tt)+))
         }};
     }
 
     macro_rules! contract_args {
-        ($($arg:tt)*) => {
-            contract_args_result!($($arg)*)
+        ($($tt:tt)*) => {
+            contract_args_result!($($tt)*)
                 .expect("failed to parse contract args")
-                .into_inner()
+                .inner
         };
     }
 
     macro_rules! contract_args_err {
-        ($($arg:tt)*) => {
-            contract_args_result!($($arg)*)
+        ($($tt:tt)*) => {
+            contract_args_result!($($tt)*)
                 .expect_err("expected parse contract args to error")
         };
     }
 
-    #[allow(unused)]
     fn method(signature: &str, alias: &str) -> Method {
-        Method { signature: signature.into(), alias: alias.into() }
+        Method { signature: signature.into(), alias: ident(alias) }
     }
 
-    fn parse_contracts(s: TokenStream2) -> Vec<ContractArgs> {
-        use syn::parse::Parser;
-        Contracts::parse.parse2(s).unwrap().inner.into_iter().map(|(_, c)| c).collect::<Vec<_>>()
+    // Note: AST structs implement PartialEq by comparing the string repr, so the span is ignored.
+    fn arg(
+        name: &str,
+        abi: &str,
+        parameters: impl IntoIterator<Item = Parameter>,
+        trailing: bool,
+    ) -> ContractArgs {
+        ContractArgs {
+            name: ident(name),
+            abi: lit_str(abi),
+            parameters: params(parameters, trailing),
+        }
+    }
+
+    fn ident(s: &str) -> Ident {
+        Ident::new(s, Span::call_site())
+    }
+
+    fn lit_str(s: &str) -> LitStr {
+        LitStr::new(s, Span::call_site())
+    }
+
+    fn params(
+        v: impl IntoIterator<Item = Parameter>,
+        trailing: bool,
+    ) -> Punctuated<Parameter, Token![,]> {
+        let mut punct: Punctuated<Parameter, Token![,]> = v.into_iter().collect();
+        if trailing {
+            punct.push_punct(Token![,](Span::call_site()));
+        }
+        punct
+    }
+
+    fn derives<'a>(v: impl IntoIterator<Item = &'a str>) -> Parameter {
+        let derives = v.into_iter().map(|s| syn::parse_str::<syn::Path>(s).unwrap()).collect();
+        Parameter::Derives(derives)
     }
 
     #[test]
     fn parse_multi_contract_args_events() {
-        let args = parse_contracts(quote::quote! {
+        let args = contract_args! {
             TestContract,
             "path/to/abi.json",
             event_derives(serde::Deserialize, serde::Serialize);
@@ -282,96 +284,85 @@ mod tests {
             TestContract2,
             "other.json",
             event_derives(serde::Deserialize, serde::Serialize);
-        });
+        };
 
         assert_eq!(
             args,
             vec![
-                ContractArgs {
-                    name: "TestContract".to_string(),
-                    abi: "path/to/abi.json".to_string(),
-                    parameters: vec![Parameter::Derives(vec![
-                        "serde :: Deserialize".into(),
-                        "serde :: Serialize".into(),
-                    ])],
-                },
-                ContractArgs {
-                    name: "TestContract2".to_string(),
-                    abi: "other.json".to_string(),
-                    parameters: vec![Parameter::Derives(vec![
-                        "serde :: Deserialize".into(),
-                        "serde :: Serialize".into(),
-                    ])],
-                },
+                arg(
+                    "TestContract",
+                    "path/to/abi.json",
+                    [derives(["serde::Serialize", "serde::Deserialize"])],
+                    false
+                ),
+                arg(
+                    "TestContract2",
+                    "other.json",
+                    [derives(["serde::Serialize", "serde::Deserialize"])],
+                    false
+                ),
             ]
         );
     }
+
     #[test]
     fn parse_multi_contract_args_methods() {
-        let args = parse_contracts(quote::quote! {
+        let args = contract_args! {
             TestContract,
             "path/to/abi.json",
-             methods {
+            methods {
                 myMethod(uint256, bool) as my_renamed_method;
                 myOtherMethod() as my_other_renamed_method;
-            }
-            ;
+            };
 
             TestContract2,
             "other.json",
             event_derives(serde::Deserialize, serde::Serialize);
-        });
+        };
 
         assert_eq!(
             args,
             vec![
-                ContractArgs {
-                    name: "TestContract".to_string(),
-                    abi: "path/to/abi.json".to_string(),
-                    parameters: vec![Parameter::Methods(vec![
+                arg(
+                    "TestContract",
+                    "path/to/abi.json",
+                    [Parameter::Methods(vec![
                         method("myMethod(uint256,bool)", "my_renamed_method"),
                         method("myOtherMethod()", "my_other_renamed_method"),
                     ])],
-                },
-                ContractArgs {
-                    name: "TestContract2".to_string(),
-                    abi: "other.json".to_string(),
-                    parameters: vec![Parameter::Derives(vec![
-                        "serde :: Deserialize".into(),
-                        "serde :: Serialize".into(),
-                    ])],
-                },
+                    false
+                ),
+                arg(
+                    "TestContract2",
+                    "other.json",
+                    [derives(["serde::Serialize", "serde::Deserialize"])],
+                    false
+                ),
             ]
         );
     }
 
     #[test]
     fn parse_multi_contract_args() {
-        let args = parse_contracts(quote::quote! {
+        let args = contract_args! {
             TestContract,
             "path/to/abi.json",;
 
             TestContract2,
             "other.json",
-            event_derives(serde::Deserialize, serde::Serialize);
-        });
+            event_derives(serde::Deserialize, serde::Serialize,);
+        };
 
         assert_eq!(
             args,
             vec![
-                ContractArgs {
-                    name: "TestContract".to_string(),
-                    abi: "path/to/abi.json".to_string(),
-                    parameters: vec![],
-                },
-                ContractArgs {
-                    name: "TestContract2".to_string(),
-                    abi: "other.json".to_string(),
-                    parameters: vec![Parameter::Derives(vec![
-                        "serde :: Deserialize".into(),
-                        "serde :: Serialize".into(),
-                    ])],
-                },
+                arg("TestContract", "path/to/abi.json", [], false),
+                arg(
+                    "TestContract2",
+                    "other.json",
+                    [derives(["serde::Serialize", "serde::Deserialize"])],
+                    true
+                ),
             ]
         );
     }
@@ -379,21 +370,13 @@ mod tests {
     #[test]
     fn parse_contract_args() {
         let args = contract_args!(TestContract, "path/to/abi.json");
-        assert_eq!(args.name, "TestContract");
-        assert_eq!(args.abi, "path/to/abi.json");
+        assert_eq!(*args.first().unwrap(), arg("TestContract", "path/to/abi.json", [], false));
     }
 
     #[test]
     fn parse_contract_args_with_defaults() {
         let args = contract_args!(TestContract, "[{}]");
-        assert_eq!(
-            args,
-            ContractArgs {
-                name: "TestContract".to_string(),
-                abi: "[{}]".to_string(),
-                parameters: vec![],
-            },
-        );
+        assert_eq!(*args.first().unwrap(), arg("TestContract", "[{}]", [], false));
     }
 
     #[test]
@@ -408,23 +391,19 @@ mod tests {
             event_derives (Asdf, a::B, a::b::c::D)
         );
         assert_eq!(
-            args,
-            ContractArgs {
-                name: "TestContract".to_string(),
-                abi: "abi.json".to_string(),
-                parameters: vec![
-                    // Parameter::Contract("Contract".into()),
+            *args.first().unwrap(),
+            arg(
+                "TestContract",
+                "abi.json",
+                [
                     Parameter::Methods(vec![
                         method("myMethod(uint256,bool)", "my_renamed_method"),
                         method("myOtherMethod()", "my_other_renamed_method"),
                     ]),
-                    Parameter::Derives(vec![
-                        "Asdf".into(),
-                        "a :: B".into(),
-                        "a :: b :: c :: D".into()
-                    ])
+                    derives(["Asdf", "a::B", "a::b::c::D"])
                 ],
-            },
+                false
+            )
         );
     }
 
