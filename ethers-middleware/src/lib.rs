@@ -42,6 +42,7 @@ pub mod builder;
 pub use builder::MiddlewareBuilder;
 
 // For macro expansions only, not public API.
+// See: [#2235](https://github.com/gakonst/ethers-rs/pull/2235)
 
 #[doc(hidden)]
 #[allow(unused_extern_crates)]

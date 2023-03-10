@@ -70,6 +70,7 @@ pub use once_cell::sync::Lazy;
 pub use ethers_derive_eip712::*;
 
 // For macro expansions only, not public API.
+// See: [#2235](https://github.com/gakonst/ethers-rs/pull/2235)
 
 #[doc(hidden)]
 #[allow(unused_extern_crates)]

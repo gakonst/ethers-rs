@@ -125,6 +125,8 @@ pub enum Chain {
 
     Canto = 7700,
     CantoTestnet = 740,
+
+    Boba = 288,
 }
 
 // === impl Chain ===
@@ -256,7 +258,7 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
-            EmeraldTestnet => return None,
+            EmeraldTestnet | Boba => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -295,7 +297,8 @@ impl Chain {
             EmeraldTestnet |
             Celo |
             CeloAlfajores |
-            CeloBaklava => true,
+            CeloBaklava |
+            Boba => true,
 
             // Known EIP-1559 chains
             Mainnet |
@@ -344,14 +347,17 @@ impl Chain {
             Rinkeby => ("https://api-rinkeby.etherscan.io/api", "https://rinkeby.etherscan.io"),
             Goerli => ("https://api-goerli.etherscan.io/api", "https://goerli.etherscan.io"),
             Sepolia => ("https://api-sepolia.etherscan.io/api", "https://sepolia.etherscan.io"),
+
             Polygon => ("https://api.polygonscan.com/api", "https://polygonscan.com"),
             PolygonMumbai => {
                 ("https://api-testnet.polygonscan.com/api", "https://mumbai.polygonscan.com")
             }
+
             Avalanche => ("https://api.snowtrace.io/api", "https://snowtrace.io"),
             AvalancheFuji => {
                 ("https://api-testnet.snowtrace.io/api", "https://testnet.snowtrace.io")
             }
+
             Optimism => {
                 ("https://api-optimistic.etherscan.io/api", "https://optimistic.etherscan.io")
             }
@@ -363,39 +369,52 @@ impl Chain {
                 "https://api-kovan-optimistic.etherscan.io/api",
                 "https://kovan-optimistic.etherscan.io",
             ),
+
             Fantom => ("https://api.ftmscan.com/api", "https://ftmscan.com"),
             FantomTestnet => ("https://api-testnet.ftmscan.com/api", "https://testnet.ftmscan.com"),
+
             BinanceSmartChain => ("https://api.bscscan.com/api", "https://bscscan.com"),
             BinanceSmartChainTestnet => {
                 ("https://api-testnet.bscscan.com/api", "https://testnet.bscscan.com")
             }
+
             Arbitrum => ("https://api.arbiscan.io/api", "https://arbiscan.io"),
             ArbitrumTestnet => {
                 ("https://api-testnet.arbiscan.io/api", "https://testnet.arbiscan.io")
             }
             ArbitrumGoerli => ("https://api-goerli.arbiscan.io/api", "https://goerli.arbiscan.io"),
             ArbitrumNova => ("https://api-nova.arbiscan.io/api", "https://nova.arbiscan.io/"),
+
             Cronos => ("https://api.cronoscan.com/api", "https://cronoscan.com"),
             CronosTestnet => {
                 ("https://api-testnet.cronoscan.com/api", "https://testnet.cronoscan.com")
             }
+
             Moonbeam => ("https://api-moonbeam.moonscan.io/api", "https://moonbeam.moonscan.io/"),
             Moonbase => ("https://api-moonbase.moonscan.io/api", "https://moonbase.moonscan.io/"),
             Moonriver => ("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io"),
+
             // blockscout API is etherscan compatible
             XDai => {
                 ("https://blockscout.com/xdai/mainnet/api", "https://blockscout.com/xdai/mainnet")
             }
+
             Chiado => {
                 ("https://blockscout.chiadochain.net/api", "https://blockscout.chiadochain.net")
             }
+
             FilecoinHyperspaceTestnet => {
                 ("https://api.hyperspace.node.glif.io/rpc/v1", "https://hyperspace.filfox.info")
             }
+
             Sokol => ("https://blockscout.com/poa/sokol/api", "https://blockscout.com/poa/sokol"),
+
             Poa => ("https://blockscout.com/poa/core/api", "https://blockscout.com/poa/core"),
+
             Rsk => ("https://blockscout.com/rsk/mainnet/api", "https://blockscout.com/rsk/mainnet"),
+
             Oasis => ("https://scan.oasischain.io/api", "https://scan.oasischain.io/"),
+
             Emerald => {
                 ("https://explorer.emerald.oasis.dev/api", "https://explorer.emerald.oasis.dev/")
             }
@@ -403,24 +422,31 @@ impl Chain {
                 "https://testnet.explorer.emerald.oasis.dev/api",
                 "https://testnet.explorer.emerald.oasis.dev/",
             ),
+
             Aurora => ("https://api.aurorascan.dev/api", "https://aurorascan.dev"),
             AuroraTestnet => {
                 ("https://testnet.aurorascan.dev/api", "https://testnet.aurorascan.dev")
             }
+
             Evmos => ("https://evm.evmos.org/api", "https://evm.evmos.org/"),
             EvmosTestnet => ("https://evm.evmos.dev/api", "https://evm.evmos.dev/"),
-            Celo => ("https://explorer.celo.org/mainnet", "https://explorer.celo.org/mainnet/api"),
+
+            Celo => ("https://explorer.celo.org/mainnet/api", "https://explorer.celo.org/mainnet"),
             CeloAlfajores => {
-                ("https://explorer.celo.org/alfajores", "https://explorer.celo.org/alfajores/api")
+                ("https://explorer.celo.org/alfajores/api", "https://explorer.celo.org/alfajores")
             }
             CeloBaklava => {
-                ("https://explorer.celo.org/baklava", "https://explorer.celo.org/baklava/api")
+                ("https://explorer.celo.org/baklava/api", "https://explorer.celo.org/baklava")
             }
-            Canto => ("https://evm.explorer.canto.io/", "https://evm.explorer.canto.io/api"),
+
+            Canto => ("https://evm.explorer.canto.io/api", "https://evm.explorer.canto.io/"),
             CantoTestnet => (
-                "https://testnet-explorer.canto.neobase.one/",
                 "https://testnet-explorer.canto.neobase.one/api",
+                "https://testnet-explorer.canto.neobase.one/",
             ),
+
+            Boba => ("https://api.bobascan.com/api", "https://bobascan.com"),
+
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
@@ -467,6 +493,7 @@ impl Chain {
             Celo |
             CeloAlfajores |
             CeloBaklava => "ETHERSCAN_API_KEY",
+
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
             Polygon | PolygonMumbai => "POLYGONSCAN_API_KEY",
@@ -476,6 +503,8 @@ impl Chain {
             Moonbeam | Moonbase | MoonbeamDev | Moonriver => "MOONSCAN_API_KEY",
 
             Canto | CantoTestnet => "BLOCKSCOUT_API_KEY",
+
+            Boba => "BOBASCAN_API_KEY",
 
             // Explicitly exhaustive. See NB above.
             XDai |
