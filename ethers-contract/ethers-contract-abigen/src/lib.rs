@@ -155,6 +155,21 @@ impl Abigen {
         self
     }
 
+    #[deprecated = "Use add_derive instead"]
+    #[doc(hidden)]
+    pub fn add_event_derive<S: Into<String>>(mut self, derive: S) -> Self {
+        self.derives.push(derive.into());
+        self
+    }
+
+    /// Add a custom derive to the derives for all structs and enums.
+    ///
+    /// For example, this makes it possible to derive serde::Serialize and serde::Deserialize.
+    pub fn add_derive<S: Into<String>>(mut self, derive: S) -> Self {
+        self.derives.push(derive.into());
+        self
+    }
+
     #[deprecated = "Use format instead"]
     #[doc(hidden)]
     pub fn rustfmt(mut self, rustfmt: bool) -> Self {
@@ -168,21 +183,6 @@ impl Abigen {
     /// the local `rustfmt` version or config.
     pub fn format(mut self, format: bool) -> Self {
         self.format = format;
-        self
-    }
-
-    #[deprecated = "Use add_derive instead"]
-    #[doc(hidden)]
-    pub fn add_event_derive<S: Into<String>>(mut self, derive: S) -> Self {
-        self.derives.push(derive.into());
-        self
-    }
-
-    /// Add a custom derive to the derives for all structs and enums.
-    ///
-    /// For example, this makes it possible to derive serde::Serialize and serde::Deserialize.
-    pub fn add_derive<S: Into<String>>(mut self, derive: S) -> Self {
-        self.derives.push(derive.into());
         self
     }
 
