@@ -358,13 +358,14 @@ impl<'a, T: ArtifactOutput> ArtifactsState<'a, T> {
     ///
     /// this concludes the [`Project::compile()`] statemachine
     fn write_cache(self) -> Result<ProjectCompileOutput<T>> {
-        trace!("write cache");
         let ArtifactsState { output, cache, compiled_artifacts } = self;
         let project = cache.project();
         let ignored_error_codes = project.ignored_error_codes.clone();
         let compiler_severity_filter = project.compiler_severity_filter.clone();
-        let skip_write_to_disk = project.no_artifacts ||
-            output.has_error(&ignored_error_codes, &compiler_severity_filter);
+        let has_error = output.has_error(&ignored_error_codes, &compiler_severity_filter);
+        let skip_write_to_disk = project.no_artifacts || has_error;
+        trace!(?has_error, ?project.no_artifacts, ?skip_write_to_disk, cache_path=?project.cache_path(),"prepare writing cache file");
+
         let cached_artifacts = cache.consume(&compiled_artifacts, !skip_write_to_disk)?;
         Ok(ProjectCompileOutput {
             compiler_output: output,
