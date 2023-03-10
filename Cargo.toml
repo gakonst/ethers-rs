@@ -75,7 +75,7 @@ ethers-contract-derive = { version = "2.0.0", path = "ethers-contract/ethers-con
 ethers-derive-eip712 = { version = "2.0.0", path = "ethers-core/ethers-derive-eip712", default-features = false }
 
 # async / async utils
-tokio = "1.25"
+tokio = "1.26"
 tokio-tungstenite = { version = "0.18.0", default-features = false }
 futures = { version = "0.3.26", default-features = false }
 futures-core = { version = "0.3.26", default-features = false }
@@ -104,7 +104,7 @@ serde_json = "1.0"
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = "1.0"
-async-trait = "0.1.64"
+async-trait = "0.1.66"
 auto_impl = "1.0"
 
 # misc
@@ -122,7 +122,7 @@ rand = "0.8"
 bytes = "1.4"
 semver = "1.0"
 criterion = "0.4"
-rayon = "1.6"
+rayon = "1.7"
 
 # tracing
 tracing = "0.1.37"
