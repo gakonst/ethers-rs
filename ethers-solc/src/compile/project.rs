@@ -364,7 +364,7 @@ impl<'a, T: ArtifactOutput> ArtifactsState<'a, T> {
         let compiler_severity_filter = project.compiler_severity_filter.clone();
         let has_error = output.has_error(&ignored_error_codes, &compiler_severity_filter);
         let skip_write_to_disk = project.no_artifacts || has_error;
-        trace!(?has_error, ?project.no_artifacts, ?skip_write_to_disk, cache_path=?project.cache_path(),"prepare writing cache file");
+        trace!(has_error, project.no_artifacts, skip_write_to_disk, cache_path=?project.cache_path(),"prepare writing cache file");
 
         let cached_artifacts = cache.consume(&compiled_artifacts, !skip_write_to_disk)?;
         Ok(ProjectCompileOutput {
