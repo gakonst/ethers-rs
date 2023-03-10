@@ -29,6 +29,8 @@ pub enum EtherscanError {
     IO(#[from] std::io::Error),
     #[error("Local networks (e.g. anvil, ganache, geth --dev) cannot be indexed by etherscan")]
     LocalNetworksNotSupported,
+    #[error("Received error response: status={status},message={message}, result={result:?}")]
+    ErrorResponse { status: String, message: String, result: Option<String> },
     #[error("Unknown error: {0}")]
     Unknown(String),
     #[error("Missing field: {0}")]

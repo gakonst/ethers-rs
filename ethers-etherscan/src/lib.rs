@@ -214,14 +214,15 @@ impl Client {
         })?;
 
         match res {
-            ResponseData::Error { result, .. } => {
-                if result.starts_with("Max rate limit reached") {
-                    Err(EtherscanError::RateLimitExceeded)
-                } else if result.to_lowercase() == "invalid api key" {
-                    Err(EtherscanError::InvalidApiKey)
-                } else {
-                    Err(EtherscanError::Unknown(result))
+            ResponseData::Error { result, message, status } => {
+                if let Some(ref result) = result {
+                    if result.starts_with("Max rate limit reached") {
+                        return Err(EtherscanError::RateLimitExceeded)
+                    } else if result.to_lowercase() == "invalid api key" {
+                        return Err(EtherscanError::InvalidApiKey)
+                    }
                 }
+                Err(EtherscanError::ErrorResponse { status, message, result })
             }
             ResponseData::Success(res) => Ok(res),
         }
@@ -426,7 +427,7 @@ pub struct Response<T> {
 #[serde(untagged)]
 pub enum ResponseData<T> {
     Success(Response<T>),
-    Error { status: String, message: String, result: String },
+    Error { status: String, message: String, result: Option<String> },
 }
 
 /// The type that gets serialized as query
@@ -461,8 +462,16 @@ fn into_url(url: impl IntoUrl) -> std::result::Result<Url, reqwest::Error> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Client, EtherscanError};
+    use crate::{Client, EtherscanError, ResponseData};
     use ethers_core::types::{Address, Chain, H256};
+
+    // <https://github.com/foundry-rs/foundry/issues/4406>
+    #[test]
+    fn can_parse_block_scout_err() {
+        let err = "{\"message\":\"Something went wrong.\",\"result\":null,\"status\":\"0\"}";
+        let resp: ResponseData<Address> = serde_json::from_str(err).unwrap();
+        assert!(matches!(resp, ResponseData::Error { .. }));
+    }
 
     #[test]
     fn test_api_paths() {
