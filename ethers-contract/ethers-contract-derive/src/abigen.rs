@@ -252,13 +252,17 @@ mod tests {
     ) -> Punctuated<Parameter, Token![,]> {
         let mut punct: Punctuated<Parameter, Token![,]> = v.into_iter().collect();
         if trailing {
-            punct.push_punct(Token![,](Span::call_site()));
+            punct.push_punct(Default::default());
         }
         punct
     }
 
-    fn derives<'a>(v: impl IntoIterator<Item = &'a str>) -> Parameter {
-        let derives = v.into_iter().map(|s| syn::parse_str::<syn::Path>(s).unwrap()).collect();
+    fn derives<'a>(v: impl IntoIterator<Item = &'a str>, trailing: bool) -> Parameter {
+        let mut derives: Punctuated<_, _> =
+            v.into_iter().map(|s| syn::parse_str::<syn::Path>(s).unwrap()).collect();
+        if trailing {
+            derives.push_punct(Default::default());
+        }
         Parameter::Derives(derives)
     }
 
@@ -280,13 +284,13 @@ mod tests {
                 arg(
                     "TestContract",
                     "path/to/abi.json",
-                    [derives(["serde::Serialize", "serde::Deserialize"])],
+                    [derives(["serde::Deserialize", "serde::Serialize"], false)],
                     false
                 ),
                 arg(
                     "TestContract2",
                     "other.json",
-                    [derives(["serde::Serialize", "serde::Deserialize"])],
+                    [derives(["serde::Deserialize", "serde::Serialize"], false)],
                     false
                 ),
             ]
@@ -323,7 +327,7 @@ mod tests {
                 arg(
                     "TestContract2",
                     "other.json",
-                    [derives(["serde::Serialize", "serde::Deserialize"])],
+                    [derives(["serde::Deserialize", "serde::Serialize"], false)],
                     false
                 ),
             ]
@@ -348,8 +352,8 @@ mod tests {
                 arg(
                     "TestContract2",
                     "other.json",
-                    [derives(["serde::Serialize", "serde::Deserialize"])],
-                    true
+                    [derives(["serde::Deserialize", "serde::Serialize"], true)],
+                    false
                 ),
             ]
         );
@@ -388,7 +392,7 @@ mod tests {
                         method("myMethod(uint256,bool)", "my_renamed_method"),
                         method("myOtherMethod()", "my_other_renamed_method"),
                     ]),
-                    derives(["Asdf", "a::B", "a::b::c::D"])
+                    derives(["Asdf", "a::B", "a::b::c::D"], false)
                 ],
                 false
             )
