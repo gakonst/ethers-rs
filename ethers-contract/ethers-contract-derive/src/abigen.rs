@@ -29,8 +29,7 @@ impl Contracts {
             let span = contract.abi.span();
             let contract = contract
                 .into_builder()
-                .and_then(Abigen::expand)
-                .map_err(|err| Error::new(span, err))?;
+                .and_then(|a| a.expand().map_err(|e| Error::new(span, e)))?;
             expansions.push(contract);
         }
 
@@ -41,12 +40,9 @@ impl Contracts {
 
 impl Parse for Contracts {
     fn parse(input: ParseStream) -> Result<Self> {
-        Ok(Self {
-            inner: input
-                .parse_terminated::<_, Token![;]>(ContractArgs::parse)?
-                .into_iter()
-                .collect(),
-        })
+        let inner =
+            input.parse_terminated::<_, Token![;]>(ContractArgs::parse)?.into_iter().collect();
+        Ok(Self { inner })
     }
 }
 
@@ -59,27 +55,19 @@ pub(crate) struct ContractArgs {
 }
 
 impl ContractArgs {
-    fn into_builder(self) -> eyre::Result<Abigen> {
+    fn into_builder(self) -> Result<Abigen> {
         // use the name's ident
         let contract_name = self.name;
         let abi = self.abi.value();
         let abi_source = abi.parse().map_err(|e| Error::new(self.abi.span(), e))?;
-        let mut builder = Abigen {
-            abi_source,
-            contract_name,
-            derives: Default::default(),
-            error_aliases: Default::default(),
-            event_aliases: Default::default(),
-            method_aliases: Default::default(),
-            format: Default::default(),
-        };
+        let mut builder = Abigen::new_raw(contract_name, abi_source);
 
         for parameter in self.parameters {
             match parameter {
                 Parameter::Methods(methods) => builder
-                    .method_aliases
+                    .method_aliases_mut()
                     .extend(methods.into_iter().map(|m| (m.signature, m.alias.to_string()))),
-                Parameter::Derives(derives) => builder.derives.extend(derives),
+                Parameter::Derives(derives) => builder.derives_mut().extend(derives),
             }
         }
 

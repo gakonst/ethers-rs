@@ -57,42 +57,45 @@ use std::{collections::HashMap, fmt, fs, io, path::Path};
 /// which exports an `ERC20Token` struct, along with all its events.
 ///
 /// ```no_run
-/// # use ethers_contract_abigen::Abigen;
-/// # fn foo() -> Result<(), Box<dyn std::error::Error>> {
+/// use ethers_contract_abigen::Abigen;
+///
 /// Abigen::new("ERC20Token", "./abi.json")?.generate()?.write_to_file("token.rs")?;
-/// # Ok(())
-/// # }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 #[derive(Clone, Debug)]
 #[must_use = "Abigen does nothing unless you generate or expand it."]
 pub struct Abigen {
     /// The source of the ABI JSON for the contract whose bindings are being generated.
-    pub abi_source: Source,
+    abi_source: Source,
 
     /// The contract's name to use for the generated type.
-    pub contract_name: Ident,
+    contract_name: Ident,
 
     /// Whether to format the generated bindings using [`prettyplease`].
-    pub format: bool,
+    format: bool,
 
     /// Manually specified contract method aliases.
-    pub method_aliases: HashMap<String, String>,
+    method_aliases: HashMap<String, String>,
 
     /// Manually specified event name aliases.
-    pub event_aliases: HashMap<String, String>,
+    event_aliases: HashMap<String, String>,
 
     /// Manually specified error name aliases.
-    pub error_aliases: HashMap<String, String>,
+    error_aliases: HashMap<String, String>,
 
     /// Manually specified `derive` macros added to all structs and enums.
-    pub derives: Vec<syn::Path>,
+    derives: Vec<syn::Path>,
 }
 
 impl Abigen {
-    /// Creates a new builder with the given [ABI Source][Source].
+    /// Creates a new builder with the given contract name and ABI source strings.
+    ///
+    /// # Errors
+    ///
+    /// If `contract_name` could not be parsed as a valid [Ident], or if `abi_source` could not be
+    /// parsed as a valid [Source].
     pub fn new<T: AsRef<str>, S: AsRef<str>>(contract_name: T, abi_source: S) -> Result<Self> {
-        let abi_source = abi_source.as_ref().parse()?;
         Ok(Self {
-            abi_source,
+            abi_source: abi_source.as_ref().parse()?,
             contract_name: syn::parse_str(contract_name.as_ref())?,
             format: true,
             method_aliases: Default::default(),
@@ -100,6 +103,19 @@ impl Abigen {
             event_aliases: Default::default(),
             error_aliases: Default::default(),
         })
+    }
+
+    /// Creates a new builder with the given contract name [Ident] and [ABI source][Source].
+    pub fn new_raw(contract_name: Ident, abi_source: Source) -> Self {
+        Self {
+            contract_name,
+            abi_source,
+            format: true,
+            method_aliases: Default::default(),
+            derives: Default::default(),
+            event_aliases: Default::default(),
+            error_aliases: Default::default(),
+        }
     }
 
     /// Attempts to load a new builder from an ABI JSON file at the specific path.
@@ -198,6 +214,58 @@ impl Abigen {
     pub fn expand(self) -> Result<(ExpandedContract, Context)> {
         let ctx = Context::from_abigen(self)?;
         Ok((ctx.expand()?, ctx))
+    }
+}
+
+impl Abigen {
+    /// Returns a reference to the contract's ABI source.
+    pub fn source(&self) -> &Source {
+        &self.abi_source
+    }
+
+    /// Returns a mutable reference to the contract's ABI source.
+    pub fn source_mut(&mut self) -> &mut Source {
+        &mut self.abi_source
+    }
+
+    /// Returns a reference to the contract's name.
+    pub fn name(&self) -> &Ident {
+        &self.contract_name
+    }
+
+    /// Returns a mutable reference to the contract's name.
+    pub fn name_mut(&mut self) -> &mut Ident {
+        &mut self.contract_name
+    }
+
+    /// Returns a reference to the contract's method aliases.
+    pub fn method_aliases(&self) -> &HashMap<String, String> {
+        &self.method_aliases
+    }
+
+    /// Returns a mutable reference to the contract's method aliases.
+    pub fn method_aliases_mut(&mut self) -> &mut HashMap<String, String> {
+        &mut self.method_aliases
+    }
+
+    /// Returns a reference to the contract's event aliases.
+    pub fn event_aliases(&self) -> &HashMap<String, String> {
+        &self.event_aliases
+    }
+
+    /// Returns a mutable reference to the contract's event aliases.
+    pub fn error_aliases_mut(&mut self) -> &mut HashMap<String, String> {
+        &mut self.error_aliases
+    }
+
+    /// Returns a reference to the contract's derives.
+    pub fn derives(&self) -> &Vec<syn::Path> {
+        &self.derives
+    }
+
+    /// Returns a mutable reference to the contract's derives.
+    pub fn derives_mut(&mut self) -> &mut Vec<syn::Path> {
+        &mut self.derives
     }
 }
 
