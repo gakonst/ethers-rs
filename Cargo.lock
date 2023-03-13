@@ -1591,7 +1591,7 @@ dependencies = [
  "coins-bip32",
  "coins-bip39",
  "coins-ledger",
- "elliptic-curve 0.12.3",
+ "elliptic-curve 0.13.2",
  "eth-keystore",
  "ethers-contract-derive",
  "ethers-core",
