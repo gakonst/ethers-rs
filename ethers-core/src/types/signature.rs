@@ -14,7 +14,6 @@ use k256::{
 };
 use open_fastrlp::Decodable;
 use serde::{Deserialize, Serialize};
-use sha3::{Digest, Keccak256};
 use std::{convert::TryFrom, fmt, str::FromStr};
 use thiserror::Error;
 
@@ -117,8 +116,8 @@ impl Signature {
         };
 
         let (recoverable_sig, recovery_id) = self.as_signature()?;
-        let verify_key = VerifyingKey::recover_from_digest(
-            Keccak256::new_with_prefix(message_hash),
+        let verify_key = VerifyingKey::recover_from_prehash(
+            message_hash.as_ref(),
             &recoverable_sig,
             recovery_id,
         )?;

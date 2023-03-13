@@ -43,7 +43,6 @@ convert_case = { version = "0.6.0", optional = true }
 syn = { version = "1.0.109", optional = true }
 proc-macro2 = { version = "1.0.52", optional = true }
 num_enum = "0.5.11"
-sha3 = "0.10.6"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tempfile = { version = "3.4.0", default-features = false }
