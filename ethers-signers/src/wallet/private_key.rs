@@ -66,7 +66,7 @@ impl Wallet<SigningKey> {
         S: AsRef<[u8]>,
     {
         let (secret, uuid) = eth_keystore::new(dir, rng, password, name)?;
-        let signer = SigningKey::from_bytes(secret.as_slice())?;
+        let signer = SigningKey::from_bytes(secret.as_slice().into())?;
         let address = secret_key_to_address(&signer);
         Ok((Self { signer, address, chain_id: 1 }, uuid))
     }
@@ -79,7 +79,7 @@ impl Wallet<SigningKey> {
         S: AsRef<[u8]>,
     {
         let secret = eth_keystore::decrypt_key(keypath, password)?;
-        let signer = SigningKey::from_bytes(secret.as_slice())?;
+        let signer = SigningKey::from_bytes(secret.as_slice().into())?;
         let address = secret_key_to_address(&signer);
         Ok(Self { signer, address, chain_id: 1 })
     }
@@ -93,7 +93,7 @@ impl Wallet<SigningKey> {
 
     /// Creates a new Wallet instance from a raw scalar value (big endian).
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, WalletError> {
-        let signer = SigningKey::from_bytes(bytes)?;
+        let signer = SigningKey::from_bytes(bytes.into())?;
         let address = secret_key_to_address(&signer);
         Ok(Self { signer, address, chain_id: 1 })
     }
@@ -132,7 +132,7 @@ impl FromStr for Wallet<SigningKey> {
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         let src = src.strip_prefix("0x").or_else(|| src.strip_prefix("0X")).unwrap_or(src);
         let src = hex::decode(src)?;
-        let sk = SigningKey::from_bytes(&src)?;
+        let sk = SigningKey::from_bytes(src.as_slice().into())?;
         Ok(sk.into())
     }
 }
