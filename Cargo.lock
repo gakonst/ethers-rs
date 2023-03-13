@@ -1382,11 +1382,9 @@ version = "2.0.0"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-core",
- "eyre",
  "hex",
  "proc-macro2",
  "quote",
- "serde_json",
  "syn",
 ]
 

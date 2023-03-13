@@ -120,7 +120,7 @@ pub struct Context {
 }
 
 impl Context {
-    /// Expands the whole rust contract
+    /// Generates the tokens.
     pub fn expand(&self) -> Result<ExpandedContract> {
         let name = &self.contract_ident;
         let name_mod = util::ident(&util::safe_module_name(&self.contract_name));
@@ -232,8 +232,6 @@ impl Context {
             }
         };
 
-        let contract_ident = util::ident(&args.contract_name);
-
         // NOTE: We only check for duplicate signatures here, since if there are
         //   duplicate aliases, the compiler will produce a warning because a
         //   method will be re-defined.
@@ -281,27 +279,20 @@ impl Context {
             );
         }
 
-        let extra_derives = args
-            .derives
-            .iter()
-            .map(|derive| syn::parse_str::<Path>(derive))
-            .collect::<Result<Vec<_>, _>>()
-            .wrap_err("failed to parse event derives")?;
-
-        Ok(Context {
+        Ok(Self {
             abi,
             human_readable,
             abi_str: Literal::string(&abi_str),
             abi_parser,
             internal_structs,
-            contract_ident,
-            contract_name: args.contract_name,
+            contract_name: args.contract_name.to_string(),
+            contract_ident: args.contract_name,
             contract_bytecode,
             contract_deployed_bytecode,
             method_aliases,
             error_aliases: Default::default(),
-            extra_derives,
             event_aliases,
+            extra_derives: args.derives,
         })
     }
 
