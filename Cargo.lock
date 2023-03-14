@@ -598,9 +598,9 @@ dependencies = [
 
 [[package]]
 name = "coins-bip32"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "634c509653de24b439672164bbf56f5f582a2ab0e313d3b0f6af0b7345cf2560"
+checksum = "8a3b95d26eace980ade01e0ea8d996f7d5ae7031f9c5f258317ec82e400f33c1"
 dependencies = [
  "bincode",
  "bs58",
@@ -617,26 +617,28 @@ dependencies = [
 
 [[package]]
 name = "coins-bip39"
-version = "0.7.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a11892bcac83b4c6e95ab84b5b06c76d9d70ad73548dd07418269c5c7977171"
+checksum = "a05ceda6ab4876de899fe23e8a171b200be9a346289bce12d41311e4bce2f104"
 dependencies = [
  "bitvec 0.17.4",
  "coins-bip32",
  "getrandom 0.2.8",
  "hex",
  "hmac 0.12.1",
+ "once_cell",
  "pbkdf2",
  "rand 0.8.5",
  "sha2 0.10.6",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]
 name = "coins-core"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c94090a6663f224feae66ab01e41a2555a8296ee07b5f20dab8888bdefc9f617"
+checksum = "87637d08a1dd6bfa3bcd697f0a4de6c1b3a03e085b9d841a7e9cde4ccb61514b"
 dependencies = [
  "base58check",
  "base64 0.12.3",
@@ -655,9 +657,9 @@ dependencies = [
 
 [[package]]
 name = "coins-ledger"
-version = "0.7.1"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9da2894aa851a2b2726f20b05e61c7dfebc39a06e23258e74d176d60093dd508"
+checksum = "5ce1c85fe59cc5b87d779c0a3b7a0c400e804137be481850f99e743cafafbe9f"
 dependencies = [
  "async-trait",
  "blake2b_simd",
@@ -1372,11 +1374,9 @@ version = "2.0.0"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-core",
- "eyre",
  "hex",
  "proc-macro2",
  "quote",
- "serde_json",
  "syn",
 ]
 
@@ -1587,7 +1587,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-wasm"
-version = "0.0.0"
+version = "2.0.0"
 dependencies = [
  "console_error_panic_hook",
  "ethers",
@@ -1603,7 +1603,7 @@ dependencies = [
 
 [[package]]
 name = "examples-anvil"
-version = "0.0.0"
+version = "2.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1612,14 +1612,14 @@ dependencies = [
 
 [[package]]
 name = "examples-big-numbers"
-version = "0.0.0"
+version = "2.0.0"
 dependencies = [
  "ethers",
 ]
 
 [[package]]
 name = "examples-contracts"
-version = "0.0.0"
+version = "2.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1630,7 +1630,7 @@ dependencies = [
 
 [[package]]
 name = "examples-events"
-version = "0.0.0"
+version = "2.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1653,7 +1653,7 @@ dependencies = [
 
 [[package]]
 name = "examples-middleware"
-version = "0.0.0"
+version = "2.0.0"
 dependencies = [
  "async-trait",
  "ethers",
@@ -1666,7 +1666,7 @@ dependencies = [
 
 [[package]]
 name = "examples-providers"
-version = "0.0.0"
+version = "2.0.0"
 dependencies = [
  "async-trait",
  "ethers",
@@ -1681,7 +1681,7 @@ dependencies = [
 
 [[package]]
 name = "examples-queries"
-version = "0.0.0"
+version = "2.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1692,7 +1692,7 @@ dependencies = [
 
 [[package]]
 name = "examples-subscriptions"
-version = "0.0.0"
+version = "2.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1703,7 +1703,7 @@ dependencies = [
 
 [[package]]
 name = "examples-transactions"
-version = "0.0.0"
+version = "2.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1714,7 +1714,7 @@ dependencies = [
 
 [[package]]
 name = "examples-wallets"
-version = "0.0.0"
+version = "2.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -3781,9 +3781,9 @@ dependencies = [
 
 [[package]]
 name = "serde-wasm-bindgen"
-version = "0.4.5"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3b4c031cd0d9014307d82b8abf653c0290fbdaeb4c02d00c63cf52f728628bf"
+checksum = "f3b143e2833c57ab9ad3ea280d21fd34e285a42837aeb0ee301f4f41890fa00e"
 dependencies = [
  "js-sys",
  "serde",
