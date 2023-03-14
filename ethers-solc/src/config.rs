@@ -381,7 +381,17 @@ impl ProjectPathsConfig {
     /// Flattens all file imports into a single string
     pub fn flatten(&self, target: &Path) -> Result<String> {
         tracing::trace!("flattening file");
-        let graph = Graph::resolve(self)?;
+        let mut input_files = self.input_files();
+
+        // we need to ensure that the target is part of the input set, otherwise it's not
+        // part of the graph if it's not imported by any input file
+        let flatten_target = target.to_path_buf();
+        if !input_files.contains(&flatten_target) {
+            input_files.push(flatten_target);
+        }
+
+        let sources = Source::read_all_files(input_files)?;
+        let graph = Graph::resolve_sources(self, sources)?;
         self.flatten_node(target, &graph, &mut Default::default(), false, false, false).map(|x| {
             format!("{}\n", utils::RE_THREE_OR_MORE_NEWLINES.replace_all(&x, "\n\n").trim())
         })
@@ -401,7 +411,7 @@ impl ProjectPathsConfig {
             SolcError::msg(format!("failed to get parent directory for \"{:?}\"", target.display()))
         })?;
         let target_index = graph.files().get(target).ok_or_else(|| {
-            SolcError::msg(format!("cannot resolve file at \"{:?}\"", target.display()))
+            SolcError::msg(format!("cannot resolve file at {:?}", target.display()))
         })?;
 
         if imported.contains(target_index) {

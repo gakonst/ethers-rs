@@ -84,6 +84,7 @@ where
                     // if not paginatable, load logs and consume
                     let filter = self.filter.clone();
                     let provider = self.provider;
+                    #[allow(clippy::redundant_async_block)]
                     let fut = Box::pin(async move { provider.get_logs(&filter).await });
                     rewake_with_new_state!(ctx, self, LogQueryState::LoadLogs(fut));
                 } else {
@@ -106,6 +107,7 @@ where
                         let filter = self.filter.clone().from_block(from_block).to_block(to_block);
                         let provider = self.provider;
                         // load first page of logs
+                        #[allow(clippy::redundant_async_block)]
                         let fut = Box::pin(async move { provider.get_logs(&filter).await });
                         rewake_with_new_state!(ctx, self, LogQueryState::LoadLogs(fut));
                     }
@@ -134,13 +136,14 @@ where
                         // no more pages to load, and everything is consumed
                         // can safely assume this will always be set in this state
                         if from_block > self.last_block.unwrap() {
-                            return Poll::Ready(None)
+                            return Poll::Ready(None);
                         }
                         // load next page
                         self.from_block = Some(to_block + 1);
 
                         let filter = self.filter.clone().from_block(from_block).to_block(to_block);
                         let provider = self.provider;
+                        #[allow(clippy::redundant_async_block)]
                         let fut = Box::pin(async move { provider.get_logs(&filter).await });
                         rewake_with_new_state!(ctx, self, LogQueryState::LoadLogs(fut));
                     }
