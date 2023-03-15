@@ -40,9 +40,9 @@ pub(super) fn sig_from_digest_bytes_trial_recovery(
     let r = U256::from_big_endian(r_bytes.as_slice());
     let s = U256::from_big_endian(s_bytes.as_slice());
 
-    if check_candidate(&sig, RecoveryId::from_byte(0).unwrap(), digest, vk) {
+    if check_candidate(sig, RecoveryId::from_byte(0).unwrap(), digest, vk) {
         EthSig { r, s, v: 0 }
-    } else if check_candidate(&sig, RecoveryId::from_byte(1).unwrap(), digest, vk) {
+    } else if check_candidate(sig, RecoveryId::from_byte(1).unwrap(), digest, vk) {
         EthSig { r, s, v: 1 }
     } else {
         panic!("bad sig");
