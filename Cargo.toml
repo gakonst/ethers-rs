@@ -77,11 +77,11 @@ ethers-derive-eip712 = { version = "2.0.0", path = "ethers-core/ethers-derive-ei
 # async / async utils
 tokio = "1.26"
 tokio-tungstenite = { version = "0.18.0", default-features = false }
-futures = { version = "0.3.26", default-features = false }
-futures-core = { version = "0.3.26", default-features = false }
-futures-util = { version = "0.3.26", default-features = false }
-futures-executor = { version = "0.3.26", default-features = false }
-futures-channel = { version = "0.3.26", default-features = false }
+futures = { version = "0.3.27", default-features = false }
+futures-core = { version = "0.3.27", default-features = false }
+futures-util = { version = "0.3.27", default-features = false }
+futures-executor = { version = "0.3.27", default-features = false }
+futures-channel = { version = "0.3.27", default-features = false }
 futures-locks = { version = "0.7.1", default-features = false }
 futures-timer = { version = "3.0.2", default-features = false, features = ["wasm-bindgen"] }
 pin-project = "1.0"
