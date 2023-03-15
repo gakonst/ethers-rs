@@ -140,8 +140,7 @@ impl Signature {
             self.s.to_big_endian(&mut s_bytes);
             let gar: &GenericArray<u8, U32> = GenericArray::from_slice(&r_bytes);
             let gas: &GenericArray<u8, U32> = GenericArray::from_slice(&s_bytes);
-            let sig = K256Signature::from_scalars(*gar, *gas)?;
-            sig
+            K256Signature::from_scalars(*gar, *gas)?
         };
 
         Ok((signature, recovery_id))
