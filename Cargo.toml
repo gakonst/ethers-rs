@@ -126,3 +126,6 @@ tokio = { version = "1.18", features = ["macros", "rt-multi-thread"] }
 [profile.release.package.ethers-wasm]
 # Tell `rustc` to optimize for small code size.
 opt-level = "s"
+
+[package.metadata.docs.rs]
+all-features = true
