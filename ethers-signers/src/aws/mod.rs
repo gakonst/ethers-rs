@@ -253,7 +253,7 @@ impl super::Signer for AwsSigner {
             payload.encode_eip712().map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
         let sig = self.sign_digest(digest).await?;
-        let sig = utils::sig_from_digest_bytes_trial_recovery(&sig, digest.into(), &self.pubkey);
+        let sig = utils::sig_from_digest_bytes_trial_recovery(&sig, digest, &self.pubkey);
 
         Ok(sig)
     }
