@@ -6,11 +6,7 @@ use std::convert::TryFrom;
 
 use ethers_core::{
     k256::{
-        ecdsa::{
-            recoverable::{Id, Signature as RSig},
-            Signature as KSig, VerifyingKey,
-        },
-        elliptic_curve::sec1::ToEncodedPoint,
+        ecdsa::{RecoveryId, Signature as RSig, Signature as KSig, VerifyingKey},
         FieldBytes,
     },
     types::{Address, Signature as EthSig, U256},
@@ -20,40 +16,34 @@ use rusoto_kms::{GetPublicKeyResponse, SignResponse};
 
 use crate::aws::AwsSignerError;
 
-/// Converts a recoverable signature to an ethers signature
-pub(super) fn rsig_to_ethsig(sig: &RSig) -> EthSig {
-    let v: u8 = sig.recovery_id().into();
-    let v = (v + 27) as u64;
+/// Makes a trial recovery to check whether an RSig corresponds to a known
+/// `VerifyingKey`
+fn check_candidate(
+    sig: &RSig,
+    recovery_id: RecoveryId,
+    digest: [u8; 32],
+    vk: &VerifyingKey,
+) -> bool {
+    VerifyingKey::recover_from_prehash(digest.as_slice(), sig, recovery_id)
+        .map(|key| key == *vk)
+        .unwrap_or(false)
+}
+
+/// Recover an rsig from a signature under a known key by trial/error
+pub(super) fn sig_from_digest_bytes_trial_recovery(
+    sig: &KSig,
+    digest: [u8; 32],
+    vk: &VerifyingKey,
+) -> EthSig {
     let r_bytes: FieldBytes = sig.r().into();
     let s_bytes: FieldBytes = sig.s().into();
     let r = U256::from_big_endian(r_bytes.as_slice());
     let s = U256::from_big_endian(s_bytes.as_slice());
-    EthSig { r, s, v }
-}
 
-/// Makes a trial recovery to check whether an RSig corresponds to a known
-/// `VerifyingKey`
-fn check_candidate(sig: &RSig, digest: [u8; 32], vk: &VerifyingKey) -> bool {
-    if let Ok(key) = sig.recover_verifying_key_from_digest_bytes(digest.as_ref().into()) {
-        key == *vk
-    } else {
-        false
-    }
-}
-
-/// Recover an rsig from a signature under a known key by trial/error
-pub(super) fn rsig_from_digest_bytes_trial_recovery(
-    sig: &KSig,
-    digest: [u8; 32],
-    vk: &VerifyingKey,
-) -> RSig {
-    let sig_0 = RSig::new(sig, Id::new(0).unwrap()).unwrap();
-    let sig_1 = RSig::new(sig, Id::new(1).unwrap()).unwrap();
-
-    if check_candidate(&sig_0, digest, vk) {
-        sig_0
-    } else if check_candidate(&sig_1, digest, vk) {
-        sig_1
+    if check_candidate(&sig, RecoveryId::from_byte(0).unwrap(), digest, vk) {
+        EthSig { r, s, v: 0 }
+    } else if check_candidate(&sig, RecoveryId::from_byte(1).unwrap(), digest, vk) {
+        EthSig { r, s, v: 1 }
     } else {
         panic!("bad sig");
     }
