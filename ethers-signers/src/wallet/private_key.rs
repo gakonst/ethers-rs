@@ -297,7 +297,7 @@ mod tests {
 
         // this should populate the tx chain_id as the signer's chain_id (1337) before signing and
         // normalize the v
-        let sig = wallet.sign_transaction_sync(&tx);
+        let sig = wallet.sign_transaction_sync(&tx).unwrap();
 
         // ensure correct v given the chain - first extract recid
         let recid = (sig.v - 35) % 2;
