@@ -1,20 +1,18 @@
 //! Helper functions for deriving `EthEvent`
 
+use crate::{abi_ty, utils};
 use ethers_contract_abigen::Source;
+use ethers_core::{
+    abi::{Event, EventExt, EventParam, HumanReadableParser},
+    macros::{ethers_contract_crate, ethers_core_crate},
+};
+use hex::FromHex;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{
     parse::Error, spanned::Spanned, AttrStyle, Data, DeriveInput, Field, Fields, Lit, Meta,
     NestedMeta,
 };
-
-use ethers_core::{
-    abi::{Event, EventExt, EventParam, HumanReadableParser},
-    macros::{ethers_contract_crate, ethers_core_crate},
-};
-use hex::FromHex;
-
-use crate::{abi_ty, utils};
 
 /// Generates the `EthEvent` trait support
 pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, Error> {
@@ -124,10 +122,7 @@ impl EventField {
     }
 }
 
-fn derive_decode_from_log_impl(
-    input: &DeriveInput,
-    event: &Event,
-) -> Result<proc_macro2::TokenStream, Error> {
+fn derive_decode_from_log_impl(input: &DeriveInput, event: &Event) -> Result<TokenStream, Error> {
     let ethers_core = ethers_core_crate();
 
     let fields: Vec<_> = match input.data {
@@ -159,10 +154,8 @@ fn derive_decode_from_log_impl(
                 fields.unnamed.iter().collect()
             }
             Fields::Unit => {
-                return Err(Error::new(
-                    input.span(),
-                    "EthEvent cannot be derived for empty structs and unit",
-                ))
+                // Empty structs or unit, no fields
+                vec![]
             }
         },
         Data::Enum(_) => {
@@ -172,35 +165,6 @@ fn derive_decode_from_log_impl(
             return Err(Error::new(input.span(), "EthEvent cannot be derived for unions"))
         }
     };
-
-    let mut event_fields = Vec::with_capacity(fields.len());
-    for (index, field) in fields.iter().enumerate() {
-        let mut param = event.inputs[index].clone();
-
-        let (topic_name, indexed) = parse_field_attributes(field)?;
-        if indexed {
-            param.indexed = true;
-        }
-        let topic_name =
-            param.indexed.then(|| topic_name.or_else(|| Some(param.name.clone()))).flatten();
-
-        event_fields.push(EventField { topic_name, index, param });
-    }
-
-    // convert fields to params list
-    let topic_types = event_fields
-        .iter()
-        .filter(|f| f.is_indexed())
-        .map(|f| utils::topic_param_type_quote(&f.param.kind));
-
-    let topic_types_init = quote! {let topic_types = ::std::vec![#( #topic_types ),*];};
-
-    let data_types = event_fields
-        .iter()
-        .filter(|f| !f.is_indexed())
-        .map(|f| utils::param_type_quote(&f.param.kind));
-
-    let data_types_init = quote! {let data_types = [#( #data_types ),*];};
 
     // decode
     let (signature_check, flat_topics_init, topic_tokens_len_check) = if event.anonymous {
@@ -233,6 +197,51 @@ fn derive_decode_from_log_impl(
             },
         )
     };
+
+    // Event with no fields, can skip decoding
+    if fields.is_empty() {
+        return Ok(quote! {
+
+            let #ethers_core::abi::RawLog {topics, data} = log;
+
+            #signature_check
+
+            if topics.len() != 1usize || !data.is_empty() {
+                return Err(::ethers_core::abi::Error::InvalidData);
+            }
+
+            #ethers_core::abi::Tokenizable::from_token(#ethers_core::abi::Token::Tuple(::std::vec::Vec::new())).map_err(|_|#ethers_core::abi::Error::InvalidData)
+        })
+    }
+
+    let mut event_fields = Vec::with_capacity(fields.len());
+    for (index, field) in fields.iter().enumerate() {
+        let mut param = event.inputs[index].clone();
+
+        let (topic_name, indexed) = parse_field_attributes(field)?;
+        if indexed {
+            param.indexed = true;
+        }
+        let topic_name =
+            param.indexed.then(|| topic_name.or_else(|| Some(param.name.clone()))).flatten();
+
+        event_fields.push(EventField { topic_name, index, param });
+    }
+
+    // convert fields to params list
+    let topic_types = event_fields
+        .iter()
+        .filter(|f| f.is_indexed())
+        .map(|f| utils::topic_param_type_quote(&f.param.kind));
+
+    let topic_types_init = quote! {let topic_types = ::std::vec![#( #topic_types ),*];};
+
+    let data_types = event_fields
+        .iter()
+        .filter(|f| !f.is_indexed())
+        .map(|f| utils::param_type_quote(&f.param.kind));
+
+    let data_types_init = quote! {let data_types = [#( #data_types ),*];};
 
     // check if indexed are sorted
     let tokens_init = if event_fields

@@ -670,3 +670,31 @@ fn derives_abi_name() {
         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".parse().unwrap()
     );
 }
+
+// <https://github.com/gakonst/ethers-rs/issues/2261>
+#[test]
+fn derive_empty_events() {
+    #[derive(Debug, EthEvent)]
+    #[ethevent(abi = "EmptyEvent()")]
+    struct EmptyEvent;
+
+    let log = RawLog { topics: vec![EmptyEvent::signature()], data: vec![] };
+    let _event = <EmptyEvent as EthLogDecode>::decode_log(&log).unwrap();
+
+    let log = RawLog { topics: vec![EmptyEvent::signature()], data: vec![0] };
+    assert!(<EmptyEvent as EthLogDecode>::decode_log(&log).is_err());
+
+    let log = RawLog { topics: vec![EmptyEvent::signature(), H256::random()], data: vec![0] };
+    assert!(<EmptyEvent as EthLogDecode>::decode_log(&log).is_err());
+
+    assert_eq!(EmptyEvent::abi_signature(), "EmptyEvent()");
+
+    abigen!(
+        DummyContract,
+        r#"[
+           event EmptyEvent2()
+        ]"#,
+    );
+
+    assert_eq!(EmptyEvent2Filter::abi_signature(), "EmptyEvent2()");
+}
