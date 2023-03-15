@@ -33,7 +33,7 @@ arrayvec = { version = "0.7", default-features = false }
 # crypto
 elliptic-curve.workspace = true
 generic-array.workspace = true
-k256 = { workspace = true, features = ["keccak256", "ecdsa", "std"] }
+k256 = { workspace = true, features = ["ecdsa", "std"] }
 tiny-keccak.workspace = true
 rand.workspace = true
 
