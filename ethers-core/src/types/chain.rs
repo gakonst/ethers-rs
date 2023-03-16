@@ -47,6 +47,7 @@ pub type ParseChainError = TryFromPrimitiveError<Chain>;
 #[strum(serialize_all = "kebab-case")]
 #[repr(u64)]
 pub enum Chain {
+    #[strum(serialize = "ethlive")]
     Mainnet = 1,
     Morden = 2,
     Ropsten = 3,
