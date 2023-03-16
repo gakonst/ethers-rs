@@ -1,0 +1,89 @@
+[package]
+name = "ethers"
+authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+readme = "../README.md"
+description = "A complete Ethereum and Celo Rust library"
+
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
+keywords.workspace = true
+exclude.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustc-args = ["--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+all-features = true
+
+[features]
+default = ["abigen", "rustls"]
+
+celo = [
+    "ethers-core/celo",
+    "ethers-providers/celo",
+    "ethers-signers/celo",
+    "ethers-contract/celo",
+    "ethers-middleware/celo",
+    "legacy",
+]
+
+legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
+
+# individual features per sub-crate
+## core
+eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
+## providers
+ws = ["ethers-providers/ws"]
+ipc = ["ethers-providers/ipc"]
+rustls = [
+    "ethers-middleware/rustls",
+    "ethers-providers/rustls",
+    "ethers-etherscan/rustls",
+    "ethers-contract/rustls",
+    "ethers-solc/rustls",
+]
+openssl = [
+    "ethers-middleware/openssl",
+    "ethers-providers/openssl",
+    "ethers-etherscan/openssl",
+    "ethers-contract/openssl",
+    "ethers-solc/openssl",
+]
+dev-rpc = ["ethers-providers/dev-rpc"]
+## signers
+ledger = ["ethers-signers/ledger"]
+trezor = ["ethers-signers/trezor"]
+yubi = ["ethers-signers/yubi"]
+## contracts
+abigen = ["ethers-contract/abigen"]
+### abigen without reqwest
+abigen-offline = ["ethers-contract/abigen-offline"]
+## solc
+ethers-solc = ["dep:ethers-solc", "ethers-etherscan/ethers-solc"]
+solc-full = ["ethers-solc?/full"]
+solc-tests = ["ethers-solc?/tests"]
+
+# Deprecated
+solc-sha2-asm = []
+
+[dependencies]
+ethers-addressbook.workspace = true
+ethers-contract.workspace = true
+ethers-core.workspace = true
+ethers-etherscan.workspace = true
+ethers-middleware.workspace = true
+ethers-providers.workspace = true
+ethers-signers.workspace = true
+
+ethers-solc = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }

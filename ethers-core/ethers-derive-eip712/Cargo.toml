@@ -1,23 +1,29 @@
 [package]
 name = "ethers-derive-eip712"
-version = "2.0.0"
-edition = "2021"
-rust-version = "1.64"
-description = "Custom derive macro for EIP-712 typed data"
-license = "MIT OR Apache-2.0"
+authors = ["Ryan Tate <ryan.michael.tate@gmail.com>"]
+description = "Derive procedural macro for EIP-712 typed data"
+
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
+keywords.workspace = true
 
 [lib]
 proc-macro = true
 
 [dependencies]
-quote = "1.0.9"
-syn = "1.0.77"
-ethers-core = { version = "^2.0.0", path = "../", default-features = false, features = [
-    "eip712",
-    "macros",
-] }
-hex = "0.4.3"
-serde_json = "1.0.68"
+ethers-core = { workspace = true, features = ["eip712", "macros"] }
+
+quote.workspace = true
+syn.workspace = true
+
+hex.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
-ethers-contract-derive = { version = "^2.0.0", path = "../../ethers-contract/ethers-contract-derive" }
+ethers-contract-derive.workspace = true

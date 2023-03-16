@@ -5,7 +5,8 @@
 ### Unreleased
 
 - Add support for `ethlive` as a chain name [#2268](https://github.com/gakonst/ethers-rs/pull/2268)
-- Add `other: OtherFields` to `TransactionReceipt` [#2209[](https://github.com/gakonst/ethers-rs/pull/2209)
+- Make `Chain` more round-trip friendly [#2270](https://github.com/gakonst/ethers-rs/pull/2270)
+- Add `other: OtherFields` to `TransactionReceipt` [#2209](https://github.com/gakonst/ethers-rs/pull/2209)
 - Add `Signature::recover_typed_data` [#2120](https://github.com/gakonst/ethers-rs/pull/2120)
 - Add `abi::encode_packed` [#2104](https://github.com/gakonst/ethers-rs/pull/2104)
 - Add support for custom JavaScript tracer to `debug_traceCall` and `debug_traceTransaction` [#2064](https://github.com/gakonst/ethers-rs/pull/2064)

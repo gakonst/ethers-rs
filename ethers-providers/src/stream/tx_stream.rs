@@ -178,7 +178,7 @@ mod tests {
         utils::Anvil,
     };
     use futures_util::{FutureExt, StreamExt};
-    use std::{collections::HashSet, convert::TryFrom, time::Duration};
+    use std::{collections::HashSet, time::Duration};
 
     #[tokio::test]
     async fn can_stream_pending_transactions() {

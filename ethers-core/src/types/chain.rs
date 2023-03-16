@@ -16,9 +16,15 @@ pub type ParseChainError = TryFromPrimitiveError<Chain>;
 // When adding a new chain:
 //   1. add new variant to the Chain enum;
 //   2. add extra information in the last `impl` block (explorer URLs, block time) when applicable;
-//   3. (optional) add aliases: `#[strum(serialize = "main", serialize = "alias", ...)]`;
-//      "main" must be present and will be used in `Display`, `Serialize` and `FromStr`,
-//      while the aliases will be added only to `FromStr`.
+//   3. (optional) add aliases:
+//     - Strum (in kebab-case): `#[strum(to_string = "<main>", serialize = "<aliasX>", ...)]`
+//      `to_string = "<main>"` must be present and will be used in `Display`, `Serialize`
+//      and `FromStr`, while `serialize = "<aliasX>"` will be appended to `FromStr`.
+//      More info: <https://docs.rs/strum/latest/strum/additional_attributes/index.html#attributes-on-variants>
+//     - Serde (in snake_case): `#[serde(alias = "<aliasX>", ...)]`
+//      Aliases are appended to the `Deserialize` implementation.
+//      More info: <https://serde.rs/variant-attrs.html>
+//     - Add a test at the bottom of the file
 
 // We don't derive Serialize because it is manually implemented using AsRef<str> and it would
 // break a lot of things since Serialize is `kebab-case` vs Deserialize `snake_case`.
@@ -70,19 +76,23 @@ pub enum Chain {
 
     Rsk = 30,
 
-    #[strum(serialize = "bsc")]
+    #[strum(to_string = "bsc", serialize = "binance-smart-chain")]
+    #[serde(alias = "bsc")]
     BinanceSmartChain = 56,
-    #[strum(serialize = "bsc-testnet")]
+    #[strum(to_string = "bsc-testnet", serialize = "binance-smart-chain-testnet")]
+    #[serde(alias = "bsc_testnet")]
     BinanceSmartChainTestnet = 97,
 
     Poa = 99,
     Sokol = 77,
 
-    #[strum(serialize = "gnosis", serialize = "xdai", serialize = "gnosis-chain")]
+    #[strum(to_string = "xdai", serialize = "gnosis", serialize = "gnosis-chain")]
+    #[serde(alias = "xdai", alias = "gnosis", alias = "gnosis_chain")]
     XDai = 100,
 
     Polygon = 137,
-    #[strum(serialize = "mumbai", serialize = "polygon-mumbai")]
+    #[strum(to_string = "mumbai", serialize = "polygon-mumbai")]
+    #[serde(alias = "mumbai")]
     PolygonMumbai = 80001,
 
     Fantom = 250,
@@ -95,9 +105,9 @@ pub enum Chain {
 
     Moonbase = 1287,
 
-    #[strum(serialize = "dev")]
     Dev = 1337,
-    #[strum(serialize = "anvil-hardhat", serialize = "anvil", serialize = "hardhat")]
+    #[strum(to_string = "anvil-hardhat", serialize = "anvil", serialize = "hardhat")]
+    #[serde(alias = "anvil", alias = "hardhat")]
     AnvilHardhat = 31337,
 
     Evmos = 9001,
@@ -114,7 +124,8 @@ pub enum Chain {
     FilecoinHyperspaceTestnet = 3141,
 
     Avalanche = 43114,
-    #[strum(serialize = "fuji", serialize = "avalanche-fuji")]
+    #[strum(to_string = "fuji", serialize = "avalanche-fuji")]
+    #[serde(alias = "fuji")]
     AvalancheFuji = 43113,
 
     Celo = 42220,
@@ -214,6 +225,7 @@ impl Serialize for Chain {
 
 // NB: all utility functions *should* be explicitly exhaustive (not use `_` matcher) so we don't
 //     forget to update them when adding a new `Chain` variant.
+#[allow(clippy::match_like_matches_macro)]
 impl Chain {
     /// Returns the chain's average blocktime, if applicable.
     ///
@@ -275,7 +287,6 @@ impl Chain {
     /// assert!(!Chain::Mainnet.is_legacy());
     /// assert!(Chain::Celo.is_legacy());
     /// ```
-    #[allow(clippy::match_like_matches_macro)]
     pub const fn is_legacy(&self) -> bool {
         use Chain::*;
 
@@ -551,12 +562,56 @@ mod tests {
     use strum::IntoEnumIterator;
 
     #[test]
-    fn test_default_chain() {
+    fn default() {
         assert_eq!(serde_json::to_string(&Chain::default()).unwrap(), "\"mainnet\"");
     }
 
     #[test]
-    fn test_enum_iter() {
+    fn enum_iter() {
         assert_eq!(Chain::COUNT, Chain::iter().size_hint().0);
+    }
+
+    #[test]
+    fn roundtrip_string() {
+        for chain in Chain::iter() {
+            let chain_string = chain.to_string();
+            assert_eq!(chain_string, format!("{chain}"));
+            assert_eq!(chain_string.as_str(), chain.as_ref());
+            assert_eq!(serde_json::to_string(&chain).unwrap(), format!("\"{chain_string}\""));
+
+            assert_eq!(chain_string.parse::<Chain>().unwrap(), chain);
+        }
+    }
+
+    #[test]
+    fn roundtrip_serde() {
+        for chain in Chain::iter() {
+            let chain_string = serde_json::to_string(&chain).unwrap();
+            let chain_string = chain_string.replace('-', "_");
+            assert_eq!(serde_json::from_str::<'_, Chain>(&chain_string).unwrap(), chain);
+        }
+    }
+
+    #[test]
+    fn aliases() {
+        use Chain::*;
+
+        // kebab-case
+        const ALIASES: &[(Chain, &[&str])] = &[
+            (BinanceSmartChain, &["bsc", "binance-smart-chain"]),
+            (BinanceSmartChainTestnet, &["bsc-testnet", "binance-smart-chain-testnet"]),
+            (XDai, &["xdai", "gnosis", "gnosis-chain"]),
+            (PolygonMumbai, &["mumbai"]),
+            (AnvilHardhat, &["anvil", "hardhat"]),
+            (AvalancheFuji, &["fuji"]),
+        ];
+
+        for &(chain, aliases) in ALIASES {
+            for &alias in aliases {
+                assert_eq!(alias.parse::<Chain>().unwrap(), chain);
+                let s = alias.to_string().replace('-', "_");
+                assert_eq!(serde_json::from_str::<Chain>(&format!("\"{s}\"")).unwrap(), chain);
+            }
+        }
     }
 }

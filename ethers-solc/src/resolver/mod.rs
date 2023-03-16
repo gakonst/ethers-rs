@@ -437,7 +437,7 @@ impl Graph {
     }
 }
 
-#[cfg(all(feature = "svm-solc"))]
+#[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
 impl Graph {
     /// Consumes the nodes of the graph and returns all input files together with their appropriate
     /// version and the edges of the graph
@@ -759,7 +759,7 @@ impl<'a> Iterator for NodesIter<'a> {
 }
 
 /// Container type for solc versions and their compatible sources
-#[cfg(all(feature = "svm-solc"))]
+#[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
 #[derive(Debug)]
 pub struct VersionedSources {
     resolved_solc_include_paths: IncludePaths,
@@ -767,7 +767,7 @@ pub struct VersionedSources {
     offline: bool,
 }
 
-#[cfg(all(feature = "svm-solc"))]
+#[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
 impl VersionedSources {
     /// Resolves or installs the corresponding `Solc` installation.
     ///

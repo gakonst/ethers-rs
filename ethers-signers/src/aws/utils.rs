@@ -71,8 +71,8 @@ pub(super) fn decode_pubkey(resp: GetPublicKeyResponse) -> Result<VerifyingKey, 
         .public_key
         .ok_or_else(|| AwsSignerError::from("Pubkey not found in response".to_owned()))?;
 
-    let spk = spki::SubjectPublicKeyInfo::try_from(raw.as_ref())?;
-    let key = VerifyingKey::from_sec1_bytes(spk.subject_public_key)?;
+    let spki = spki::SubjectPublicKeyInfoRef::try_from(raw.as_ref())?;
+    let key = VerifyingKey::from_sec1_bytes(spki.subject_public_key.raw_bytes())?;
 
     Ok(key)
 }

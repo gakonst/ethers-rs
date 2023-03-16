@@ -275,7 +275,7 @@ where
     /// Broadcasts the contract deployment transaction and after waiting for it to
     /// be sufficiently confirmed (default: 1), it returns a tuple with
     /// the [`Contract`](crate::Contract) struct at the deployed contract's address
-    /// and the corresponding [`TransactionReceipt`](ethers_core::types::TransactionReceipt).
+    /// and the corresponding [`TransactionReceipt`].
     pub async fn send_with_receipt(
         self,
     ) -> Result<(ContractInstance<B, M>, TransactionReceipt), ContractError<M>> {
@@ -290,11 +290,12 @@ where
         let receipt = pending_tx
             .confirmations(self.confs)
             .await
-            .map_err(|_| ContractError::ContractNotDeployed)?
+            .ok()
+            .flatten()
             .ok_or(ContractError::ContractNotDeployed)?;
         let address = receipt.contract_address.ok_or(ContractError::ContractNotDeployed)?;
 
-        let contract = ContractInstance::new(address, self.abi.clone(), self.client.clone());
+        let contract = ContractInstance::new(address, self.abi, self.client);
         Ok((contract, receipt))
     }
 
