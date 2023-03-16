@@ -207,7 +207,7 @@ fn derive_decode_from_log_impl(input: &DeriveInput, event: &Event) -> Result<Tok
             #signature_check
 
             if topics.len() != 1usize || !data.is_empty() {
-                return Err(::ethers_core::abi::Error::InvalidData);
+                return Err(#ethers_core::abi::Error::InvalidData);
             }
 
             #ethers_core::abi::Tokenizable::from_token(#ethers_core::abi::Token::Tuple(::std::vec::Vec::new())).map_err(|_|#ethers_core::abi::Error::InvalidData)
