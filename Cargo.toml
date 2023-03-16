@@ -58,6 +58,8 @@ default-members = [
     "ethers-solc",
 ]
 
+resolver = "2"
+
 [workspace.dependencies]
 # workspace crates
 ethers = { version = "2.0.0", path = "ethers", default-features = false }
@@ -77,11 +79,11 @@ ethers-derive-eip712 = { version = "2.0.0", path = "ethers-core/ethers-derive-ei
 # async / async utils
 tokio = "1.26"
 tokio-tungstenite = { version = "0.18.0", default-features = false }
-futures = { version = "0.3.27", default-features = false }
-futures-core = { version = "0.3.27", default-features = false }
-futures-util = { version = "0.3.27", default-features = false }
-futures-executor = { version = "0.3.27", default-features = false }
-futures-channel = { version = "0.3.27", default-features = false }
+futures = { version = "0.3.27", default-features = false, features = ["std"] }
+futures-core = "0.3.27"
+futures-util = "0.3.27"
+futures-executor = "0.3.27"
+futures-channel = "0.3.27"
 futures-locks = { version = "0.7.1", default-features = false }
 futures-timer = { version = "3.0.2", default-features = false, features = ["wasm-bindgen"] }
 pin-project = "1.0"
@@ -103,7 +105,7 @@ serde_json = "1.0"
 # macros
 proc-macro2 = "1.0"
 quote = "1.0"
-syn = "1.0"
+syn = { version = "1.0", features = ["extra-traits"] }
 async-trait = "0.1.66"
 auto_impl = "1.0"
 

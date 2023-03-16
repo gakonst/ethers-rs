@@ -30,7 +30,7 @@ ethers-core = { workspace = true, features = ["macros"] }
 
 proc-macro2.workspace = true
 quote.workspace = true
-syn = { workspace = true, features = ["full"] }
+syn.workspace = true
 prettyplease = "0.1.25"
 
 Inflector = "0.11"
