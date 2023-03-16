@@ -1,11 +1,7 @@
-use std::{collections::HashMap, str::FromStr};
-
-use serde::{de, Deserialize};
-use serde_aux::prelude::*;
-
-use ethers_core::types::U256;
-
 use crate::{Client, EtherscanError, Response, Result};
+use ethers_core::types::U256;
+use serde::{de, Deserialize, Deserializer};
+use std::{collections::HashMap, str::FromStr};
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "PascalCase")]
@@ -24,6 +20,25 @@ pub struct GasOracle {
     #[serde(deserialize_with = "deserialize_f64_vec")]
     #[serde(rename = "gasUsedRatio")]
     pub gas_used_ratio: Vec<f64>,
+}
+
+fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: FromStr + serde::Deserialize<'de>,
+    <T as FromStr>::Err: std::fmt::Display,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrInt<T> {
+        String(String),
+        Number(T),
+    }
+
+    match StringOrInt::<T>::deserialize(deserializer)? {
+        StringOrInt::String(s) => s.parse::<T>().map_err(serde::de::Error::custom),
+        StringOrInt::Number(i) => Ok(i),
+    }
 }
 
 fn deserialize_f64_vec<'de, D>(deserializer: D) -> core::result::Result<Vec<f64>, D::Error>

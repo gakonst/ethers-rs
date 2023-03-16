@@ -17,22 +17,40 @@ env:
 
 jobs:
     test:
-        name: test ${{ matrix.os }} ${{ matrix.flags }}
+        name: test ${{ matrix.os }} (${{ matrix.flags.name }})
         runs-on: ${{ matrix.os }}
         strategy:
             fail-fast: false
             matrix:
-                os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-                flags: ["--workspace", "--workspace --all-features"]
-                exclude:
-                    # sha2-asm
-                    - os: windows-latest
+                os: ["ubuntu-latest", "macos-latest"]
+                flags:
+                    - name: no default features
+                      flags: --workspace --no-default-features
+                    - name: default features
+                      flags: --workspace
+                    - name: all features
                       flags: --workspace --all-features
+                include:
+                    # not workspace because compiling examples fails for no reason in CI,
+                    - os: windows-latest
+                      flags:
+                          name: no default features
+                          flags: -p ethers --no-default-features
+                    - os: windows-latest
+                      flags:
+                          name: default features
+                          flags: -p ethers
+                    - os: windows-latest
+                      flags:
+                          name: all features
+                          flags: -p ethers --all-features
         steps:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@stable
               with:
-                toolchain: ${{ matrix.os == 'windows-latest' && 'stable-x86_64-pc-windows-gnu' || 'stable' }}
+                  toolchain:
+                      ${{ matrix.os == 'windows-latest' && 'stable-x86_64-pc-windows-gnu' ||
+                      'stable' }}
             - name: Install Anvil
               uses: foundry-rs/foundry-toolchain@v1
               with:
@@ -43,12 +61,12 @@ jobs:
             - name: Install nextest
               uses: taiki-e/install-action@nextest
             - uses: Swatinem/rust-cache@v2
-            - name: test
+            - name: test ${{ matrix.flags.flags }}
               shell: bash
               # skip `ethers_etherscan::it` and `ethers::live`
               run: |
                   cargo nextest run \
-                  ${{ matrix.flags }} \
+                  ${{ matrix.flags.flags }} \
                   -E "!binary(~live) & !(deps(ethers-etherscan) & kind(test))"
 
     etherscan-tests:
@@ -147,9 +165,6 @@ jobs:
             - uses: Swatinem/rust-cache@v2
             - name: Check
               run: cargo check --workspace --target wasm32-unknown-unknown
-            # TODO: [#2191](https://github.com/gakonst/ethers-rs/issues/2191)
-            # - name: Check all features
-            #   run: cargo check --workspace --target wasm32-unknown-unknown --all-features
 
             - name: Install wasm-pack
               run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh

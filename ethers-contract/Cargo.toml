@@ -1,45 +1,53 @@
 [package]
 name = "ethers-contract"
-version = "2.0.0"
-edition = "2021"
-rust-version = "1.64"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
-license = "MIT OR Apache-2.0"
-description = "Smart contract bindings for the ethers-rs crate"
-homepage = "https://docs.rs/ethers"
-repository = "https://github.com/gakonst/ethers-rs"
-keywords = ["ethereum", "web3", "celo", "ethers"]
+readme = "README.md"
+description = "Type-safe abstractions for interacting with Ethereum smart contracts"
+
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
+keywords.workspace = true
+exclude.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustc-args = ["--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+all-features = true
 
 [dependencies]
-ethers-providers = { version = "^2.0.0", path = "../ethers-providers", default-features = false }
-ethers-core = { version = "^2.0.0", path = "../ethers-core", default-features = false }
-ethers-contract-abigen = { version = "^2.0.0", path = "ethers-contract-abigen", default-features = false, optional = true }
-ethers-contract-derive = { version = "^2.0.0", path = "ethers-contract-derive", optional = true }
-ethers-derive-eip712 = { version = "^2.0.0", path = "../ethers-core/ethers-derive-eip712", optional = true }
+ethers-providers.workspace = true
+ethers-core.workspace = true
 
-serde = { version = "1.0.124", default-features = false }
-serde_json = { version = "1.0.64", default-features = false }
-thiserror = { version = "1.0", default-features = false }
-once_cell = { version = "1.17.1" }
-pin-project = { version = "1.0.11", default-features = false }
-futures-util = { version = "^0.3" }
-hex = { version = "0.4.3", default-features = false, features = ["std"] }
+serde.workspace = true
+serde_json.workspace = true
+futures-util.workspace = true
+pin-project.workspace = true
+thiserror.workspace = true
+once_cell.workspace = true
+hex.workspace = true
+
+# abigen
+ethers-contract-abigen = { workspace = true, optional = true }
+ethers-contract-derive = { workspace = true, optional = true }
+
+# eip712
+ethers-derive-eip712 = { workspace = true, optional = true }
 
 [dev-dependencies]
-ethers-providers = { version = "^2.0.0", path = "../ethers-providers", default-features = false, features = [
-    "ws",
-] }
-ethers-signers = { version = "^2.0.0", path = "../ethers-signers" }
-ethers-contract-abigen = { version = "^2.0.0", path = "ethers-contract-abigen" }
-ethers-contract-derive = { version = "^2.0.0", path = "ethers-contract-derive" }
-ethers-core = { version = "^2.0.0", path = "../ethers-core", default-features = false, features = [
-    "eip712",
-] }
-ethers-derive-eip712 = { version = "^2.0.0", path = "../ethers-core/ethers-derive-eip712" }
-ethers-solc = { version = "^2.0.0", path = "../ethers-solc", default-features = false }
+ethers-signers.workspace = true
+ethers-solc.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { version = "1.18", default-features = false, features = ["macros"] }
+tokio = { workspace = true, features = ["macros"] }
 
 [features]
 default = ["abigen"]
@@ -54,8 +62,3 @@ legacy = []
 
 rustls = ["ethers-contract-abigen/rustls"]
 openssl = ["ethers-contract-abigen/openssl"]
-
-[package.metadata.docs.rs]
-all-features = true
-rustc-args = ["--cfg", "docsrs"]
-rustdoc-args = ["--cfg", "docsrs"]

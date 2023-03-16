@@ -2,11 +2,8 @@ use super::{GasOracle, Result};
 use async_trait::async_trait;
 use ethers_core::types::U256;
 use futures_locks::RwLock;
-use std::{
-    fmt::Debug,
-    future::Future,
-    time::{Duration, Instant},
-};
+use instant::{Duration, Instant};
+use std::{fmt::Debug, future::Future};
 
 #[derive(Debug)]
 pub struct Cache<T: GasOracle> {

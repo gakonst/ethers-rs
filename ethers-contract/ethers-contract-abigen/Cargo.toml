@@ -1,50 +1,58 @@
 [package]
 name = "ethers-contract-abigen"
-version = "2.0.0"
-edition = "2021"
-rust-version = "1.64"
 authors = [
     "Nicholas Rodrigues Lordello <nlordell@gmail.com>",
     "Georgios Konstantopoulos <me@gakonst.com>",
 ]
-license = "MIT OR Apache-2.0"
+readme = "README.md"
 description = "Code generation for type-safe bindings to Ethereum smart contracts"
-homepage = "https://docs.rs/ethers"
-repository = "https://github.com/gakonst/ethers-rs"
-keywords = ["ethereum", "web3", "celo", "ethers"]
 
-[dependencies]
-ethers-core = { version = "^2.0.0", path = "../../ethers-core", features = ["macros"] }
-ethers-etherscan = { version = "^2.0.0", path = "../../ethers-etherscan", default-features = false, optional = true }
-
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = { version = "1.0.12", default-features = false, features = ["full", "extra-traits"] }
-prettyplease = "0.1.23"
-
-Inflector = "0.11"
-serde_json = "1.0.61"
-serde = { version = "1.0.124", features = ["derive"] }
-hex = { version = "0.4.2", default-features = false, features = ["std"] }
-cfg-if = "1.0.0"
-dunce = "1.0.2"
-walkdir = "2.3.2"
-eyre = "0.6"
-regex = "1.6.0"
-toml = "0.5.9"
-
-reqwest = { version = "0.11.3", default-features = false, features = ["blocking"], optional = true }
-tokio = { version = "1.0", default-features = false, features = ["sync"], optional = true }
-url = { version = "2.3.1", default-features = false, optional = true }
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-# NOTE: this enables wasm compatibility for getrandom indirectly
-getrandom = { version = "0.2", features = ["js"] }
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
+keywords.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
 rustc-args = ["--cfg", "docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+all-features = true
+
+[dependencies]
+ethers-core = { workspace = true, features = ["macros"] }
+
+proc-macro2.workspace = true
+quote.workspace = true
+syn = { workspace = true, features = ["full"] }
+prettyplease = "0.1.25"
+
+Inflector = "0.11"
+serde.workspace = true
+serde_json.workspace = true
+hex.workspace = true
+dunce.workspace = true
+walkdir.workspace = true
+eyre.workspace = true
+regex.workspace = true
+toml.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# online
+ethers-etherscan = { workspace = true, optional = true }
+reqwest = { workspace = true, features = ["blocking"], optional = true }
+tokio = { workspace = true, optional = true }
+url = { workspace = true, optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# NOTE: this enables wasm compatibility for getrandom indirectly
+getrandom.workspace = true
 
 [features]
 online = ["reqwest", "ethers-etherscan", "url", "tokio"]
@@ -52,8 +60,5 @@ openssl = ["online", "reqwest/native-tls", "ethers-etherscan/openssl"]
 rustls = ["online", "reqwest/rustls-tls", "ethers-etherscan/rustls"]
 
 [dev-dependencies]
-tempfile = "3.2.0"
-ethers-solc = { version = "^2.0.0", path = "../../ethers-solc", default-features = false, features = [
-    "project-util",
-    "svm-solc",
-] }
+tempfile.workspace = true
+ethers-solc = { workspace = true, features = ["project-util", "svm-solc"] }

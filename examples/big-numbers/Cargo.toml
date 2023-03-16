@@ -1,10 +1,12 @@
 [package]
 name = "examples-big-numbers"
 version = "2.0.0"
+publish = false
 authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
-edition = "2021"
+
+license.workspace = true
+rust-version.workspace = true
+edition.workspace = true
 
 [dev-dependencies]
-#ethers-core = { version = "^1.0.0", path = "../../ethers-core" }
-ethers = { path = "../..", version = "2.0.0" }
-
+ethers.workspace = true

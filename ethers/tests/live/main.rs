@@ -9,5 +9,5 @@
 mod celo;
 
 pub(crate) mod simple_storage {
-    ethers::contract::abigen!(SimpleStorage, "./tests/testdata/SimpleStorage.json");
+    ethers::contract::abigen!(SimpleStorage, "../testdata/SimpleStorage.json");
 }

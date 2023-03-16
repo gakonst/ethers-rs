@@ -11,10 +11,9 @@ use ethers_core::{
     },
     utils::{keccak256, Anvil},
 };
-use ethers_derive_eip712::*;
 use ethers_providers::{Http, Middleware, MiddlewareError, Provider, StreamExt};
 use ethers_signers::{LocalWallet, Signer};
-use std::{convert::TryFrom, iter::FromIterator, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 #[derive(Debug)]
 pub struct NonClone<M> {
@@ -787,7 +786,10 @@ async fn multicall_aggregate() {
 }
 
 #[tokio::test]
+#[cfg(feature = "eip712")]
 async fn test_derive_eip712() {
+    use ethers_derive_eip712::*;
+
     // Generate Contract ABI Bindings
     abigen!(
         DeriveEip712Test,

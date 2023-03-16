@@ -4,7 +4,7 @@ pub use mnemonic::{MnemonicBuilder, MnemonicBuilderError};
 mod private_key;
 pub use private_key::WalletError;
 
-#[cfg(feature = "yubihsm")]
+#[cfg(all(feature = "yubihsm", not(target_arch = "wasm32")))]
 mod yubi;
 
 use crate::{to_eip155_v, Signer};
