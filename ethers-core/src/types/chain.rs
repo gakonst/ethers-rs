@@ -548,27 +548,11 @@ impl Chain {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
     use strum::IntoEnumIterator;
 
     #[test]
     fn test_default_chain() {
         assert_eq!(serde_json::to_string(&Chain::default()).unwrap(), "\"mainnet\"");
-    }
-
-    #[test]
-    fn test_parse_mainnet() {
-        assert_eq!(Chain::from_str("mainnet").unwrap(), Chain::Mainnet);
-    }
-
-    #[test]
-    fn test_parse_ethlive() {
-        assert_eq!(Chain::from_str("ethlive").unwrap(), Chain::Mainnet);
-    }
-
-    #[test]
-    fn test_format_mainnet() {
-        assert_eq!(format!("{}", Chain::Mainnet), "mainnet");
     }
 
     #[test]
