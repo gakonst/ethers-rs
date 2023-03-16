@@ -27,8 +27,8 @@ all-features = true
 ethers-core = { workspace = true, features = ["eip712"] }
 
 # crypto
-coins-bip32 = "0.8.0"
-coins-bip39 = "0.8.1"
+coins-bip32 = "0.8.3"
+coins-bip39 = "0.8.3"
 elliptic-curve.workspace = true
 sha2.workspace = true
 rand.workspace = true
@@ -53,7 +53,7 @@ eth-keystore = "0.5.0"
 home = { version = "0.5.4", optional = true }
 
 # ledger
-coins-ledger = { version = "0.8.1", default-features = false, optional = true }
+coins-ledger = { version = "0.8.3", default-features = false, optional = true }
 semver = { workspace = true, optional = true }
 
 # trezor

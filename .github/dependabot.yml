@@ -6,14 +6,3 @@ updates:
           interval: daily
           time: "03:00"
       open-pull-requests-limit: 10
-      ignore:
-          # TODO: bump rust-crypto
-          - dependency-name: elliptic-curve
-            versions:
-                - ">=0.13.0"
-          - dependency-name: k256
-            versions:
-                - ">=0.12.0"
-          - dependency-name: spki
-            versions:
-                - ">=0.7.0"
