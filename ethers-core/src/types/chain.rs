@@ -53,7 +53,8 @@ pub type ParseChainError = TryFromPrimitiveError<Chain>;
 #[strum(serialize_all = "kebab-case")]
 #[repr(u64)]
 pub enum Chain {
-    #[strum(serialize = "ethlive", serialize = "mainnet")]
+    #[strum(to_string = "mainnet", serialize = "ethlive")]
+    #[serde(alias = "ethlive")]
     Mainnet = 1,
     Morden = 2,
     Ropsten = 3,
@@ -598,6 +599,7 @@ mod tests {
 
         // kebab-case
         const ALIASES: &[(Chain, &[&str])] = &[
+            (Mainnet, &["ethlive"]),
             (BinanceSmartChain, &["bsc", "binance-smart-chain"]),
             (BinanceSmartChainTestnet, &["bsc-testnet", "binance-smart-chain-testnet"]),
             (XDai, &["xdai", "gnosis", "gnosis-chain"]),
