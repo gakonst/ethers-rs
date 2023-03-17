@@ -1,0 +1,2 @@
+pre-release-hook = ["git cliff -o CHANGELOG.md"]
+allow-branch = ["master"]
