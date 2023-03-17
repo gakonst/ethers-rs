@@ -172,7 +172,7 @@ jobs:
               with:
                   node-version: 16
             - name: Run wasm example
-              working-directory: examples/ethers-wasm
+              working-directory: examples/wasm
               run: |
                   yarn
                   yarn anvil &
