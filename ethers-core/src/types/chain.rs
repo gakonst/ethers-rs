@@ -53,7 +53,8 @@ pub type ParseChainError = TryFromPrimitiveError<Chain>;
 #[strum(serialize_all = "kebab-case")]
 #[repr(u64)]
 pub enum Chain {
-    #[strum(serialize = "ethlive", serialize = "mainnet")]
+    #[strum(to_string = "mainnet", serialize = "ethlive")]
+    #[serde(alias = "ethlive")]
     Mainnet = 1,
     Morden = 2,
     Ropsten = 3,
@@ -598,6 +599,7 @@ mod tests {
 
         // kebab-case
         const ALIASES: &[(Chain, &[&str])] = &[
+            (Mainnet, &["ethlive"]),
             (BinanceSmartChain, &["bsc", "binance-smart-chain"]),
             (BinanceSmartChainTestnet, &["bsc-testnet", "binance-smart-chain-testnet"]),
             (XDai, &["xdai", "gnosis", "gnosis-chain"]),
@@ -612,6 +614,15 @@ mod tests {
                 let s = alias.to_string().replace('-', "_");
                 assert_eq!(serde_json::from_str::<Chain>(&format!("\"{s}\"")).unwrap(), chain);
             }
+        }
+    }
+
+    #[test]
+    fn serde_to_string_match() {
+        for chain in Chain::iter() {
+            let chain_serde = serde_json::to_string(&chain).unwrap();
+            let chain_string = format!("\"{}\"", chain.to_string());
+            assert_eq!(chain_serde, chain_string);
         }
     }
 }
