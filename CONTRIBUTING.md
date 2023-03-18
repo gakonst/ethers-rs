@@ -341,10 +341,11 @@ When releasing the workspace:
 2. **Dry run the release.** Running the `cargo release` command without the
    `--execute` flag will perform a dry run.
 3. **Release the crate.**
-   Run the `cargo release` command with the `--execute` flag.
+   Run the `bin/release` script with the `--execute` flag.
    This will update the package versions in the relevant manifests, create
    git tags, automatically generate the [`CHANGELOG.md`](./CHANGELOG.md) file
    with [git-cliff], and finally publish the crates to `crates.io`.
+   For more information, see the top comment in the script file.
 
 [keep-a-changelog]: https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md
 [git-cliff]: https://github.com/orhun/git-cliff

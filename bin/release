@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 # Creates a new release of all the ethers crates in the workspace
+#
+# Note that this intended be run with the --execute flag, as the dry run will
+# perform all the checks that a normal `cargo release` command would.
+# This is because this script will execute only a few of the steps because it
+# has to run `git-cliff` to create the changelog in between steps, and exclude
+# all the example crates from the version bump.
+
 set -e
 
 info() {
@@ -102,6 +109,7 @@ for ex in examples/*; do
     fi
 done
 
+# shellcheck disable=SC2206
 COMMON_FLAGS=($VERBOSE $EXECUTE)
 
 info "bumping crate versions"
@@ -111,13 +119,13 @@ info "creating changelog"
 exec_or_print git cliff -t "$VERSION" -o CHANGELOG.md
 
 info "creating git commit"
-cargo release commit "${COMMON_FLAGS[@]}" $SIGN_COMMIT
+exec_or_print cargo release commit "${COMMON_FLAGS[@]}" $SIGN_COMMIT
 
 info "publishing crates"
-exec_or_print cargo release publish "${COMMON_FLAGS[@]}" "${WORKSPACE_FLAGS[@]}" $VERBOSE $EXECUTE
+exec_or_print cargo release publish "${COMMON_FLAGS[@]}" "${WORKSPACE_FLAGS[@]}"
 
 info "tagging commits"
-cargo release tag "${COMMON_FLAGS[@]}" "${WORKSPACE_FLAGS[@]}" $VERBOSE $EXECUTE $SIGN_TAG
+cargo release tag "${COMMON_FLAGS[@]}" "${WORKSPACE_FLAGS[@]}" $SIGN_TAG
 
 info "pushing commits and tags to remote"
-cargo release push "${COMMON_FLAGS[@]}" "${WORKSPACE_FLAGS[@]}" $VERBOSE $EXECUTE
+cargo release push "${COMMON_FLAGS[@]}" "${WORKSPACE_FLAGS[@]}"
