@@ -6,6 +6,35 @@ use syn::{
     PathArguments, Type,
 };
 
+/// Parses the specified attributes from a `syn::Attribute` iterator.
+macro_rules! parse_attributes {
+    ($attrs:expr, $attr_ident:literal, $meta:ident, $($field:pat, $opt:expr => $block:block)*) => {
+        const ERROR: &str = concat!("unrecognized ", $attr_ident, " attribute");
+        const ALREADY_SPECIFIED: &str = concat!($attr_ident, " attribute already specified");
+
+        for attr in $attrs {
+            if !attr.path().is_ident($attr_ident) {
+                continue;
+            }
+
+            attr.parse_nested_meta(|$meta| {
+                let ident = $meta.path.get_ident().ok_or_else(|| $meta.error(ERROR))?.to_string();
+                match ident.as_str() {
+                    $(
+                        $field if $opt.is_none() => $block,
+                        $field => return Err($meta.error(ALREADY_SPECIFIED)),
+                    )*
+
+                    _ => return Err($meta.error(ERROR)),
+                }
+
+                Ok(())
+            })?;
+        }
+    };
+}
+pub(crate) use parse_attributes;
+
 pub fn ident(name: &str) -> Ident {
     Ident::new(name, Span::call_site())
 }
@@ -104,6 +133,8 @@ pub fn param_type_quote(kind: &ParamType) -> TokenStream {
 /// Tries to find the corresponding `ParamType` used for tokenization for the
 /// given type
 pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
+    const ERROR: &str = "Failed to derive proper ABI from array field";
+
     match ty {
         Type::Array(arr) => {
             let ty = find_parameter_type(&arr.elem)?;
@@ -114,7 +145,7 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
                     }
                 }
             }
-            Err(Error::new(arr.span(), "Failed to derive proper ABI from array field"))
+            Err(Error::new(arr.span(), ERROR))
         }
 
         Type::Path(ty) => {
@@ -151,7 +182,7 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
                         s => parse_param_type(s),
                     }
                 })
-                .ok_or_else(|| Error::new(ty.span(), "Failed to derive proper ABI from fields"))
+                .ok_or_else(|| Error::new(ty.span(), ERROR))
         }
 
         Type::Tuple(ty) => ty
@@ -161,7 +192,7 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
             .collect::<Result<Vec<_>, _>>()
             .map(ParamType::Tuple),
 
-        _ => Err(Error::new(ty.span(), "Failed to derive proper ABI from fields")),
+        _ => Err(Error::new(ty.span(), ERROR)),
     }
 }
 

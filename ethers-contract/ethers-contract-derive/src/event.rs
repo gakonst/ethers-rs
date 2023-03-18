@@ -6,16 +6,12 @@ use ethers_core::{
     abi::{Event, EventExt, EventParam, HumanReadableParser},
     macros::{ethers_contract_crate, ethers_core_crate},
 };
-use hex::FromHex;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{
-    parse::Error, spanned::Spanned, AttrStyle, Data, DeriveInput, Field, Fields, Lit, Meta,
-    NestedMeta,
-};
+use syn::{spanned::Spanned, Data, DeriveInput, Error, Field, Fields, LitStr, Result, Token};
 
 /// Generates the `EthEvent` trait support
-pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, Error> {
+pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream> {
     let name = &input.ident;
     let attributes = parse_event_attributes(&input)?;
 
@@ -64,7 +60,7 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, E
 
     let (abi, event_sig) = (event.abi_signature(), event.signature());
 
-    let signature = if let Some((hash, _)) = attributes.signature_hash {
+    let signature = if let Some((hash, _)) = attributes.signature {
         utils::signature(&hash)
     } else {
         utils::signature(event_sig.as_bytes())
@@ -122,7 +118,7 @@ impl EventField {
     }
 }
 
-fn derive_decode_from_log_impl(input: &DeriveInput, event: &Event) -> Result<TokenStream, Error> {
+fn derive_decode_from_log_impl(input: &DeriveInput, event: &Event) -> Result<TokenStream> {
     let ethers_core = ethers_core_crate();
 
     let fields: Vec<_> = match input.data {
@@ -291,7 +287,7 @@ fn derive_decode_from_log_impl(input: &DeriveInput, event: &Event) -> Result<Tok
 }
 
 /// Determine the event's ABI by parsing the AST
-fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event, Error> {
+fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event> {
     let event = Event {
         name: input.ident.to_string(),
         inputs: utils::derive_abi_inputs_from_fields(input, "EthEvent")?
@@ -303,53 +299,18 @@ fn derive_abi_event_from_fields(input: &DeriveInput) -> Result<Event, Error> {
     Ok(event)
 }
 
-fn parse_field_attributes(field: &Field) -> Result<(Option<String>, bool), Error> {
-    let mut indexed = false;
-    let mut topic_name = None;
-    for a in field.attrs.iter() {
-        if let AttrStyle::Outer = a.style {
-            if let Ok(Meta::List(meta)) = a.parse_meta() {
-                if meta.path.is_ident("ethevent") {
-                    for n in meta.nested.iter() {
-                        if let NestedMeta::Meta(meta) = n {
-                            match meta {
-                                Meta::Path(path) => {
-                                    if path.is_ident("indexed") {
-                                        indexed = true;
-                                    } else {
-                                        return Err(Error::new(
-                                            path.span(),
-                                            "unrecognized ethevent parameter",
-                                        ))
-                                    }
-                                }
-                                Meta::List(meta) => {
-                                    return Err(Error::new(
-                                        meta.path.span(),
-                                        "unrecognized ethevent parameter",
-                                    ))
-                                }
-                                Meta::NameValue(meta) => {
-                                    if meta.path.is_ident("name") {
-                                        if let Lit::Str(ref lit_str) = meta.lit {
-                                            topic_name = Some(lit_str.value());
-                                        } else {
-                                            return Err(Error::new(
-                                                meta.span(),
-                                                "name attribute must be a string",
-                                            ))
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+fn parse_field_attributes(field: &Field) -> Result<(Option<String>, bool)> {
+    let mut indexed = None::<bool>;
+    let mut topic_name = None::<String>;
+    utils::parse_attributes!(field.attrs.iter(), "ethevent", meta,
+        "indexed", indexed => { indexed = Some(true) }
+        "name", topic_name => {
+            meta.input.parse::<Token![=]>()?;
+            let litstr: LitStr = meta.input.parse()?;
+            topic_name = Some(litstr.value());
         }
-    }
-
-    Ok((topic_name, indexed))
+    );
+    Ok((topic_name, indexed.unwrap_or_default()))
 }
 
 /// All the attributes the `EthEvent` macro supports
@@ -357,139 +318,32 @@ fn parse_field_attributes(field: &Field) -> Result<(Option<String>, bool), Error
 struct EthEventAttributes {
     name: Option<(String, Span)>,
     abi: Option<(String, Span)>,
-    signature_hash: Option<(Vec<u8>, Span)>,
+    signature: Option<(Vec<u8>, Span)>,
     anonymous: Option<(bool, Span)>,
 }
 
 /// extracts the attributes from the struct annotated with `EthEvent`
-fn parse_event_attributes(input: &DeriveInput) -> Result<EthEventAttributes, Error> {
+fn parse_event_attributes(input: &DeriveInput) -> Result<EthEventAttributes> {
     let mut result = EthEventAttributes::default();
-    for a in input.attrs.iter() {
-        if let AttrStyle::Outer = a.style {
-            if let Ok(Meta::List(meta)) = a.parse_meta() {
-                if meta.path.is_ident("ethevent") {
-                    for n in meta.nested.iter() {
-                        if let NestedMeta::Meta(meta) = n {
-                            match meta {
-                                Meta::Path(path) => {
-                                    if let Some(name) = path.get_ident() {
-                                        if &*name.to_string() == "anonymous" {
-                                            if result.anonymous.is_none() {
-                                                result.anonymous = Some((true, name.span()));
-                                                continue
-                                            } else {
-                                                return Err(Error::new(
-                                                    name.span(),
-                                                    "anonymous already specified",
-                                                ))
-                                            }
-                                        }
-                                    }
-                                    return Err(Error::new(
-                                        path.span(),
-                                        "unrecognized ethevent parameter",
-                                    ))
-                                }
-                                Meta::List(meta) => {
-                                    return Err(Error::new(
-                                        meta.path.span(),
-                                        "unrecognized ethevent parameter",
-                                    ))
-                                }
-                                Meta::NameValue(meta) => {
-                                    if meta.path.is_ident("anonymous") {
-                                        if let Lit::Bool(ref bool_lit) = meta.lit {
-                                            if result.anonymous.is_none() {
-                                                result.anonymous =
-                                                    Some((bool_lit.value, bool_lit.span()));
-                                            } else {
-                                                return Err(Error::new(
-                                                    meta.span(),
-                                                    "anonymous already specified",
-                                                ))
-                                            }
-                                        } else {
-                                            return Err(Error::new(
-                                                meta.span(),
-                                                "name must be a string",
-                                            ))
-                                        }
-                                    } else if meta.path.is_ident("name") {
-                                        if let Lit::Str(ref lit_str) = meta.lit {
-                                            if result.name.is_none() {
-                                                result.name =
-                                                    Some((lit_str.value(), lit_str.span()));
-                                            } else {
-                                                return Err(Error::new(
-                                                    meta.span(),
-                                                    "name already specified",
-                                                ))
-                                            }
-                                        } else {
-                                            return Err(Error::new(
-                                                meta.span(),
-                                                "name must be a string",
-                                            ))
-                                        }
-                                    } else if meta.path.is_ident("abi") {
-                                        if let Lit::Str(ref lit_str) = meta.lit {
-                                            if result.abi.is_none() {
-                                                result.abi =
-                                                    Some((lit_str.value(), lit_str.span()));
-                                            } else {
-                                                return Err(Error::new(
-                                                    meta.span(),
-                                                    "abi already specified",
-                                                ))
-                                            }
-                                        } else {
-                                            return Err(Error::new(
-                                                meta.span(),
-                                                "abi must be a string",
-                                            ))
-                                        }
-                                    } else if meta.path.is_ident("signature") {
-                                        if let Lit::Str(ref lit_str) = meta.lit {
-                                            if result.signature_hash.is_none() {
-                                                match Vec::from_hex(lit_str.value()) {
-                                                    Ok(sig) => {
-                                                        result.signature_hash =
-                                                            Some((sig, lit_str.span()))
-                                                    }
-                                                    Err(err) => {
-                                                        return Err(Error::new(
-                                                            meta.span(),
-                                                            format!(
-                                                                "Expected hex signature: {err:?}"
-                                                            ),
-                                                        ))
-                                                    }
-                                                }
-                                            } else {
-                                                return Err(Error::new(
-                                                    meta.span(),
-                                                    "signature already specified",
-                                                ))
-                                            }
-                                        } else {
-                                            return Err(Error::new(
-                                                meta.span(),
-                                                "signature must be a hex string",
-                                            ))
-                                        }
-                                    } else {
-                                        return Err(Error::new(
-                                            meta.span(),
-                                            "unrecognized ethevent parameter",
-                                        ))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    utils::parse_attributes!(input.attrs.iter(), "ethevent", meta,
+        "name", result.name => {
+            meta.input.parse::<Token![=]>()?;
+            let litstr: LitStr = meta.input.parse()?;
+            result.name = Some((litstr.value(), litstr.span()));
         }
-    }
+        "abi", result.abi => {
+            meta.input.parse::<Token![=]>()?;
+            let litstr: LitStr = meta.input.parse()?;
+            result.abi = Some((litstr.value(), litstr.span()));
+        }
+        "signature", result.signature => {
+            meta.input.parse::<Token![=]>()?;
+            let litstr: LitStr = meta.input.parse()?;
+            let s = litstr.value();
+            let b = hex::decode(s.strip_prefix("0x").unwrap_or(&s)).map_err(|e| meta.error(e))?;
+            result.signature = Some((b, litstr.span()));
+        }
+        "anonymous", result.anonymous => { result.anonymous = Some((true, meta.path.span())); }
+    );
     Ok(result)
 }
