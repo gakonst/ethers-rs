@@ -19,6 +19,7 @@ proc-macro = true
 [dependencies]
 ethers-core = { workspace = true, features = ["eip712", "macros"] }
 
+proc-macro2.workspace = true
 quote.workspace = true
 syn.workspace = true
 

@@ -55,7 +55,6 @@ cargo_metadata = { version = "0.15.3", optional = true }
 # eip712 feature enabled dependencies
 convert_case = { version = "0.6.0", optional = true }
 syn = { workspace = true, optional = true }
-proc-macro2 = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tempfile.workspace = true
@@ -73,5 +72,5 @@ rand.workspace = true
 [features]
 celo = ["legacy"] # celo support extends the transaction format with extra fields
 legacy = []
-eip712 = ["convert_case", "syn", "proc-macro2"]
+eip712 = ["convert_case", "syn"]
 macros = ["syn", "cargo_metadata", "once_cell"]

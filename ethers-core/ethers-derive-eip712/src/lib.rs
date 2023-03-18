@@ -62,49 +62,40 @@
 //! determine if there is a nested eip712 struct. However, this work is not yet complete.
 
 #![deny(missing_docs, unsafe_code, rustdoc::broken_intra_doc_links)]
+
 use ethers_core::{macros::ethers_core_crate, types::transaction::eip712};
 use proc_macro::TokenStream;
+use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use std::convert::TryFrom;
-use syn::parse_macro_input;
+use syn::{parse_macro_input, Result};
 
 /// Derive macro for `Eip712`
 #[proc_macro_derive(Eip712, attributes(eip712))]
 pub fn eip_712_derive(input: TokenStream) -> TokenStream {
-    let ast = parse_macro_input!(input);
-
-    impl_eip_712_macro(&ast)
+    let input = parse_macro_input!(input);
+    match impl_eip_712_macro(&input) {
+        Ok(tokens) => tokens,
+        Err(e) => e.to_compile_error(),
+    }
+    .into()
 }
 
 // Main implementation macro, used to compute static values and define
 // method for encoding the final eip712 payload;
-fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
+fn impl_eip_712_macro(input: &syn::DeriveInput) -> Result<TokenStream2> {
     // Primary type should match the type in the ethereum verifying contract;
-    let primary_type = &ast.ident;
+    let primary_type = &input.ident;
 
     // Instantiate domain from parsed attributes
-    let domain = match eip712::EIP712Domain::try_from(ast) {
-        Ok(attributes) => attributes,
-        Err(e) => return TokenStream::from(e),
-    };
+    let domain = eip712::EIP712Domain::try_from(input)?;
 
     let domain_separator = hex::encode(domain.separator());
 
     //
-    let domain_str = match serde_json::to_string(&domain) {
-        Ok(s) => s,
-        Err(e) => {
-            return TokenStream::from(
-                syn::Error::new(ast.ident.span(), e.to_string()).to_compile_error(),
-            )
-        }
-    };
+    let domain_str = serde_json::to_string(&domain).unwrap();
 
     // Must parse the AST at compile time.
-    let parsed_fields = match eip712::parse_fields(ast) {
-        Ok(fields) => fields,
-        Err(e) => return TokenStream::from(e),
-    };
+    let parsed_fields = eip712::parse_fields(input)?;
 
     // Compute the type hash for the derived struct using the parsed fields from above.
     let type_hash =
@@ -113,7 +104,7 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
     // Use reference to ethers_core instead of directly using the crate itself.
     let ethers_core = ethers_core_crate();
 
-    let implementation = quote! {
+    let tokens = quote! {
         impl Eip712 for #primary_type {
             type Error = #ethers_core::types::transaction::eip712::Eip712Error;
 
@@ -168,5 +159,5 @@ fn impl_eip_712_macro(ast: &syn::DeriveInput) -> TokenStream {
         }
     };
 
-    implementation.into()
+    Ok(tokens)
 }
