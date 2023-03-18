@@ -5,7 +5,7 @@ use ethers::{
     signers::Signer,
     types::Chain,
 };
-use ethers_wasm::{utils, SimpleContract};
+use examples_wasm::{utils, SimpleContract};
 use std::sync::Arc;
 use wasm_bindgen_test::*;
 
