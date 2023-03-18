@@ -52,11 +52,9 @@ const OVERFLOW_I256_UNITS: usize = 77;
 /// U256 overflows for numbers wider than 78 units.
 const OVERFLOW_U256_UNITS: usize = 78;
 
-/// Re-export of serde-json
+// Re-export serde-json for macro usage
 #[doc(hidden)]
-pub mod __serde_json {
-    pub use serde_json::*;
-}
+pub use serde_json as __serde_json;
 
 #[derive(Error, Debug)]
 pub enum ConversionError {

@@ -76,7 +76,6 @@ ethers-solc = { version = "2.0.0", path = "ethers-solc", default-features = fals
 
 ethers-contract-abigen = { version = "2.0.0", path = "ethers-contract/ethers-contract-abigen", default-features = false }
 ethers-contract-derive = { version = "2.0.0", path = "ethers-contract/ethers-contract-derive", default-features = false }
-ethers-derive-eip712 = { version = "2.0.0", path = "ethers-core/ethers-derive-eip712", default-features = false }
 
 # async / async utils
 tokio = "1.26"
@@ -112,6 +111,7 @@ async-trait = "0.1.66"
 auto_impl = "1.0"
 
 # misc
+Inflector = "0.11"
 thiserror = "1.0"
 once_cell = "1.17"
 hex = "0.4"

@@ -4,18 +4,11 @@ use crate::{
     types::{serde_helpers::StringifiedNumeric, Address, Bytes, U256},
     utils::keccak256,
 };
-use convert_case::{Case, Casing};
-use core::convert::TryFrom;
 use ethabi::encode;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{
     collections::{BTreeMap, HashSet},
-    convert::TryInto,
     iter::FromIterator,
-};
-use syn::{
-    parse::Error, spanned::Spanned, Data, DeriveInput, Expr, Fields, GenericArgument, Lit, LitInt,
-    LitStr, PathArguments, Type,
 };
 
 /// Custom types for `TypedData`
@@ -39,7 +32,7 @@ pub const EIP712_DOMAIN_TYPE_HASH_WITH_SALT: [u8; 32] = [
     202, 46, 220, 207, 34, 164, 108, 114, 154, 197, 100, 114,
 ];
 
-/// Error typed used by Eip712 derive macro
+/// An EIP-712 error.
 #[derive(Debug, thiserror::Error)]
 pub enum Eip712Error {
     #[error("Failed to serialize serde JSON object")]
@@ -56,8 +49,7 @@ pub enum Eip712Error {
     Message(String),
 }
 
-/// The Eip712 trait provides helper methods for computing
-/// the typed data hash used in `eth_signTypedData`.
+/// Helper methods for computing the typed data hash used in `eth_signTypedData`.
 ///
 /// The ethers-rs `derive_eip712` crate provides a derive macro to
 /// implement the trait for a given struct. See documentation
@@ -241,69 +233,6 @@ impl<T: Eip712 + Clone> Eip712 for EIP712WithDomain<T> {
         let struct_hash =
             self.inner.clone().struct_hash().map_err(|e| Self::Error::Message(e.to_string()))?;
         Ok(struct_hash)
-    }
-}
-
-// Parse the AST of the struct to determine the domain attributes
-impl TryFrom<&syn::DeriveInput> for EIP712Domain {
-    type Error = Error;
-
-    fn try_from(input: &syn::DeriveInput) -> Result<EIP712Domain, Self::Error> {
-        const ERROR: &str = "unrecognized eip712 attribute";
-        const ALREADY_SPECIFIED: &str = "eip712 attribute already specified";
-
-        let mut domain = EIP712Domain::default();
-
-        for attr in input.attrs.iter() {
-            if !attr.path().is_ident("eip712") {
-                continue
-            }
-
-            attr.parse_nested_meta(|meta| {
-                let ident = meta.path.get_ident().ok_or_else(|| meta.error(ERROR))?.to_string();
-                match ident.as_str() {
-                    "name" if domain.name.is_none() => {
-                        let litstr: LitStr = meta.input.parse()?;
-                        domain.name = Some(litstr.value());
-                    }
-                    "name" => return Err(meta.error(ALREADY_SPECIFIED)),
-
-                    "version" if domain.version.is_none() => {
-                        let litstr: LitStr = meta.input.parse()?;
-                        domain.version = Some(litstr.value());
-                    }
-                    "version" => return Err(meta.error(ALREADY_SPECIFIED)),
-
-                    "chain_id" if domain.chain_id.is_none() => {
-                        let litint: LitInt = meta.input.parse()?;
-                        let n: u64 = litint.base10_parse()?;
-                        domain.chain_id = Some(n.into());
-                    }
-                    "chain_id" => return Err(meta.error(ALREADY_SPECIFIED)),
-
-                    "verifying_contract" if domain.verifying_contract.is_none() => {
-                        let litstr: LitStr = meta.input.parse()?;
-                        let addr: Address =
-                            litstr.value().parse().map_err(|e| Error::new(litstr.span(), e))?;
-                        domain.verifying_contract = Some(addr);
-                    }
-                    "verifying_contract" => return Err(meta.error(ALREADY_SPECIFIED)),
-
-                    "salt" if domain.salt.is_none() => {
-                        let litstr: LitStr = meta.input.parse()?;
-                        let hash = keccak256(litstr.value());
-                        domain.salt = Some(hash);
-                    }
-                    "salt" => return Err(meta.error(ALREADY_SPECIFIED)),
-
-                    _ => return Err(meta.error(ERROR)),
-                }
-
-                Ok(())
-            })?;
-        }
-
-        Ok(domain)
     }
 }
 
@@ -639,125 +568,6 @@ pub fn encode_field(
     };
 
     Ok(token)
-}
-
-/// Parse the eth abi parameter type based on the syntax type;
-/// this method is copied from <https://github.com/gakonst/ethers-rs/blob/master/ethers-contract/ethers-contract-derive/src/lib.rs#L600>
-/// with additional modifications for finding byte arrays
-pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
-    match ty {
-        Type::Array(ty) => {
-            let param = find_parameter_type(ty.elem.as_ref())?;
-            if let Expr::Lit(ref expr) = ty.len {
-                if let Lit::Int(ref len) = expr.lit {
-                    if let Ok(size) = len.base10_parse::<usize>() {
-                        if let ParamType::Uint(_) = param {
-                            return Ok(ParamType::FixedBytes(size))
-                        }
-
-                        return Ok(ParamType::FixedArray(Box::new(param), size))
-                    }
-                }
-            }
-            Err(Error::new(ty.span(), "Failed to derive proper ABI from array field"))
-        }
-        Type::Path(ty) => {
-            if let Some(ident) = ty.path.get_ident() {
-                let ident = ident.to_string().to_lowercase();
-                return match ident.as_str() {
-                    "address" => Ok(ParamType::Address),
-                    "string" => Ok(ParamType::String),
-                    "bool" => Ok(ParamType::Bool),
-                    "int256" | "int" | "uint" | "uint256" => Ok(ParamType::Uint(256)),
-                    "h160" => Ok(ParamType::FixedBytes(20)),
-                    "h256" | "secret" | "hash" => Ok(ParamType::FixedBytes(32)),
-                    "h512" | "public" => Ok(ParamType::FixedBytes(64)),
-                    "bytes" => Ok(ParamType::Bytes),
-                    s => parse_int_param_type(s).ok_or_else(|| {
-                        Error::new(
-                            ty.span(),
-                            format!("Failed to derive proper ABI from field: {s})"),
-                        )
-                    }),
-                }
-            }
-            // check for `Vec`
-            if ty.path.segments.len() == 1 && ty.path.segments[0].ident == "Vec" {
-                if let PathArguments::AngleBracketed(ref args) = ty.path.segments[0].arguments {
-                    if args.args.len() == 1 {
-                        if let GenericArgument::Type(ref ty) = args.args.iter().next().unwrap() {
-                            let kind = find_parameter_type(ty)?;
-
-                            // Check if byte array is found
-                            if let ParamType::Uint(size) = kind {
-                                if size == 8 {
-                                    return Ok(ParamType::Bytes)
-                                }
-                            }
-
-                            return Ok(ParamType::Array(Box::new(kind)))
-                        }
-                    }
-                }
-            }
-
-            Err(Error::new(ty.span(), "Failed to derive proper ABI from fields"))
-        }
-        Type::Tuple(ty) => {
-            let params = ty.elems.iter().map(find_parameter_type).collect::<Result<Vec<_>, _>>()?;
-            Ok(ParamType::Tuple(params))
-        }
-        _ => Err(Error::new(ty.span(), "Failed to derive proper ABI from fields")),
-    }
-}
-
-fn parse_int_param_type(s: &str) -> Option<ParamType> {
-    let size = s.chars().skip(1).collect::<String>().parse::<usize>().ok()?;
-    if s.starts_with('u') {
-        Some(ParamType::Uint(size))
-    } else if s.starts_with('i') {
-        Some(ParamType::Int(size))
-    } else {
-        None
-    }
-}
-
-/// Return HashMap of the field name and the field type
-pub fn parse_fields(input: &DeriveInput) -> Result<Vec<(String, ParamType)>, Error> {
-    let mut fields = Vec::new();
-
-    let data = match &input.data {
-        Data::Struct(s) => s,
-        Data::Enum(e) => {
-            return Err(Error::new(e.enum_token.span, "Eip712 is not derivable for enums"))
-        }
-        Data::Union(u) => {
-            return Err(Error::new(u.union_token.span, "Eip712 is not derivable for unions"))
-        }
-    };
-
-    let named_fields = match &data.fields {
-        Fields::Named(name) => name,
-        _ => return Err(Error::new(input.span(), "unnamed fields are not supported")),
-    };
-
-    for f in named_fields.named.iter() {
-        let field_name = f.ident.as_ref().unwrap().to_string().to_case(Case::Camel);
-        let field_type =
-            match f.attrs.iter().find(|a| a.path().segments.iter().any(|s| s.ident == "eip712")) {
-                // Found nested Eip712 Struct
-                // TODO: Implement custom
-                Some(a) => {
-                    return Err(Error::new(a.span(), "nested Eip712 struct are not yet supported"))
-                }
-                // Not a nested eip712 struct, return the field param type;
-                None => find_parameter_type(&f.ty)?,
-            };
-
-        fields.push((field_name, field_type));
-    }
-
-    Ok(fields)
 }
 
 /// Convert hash map of field names and types into a type hash corresponding to enc types;

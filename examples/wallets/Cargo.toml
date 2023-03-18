@@ -15,7 +15,7 @@ trezor = ["ethers/trezor"]
 yubi = ["ethers/yubi"]
 
 [dev-dependencies]
-ethers = { workspace = true, features = ["abigen", "eip712", "ws", "rustls"] }
+ethers = { workspace = true, features = ["abigen", "ws", "rustls"] }
 
 tokio = { workspace = true, features = ["macros"] }
 

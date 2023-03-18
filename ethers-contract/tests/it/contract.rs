@@ -1,6 +1,6 @@
 use crate::common::*;
 use ethers_contract::{
-    abigen, ContractFactory, ContractInstance, EthAbiType, EthEvent, LogMeta, Multicall,
+    abigen, ContractFactory, ContractInstance, Eip712, EthAbiType, EthEvent, LogMeta, Multicall,
     MulticallError, MulticallVersion,
 };
 use ethers_core::{
@@ -11,7 +11,7 @@ use ethers_core::{
     },
     utils::{keccak256, Anvil},
 };
-use ethers_providers::{Http, Middleware, MiddlewareError, Provider, StreamExt};
+use ethers_providers::{Http, Middleware, MiddlewareError, Provider, StreamExt, Ws};
 use ethers_signers::{LocalWallet, Signer};
 use std::{sync::Arc, time::Duration};
 
@@ -342,7 +342,7 @@ async fn watch_events() {
     let mut stream = event.stream().await.unwrap();
 
     // Also set up a subscription for the same thing
-    let ws = Provider::connect(anvil.ws_endpoint()).await.unwrap();
+    let ws = Provider::<Ws>::connect(anvil.ws_endpoint()).await.unwrap();
     let contract2 = ethers_contract::Contract::new(contract.address(), abi, ws.into());
     let event2 = contract2.event::<ValueChanged>();
     let mut subscription = event2.subscribe().await.unwrap();
@@ -381,7 +381,7 @@ async fn watch_subscription_events_multiple_addresses() {
     let contract_1 = deploy(client.clone(), abi.clone(), bytecode.clone()).await;
     let contract_2 = deploy(client.clone(), abi.clone(), bytecode).await;
 
-    let ws = Provider::connect(anvil.ws_endpoint()).await.unwrap();
+    let ws = Provider::<Ws>::connect(anvil.ws_endpoint()).await.unwrap();
     let filter = Filter::new()
         .address(ValueOrArray::Array(vec![contract_1.address(), contract_2.address()]));
     let mut stream = ws.subscribe_logs(&filter).await.unwrap();
@@ -786,16 +786,15 @@ async fn multicall_aggregate() {
 }
 
 #[tokio::test]
-#[cfg(feature = "eip712")]
 async fn test_derive_eip712() {
-    use ethers_derive_eip712::*;
-
     // Generate Contract ABI Bindings
-    abigen!(
-        DeriveEip712Test,
-        "./ethers-contract/tests/solidity-contracts/derive_eip712_abi.json",
-        event_derives(serde::Deserialize, serde::Serialize)
-    );
+    mod contract {
+        ethers_contract::abigen!(
+            DeriveEip712Test,
+            "./ethers-contract/tests/solidity-contracts/derive_eip712_abi.json",
+            derives(serde::Deserialize, serde::Serialize)
+        );
+    }
 
     // Create derived structs
 
@@ -842,7 +841,7 @@ async fn test_derive_eip712() {
 
     let addr = contract.address();
 
-    let contract = DeriveEip712Test::new(addr, client.clone());
+    let contract = contract::DeriveEip712Test::new(addr, client.clone());
 
     let foo_bar = FooBar {
         foo: I256::from(10u64),
@@ -853,7 +852,7 @@ async fn test_derive_eip712() {
         out: Address::from([0; 20]),
     };
 
-    let derived_foo_bar = derive_eip_712_test::FooBar {
+    let derived_foo_bar = contract::FooBar {
         foo: foo_bar.foo,
         bar: foo_bar.bar,
         fizz: foo_bar.fizz.clone(),

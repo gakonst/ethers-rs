@@ -652,15 +652,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "245097e9a4535ee1e3e3931fcfcd55a796a44c643e8596ff6566d68f09b87bbc"
 
 [[package]]
-name = "convert_case"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec182b0ca2f35d8fc196cf3404988fd8b8c739a4d270ff118a398feb0cbec1ca"
-dependencies = [
- "unicode-segmentation",
-]
-
-[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1239,7 +1230,6 @@ dependencies = [
  "ethers-contract-abigen",
  "ethers-contract-derive",
  "ethers-core",
- "ethers-derive-eip712",
  "ethers-providers",
  "ethers-signers",
  "ethers-solc",
@@ -1284,11 +1274,13 @@ dependencies = [
 name = "ethers-contract-derive"
 version = "2.0.0"
 dependencies = [
+ "Inflector",
  "ethers-contract-abigen",
  "ethers-core",
  "hex",
  "proc-macro2",
  "quote",
+ "serde_json",
  "syn 2.0.0",
 ]
 
@@ -1301,7 +1293,6 @@ dependencies = [
  "bytes",
  "cargo_metadata",
  "chrono",
- "convert_case",
  "elliptic-curve",
  "ethabi",
  "generic-array",
@@ -1322,19 +1313,6 @@ dependencies = [
  "thiserror",
  "tiny-keccak",
  "unicode-xid",
-]
-
-[[package]]
-name = "ethers-derive-eip712"
-version = "2.0.0"
-dependencies = [
- "ethers-contract-derive",
- "ethers-core",
- "hex",
- "proc-macro2",
- "quote",
- "serde_json",
- "syn 2.0.0",
 ]
 
 [[package]]
@@ -1435,7 +1413,6 @@ dependencies = [
  "eth-keystore",
  "ethers-contract-derive",
  "ethers-core",
- "ethers-derive-eip712",
  "futures-executor",
  "futures-util",
  "hex",
@@ -4483,12 +4460,6 @@ checksum = "5c5713f0fc4b5db668a2ac63cdb7bb4469d8c9fed047b1d0292cc7b0ce2ba921"
 dependencies = [
  "tinyvec",
 ]
-
-[[package]]
-name = "unicode-segmentation"
-version = "1.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dd624098567895118886609431a7c3b8f516e41d30e0643f03d94592a147e36"
 
 [[package]]
 name = "unicode-width"

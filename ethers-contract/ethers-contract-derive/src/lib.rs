@@ -13,6 +13,7 @@ mod call;
 pub(crate) mod calllike;
 mod codec;
 mod display;
+mod eip712;
 mod error;
 mod event;
 mod spanned;
@@ -354,6 +355,78 @@ pub fn derive_abi_error(input: TokenStream) -> TokenStream {
     match error::derive_eth_error_impl(input) {
         Ok(tokens) => tokens,
         Err(err) => err.to_compile_error(),
+    }
+    .into()
+}
+
+/// EIP-712 derive macro.
+///
+/// This crate provides a derive macro `Eip712` that is used to encode a rust struct
+/// into a payload hash, according to <https://eips.ethereum.org/EIPS/eip-712>
+///
+/// The trait used to derive the macro is found in `ethers_core::transaction::eip712::Eip712`
+/// Both the derive macro and the trait must be in context when using
+///
+/// This derive macro requires the `#[eip712]` attributes to be included
+/// for specifying the domain separator used in encoding the hash.
+///
+/// NOTE: In addition to deriving `Eip712` trait, the `EthAbiType` trait must also be derived.
+/// This allows the struct to be parsed into `ethers_core::abi::Token` for encoding.
+///
+/// # Optional Eip712 Parameters
+///
+/// The only optional parameter is `salt`, which accepts a string
+/// that is hashed using keccak256 and stored as bytes.
+///
+/// # Example Usage
+///
+/// ```ignore
+/// use ethers_contract::EthAbiType;
+/// use ethers_derive_eip712::*;
+/// use ethers_core::types::{transaction::eip712::Eip712, H160};
+///
+/// #[derive(Debug, Eip712, EthAbiType)]
+/// #[eip712(
+///     name = "Radicle",
+///     version = "1",
+///     chain_id = 1,
+///     verifying_contract = "0x0000000000000000000000000000000000000000"
+///     // salt is an optional parameter
+///     salt = "my-unique-spice"
+/// )]
+/// pub struct Puzzle {
+///     pub organization: H160,
+///     pub contributor: H160,
+///     pub commit: String,
+///     pub project: String,
+/// }
+///
+/// let puzzle = Puzzle {
+///     organization: "0000000000000000000000000000000000000000"
+///         .parse::<H160>()
+///         .expect("failed to parse address"),
+///     contributor: "0000000000000000000000000000000000000000"
+///         .parse::<H160>()
+///         .expect("failed to parse address"),
+///     commit: "5693b7019eb3e4487a81273c6f5e1832d77acb53".to_string(),
+///     project: "radicle-reward".to_string(),
+/// };
+///
+/// let hash = puzzle.encode_eip712().unwrap();
+/// ```
+///
+/// # Limitations
+///
+/// At the moment, the derive macro does not recursively encode nested Eip712 structs.
+///
+/// There is an Inner helper attribute `#[eip712]` for fields that will eventually be used to
+/// determine if there is a nested eip712 struct. However, this work is not yet complete.
+#[proc_macro_derive(Eip712, attributes(eip712))]
+pub fn derive_eip712(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    match eip712::impl_derive_eip712(&input) {
+        Ok(tokens) => tokens,
+        Err(e) => e.to_compile_error(),
     }
     .into()
 }

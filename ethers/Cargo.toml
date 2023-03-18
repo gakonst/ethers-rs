@@ -38,8 +38,6 @@ celo = [
 legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
 
 # individual features per sub-crate
-## core
-eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
 ## providers
 ws = ["ethers-providers/ws"]
 ipc = ["ethers-providers/ipc"]
