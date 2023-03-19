@@ -8,6 +8,7 @@ use ethers_solc::{
     },
     buildinfo::BuildInfo,
     cache::{SolFilesCache, SOLIDITY_FILES_CACHE_FILENAME},
+    error::SolcError,
     info::ContractInfo,
     project_util::*,
     remappings::Remapping,
@@ -1199,6 +1200,27 @@ library MyLib {
     let bytecode = &contract.bytecode.as_ref().unwrap().object;
     assert!(!bytecode.is_unlinked());
 }
+
+#[test]
+fn can_detect_invalid_version() {
+    let tmp = TempProject::dapptools().unwrap();
+    let content = r#"
+    pragma solidity ^0.100.10;
+    contract A {}
+   "#;
+    tmp.add_source("A", content).unwrap();
+
+    let out = tmp.compile().unwrap_err();
+    match out {
+        SolcError::Message(err) => {
+            assert_eq!(err, "Encountered invalid solc version in src/A.sol: No solc version exists that matches the version requirement: ^0.100.10");
+        }
+        _ => {
+            unreachable!()
+        }
+    }
+}
+
 #[test]
 fn can_recompile_with_changes() {
     let mut tmp = TempProject::dapptools().unwrap();

@@ -46,7 +46,9 @@
 //! [version pragma](https://docs.soliditylang.org/en/develop/layout-of-source-files.html#version-pragma),
 //! which is defined on a per source file basis.
 
-use crate::{error::Result, utils, IncludePaths, ProjectPathsConfig, SolcError, Source, Sources};
+use crate::{
+    error::Result, utils, IncludePaths, ProjectPathsConfig, SolcError, SolcVersion, Source, Sources,
+};
 use parse::{SolData, SolDataUnit, SolImport};
 use rayon::prelude::*;
 use semver::VersionReq;
@@ -577,8 +579,7 @@ impl Graph {
         // on first error, instead gather all the errors and return a bundled error message instead
         let mut errors = Vec::new();
         // we also  don't want duplicate error diagnostic
-        let mut erroneous_nodes =
-            std::collections::HashSet::with_capacity(self.edges.num_input_files);
+        let mut erroneous_nodes = HashSet::with_capacity(self.edges.num_input_files);
 
         // the sorted list of all versions
         let all_versions = if offline { Solc::installed_versions() } else { Solc::all_versions() };
@@ -596,11 +597,20 @@ impl Graph {
             self.retain_compatible_versions(idx, &mut candidates);
 
             if candidates.is_empty() && !erroneous_nodes.contains(&idx) {
-                let mut msg = String::new();
-                self.format_imports_list(idx, &mut msg).unwrap();
-                errors.push(format!(
-                    "Discovered incompatible solidity versions in following\n: {msg}"
-                ));
+                // check if the version is even valid
+                if let Some(Err(version_err)) =
+                    self.node(idx).check_available_version(&all_versions, offline)
+                {
+                    let f = utils::source_name(&self.node(idx).path, &self.root).display();
+                    errors.push(format!("Encountered invalid solc version in {f}: {version_err}"));
+                } else {
+                    let mut msg = String::new();
+                    self.format_imports_list(idx, &mut msg).unwrap();
+                    errors.push(format!(
+                        "Discovered incompatible solidity versions in following\n: {msg}"
+                    ));
+                }
+
                 erroneous_nodes.insert(idx);
             } else {
                 // found viable candidates, pick the most recent version that's already installed
@@ -888,6 +898,37 @@ impl Node {
     pub fn unpack(&self) -> (&PathBuf, &Source) {
         (&self.path, &self.source)
     }
+
+    /// Checks that the file's version is even available.
+    ///
+    /// This returns an error if the file's version is invalid semver, or is not available such as
+    /// 0.8.20, if the highest available version is `0.8.19`
+    fn check_available_version(
+        &self,
+        all_versions: &[SolcVersion],
+        offline: bool,
+    ) -> Option<std::result::Result<(), SourceVersionError>> {
+        fn ensure_version(
+            v: &str,
+            all_versions: &[SolcVersion],
+            offline: bool,
+        ) -> std::result::Result<(), SourceVersionError> {
+            let req: VersionReq =
+                v.parse().map_err(|err| SourceVersionError::InvalidVersion(v.to_string(), err))?;
+
+            if !all_versions.iter().any(|v| req.matches(v.as_ref())) {
+                return if offline {
+                    Err(SourceVersionError::NoMatchingVersionOffline(req))
+                } else {
+                    Err(SourceVersionError::NoMatchingVersion(req))
+                }
+            }
+
+            Ok(())
+        }
+        let v = self.data.version.as_ref()?.data();
+        Some(ensure_version(v, all_versions, offline))
+    }
 }
 
 /// Helper type for formatting a node
@@ -905,6 +946,18 @@ impl<'a> fmt::Display for DisplayNode<'a> {
         }
         Ok(())
     }
+}
+
+/// Errors thrown when checking the solc version of a file
+#[derive(Debug, thiserror::Error)]
+#[allow(unused)]
+enum SourceVersionError {
+    #[error("Failed to parse solidity version {0}: {1}")]
+    InvalidVersion(String, semver::Error),
+    #[error("No solc version exists that matches the version requirement: {0}")]
+    NoMatchingVersion(VersionReq),
+    #[error("No solc version installed that matches the version requirement: {0}")]
+    NoMatchingVersionOffline(VersionReq),
 }
 
 #[cfg(test)]
