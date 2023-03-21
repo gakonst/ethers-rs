@@ -62,10 +62,11 @@ ethers-etherscan = { workspace = true, features = ["ethers-solc"] }
 ethers-middleware.workspace = true
 ethers-providers.workspace = true
 ethers-signers.workspace = true
-ethers-solc = { workspace = true }
+ethers-solc.workspace = true
 
 [dev-dependencies]
 serde.workspace = true
-tokio = { workspace = true, features = ["macros", "rt"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 ethers-contract = { workspace = true, features = ["eip712"] }
 ethers-providers = { workspace = true, features = ["rustls"] } # allow https connections
+ethers-solc = { workspace = true, features = ["svm-solc"] }
