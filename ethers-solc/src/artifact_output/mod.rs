@@ -655,10 +655,11 @@ pub trait ArtifactOutput {
         artifacts_folder: impl AsRef<Path>,
     ) -> PathBuf {
         let artifacts_folder = artifacts_folder.as_ref();
-        let mut candidate = conflict;
-        if let Ok(stripped) = candidate.strip_prefix(artifacts_folder) {
-            candidate = stripped.to_path_buf();
+        let mut rel_candidate = conflict;
+        if let Ok(stripped) = rel_candidate.strip_prefix(artifacts_folder) {
+            rel_candidate = stripped.to_path_buf();
         }
+        let mut candidate = rel_candidate.clone();
         let contract_file = contract_file.as_ref();
         let mut current_parent = contract_file.parent();
 
@@ -684,7 +685,7 @@ pub trait ArtifactOutput {
         loop {
             // this will attempt to find an alternate path by numerating the first component in the
             // path: `<root>+_<num>/....sol`
-            let mut components = candidate.components();
+            let mut components = rel_candidate.components();
             let first = components.next().expect("path not empty");
             let name = first.as_os_str();
             let mut numerated = OsString::with_capacity(name.len() + 2);
