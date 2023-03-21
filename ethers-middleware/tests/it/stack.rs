@@ -1,6 +1,6 @@
 use ethers_core::{rand::thread_rng, types::TransactionRequest, utils::Anvil};
 use ethers_middleware::{
-    gas_escalator::{Frequency, GasEscalatorMiddlewareInternal, GeometricGasPrice},
+    gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},
     gas_oracle::{GasCategory, GasNow, GasOracleMiddleware},
     nonce_manager::NonceManagerMiddleware,
     signer::SignerMiddleware,
@@ -18,7 +18,7 @@ async fn mock_with_middleware() {
     let signer = LocalWallet::new(&mut thread_rng());
     let address = signer.address();
     let escalator = GeometricGasPrice::new(1.125, 60u64, None::<u64>);
-    let provider = GasEscalatorMiddlewareInternal::new(provider, escalator, Frequency::PerBlock);
+    let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock);
     let provider = GasOracleMiddleware::new(provider, gas_oracle);
     let provider = SignerMiddleware::new(provider, signer);
     let provider = NonceManagerMiddleware::new(provider, address);
@@ -63,7 +63,7 @@ async fn can_stack_middlewares() {
     // so that it receives the transaction last, after all the other middleware
     // have modified it accordingly
     let escalator = GeometricGasPrice::new(1.125, 60u64, None::<u64>);
-    let provider = GasEscalatorMiddlewareInternal::new(provider, escalator, Frequency::PerBlock);
+    let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::PerBlock);
 
     // The gas price middleware MUST be below the signing middleware for things to work
     let provider = GasOracleMiddleware::new(provider, gas_oracle);

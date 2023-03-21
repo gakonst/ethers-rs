@@ -1,7 +1,7 @@
 use ethers_core::{rand::thread_rng, types::U64};
 use ethers_middleware::{
     builder::MiddlewareBuilder,
-    gas_escalator::{Frequency, GasEscalatorMiddlewareInternal, GeometricGasPrice},
+    gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},
     gas_oracle::{GasNow, GasOracleMiddleware},
     nonce_manager::NonceManagerMiddleware,
     signer::SignerMiddleware,
@@ -18,7 +18,7 @@ async fn build_raw_middleware_stack() {
     let escalator = GeometricGasPrice::new(1.125, 60u64, None::<u64>);
 
     let provider = provider
-        .wrap_into(|p| GasEscalatorMiddlewareInternal::new(p, escalator, Frequency::PerBlock))
+        .wrap_into(|p| GasEscalatorMiddleware::new(p, escalator, Frequency::PerBlock))
         .wrap_into(|p| GasOracleMiddleware::new(p, GasNow::new()))
         .wrap_into(|p| SignerMiddleware::new(p, signer))
         .wrap_into(|p| NonceManagerMiddleware::new(p, address));
@@ -46,7 +46,7 @@ async fn build_declarative_middleware_stack() {
     let gas_oracle = GasNow::new();
 
     let provider = provider
-        .wrap_into(|p| GasEscalatorMiddlewareInternal::new(p, escalator, Frequency::PerBlock))
+        .wrap_into(|p| GasEscalatorMiddleware::new(p, escalator, Frequency::PerBlock))
         .gas_oracle(gas_oracle)
         .with_signer(signer)
         .nonce_manager(address);

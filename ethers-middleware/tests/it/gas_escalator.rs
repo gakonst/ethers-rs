@@ -1,6 +1,6 @@
 use ethers_core::{types::*, utils::Anvil};
 use ethers_middleware::{
-    gas_escalator::{Frequency, GasEscalatorMiddlewareInternal, GeometricGasPrice},
+    gas_escalator::{Frequency, GasEscalatorMiddleware, GeometricGasPrice},
     MiddlewareBuilder,
 };
 use ethers_providers::{Http, Middleware, Provider};
@@ -21,8 +21,7 @@ async fn gas_escalator() {
 
     // wrap with escalator
     let escalator = GeometricGasPrice::new(5.0, 10u64, Some(2_000_000_000_000u64));
-    let provider =
-        GasEscalatorMiddlewareInternal::new(provider, escalator, Frequency::Duration(300));
+    let provider = GasEscalatorMiddleware::new(provider, escalator, Frequency::Duration(300));
 
     let nonce = provider.get_transaction_count(address, None).await.unwrap();
     // 1 gwei default base fee
