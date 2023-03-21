@@ -68,3 +68,4 @@ ethers-solc = { workspace = true }
 serde.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }
 ethers-contract = { workspace = true, features = ["eip712"] }
+ethers-providers = { workspace = true, features = ["rustls"] } # allow https connections
