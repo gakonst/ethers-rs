@@ -85,6 +85,37 @@ pub(crate) struct GasEscalatorMiddlewareInternal<M> {
 /// A Gas escalator allows bumping transactions' gas price to avoid getting them
 /// stuck in the memory pool.
 ///
+/// GasEscalator runs a background task which monitors the blockchain for tx
+/// confirmation, and bumps fees over time if txns do not occur. This task
+/// periodically loops over a stored history of sent transactions, and checks
+/// if any require fee bumps. If so, it will resend the same transaction with a
+/// higher fee.
+///
+/// Using [`GasEscalatorMiddleware::new`] will create a new instance of the
+/// background task. Using [`GasEscalatorMiddleware::clone`] will crate a new
+/// instance of the middleware, but will not create a new background task. The
+/// background task is shared among all clones.
+///
+/// ## Footgun
+///
+/// If you drop the middleware, the background task will be dropped as well,
+/// and any transactions you have sent will stop escalating. We recommend
+/// holding an instance of the middleware throughout your application's
+/// lifecycle, or leaking an `Arc` of it so that it is never dropped.
+///
+/// ## Outstanding issue
+///
+/// This task is fallible, and will stop if the provider's connection is lost.
+/// If this happens, the middleware will become unable to properly escalate gas
+/// prices. Transactions will still be dispatched, but no fee-bumping will
+/// happen. This will also cause a memory leak, as the middleware will keep
+/// appending to the list of transactions to escalate (and nothing will ever
+/// clear that list).
+///
+/// We intend to fix this issue in a future release.
+///
+/// ## Example
+///
 /// ```no_run
 /// use ethers_providers::{Provider, Http};
 /// use ethers_middleware::{
