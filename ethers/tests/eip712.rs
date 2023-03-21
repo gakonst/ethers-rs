@@ -1,20 +1,12 @@
 use ethers::{
-    contract::{
-        abigen, ContractFactory, ContractInstance, Eip712, EthAbiType, EthEvent, LogMeta,
-        Multicall, MulticallError, MulticallVersion,
-    },
+    contract::{abigen, ContractFactory, Eip712, EthAbiType},
     core::{
-        abi::{encode, AbiEncode, Token, Tokenizable},
-        types::{
-            transaction::eip712::Eip712, Address, BlockId, Bytes, Filter, ValueOrArray, H160, H256,
-            I256, U256,
-        },
+        types::{transaction::eip712::Eip712, Address, Bytes, I256, U256},
         utils::{keccak256, Anvil},
     },
-    providers::{Http, Middleware, MiddlewareError, Provider, StreamExt},
+    providers::Provider,
     signers::LocalWallet,
 };
-use ethers_solc::CompilerInput;
 use std::{path::PathBuf, sync::Arc};
 
 #[tokio::test]
