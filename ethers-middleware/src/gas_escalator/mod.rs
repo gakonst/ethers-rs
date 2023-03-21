@@ -47,6 +47,22 @@ pub enum GasEscalatorError<M: Middleware> {
     UnsupportedTxType,
 }
 
+// Boilerplate
+impl<M: Middleware> MiddlewareError for GasEscalatorError<M> {
+    type Inner = M::Error;
+
+    fn from_err(src: M::Error) -> GasEscalatorError<M> {
+        GasEscalatorError::MiddlewareError(src)
+    }
+
+    fn as_inner(&self) -> Option<&Self::Inner> {
+        match self {
+            GasEscalatorError::MiddlewareError(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 /// The frequency at which transactions will be bumped
 pub enum Frequency {
@@ -219,19 +235,23 @@ impl<M, E> EscalationTask<M, E> {
 
         loop {
             select_biased! {
-            _ = &mut self.shutdown => {}
-
+            _ = &mut self.shutdown => {
+                tracing::debug!("Shutting down escalation task, middleware has gone away");
+                return Ok(())
+            }
             opt = watcher.next() => {
                 if opt.is_none() {
-                    tracing::debug!("timing future has gone away");
+                    tracing::error!("timing future has gone away");
                     return Ok(());
                 }
                 let now = Instant::now();
 
-                // Lock scope
+                // We take the contents of the mutex, and then add them back in
+                // later.
                 let mut txs: Vec<_> = {
                     let mut txs = self.txs.lock().await;
                     std::mem::take(&mut (*txs))
+                    // Lock scope ends
                 };
 
                 let len = txs.len();
@@ -283,6 +303,10 @@ impl<M, E> EscalationTask<M, E> {
                                         // push it back to the pending txs vector)
                                         continue
                                     } else {
+                                        tracing::error!(
+                                            err = %err,
+                                            "Killing escalator backend"
+                                        );
                                         return Err(GasEscalatorError::MiddlewareError(err))
                                     }
                                 }
@@ -296,22 +320,6 @@ impl<M, E> EscalationTask<M, E> {
                 // after this big ugly loop, we dump everything back in
                 self.txs.lock().await.extend(txs);
             }}
-        }
-    }
-}
-
-// Boilerplate
-impl<M: Middleware> MiddlewareError for GasEscalatorError<M> {
-    type Inner = M::Error;
-
-    fn from_err(src: M::Error) -> GasEscalatorError<M> {
-        GasEscalatorError::MiddlewareError(src)
-    }
-
-    fn as_inner(&self) -> Option<&Self::Inner> {
-        match self {
-            GasEscalatorError::MiddlewareError(e) => Some(e),
-            _ => None,
         }
     }
 }
