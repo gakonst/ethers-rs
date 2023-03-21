@@ -63,11 +63,11 @@ jobs:
             - uses: Swatinem/rust-cache@v2
             - name: test ${{ matrix.flags.flags }}
               shell: bash
-              # skip `ethers_etherscan::it` and `ethers::live`
+              # skip `ethers_etherscan::it`
               run: |
                   cargo nextest run \
                   ${{ matrix.flags.flags }} \
-                  -E "!binary(~live) & !(deps(ethers-etherscan) & kind(test))"
+                  -E "!(deps(ethers-etherscan) & kind(test))"
 
     etherscan-tests:
         name: etherscan tests
