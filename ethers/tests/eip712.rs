@@ -10,7 +10,7 @@ use ethers::{
 };
 use std::{path::PathBuf, sync::Arc};
 
-#[tokio::test]
+#[tokio::test(flavor = "multi_thread")]
 async fn test_derive_eip712() {
     // Generate Contract ABI Bindings
     abigen!(
