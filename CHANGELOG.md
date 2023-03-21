@@ -380,6 +380,7 @@
 
 ### Unreleased
 
+- Revise and improve GasEscalatorMiddleware task [#2284](https://github.com/gakonst/ethers-rs/pull/2284)
 - Added `openssl` and `rustls` feature flags
   [#1961](https://github.com/gakonst/ethers-rs/pull/1961)
 - Relax Clone requirements when Arc<Middleware> is used

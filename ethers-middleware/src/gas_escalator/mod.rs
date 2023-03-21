@@ -277,7 +277,9 @@ impl<M, E> EscalationTask<M, E> {
                             .escalator
                             .get_gas_price(old_gas_price, now.duration_since(time).as_secs());
 
-                        let new_txhash = if new_gas_price != old_gas_price {
+                        let new_txhash = if new_gas_price == old_gas_price {
+                             tx_hash
+                        } else {
                             // bump the gas price
                             replacement_tx.gas_price = Some(new_gas_price);
 
@@ -311,13 +313,13 @@ impl<M, E> EscalationTask<M, E> {
                                     }
                                 }
                             }
-                        } else {
-                            tx_hash
                         };
                         txs.push((new_txhash, replacement_tx, time, priority));
                     }
                 }
                 // after this big ugly loop, we dump everything back in
+                // we don't replace here, as the vec in the mutex may contain
+                // items!
                 self.txs.lock().await.extend(txs);
             }}
         }
