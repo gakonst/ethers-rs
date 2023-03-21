@@ -263,14 +263,14 @@ fn _derive_builtin_traits_struct(
     }
 }
 
-/// Recurses on the type until it reached the struct tuple `ParamType`.
+/// Recurses on the type until it reaches the struct tuple `ParamType`.
 fn get_struct_params<'a>(s_ty: &StructFieldType, ty: &'a ParamType) -> &'a [ParamType] {
     match (s_ty, ty) {
-        (_, ParamType::Tuple(tys)) => tys,
+        (_, ParamType::Tuple(params)) => params,
         (
             StructFieldType::Array(s_ty) | StructFieldType::FixedArray(s_ty, _),
-            ParamType::Array(ty) | ParamType::FixedArray(ty, _),
-        ) => get_struct_params(s_ty, ty),
+            ParamType::Array(param) | ParamType::FixedArray(param, _),
+        ) => get_struct_params(s_ty, param),
         _ => unreachable!("Unhandled struct field: {s_ty:?} | {ty:?}"),
     }
 }
