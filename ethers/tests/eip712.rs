@@ -40,6 +40,7 @@ async fn test_derive_eip712() {
 
     // get ABI and bytecode for the DeriveEip712Test contract
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
+    Solc::find_or_install_svm_version("0.6.0").unwrap(); // install solc
     let result = Solc::default().compile_source(path).unwrap();
     let (abi, bytecode, _) = result
         .find("DeriveEip712Test")
