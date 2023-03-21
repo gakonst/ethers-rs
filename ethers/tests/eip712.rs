@@ -6,6 +6,7 @@ use ethers::{
     },
     providers::Provider,
     signers::LocalWallet,
+    solc::Solc,
 };
 use std::{path::PathBuf, sync::Arc};
 
@@ -39,7 +40,7 @@ async fn test_derive_eip712() {
 
     // get ABI and bytecode for the DeriveEip712Test contract
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
-    let result = ethers::solc::Solc::default().compile_source(path).unwrap();
+    let result = Solc::default().compile_source(path).unwrap();
     let (abi, bytecode, _) = result
         .find("DeriveEip712Test")
         .expect("failed to get DeriveEip712Test contract")
