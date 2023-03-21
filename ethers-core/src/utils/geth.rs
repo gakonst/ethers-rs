@@ -189,6 +189,7 @@ impl Default for PrivateNetOptions {
 /// drop(geth); // this will kill the instance
 /// ```
 #[derive(Clone, Default)]
+#[must_use = "This Builder struct does nothing unless it is `spawn`ed"]
 pub struct Geth {
     program: Option<PathBuf>,
     port: Option<u16>,
@@ -234,7 +235,6 @@ impl Geth {
     ///
     /// By default, it's expected that `geth` is in `$PATH`, see also
     /// [`std::process::Command::new()`]
-    #[must_use]
     pub fn path<T: Into<PathBuf>>(mut self, path: T) -> Self {
         self.program = Some(path.into());
         self
@@ -245,14 +245,12 @@ impl Geth {
     ///
     /// The address derived from this private key will be used to set the `miner.etherbase` field
     /// on the node.
-    #[must_use]
     pub fn set_clique_private_key<T: Into<SigningKey>>(mut self, private_key: T) -> Self {
         self.clique_private_key = Some(private_key.into());
         self
     }
 
     /// Sets the port which will be used when the `geth-cli` instance is launched.
-    #[must_use]
     pub fn port<T: Into<u16>>(mut self, port: T) -> Self {
         self.port = Some(port.into());
         self
@@ -262,7 +260,6 @@ impl Geth {
     ///
     /// This will put the geth instance into non-dev mode, discarding any previously set dev-mode
     /// options.
-    #[must_use]
     pub fn p2p_port(mut self, port: u16) -> Self {
         match self.mode {
             GethMode::Dev(_) => {
@@ -280,21 +277,18 @@ impl Geth {
     ///
     /// This will put the geth instance in `dev` mode, discarding any previously set options that
     /// cannot be used in dev mode.
-    #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.mode = GethMode::Dev(DevOptions { block_time: Some(block_time.into()) });
         self
     }
 
     /// Sets the chain id for the geth instance.
-    #[must_use]
     pub fn chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
         self.chain_id = Some(chain_id.into());
         self
     }
 
     /// Allow geth to unlock accounts when rpc apis are open.
-    #[must_use]
     pub fn insecure_unlock(mut self) -> Self {
         self.insecure_unlock = true;
         self
@@ -304,7 +298,6 @@ impl Geth {
     ///
     /// This will put the geth instance into non-dev mode, discarding any previously set dev-mode
     /// options.
-    #[must_use]
     pub fn disable_discovery(mut self) -> Self {
         self.inner_disable_discovery();
         self
@@ -321,14 +314,12 @@ impl Geth {
     }
 
     /// Manually sets the IPC path for the socket manually.
-    #[must_use]
     pub fn ipc_path<T: Into<PathBuf>>(mut self, path: T) -> Self {
         self.ipc_path = Some(path.into());
         self
     }
 
     /// Sets the data directory for geth.
-    #[must_use]
     pub fn data_dir<T: Into<PathBuf>>(mut self, path: T) -> Self {
         self.data_dir = Some(path.into());
         self
@@ -340,21 +331,22 @@ impl Geth {
     /// set to the same value as `data_dir`.
     ///
     /// This is destructive and will overwrite any existing data in the data directory.
-    #[must_use]
     pub fn genesis(mut self, genesis: Genesis) -> Self {
         self.genesis = Some(genesis);
         self
     }
 
     /// Sets the port for authenticated RPC connections.
-    #[must_use]
     pub fn authrpc_port(mut self, port: u16) -> Self {
         self.authrpc_port = Some(port);
         self
     }
 
-    /// Consumes the builder and spawns `geth` with stdout redirected to /dev/null.
-    #[must_use]
+    /// Consumes the builder and spawns `geth`.
+    ///
+    /// # Panics
+    ///
+    /// If spawning the instance fails at any point.
     #[track_caller]
     pub fn spawn(mut self) -> GethInstance {
         let bin_path = match self.program.as_ref() {
