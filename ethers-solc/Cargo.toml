@@ -111,7 +111,7 @@ async = [
     "futures-util",
     "criterion/async_tokio",
 ]
-svm-solc = ["svm-builds", "sha2"]
+svm-solc = ["svm", "svm-builds", "sha2"]
 
 # Utilities for creating and testing project workspaces
 project-util = ["tempfile", "fs_extra", "rand"]
