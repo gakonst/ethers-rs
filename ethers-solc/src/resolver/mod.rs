@@ -903,6 +903,7 @@ impl Node {
     ///
     /// This returns an error if the file's version is invalid semver, or is not available such as
     /// 0.8.20, if the highest available version is `0.8.19`
+    #[allow(dead_code)]
     fn check_available_version(
         &self,
         all_versions: &[SolcVersion],
