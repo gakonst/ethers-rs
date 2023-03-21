@@ -1498,24 +1498,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "ethers-wasm"
-version = "2.0.0"
-dependencies = [
- "console_error_panic_hook",
- "ethers",
- "hex",
- "serde",
- "serde-wasm-bindgen",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-bindgen-test",
- "web-sys",
-]
-
-[[package]]
 name = "examples-anvil"
-version = "2.0.0"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1524,14 +1508,14 @@ dependencies = [
 
 [[package]]
 name = "examples-big-numbers"
-version = "2.0.0"
+version = "0.0.0"
 dependencies = [
  "ethers",
 ]
 
 [[package]]
 name = "examples-contracts"
-version = "2.0.0"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1542,7 +1526,7 @@ dependencies = [
 
 [[package]]
 name = "examples-events"
-version = "2.0.0"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1565,7 +1549,7 @@ dependencies = [
 
 [[package]]
 name = "examples-middleware"
-version = "2.0.0"
+version = "0.0.0"
 dependencies = [
  "async-trait",
  "ethers",
@@ -1578,7 +1562,7 @@ dependencies = [
 
 [[package]]
 name = "examples-providers"
-version = "2.0.0"
+version = "0.0.0"
 dependencies = [
  "async-trait",
  "ethers",
@@ -1593,7 +1577,7 @@ dependencies = [
 
 [[package]]
 name = "examples-queries"
-version = "2.0.0"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1604,7 +1588,7 @@ dependencies = [
 
 [[package]]
 name = "examples-subscriptions"
-version = "2.0.0"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1615,7 +1599,7 @@ dependencies = [
 
 [[package]]
 name = "examples-transactions"
-version = "2.0.0"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
@@ -1626,13 +1610,29 @@ dependencies = [
 
 [[package]]
 name = "examples-wallets"
-version = "2.0.0"
+version = "0.0.0"
 dependencies = [
  "ethers",
  "eyre",
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "examples-wasm"
+version = "0.0.0"
+dependencies = [
+ "console_error_panic_hook",
+ "ethers",
+ "hex",
+ "serde",
+ "serde-wasm-bindgen",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
+ "web-sys",
 ]
 
 [[package]]
