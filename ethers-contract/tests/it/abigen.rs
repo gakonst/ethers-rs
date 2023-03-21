@@ -8,7 +8,7 @@ use ethers_core::{
 };
 use ethers_providers::{MockProvider, Provider};
 use ethers_solc::Solc;
-use std::sync::Arc;
+use std::{fmt::Debug, hash::Hash, sync::Arc};
 
 const fn assert_codec<T: AbiDecode + AbiEncode>() {}
 const fn assert_tokenizeable<T: Tokenizable>() {}
@@ -16,7 +16,12 @@ const fn assert_call<T: AbiEncode + AbiDecode + Default + Tokenizable>() {}
 const fn assert_event<T: EthEvent>() {}
 const fn assert_clone<T: Clone>() {}
 const fn assert_default<T: Default>() {}
-const fn assert_builtin<T: std::fmt::Debug + PartialEq + Eq + std::hash::Hash>() {}
+const fn assert_builtin<T: Debug + PartialEq + Eq + Hash>() {}
+const fn assert_struct<T>()
+where
+    T: AbiEncode + AbiDecode + Tokenizable + Clone + Default + Debug + PartialEq + Eq + Hash,
+{
+}
 
 #[test]
 fn can_generate_human_readable() {
@@ -25,7 +30,7 @@ fn can_generate_human_readable() {
         r#"[
         event ValueChanged(address indexed author, string oldValue, string newValue)
     ]"#,
-        event_derives(serde::Deserialize, serde::Serialize)
+        derives(serde::Deserialize, serde::Serialize)
     );
     assert_eq!("ValueChanged", ValueChangedFilter::name());
     assert_eq!("ValueChanged(address,string,string)", ValueChangedFilter::abi_signature());
@@ -43,13 +48,13 @@ fn can_generate_human_readable_multiple() {
         r#"[
         event ValueChanged1(address indexed author, string oldValue, string newValue)
     ]"#,
-        event_derives(serde::Deserialize, serde::Serialize);
+        derives(serde::Deserialize, serde::Serialize);
 
         SimpleContract2,
         r#"[
         event ValueChanged2(address indexed author, string oldValue, string newValue)
     ]"#,
-        event_derives(serde::Deserialize, serde::Serialize)
+        derives(serde::Deserialize, serde::Serialize)
     );
     assert_eq!("ValueChanged1", ValueChanged1Filter::name());
     assert_eq!("ValueChanged1(address,string,string)", ValueChanged1Filter::abi_signature());
@@ -66,7 +71,7 @@ fn can_generate_structs_readable() {
         struct Addresses {address[] addr; string s;}
         event ValueChanged(Value indexed old, Value newValue, Addresses _a)
     ]"#,
-        event_derives(serde::Deserialize, serde::Serialize)
+        derives(serde::Deserialize, serde::Serialize)
     );
     let addr = Addresses {
         addr: vec!["eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse().unwrap()],
@@ -97,7 +102,7 @@ fn can_generate_structs_with_arrays_readable() {
         struct Addresses {address[] addr; string s;}
         event ValueChanged(Value indexed old, Value newValue, Addresses[] _a)
     ]"#,
-        event_derives(serde::Deserialize, serde::Serialize)
+        derives(serde::Deserialize, serde::Serialize)
     );
     assert_eq!(
         "ValueChanged((address,string),(address,string),(address[],string)[])",
@@ -113,15 +118,32 @@ fn can_generate_internal_structs() {
     abigen!(
         VerifierContract,
         "ethers-contract/tests/solidity-contracts/verifier_abi.json",
-        event_derives(serde::Deserialize, serde::Serialize)
+        derives(serde::Deserialize, serde::Serialize)
     );
-    assert_tokenizeable::<VerifyingKey>();
-    assert_tokenizeable::<G1Point>();
-    assert_tokenizeable::<G2Point>();
+    assert_struct::<VerifyingKey>();
+    assert_struct::<G1Point>();
+    assert_struct::<G2Point>();
+}
 
-    assert_codec::<VerifyingKey>();
-    assert_codec::<G1Point>();
-    assert_codec::<G2Point>();
+#[test]
+fn can_generate_internal_structs_2() {
+    abigen!(Beefy, "./tests/solidity-contracts/BeefyV1.json");
+    assert_struct::<AuthoritySetCommitment>();
+    assert_struct::<BeefyConsensusState>();
+    assert_struct::<ProofNode>();
+    assert_struct::<BeefyConsensusProof>();
+
+    let s =
+        AuthoritySetCommitment { id: U256::from(1), len: U256::from(2), root: Default::default() };
+    let _encoded = AbiEncode::encode(s.clone());
+
+    let s = BeefyConsensusState { current_authority_set: s, ..Default::default() };
+    let _encoded = AbiEncode::encode(s);
+
+    // tuple[][]
+    let node = ProofNode::default();
+    let s = BeefyConsensusProof { authorities_proof: vec![vec![node; 2]; 2], ..Default::default() };
+    let _encoded = AbiEncode::encode(s);
 }
 
 #[test]
@@ -133,11 +155,11 @@ fn can_generate_internal_structs_multiple() {
         abigen!(
             VerifierContract,
             "ethers-contract/tests/solidity-contracts/verifier_abi.json",
-            event_derives(serde::Deserialize, serde::Serialize);
+            derives(serde::Deserialize, serde::Serialize);
 
             MyOtherVerifierContract,
             "ethers-contract/tests/solidity-contracts/verifier_abi.json",
-            event_derives(serde::Deserialize, serde::Serialize);
+            derives(serde::Deserialize, serde::Serialize);
         );
     }
     assert_tokenizeable::<VerifyingKey>();
@@ -207,7 +229,7 @@ fn can_generate_human_readable_with_structs() {
         function bar(uint256 x, uint256 y, address addr)
         yeet(uint256,uint256,address)
     ]"#,
-        event_derives(serde::Deserialize, serde::Serialize)
+        derives(serde::Deserialize, serde::Serialize)
     );
     assert_tokenizeable::<Foo>();
     assert_codec::<Foo>();
