@@ -172,7 +172,7 @@ jobs:
               with:
                   node-version: 16
             - name: Run wasm example
-              working-directory: examples/ethers-wasm
+              working-directory: examples/wasm
               run: |
                   yarn
                   yarn anvil &
@@ -194,4 +194,4 @@ jobs:
               run: ./.github/scripts/install_test_binaries.sh
             - uses: Swatinem/rust-cache@v2
             - name: Build and run all examples
-              run: ./scripts/examples.sh
+              run: ./bin/run_all_examples
