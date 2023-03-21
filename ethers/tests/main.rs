@@ -4,6 +4,4 @@
 #[cfg(feature = "celo")]
 mod celo;
 
-pub(crate) mod simple_storage {
-    ethers::contract::abigen!(SimpleStorage, "../testdata/SimpleStorage.json");
-}
+mod eip712;

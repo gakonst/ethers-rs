@@ -1,6 +1,7 @@
-use crate::simple_storage::SimpleStorage;
 use ethers::prelude::*;
 use std::{sync::Arc, time::Duration};
+
+ethers::contract::abigen!(SimpleStorage, "../testdata/SimpleStorage.json");
 
 static CELO_TESTNET_URL: &str = "https://alfajores-forno.celo-testnet.org";
 
