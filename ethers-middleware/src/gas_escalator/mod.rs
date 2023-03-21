@@ -227,9 +227,14 @@ impl<M, E> EscalationTask<M, E> {
                     return Ok(());
                 }
                 let now = Instant::now();
-                let mut txs = self.txs.lock().await;
-                let len = txs.len();
 
+                // Lock scope
+                let mut txs: Vec<_> = {
+                    let mut txs = self.txs.lock().await;
+                    std::mem::take(&mut (*txs))
+                };
+
+                let len = txs.len();
                 // Pop all transactions and re-insert those that have not been included yet
                 for _ in 0..len {
                     // this must never panic as we're explicitly within bounds
@@ -285,10 +290,11 @@ impl<M, E> EscalationTask<M, E> {
                         } else {
                             tx_hash
                         };
-
                         txs.push((new_txhash, replacement_tx, time, priority));
                     }
                 }
+                // after this big ugly loop, we dump everything back in
+                self.txs.lock().await.extend(txs);
             }}
         }
     }
