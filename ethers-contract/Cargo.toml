@@ -43,8 +43,8 @@ ethers-contract-derive = { workspace = true, optional = true }
 ethers-derive-eip712 = { workspace = true, optional = true }
 
 [dev-dependencies]
-ethers-signers.workspace = true
 ethers-solc.workspace = true
+ethers-providers = { workspace = true, features = ["ws"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { workspace = true, features = ["macros"] }

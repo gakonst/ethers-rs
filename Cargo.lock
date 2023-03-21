@@ -1219,6 +1219,7 @@ dependencies = [
  "ethers-providers",
  "ethers-signers",
  "ethers-solc",
+ "serde",
  "tokio",
 ]
 
@@ -1241,7 +1242,6 @@ dependencies = [
  "ethers-core",
  "ethers-derive-eip712",
  "ethers-providers",
- "ethers-signers",
  "ethers-solc",
  "futures-util",
  "hex",

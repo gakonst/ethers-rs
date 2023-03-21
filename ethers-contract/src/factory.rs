@@ -323,7 +323,6 @@ where
 /// use ethers_solc::Solc;
 /// use ethers_contract::ContractFactory;
 /// use ethers_providers::{Provider, Http};
-/// use ethers_signers::Wallet;
 /// use std::convert::TryFrom;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
