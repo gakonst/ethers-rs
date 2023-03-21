@@ -75,7 +75,6 @@ pub type Contract<M> = ContractInstance<std::sync::Arc<M>, M>;
 /// };
 /// use ethers_contract::Contract;
 /// use ethers_providers::{Provider, Http};
-/// use ethers_signers::Wallet;
 /// use std::{convert::TryFrom, sync::Arc};
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
@@ -122,7 +121,6 @@ pub type Contract<M> = ContractInstance<std::sync::Arc<M>, M>;
 /// use ethers_core::{abi::Abi, types::Address};
 /// use ethers_contract::{Contract, EthEvent};
 /// use ethers_providers::{Provider, Http, Middleware};
-/// use ethers_signers::Wallet;
 /// use std::{convert::TryFrom, sync::Arc};
 /// use ethers_core::abi::{Detokenize, Token, InvalidOutputType};
 /// # // this is a fake address used just for this example
