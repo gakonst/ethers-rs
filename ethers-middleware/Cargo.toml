@@ -60,7 +60,7 @@ once_cell.workspace = true
 reqwest = { workspace = true, features = ["json", "rustls"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { workspace = true, features = ["rt", "macros", "time"] }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
 
 [features]
 default = ["rustls"]
