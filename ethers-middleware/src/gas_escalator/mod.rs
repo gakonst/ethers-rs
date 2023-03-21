@@ -1,20 +1,27 @@
 mod geometric;
-use ethers_core::types::transaction::eip2718::TypedTransaction;
 pub use geometric::GeometricGasPrice;
 
 mod linear;
 pub use linear::LinearGasPrice;
 
 use async_trait::async_trait;
-use ethers_core::types::{BlockId, TransactionRequest, TxHash, U256};
-use ethers_providers::{interval, Middleware, MiddlewareError, PendingTransaction, StreamExt};
-use futures_util::lock::Mutex;
+
+use futures_channel::oneshot;
+use futures_util::{lock::Mutex, select_biased};
 use instant::Instant;
 use std::{pin::Pin, sync::Arc};
 use thiserror::Error;
+use tracing_futures::Instrument;
+
+use ethers_core::types::{
+    transaction::eip2718::TypedTransaction, BlockId, TransactionRequest, TxHash, U256,
+};
+use ethers_providers::{interval, Middleware, MiddlewareError, PendingTransaction, StreamExt};
 
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::spawn;
+
+type ToEscalate = Arc<Mutex<Vec<(TxHash, TransactionRequest, Instant, Option<BlockId>)>>>;
 
 #[cfg(target_arch = "wasm32")]
 type WatcherFuture<'a> = Pin<Box<dyn futures_util::stream::Stream<Item = ()> + 'a>>;
@@ -29,7 +36,18 @@ pub trait GasEscalator: Send + Sync + std::fmt::Debug {
     fn get_gas_price(&self, initial_price: U256, time_elapsed: u64) -> U256;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Error, Debug)]
+/// Error thrown when the GasEscalator interacts with the blockchain
+pub enum GasEscalatorError<M: Middleware> {
+    #[error("{0}")]
+    /// Thrown when an internal middleware errors
+    MiddlewareError(M::Error),
+
+    #[error("Gas escalation is only supported for EIP2930 or Legacy transactions")]
+    UnsupportedTxType,
+}
+
+#[derive(Debug, Clone, Copy)]
 /// The frequency at which transactions will be bumped
 pub enum Frequency {
     /// On a per block basis using the eth_newBlock filter
@@ -39,6 +57,15 @@ pub enum Frequency {
 }
 
 #[derive(Debug)]
+pub(crate) struct GasEscalatorMiddlewareInternal<M> {
+    pub(crate) inner: Arc<M>,
+    /// The transactions which are currently being monitored for escalation
+    #[allow(clippy::type_complexity)]
+    pub txs: ToEscalate,
+    _background: oneshot::Sender<()>,
+}
+
+#[derive(Debug, Clone)]
 /// A Gas escalator allows bumping transactions' gas price to avoid getting them
 /// stuck in the memory pool.
 ///
@@ -63,39 +90,22 @@ pub enum Frequency {
 /// let gas_oracle = GasNow::new().category(GasCategory::SafeLow);
 /// let provider = GasOracleMiddleware::new(provider, gas_oracle);
 /// ```
-pub struct GasEscalatorMiddleware<M, E> {
-    pub(crate) inner: Arc<M>,
-    pub(crate) escalator: E,
-    /// The transactions which are currently being monitored for escalation
-    #[allow(clippy::type_complexity)]
-    pub txs: Arc<Mutex<Vec<(TxHash, TransactionRequest, Instant, Option<BlockId>)>>>,
-    frequency: Frequency,
-}
-
-impl<M, E: Clone> Clone for GasEscalatorMiddleware<M, E> {
-    fn clone(&self) -> Self {
-        GasEscalatorMiddleware {
-            inner: self.inner.clone(),
-            escalator: self.escalator.clone(),
-            txs: self.txs.clone(),
-            frequency: self.frequency.clone(),
-        }
-    }
+pub struct GasEscalatorMiddleware<M> {
+    pub(crate) inner: Arc<GasEscalatorMiddlewareInternal<M>>,
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl<M, E> Middleware for GasEscalatorMiddleware<M, E>
+impl<M> Middleware for GasEscalatorMiddleware<M>
 where
     M: Middleware,
-    E: GasEscalator,
 {
     type Error = GasEscalatorError<M>;
     type Provider = M::Provider;
     type Inner = M;
 
-    fn inner(&self) -> &M {
-        &self.inner
+    fn inner(&self) -> &Self::Inner {
+        &self.inner.inner
     }
 
     async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
@@ -103,13 +113,26 @@ where
         tx: T,
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
+        self.inner.send_transaction(tx, block).await
+    }
+}
+
+impl<M> GasEscalatorMiddlewareInternal<M>
+where
+    M: Middleware,
+{
+    async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
+        &self,
+        tx: T,
+        block: Option<BlockId>,
+    ) -> Result<PendingTransaction<'_, M::Provider>, GasEscalatorError<M>> {
         let tx = tx.into();
 
         let pending_tx = self
-            .inner()
+            .inner
             .send_transaction(tx.clone(), block)
             .await
-            .map_err(GasEscalatorError::MiddlewareError)?;
+            .map_err(MiddlewareError::from_err)?;
 
         let tx = match tx {
             TypedTransaction::Legacy(inner) => inner,
@@ -125,115 +148,149 @@ where
     }
 }
 
-impl<M, E> GasEscalatorMiddleware<M, E>
+impl<M> GasEscalatorMiddleware<M>
 where
     M: Middleware,
-    E: GasEscalator,
 {
     /// Initializes the middleware with the provided gas escalator and the chosen
     /// escalation frequency (per block or per second)
     #[allow(clippy::let_and_return)]
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn new(inner: M, escalator: E, frequency: Frequency) -> Self
+    pub fn new<E>(inner: M, escalator: E, frequency: Frequency) -> Self
     where
-        E: Clone + 'static,
-        M: Clone + 'static,
+        E: GasEscalator + 'static,
+        M: 'static,
     {
-        use tracing_futures::Instrument;
+        let (tx, rx) = oneshot::channel();
+        let inner = Arc::new(inner);
 
-        let this = Self {
-            inner: Arc::new(inner),
-            escalator,
-            frequency,
-            txs: Arc::new(Mutex::new(Vec::new())),
-        };
+        let txs: ToEscalate = Default::default();
+
+        let this = Arc::new(GasEscalatorMiddlewareInternal {
+            inner: inner.clone(),
+            txs: txs.clone(),
+            _background: tx,
+        });
+
+        let esc = EscalationTask { inner, escalator, frequency, txs, shutdown: rx };
 
         {
-            let this2 = this.clone();
-            spawn(async move {
-                this2.escalate().instrument(tracing::trace_span!("gas-escalation")).await.unwrap();
-            });
+            spawn(esc.escalate().instrument(tracing::trace_span!("gas-escalation")));
         }
 
-        this
+        Self { inner: this }
+    }
+}
+
+#[derive(Debug)]
+pub struct EscalationTask<M, E> {
+    inner: M,
+    escalator: E,
+    frequency: Frequency,
+    txs: ToEscalate,
+    shutdown: oneshot::Receiver<()>,
+}
+
+impl<M, E> EscalationTask<M, E> {
+    pub fn new(
+        inner: M,
+        escalator: E,
+        frequency: Frequency,
+        txs: ToEscalate,
+        shutdown: oneshot::Receiver<()>,
+    ) -> Self {
+        Self { inner, escalator, frequency, txs, shutdown }
     }
 
-    /// Re-broadcasts pending transactions with a gas price escalator
-    pub async fn escalate(&self) -> Result<(), GasEscalatorError<M>> {
+    async fn escalate(mut self) -> Result<(), GasEscalatorError<M>>
+    where
+        M: Middleware,
+        E: GasEscalator,
+    {
         // the escalation frequency is either on a per-block basis, or on a duration basis
-        let mut watcher: WatcherFuture = match self.frequency {
+        let watcher: WatcherFuture = match self.frequency {
             Frequency::PerBlock => Box::pin(
-                self.inner
-                    .watch_blocks()
-                    .await
-                    .map_err(GasEscalatorError::MiddlewareError)?
-                    .map(|_| ()),
+                self.inner.watch_blocks().await.map_err(MiddlewareError::from_err)?.map(|_| ()),
             ),
             Frequency::Duration(ms) => Box::pin(interval(std::time::Duration::from_millis(ms))),
         };
 
-        while watcher.next().await.is_some() {
-            let now = Instant::now();
-            let mut txs = self.txs.lock().await;
-            let len = txs.len();
+        let mut watcher = watcher.fuse();
 
-            // Pop all transactions and re-insert those that have not been included yet
-            for _ in 0..len {
-                // this must never panic as we're explicitly within bounds
-                let (tx_hash, mut replacement_tx, time, priority) =
-                    txs.pop().expect("should have element in vector");
+        loop {
+            select_biased! {
+            _ = &mut self.shutdown => {}
 
-                let receipt = self.get_transaction_receipt(tx_hash).await?;
-                tracing::trace!(tx_hash = ?tx_hash, "checking if exists");
-                if receipt.is_none() {
-                    let old_gas_price = replacement_tx.gas_price.expect("gas price must be set");
-                    // Get the new gas price based on how much time passed since the
-                    // tx was last broadcast
-                    let new_gas_price = self
-                        .escalator
-                        .get_gas_price(old_gas_price, now.duration_since(time).as_secs());
+            opt = watcher.next() => {
+                if opt.is_none() {
+                    tracing::debug!("timing future has gone away");
+                    return Ok(());
+                }
+                let now = Instant::now();
+                let mut txs = self.txs.lock().await;
+                let len = txs.len();
 
-                    let new_txhash = if new_gas_price != old_gas_price {
-                        // bump the gas price
-                        replacement_tx.gas_price = Some(new_gas_price);
+                // Pop all transactions and re-insert those that have not been included yet
+                for _ in 0..len {
+                    // this must never panic as we're explicitly within bounds
+                    let (tx_hash, mut replacement_tx, time, priority) =
+                        txs.pop().expect("should have element in vector");
 
-                        // the tx hash will be different so we need to update it
-                        match self.inner().send_transaction(replacement_tx.clone(), priority).await
-                        {
-                            Ok(new_tx_hash) => {
-                                let new_tx_hash = *new_tx_hash;
-                                tracing::trace!(
-                                    old_tx_hash = ?tx_hash,
-                                    new_tx_hash = ?new_tx_hash,
-                                    old_gas_price = ?old_gas_price,
-                                    new_gas_price = ?new_gas_price,
-                                    "escalated"
-                                );
-                                new_tx_hash
-                            }
-                            Err(err) => {
-                                if err.to_string().contains("nonce too low") {
-                                    // ignore "nonce too low" errors because they
-                                    // may happen if we try to broadcast a higher
-                                    // gas price tx when one of the previous ones
-                                    // was already mined (meaning we also do not
-                                    // push it back to the pending txs vector)
-                                    continue
-                                } else {
-                                    return Err(GasEscalatorError::MiddlewareError(err))
+                    let receipt = self
+                        .inner
+                        .get_transaction_receipt(tx_hash)
+                        .await
+                        .map_err(MiddlewareError::from_err)?;
+
+                    tracing::trace!(tx_hash = ?tx_hash, "checking if exists");
+
+                    if receipt.is_none() {
+                        let old_gas_price = replacement_tx.gas_price.expect("gas price must be set");
+                        // Get the new gas price based on how much time passed since the
+                        // tx was last broadcast
+                        let new_gas_price = self
+                            .escalator
+                            .get_gas_price(old_gas_price, now.duration_since(time).as_secs());
+
+                        let new_txhash = if new_gas_price != old_gas_price {
+                            // bump the gas price
+                            replacement_tx.gas_price = Some(new_gas_price);
+
+                            // the tx hash will be different so we need to update it
+                            match self.inner.send_transaction(replacement_tx.clone(), priority).await {
+                                Ok(new_tx_hash) => {
+                                    let new_tx_hash = *new_tx_hash;
+                                    tracing::trace!(
+                                        old_tx_hash = ?tx_hash,
+                                        new_tx_hash = ?new_tx_hash,
+                                        old_gas_price = ?old_gas_price,
+                                        new_gas_price = ?new_gas_price,
+                                        "escalated"
+                                    );
+                                    new_tx_hash
+                                }
+                                Err(err) => {
+                                    if err.to_string().contains("nonce too low") {
+                                        // ignore "nonce too low" errors because they
+                                        // may happen if we try to broadcast a higher
+                                        // gas price tx when one of the previous ones
+                                        // was already mined (meaning we also do not
+                                        // push it back to the pending txs vector)
+                                        continue
+                                    } else {
+                                        return Err(GasEscalatorError::MiddlewareError(err))
+                                    }
                                 }
                             }
-                        }
-                    } else {
-                        tx_hash
-                    };
+                        } else {
+                            tx_hash
+                        };
 
-                    txs.push((new_txhash, replacement_tx, time, priority));
+                        txs.push((new_txhash, replacement_tx, time, priority));
+                    }
                 }
-            }
+            }}
         }
-
-        Ok(())
     }
 }
 
@@ -251,15 +308,4 @@ impl<M: Middleware> MiddlewareError for GasEscalatorError<M> {
             _ => None,
         }
     }
-}
-
-#[derive(Error, Debug)]
-/// Error thrown when the GasEscalator interacts with the blockchain
-pub enum GasEscalatorError<M: Middleware> {
-    #[error("{0}")]
-    /// Thrown when an internal middleware errors
-    MiddlewareError(M::Error),
-
-    #[error("Gas escalation is only supported for EIP2930 or Legacy transactions")]
-    UnsupportedTxType,
 }
