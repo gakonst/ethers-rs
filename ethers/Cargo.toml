@@ -24,7 +24,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [features]
-default = ["abigen", "rustls"]
+default = ["abigen", "rustls", "ethers-solc"]
 
 celo = ["ethers-core/celo", "ethers-providers/celo", "ethers-signers/celo", "ethers-contract/celo", "ethers-middleware/celo", "legacy"]
 
