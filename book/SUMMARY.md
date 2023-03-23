@@ -41,7 +41,7 @@
 - [Events](./events/events.md)
   - [Logs and filtering](events/logs-and-filtering.md)
   - [Solidity topics]()
-- [Subscriptions]()
+- [Subscriptions](./subscriptions/subscriptions.md)
   - [Watch blocks]()
   - [Subscribe events by type]()
   - [Subscribe logs]()
