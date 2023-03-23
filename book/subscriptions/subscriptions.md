@@ -1,6 +1,6 @@
 ## Ethers-rs: Subscriptions
 
-In this section of the mdbook, we will discuss how to use `ethers-rs` to subscribe and listen to blocks, events, and logs. Subscriptions provide a way to receive real-time updates on various activities on the Ethereum blockchain, allowing you to monitor the network and react to changes as they happen.
+Here we will discuss how to use `ethers-rs` to subscribe and listen to blocks, events, and logs. Subscriptions provide a way to receive real-time updates on various activities on the Ethereum blockchain, allowing you to monitor the network and react to changes as they happen.
 
 ## Overview
 
@@ -22,72 +22,6 @@ Next, import the necessary components from the ethers-rs library:
 
 ```rust
 use ethers::{prelude::\*,types::H256,};
-```
-
-## Subscribing to New Blocks
-
-To subscribe to new blocks, create a Provider instance and call the subscribe_blocks method:
-
-```rust
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-let provider = Provider::<Http>::try_from("http://localhost:8545")?;
-
-    let mut stream = provider.subscribe_blocks().await?;
-
-    // Your code to handle new blocks goes here.
-
-    Ok(())
-
-}
-```
-
-You can now listen to new blocks as they are mined:
-
-```rust
-while let Some(block) = stream.next().await {
-    match block {
-        Ok(block) => {
-            println!("New block: {:?}", block);
-        }
-        Err(e) => {
-            eprintln!("Error: {:?}", e);
-        }
-    }
-}
-```
-
-### Subscribing to Logs
-
-To subscribe to logs, create a Filter object that specifies the criteria for the logs you want to listen to. Then, pass the filter to the Provider's subscribe_logs method:
-
-```rust
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let provider = Provider::<Http>::try_from("http://localhost:8545")?;
-
-    let filter = Filter::new().address("0xcontract_address_here".parse()?);
-
-    let mut stream = provider.subscribe_logs(filter).await?;
-
-    // Your code to handle logs goes here.
-
-    Ok(())
-
-}
-```
-
-You can now listen to logs that match your filter criteria:
-
-```rust
-while let Some(log) = stream.next().await {
-    match log {
-        Ok(log) => {
-            println!("New log: {:?}", log);
-        }
-        Err(e) => {
-            eprintln!("Error: {:?}", e);
-        }
-    }
-}
 ```
 
 ### Subscribing to Events
