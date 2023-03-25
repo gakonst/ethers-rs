@@ -1262,7 +1262,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "syn 2.0.0",
+ "syn 2.0.9",
  "tempfile",
  "tokio",
  "toml",
@@ -1281,7 +1281,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde_json",
- "syn 2.0.0",
+ "syn 2.0.9",
 ]
 
 [[package]]
@@ -1308,7 +1308,7 @@ dependencies = [
  "serde",
  "serde_json",
  "strum",
- "syn 2.0.0",
+ "syn 2.0.9",
  "tempfile",
  "thiserror",
  "tiny-keccak",
@@ -3023,12 +3023,12 @@ dependencies = [
 
 [[package]]
 name = "prettyplease"
-version = "0.1.25"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c8646e95016a7a6c4adea95bafa8a16baab64b583356217f2c85db4a39d9a86"
+checksum = "c17f5e28f5d12fb805aea10d72d50d2d9b005b267e71c44d0a33a847e45ed795"
 dependencies = [
  "proc-macro2",
- "syn 1.0.109",
+ "syn 2.0.9",
 ]
 
 [[package]]
@@ -3994,9 +3994,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.0"
+version = "2.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cff13bb1732bccfe3b246f3fdb09edfd51c01d6f5299b7ccd9457c2e4e37774"
+checksum = "0da4a3c17e109f700685ec577c0f85efd9b19bcf15c913985f14dc1ac01775aa"
 dependencies = [
  "proc-macro2",
  "quote",

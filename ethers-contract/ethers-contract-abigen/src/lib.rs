@@ -301,11 +301,9 @@ impl ToTokens for ContractBindings {
 impl fmt::Display for ContractBindings {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.format {
-            // TODO:
-            todo!("enable formatting when prettyplease uses syn 2.0")
-            // let syntax_tree = syn::parse2::<syn::File>(self.tokens.clone()).unwrap();
-            // let s = prettyplease::unparse(&syntax_tree);
-            // f.write_str(&s)
+            let syntax_tree = syn::parse2::<syn::File>(self.tokens.clone()).unwrap();
+            let s = prettyplease::unparse(&syntax_tree);
+            f.write_str(&s)
         } else {
             fmt::Display::fmt(&self.tokens, f)
         }
