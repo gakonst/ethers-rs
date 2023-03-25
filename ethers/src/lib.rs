@@ -106,8 +106,9 @@ pub use ethers_core::{abi, types, utils};
 
 /// Easy imports of frequently used type definitions and traits.
 #[doc(hidden)]
+#[allow(ambiguous_glob_reexports)]
 pub mod prelude {
-    pub use super::addressbook::*;
+    pub use super::addressbook::contract;
 
     pub use super::contract::*;
 
