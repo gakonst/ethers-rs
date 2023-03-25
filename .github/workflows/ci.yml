@@ -63,11 +63,11 @@ jobs:
             - uses: Swatinem/rust-cache@v2
             - name: test ${{ matrix.flags.flags }}
               shell: bash
-              # skip `ethers_etherscan::it` and `ethers::live`
+              # skip `ethers_etherscan::it`
               run: |
                   cargo nextest run \
                   ${{ matrix.flags.flags }} \
-                  -E "!binary(~live) & !(deps(ethers-etherscan) & kind(test))"
+                  -E "!(deps(ethers-etherscan) & kind(test))"
 
     etherscan-tests:
         name: etherscan tests
@@ -94,7 +94,7 @@ jobs:
             - uses: dtolnay/rust-toolchain@stable
             - uses: Swatinem/rust-cache@v2
             - name: live tests
-              run: cargo test -p ethers --test live --all-features
+              run: cargo test -p ethers --all-features
 
     # TODO: [#2191](https://github.com/gakonst/ethers-rs/issues/2191)
     # feature-checks:
@@ -172,7 +172,7 @@ jobs:
               with:
                   node-version: 16
             - name: Run wasm example
-              working-directory: examples/ethers-wasm
+              working-directory: examples/wasm
               run: |
                   yarn
                   yarn anvil &
@@ -194,4 +194,4 @@ jobs:
               run: ./.github/scripts/install_test_binaries.sh
             - uses: Swatinem/rust-cache@v2
             - name: Build and run all examples
-              run: ./scripts/examples.sh
+              run: ./bin/run_all_examples

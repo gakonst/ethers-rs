@@ -1,5 +1,5 @@
 {
-    "name": "ethers-wasm",
+    "name": "examples-wasm",
     "license": "MIT OR Apache-2.0",
     "private": "true",
     "scripts": {

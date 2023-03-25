@@ -65,9 +65,8 @@ abigen = ["ethers-contract/abigen"]
 ### abigen without reqwest
 abigen-offline = ["ethers-contract/abigen-offline"]
 ## solc
-ethers-solc = ["dep:ethers-solc", "ethers-etherscan/ethers-solc"]
-solc-full = ["ethers-solc?/full"]
-solc-tests = ["ethers-solc?/tests"]
+solc-full = ["ethers-solc/full"]
+solc-tests = ["ethers-solc/tests"]
 
 # Deprecated
 solc-sha2-asm = []
@@ -76,12 +75,15 @@ solc-sha2-asm = []
 ethers-addressbook.workspace = true
 ethers-contract.workspace = true
 ethers-core.workspace = true
-ethers-etherscan.workspace = true
+ethers-etherscan = { workspace = true, features = ["ethers-solc"] }
 ethers-middleware.workspace = true
 ethers-providers.workspace = true
 ethers-signers.workspace = true
-
-ethers-solc = { workspace = true, optional = true }
+ethers-solc.workspace = true
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt"] }
+serde.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+ethers-contract.workspace = true
+ethers-providers = { workspace = true, features = ["rustls"] } # allow https connections
+ethers-solc = { workspace = true, features = ["svm-solc"] }

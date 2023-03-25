@@ -81,6 +81,7 @@
 
 #![warn(missing_debug_implementations, missing_docs, rust_2018_idioms, unreachable_pub)]
 #![deny(rustdoc::broken_intra_doc_links)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc(test(no_crate_inject, attr(deny(rust_2018_idioms), allow(dead_code, unused_variables))))]
 
 #[doc(inline)]
@@ -98,7 +99,6 @@ pub use ethers_providers as providers;
 #[doc(inline)]
 pub use ethers_signers as signers;
 #[doc(inline)]
-#[cfg(feature = "ethers-solc")]
 pub use ethers_solc as solc;
 
 #[doc(inline)]
@@ -121,7 +121,6 @@ pub mod prelude {
 
     pub use super::signers::*;
 
-    #[cfg(feature = "ethers-solc")]
     pub use super::solc::*;
 }
 

@@ -134,14 +134,13 @@ include one or more tests to ensure that ethers-rs does not regress in the futur
 #### Unit Tests
 
 Functions which have very specific tasks should be unit tested. We encourage using
-table tests to cover a large number of cases in a succinct readable manner. A good example
-is the [create2](https://github.com/gakonst/ethers-rs/blob/1d7bdef0bd792867454da28c4e9c193681295fb2/ethers-core/src/utils/mod.rs#L110-L163) unit tests.
+table tests to cover a large number of cases in a succinct readable manner. A good
+example is the [utils](./ethers-core/src/utils/mod.rs#L647) unit tests.
 
 #### Integration tests
 
-Integration tests go in the same crate as the code they are testing. Each sub
-crate should have a `dev-dependency` on `ethers` itself. This makes all
-utilities available to use in tests, no matter the crate being tested.
+Integration tests go in the same crate as the code they are testing, in the
+`tests/it/` directory.
 
 The best strategy for writing a new integration test is to look at existing
 integration tests in the crate and follow the style.
@@ -155,27 +154,23 @@ that the example is correct and provides additional test coverage.
 The trick to documentation tests is striking a balance between being succinct
 for a reader to understand and actually testing the API.
 
-Same as with integration tests, when writing a documentation test, the full
-`ethers` crate is available. This is especially useful for getting access to the
-runtime to run the example.
-
 The documentation tests will be visible from both the crate specific
 documentation **and** the `ethers` facade documentation via the re-export. The
 example should be written from the point of view of a user that is using the
-`ethers` crate. As such, the example should use the API via the facade and not by
-directly referencing the crate.
+`ethers` crate.
 
 The type level example for `ethers_providers::Provider` provides a good example of a
 documentation test:
 
 ````rust
 /// ```no_run
-/// use ethers::providers::{JsonRpcClient, Provider, Http};
-/// use std::convert::TryFrom;
+/// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
+/// use ethers_providers::{Middleware, Provider, Http};
 ///
-/// let provider = Provider::<Http>::try_from("https://eth.llamarpc.com").expect("could not instantiate HTTP Provider");
+/// let provider = Provider::<Http>::try_from(
+///     "https://eth.llamarpc.com"
+/// ).expect("could not instantiate HTTP Provider");
 ///
-/// # async fn foo<P: JsonRpcClient>(provider: &Provider<P>) -> Result<(), Box<dyn std::error::Error>> {
 /// let block = provider.get_block(100u64).await?;
 /// println!("Got block: {}", serde_json::to_string(&block)?);
 /// # Ok(())
@@ -205,52 +200,15 @@ notes about [commit squashing](#commit-squashing)).
 
 #### Commit message guidelines
 
-A good commit message should describe what changed and why.
+Commit messages should follow the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
+specification.
 
-1. The first line should:
+Here's a few examples from the master branch's commit log:
 
--   contain a short description of the change (preferably 50 characters or less,
-    and no more than 72 characters)
--   be entirely in lowercase with the exception of proper nouns, acronyms, and
-    the words that refer to code, like function/variable names
--   be prefixed with the name of the sub crate being changed (without the `ethers-`
-    prefix) and start with an imperative verb. If modifying `ethers` proper,
-    omit the crate prefix.
-
-Examples:
-
--   providers: introduce ENS querying for names and addresses
--   re-export the abi, types and utils modules from `ethers_core`
-
-2. Keep the second line blank.
-3. Wrap all other lines at 72 columns (except for long URLs).
-4. If your patch fixes an open issue, you can add a reference to it at the end
-   of the log. Use the `Fixes: #` prefix and the issue number. For other
-   references use `Refs: #`. `Refs` may include multiple issues, separated by a
-   comma.
-
-    Examples:
-
-    - `Fixes: #1337`
-    - `Refs: #1234`
-
-Sample complete commit message:
-
-```txt
-subcrate: explain the commit in one line
-
-Body of commit message is a few lines of text, explaining things
-in more detail, possibly giving some background about the issue
-being fixed, etc.
-
-The body of the commit message can be several paragraphs, and
-please do proper word-wrap and keep columns shorter than about
-72 characters or so. That way, `git log` will show things
-nicely even when it is indented.
-
-Fixes: #1337
-Refs: #453, #154
-```
+-   feat(abigen): support empty events
+-   chore: bump crypto deps
+-   test: simplify test cleanup
+-   fmt: run rustfmt
 
 ### Opening the Pull Request
 
@@ -380,17 +338,14 @@ When releasing the workspace:
    existing APIs. If so, resolve those issues and make a `minor` change
    release. Otherwise, if it is necessary to make a breaking release, make a
    `major` change release.
-2. **Dry run the release** by running `cargo release --workspace <release_type>`
-3. **Update the changelog for the crate.** Changelog for all crates go in
-   [`CHANGELOG.md`](./CHANGELOG.md). Any unreleased changes changelogs should
-   be moved to respective crates released changelogs. Change descriptions
-   may be taken from the Git history, but should be edited to ensure a consistent
-   format, based on [Keep A Changelog][keep-a-changelog]. Other entries in that
-   crate's changelog may also be used for reference.
-4. **Release the crate.** Run the following command:
-
-    ```bash
-    cargo release --workspace <release_type> --execute
-    ```
+2. **Dry run the release.** Running the `cargo release` command without the
+   `--execute` flag will perform a dry run.
+3. **Release the crate.**
+   Run the `bin/release` script with the `--execute` flag.
+   This will update the package versions in the relevant manifests, create
+   git tags, automatically generate the [`CHANGELOG.md`](./CHANGELOG.md) file
+   with [git-cliff], and finally publish the crates to `crates.io`.
+   For more information, see the top comment in the script file.
 
 [keep-a-changelog]: https://github.com/olivierlacan/keep-a-changelog/blob/master/CHANGELOG.md
+[git-cliff]: https://github.com/orhun/git-cliff

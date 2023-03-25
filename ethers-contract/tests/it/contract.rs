@@ -5,10 +5,7 @@ use ethers_contract::{
 };
 use ethers_core::{
     abi::{encode, AbiEncode, Token, Tokenizable},
-    types::{
-        transaction::eip712::Eip712, Address, BlockId, Bytes, Filter, ValueOrArray, H160, H256,
-        I256, U256,
-    },
+    types::{Address, BlockId, Bytes, Filter, ValueOrArray, H160, H256, U256},
     utils::{keccak256, Anvil},
 };
 use ethers_providers::{Http, Middleware, MiddlewareError, Provider, StreamExt, Ws};
@@ -330,7 +327,6 @@ async fn call_past_hash_test() {
 }
 
 #[tokio::test]
-#[cfg(feature = "abigen")]
 async fn watch_events() {
     let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
     let anvil = Anvil::new().spawn();

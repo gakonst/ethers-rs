@@ -134,7 +134,7 @@ ethers = { version = "1.0.2", features = ["openssl"] }
 
 ## Note on WASM and FFI bindings
 
-You should be able to build a wasm app that uses ethers-rs (see the [example](./examples/ethers-wasm) for reference). If ethers fails to
+You should be able to build a wasm app that uses ethers-rs (see the [example](./examples/wasm) for reference). If ethers fails to
 compile in WASM, please
 [open an issue](https://github.com/gakonst/ethers-rs/issues/new/choose).
 There is currently no plan to provide an official JS/TS-accessible library

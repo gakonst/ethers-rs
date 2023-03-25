@@ -1,6 +1,6 @@
 [package]
 name = "examples-contracts"
-version = "2.0.0"
+version = "0.0.0"
 publish = false
 authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
 
@@ -13,7 +13,7 @@ default = ["legacy"]
 legacy = ["ethers/legacy"]
 
 [dev-dependencies]
-ethers = { workspace = true, features = ["abigen", "ethers-solc", "rustls", "ws"] }
+ethers = { workspace = true, features = ["abigen", "rustls", "ws"] }
 
 tokio = { workspace = true, features = ["macros"] }
 

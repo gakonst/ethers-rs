@@ -36,6 +36,7 @@ serde.workspace = true
 thiserror.workspace = true
 futures-util.workspace = true
 futures-locks.workspace = true
+futures-channel.workspace = true
 tracing.workspace = true
 tracing-futures.workspace = true
 instant.workspace = true
