@@ -2,6 +2,7 @@
 pragma solidity >=0.6.0;
 pragma experimental ABIEncoderV2;
 
+// note that this file is not synced with DeriveEip712Test.json
 contract DeriveEip712Test {
     uint256 constant chainId = 1;
     bytes32 constant salt = keccak256("eip712-test-75F0CCte");

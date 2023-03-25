@@ -140,8 +140,11 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
             let ty = find_parameter_type(&arr.elem)?;
             if let Expr::Lit(ref expr) = arr.len {
                 if let Lit::Int(ref len) = expr.lit {
-                    if let Ok(size) = len.base10_parse::<usize>() {
-                        return Ok(ParamType::FixedArray(Box::new(ty), size))
+                    if let Ok(len) = len.base10_parse::<usize>() {
+                        return match (ty, len) {
+                            (ParamType::Uint(8), 32) => Ok(ParamType::FixedBytes(32)),
+                            (ty, len) => Ok(ParamType::FixedArray(Box::new(ty), len)),
+                        }
                     }
                 }
             }

@@ -5,7 +5,10 @@ use ethers_contract::{
 };
 use ethers_core::{
     abi::{encode, AbiEncode, Token, Tokenizable},
-    types::{Address, BlockId, Bytes, Filter, ValueOrArray, H160, H256, U256},
+    types::{
+        transaction::eip712::*, Address, BlockId, Bytes, Filter, ValueOrArray, H160, H256, I256,
+        U256,
+    },
     utils::{keccak256, Anvil},
 };
 use ethers_providers::{Http, Middleware, MiddlewareError, Provider, StreamExt, Ws};
@@ -787,7 +790,7 @@ async fn test_derive_eip712() {
     mod contract {
         ethers_contract::abigen!(
             DeriveEip712Test,
-            "./ethers-contract/tests/solidity-contracts/derive_eip712_abi.json",
+            "./ethers-contract/tests/solidity-contracts/DeriveEip712Test.json",
             derives(serde::Deserialize, serde::Serialize)
         );
     }
@@ -811,33 +814,17 @@ async fn test_derive_eip712() {
         out: Address,
     }
 
-    // get ABI and bytecode for the DeriveEip712Test contract
-    let (abi, bytecode) = compile_contract("DeriveEip712Test", "DeriveEip712Test.sol");
-
     // launch the network & connect to it
     let anvil = Anvil::new().spawn();
-    let from = anvil.addresses()[0];
+    let wallet: LocalWallet = anvil.keys()[0].clone().into();
     let provider = Provider::try_from(anvil.endpoint())
         .unwrap()
-        .with_sender(from)
+        .with_sender(wallet.address())
         .interval(std::time::Duration::from_millis(10));
     let client = Arc::new(provider);
 
-    let wallet: LocalWallet = anvil.keys()[0].clone().into();
-
-    let factory = ContractFactory::new(abi.clone(), bytecode.clone(), client.clone());
-
-    let contract = factory
-        .deploy(())
-        .expect("failed to deploy DeriveEip712Test contract")
-        .legacy()
-        .send()
-        .await
-        .expect("failed to instantiate factory for DeriveEip712 contract");
-
-    let addr = contract.address();
-
-    let contract = contract::DeriveEip712Test::new(addr, client.clone());
+    let contract: contract::DeriveEip712Test<_> =
+        contract::DeriveEip712Test::deploy(client.clone(), ()).unwrap().send().await.unwrap();
 
     let foo_bar = FooBar {
         foo: I256::from(10u64),
@@ -845,7 +832,7 @@ async fn test_derive_eip712() {
         fizz: b"fizz".into(),
         buzz: keccak256("buzz"),
         far: String::from("space"),
-        out: Address::from([0; 20]),
+        out: Address::zero(),
     };
 
     let derived_foo_bar = contract::FooBar {
@@ -859,11 +846,11 @@ async fn test_derive_eip712() {
 
     let sig = wallet.sign_typed_data(&foo_bar).await.expect("failed to sign typed data");
 
-    let r = <[u8; 32]>::try_from(sig.r)
-        .expect("failed to parse 'r' value from signature into [u8; 32]");
-    let s = <[u8; 32]>::try_from(sig.s)
-        .expect("failed to parse 's' value from signature into [u8; 32]");
-    let v = u8::try_from(sig.v).expect("failed to parse 'v' value from signature into u8");
+    let mut r = [0; 32];
+    sig.r.to_big_endian(&mut r);
+    let mut s = [0; 32];
+    sig.s.to_big_endian(&mut s);
+    let v = sig.v as u8;
 
     let domain_separator = contract
         .domain_separator()

@@ -6,7 +6,7 @@ use ethers_core::{
     utils::keccak256,
 };
 use inflector::Inflector;
-use proc_macro2::TokenStream;
+use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 use syn::{spanned::Spanned, Data, DeriveInput, Error, Fields, LitInt, LitStr, Result, Token};
 
@@ -17,7 +17,7 @@ pub(crate) fn impl_derive_eip712(input: &DeriveInput) -> Result<TokenStream> {
     // Instantiate domain from parsed attributes
     let domain = parse_attributes(input)?;
 
-    let domain_separator = hex::encode(domain.separator());
+    let domain_separator = into_tokens(domain.separator());
 
     let domain_str = serde_json::to_string(&domain).unwrap();
 
@@ -25,43 +25,38 @@ pub(crate) fn impl_derive_eip712(input: &DeriveInput) -> Result<TokenStream> {
     let parsed_fields = parse_fields(input)?;
 
     // Compute the type hash for the derived struct using the parsed fields from above.
-    let type_hash = hex::encode(make_type_hash(primary_type.to_string(), &parsed_fields));
+    let type_hash = into_tokens(make_type_hash(primary_type.to_string(), &parsed_fields));
 
     // Use reference to ethers_core instead of directly using the crate itself.
     let ethers_core = ethers_core_crate();
 
     let tokens = quote! {
-        impl Eip712 for #primary_type {
+        impl #ethers_core::types::transaction::eip712::Eip712 for #primary_type {
             type Error = #ethers_core::types::transaction::eip712::Eip712Error;
 
-            fn type_hash() -> Result<[u8; 32], Self::Error> {
-                use std::convert::TryFrom;
-                let decoded = #ethers_core::utils::hex::decode(#type_hash)?;
-                let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;
-                Ok(byte_array)
+            #[inline]
+            fn type_hash() -> ::core::result::Result<[u8; 32], Self::Error> {
+                Ok([#(#type_hash),*])
             }
 
-            // Return the pre-computed domain separator from compile time;
-            fn domain_separator(&self) -> Result<[u8; 32], Self::Error> {
-                use std::convert::TryFrom;
-                let decoded = #ethers_core::utils::hex::decode(#domain_separator)?;
-                let byte_array: [u8; 32] = <[u8; 32]>::try_from(&decoded[..])?;
-                Ok(byte_array)
+            #[inline]
+            fn domain_separator(&self) -> ::core::result::Result<[u8; 32], Self::Error> {
+                Ok([#(#domain_separator),*])
             }
 
-            fn domain(&self) -> Result<#ethers_core::types::transaction::eip712::EIP712Domain, Self::Error> {
-                let domain: #ethers_core::types::transaction::eip712::EIP712Domain = # ethers_core::utils::__serde_json::from_str(#domain_str)?;
-
-                Ok(domain)
+            fn domain(&self) -> ::core::result::Result<#ethers_core::types::transaction::eip712::EIP712Domain, Self::Error> {
+                #ethers_core::utils::__serde_json::from_str(#domain_str).map_err(::core::convert::Into::into)
             }
 
-            fn struct_hash(&self) -> Result<[u8; 32], Self::Error> {
-                use #ethers_core::abi::Tokenizable;
+            fn struct_hash(&self) -> ::core::result::Result<[u8; 32], Self::Error> {
                 let mut items = vec![#ethers_core::abi::Token::Uint(
                     #ethers_core::types::U256::from(&Self::type_hash()?[..]),
                 )];
 
-                if let #ethers_core::abi::Token::Tuple(tokens) = self.clone().into_token() {
+                if let #ethers_core::abi::Token::Tuple(tokens) =
+                    #ethers_core::abi::Tokenizable::into_token(::core::clone::Clone::clone(self))
+                {
+                    items.reserve(tokens.len());
                     for token in tokens {
                         match &token {
                             #ethers_core::abi::Token::Tuple(t) => {
@@ -163,10 +158,24 @@ fn parse_fields(input: &DeriveInput) -> Result<Vec<(String, ParamType)>> {
 
 /// Convert hash map of field names and types into a type hash corresponding to enc types;
 fn make_type_hash(primary_type: String, fields: &[(String, ParamType)]) -> [u8; 32] {
-    let parameters =
-        fields.iter().map(|(k, v)| format!("{v} {k}")).collect::<Vec<String>>().join(",");
+    let mut sig = String::with_capacity(256);
 
-    let sig = format!("{primary_type}({parameters})");
+    sig.push_str(&primary_type);
+
+    sig.push('(');
+    for (i, (name, ty)) in fields.iter().enumerate() {
+        sig.push_str(&ty.to_string());
+        sig.push(' ');
+        sig.push_str(name);
+        if i < fields.len() - 1 {
+            sig.push(',');
+        }
+    }
+    sig.push(')');
 
     keccak256(sig)
+}
+
+fn into_tokens(bytes: [u8; 32]) -> impl Iterator<Item = Literal> {
+    bytes.into_iter().map(Literal::u8_suffixed)
 }
