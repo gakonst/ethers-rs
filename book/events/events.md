@@ -17,13 +17,13 @@ Before diving into event handling, ensure you have ethers-rs added to your proje
 ```toml
 [dependencies]
 ethers = { version = "2.0.0.", features = ["full"] }
-Now, let's import the necessary components from the ethers-rs library:
 ```
+
+Now, let's import the necessary components from the ethers-rs library:
 
 ```rust
 use ethers::{
-prelude::\*,
-contract::{Contract, EthEvent},
+prelude::contract::{Contract, EthEvent},
 };
 ```
 
@@ -54,7 +54,7 @@ First, define a struct representing the ValueChanged event:
 ```rust
 #[derive(Debug, Clone, EthEvent)]
 pub struct ValueChanged {
-pub new_value: U256,
+    pub new_value: U256,
 }
 ```
 
