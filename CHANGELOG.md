@@ -10,10 +10,14 @@ which is configured [here](./cliff.toml).
 
 Please do not manually edit this file.
 
-## [2.0.1] - 2023-03-21
+## [2.0.2] - 2023-03-28
 
 ### Bug Fixes
 
+- Ambiguous_glob_reexports rustc lint ([#2301](https://github.com/gakonst/ethers-rs/issues/2301))
+- Broken eip155 logic in aws signer ([#2300](https://github.com/gakonst/ethers-rs/issues/2300))
+- Enable doc_cfg feature for docsrs ([#2294](https://github.com/gakonst/ethers-rs/issues/2294))
+- Add missing feature on ethers tests
 - Ethers-contract circular dep on ethers-signers ([#2291](https://github.com/gakonst/ethers-rs/issues/2291))
 - Features ([#2290](https://github.com/gakonst/ethers-rs/issues/2290))
 - Handle all struct field types ([#2289](https://github.com/gakonst/ethers-rs/issues/2289))
@@ -87,6 +91,7 @@ Please do not manually edit this file.
 
 ### Depedencies
 
+- Bump generic-array
 - Bump MSRV from 1.64 to 1.65 ([#2277](https://github.com/gakonst/ethers-rs/issues/2277))
 - Bump and use workspace dependencies ([#2222](https://github.com/gakonst/ethers-rs/issues/2222))
 - Bump crypto deps ([#2260](https://github.com/gakonst/ethers-rs/issues/2260))
@@ -223,6 +228,7 @@ Please do not manually edit this file.
 
 ### Miscellaneous Tasks
 
+- Add eyre dependency ([#2305](https://github.com/gakonst/ethers-rs/issues/2305))
 - Remove redundant clone
 - Make clippy happy ([#2264](https://github.com/gakonst/ethers-rs/issues/2264))
 - Allow clippy false positive ([#2259](https://github.com/gakonst/ethers-rs/issues/2259))
@@ -256,6 +262,7 @@ Please do not manually edit this file.
 
 ### Other
 
+- Rm celo integration test, install missing solc version ([#2292](https://github.com/gakonst/ethers-rs/issues/2292))
 - Prestwich/gas escalator dangle ([#2284](https://github.com/gakonst/ethers-rs/issues/2284))
 - Contracts chapter ([#2281](https://github.com/gakonst/ethers-rs/issues/2281))
 - Revert "chore: remove redundant clone"
@@ -329,6 +336,7 @@ Please do not manually edit this file.
 
 ### Testing
 
+- Ensure multithreaded tokio rt
 - Simplify test cleanup ([#2220](https://github.com/gakonst/ethers-rs/issues/2220))
 - Add parse pk test ([#2194](https://github.com/gakonst/ethers-rs/issues/2194))
 - Disable signer integration tests temporarily
