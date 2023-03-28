@@ -14,6 +14,7 @@ Please do not manually edit this file.
 
 ### Bug Fixes
 
+- Ensure ethers-solc has tokio-rt-multithread
 - Ambiguous_glob_reexports rustc lint ([#2301](https://github.com/gakonst/ethers-rs/issues/2301))
 - Broken eip155 logic in aws signer ([#2300](https://github.com/gakonst/ethers-rs/issues/2300))
 - Enable doc_cfg feature for docsrs ([#2294](https://github.com/gakonst/ethers-rs/issues/2294))
