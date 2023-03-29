@@ -83,16 +83,16 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> Result<TokenStream, Erro
             // can't encode an empty struct
             // TODO: panic instead?
             quote! {
-                #ethers_core::abi::Token::Tuple(Vec::new())
+                #ethers_core::abi::Token::Tuple(::std::vec![])
             },
         ),
         _ => {
+            let err_format_string = format!("Expected {params_len} tokens, got {{}}: {{:?}}");
             let from_token = quote! {
                 if let #ethers_core::abi::Token::Tuple(tokens) = token {
                     if tokens.len() != #params_len {
                         return Err(#ethers_core::abi::InvalidOutputType(::std::format!(
-                            "Expected {} tokens, got {}: {:?}",
-                            #params_len,
+                            #err_format_string,
                             tokens.len(),
                             tokens
                         )));
@@ -136,9 +136,7 @@ pub fn derive_tokenizeable_impl(input: &DeriveInput) -> Result<TokenStream, Erro
             #generic_predicates
             #tokenize_predicates
         {
-            fn from_token(token: #ethers_core::abi::Token) -> ::std::result::Result<Self, #ethers_core::abi::InvalidOutputType>
-            where
-                Self: Sized,
+            fn from_token(token: #ethers_core::abi::Token) -> ::core::result::Result<Self, #ethers_core::abi::InvalidOutputType>
             {
                 #from_token_impl
             }
@@ -161,9 +159,7 @@ fn tokenize_unit_type(name: &Ident) -> TokenStream {
 
     quote! {
         impl #ethers_core::abi::Tokenizable for #name {
-            fn from_token(token: #ethers_core::abi::Token) -> ::std::result::Result<Self, #ethers_core::abi::InvalidOutputType>
-            where
-                Self: Sized,
+            fn from_token(token: #ethers_core::abi::Token) -> ::core::result::Result<Self, #ethers_core::abi::InvalidOutputType>
             {
                 if let #ethers_core::abi::Token::Tuple(tokens) = token {
                     if !tokens.is_empty() {
@@ -205,45 +201,44 @@ fn tokenize_enum<'a>(
 
     let mut into_tokens = TokenStream::new();
     let mut from_tokens = TokenStream::new();
-    for (idx, variant) in variants.into_iter().enumerate() {
+    let last = variants.size_hint().1.unwrap().saturating_sub(1);
+    for (idx, variant) in variants.enumerate() {
         let var_ident = &variant.ident;
-        if variant.fields.len() > 1 {
-            return Err(Error::new(
-                variant.span(),
-                "EthAbiType cannot be derived for enum variants with multiple fields",
-            ))
-        } else if variant.fields.is_empty() {
-            let value = Literal::u8_unsuffixed(idx as u8);
-            from_tokens.extend(quote! {
-                if let Ok(#value) = u8::from_token(token.clone()) {
-                    return Ok(#enum_name::#var_ident)
-                }
-            });
-            into_tokens.extend(quote! {
-                #enum_name::#var_ident => #value.into_token(),
-            });
-        } else if let Some(field) = variant.fields.iter().next() {
-            let ty = &field.ty;
-            from_tokens.extend(quote! {
-                if let Ok(decoded) = #ty::from_token(token.clone()) {
-                    return Ok(#enum_name::#var_ident(decoded))
-                }
-            });
-            into_tokens.extend(quote! {
-                #enum_name::#var_ident(element) => element.into_token(),
-            });
-        } else {
-            into_tokens.extend(quote! {
-                #enum_name::#var_ident(element) => # ethers_core::abi::Token::Tuple(::std::vec::Vec::new()),
-            });
+        let clone = if idx < last { Some(quote!(.clone())) } else { None };
+        match variant.fields.len() {
+            0 => {
+                let value = Literal::u8_suffixed(idx as u8);
+                from_tokens.extend(quote! {
+                    if let Ok(#value) = <u8 as #ethers_core::abi::Tokenizable>::from_token(token #clone) {
+                        return Ok(#enum_name::#var_ident)
+                    }
+                });
+                into_tokens.extend(quote! {
+                    #enum_name::#var_ident => <u8 as #ethers_core::abi::Tokenizable>::into_token(#value),
+                });
+            }
+            1 => {
+                from_tokens.extend(quote! {
+                    if let Ok(decoded) = #ethers_core::abi::Tokenizable::from_token(token #clone) {
+                        return Ok(#enum_name::#var_ident(decoded))
+                    }
+                });
+                into_tokens.extend(quote! {
+                    #enum_name::#var_ident(element) => element.into_token(),
+                });
+            }
+            _ => {
+                return Err(Error::new(
+                    variant.span(),
+                    "EthAbiType cannot be derived for enum variants with multiple fields",
+                ))
+            }
         }
     }
 
     Ok(quote! {
         impl #ethers_core::abi::Tokenizable for #enum_name {
-            fn from_token(token: #ethers_core::abi::Token) -> ::std::result::Result<Self, #ethers_core::abi::InvalidOutputType>
-            where
-                Self: Sized,
+            fn from_token(token: #ethers_core::abi::Token) -> ::core::result::Result<Self, #ethers_core::abi::InvalidOutputType>
             {
                 #from_tokens
                 Err(#ethers_core::abi::InvalidOutputType("Failed to decode all type variants".to_string()))
