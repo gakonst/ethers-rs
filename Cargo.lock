@@ -630,16 +630,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "console_error_panic_hook"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
-dependencies = [
- "cfg-if",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "const-oid"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1496,144 +1486,6 @@ dependencies = [
  "tracing-subscriber",
  "walkdir",
  "yansi",
-]
-
-[[package]]
-name = "examples-anvil"
-version = "0.0.0"
-dependencies = [
- "ethers",
- "eyre",
- "tokio",
-]
-
-[[package]]
-name = "examples-big-numbers"
-version = "0.0.0"
-dependencies = [
- "ethers",
-]
-
-[[package]]
-name = "examples-contracts"
-version = "0.0.0"
-dependencies = [
- "ethers",
- "eyre",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "examples-events"
-version = "0.0.0"
-dependencies = [
- "ethers",
- "eyre",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "examples-geth"
-version = "0.0.0"
-dependencies = [
- "ethers",
- "eyre",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
-]
-
-[[package]]
-name = "examples-middleware"
-version = "0.0.0"
-dependencies = [
- "async-trait",
- "ethers",
- "eyre",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
-]
-
-[[package]]
-name = "examples-providers"
-version = "0.0.0"
-dependencies = [
- "async-trait",
- "ethers",
- "eyre",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror",
- "tokio",
- "url",
-]
-
-[[package]]
-name = "examples-queries"
-version = "0.0.0"
-dependencies = [
- "ethers",
- "eyre",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "examples-subscriptions"
-version = "0.0.0"
-dependencies = [
- "ethers",
- "eyre",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "examples-transactions"
-version = "0.0.0"
-dependencies = [
- "ethers",
- "eyre",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "examples-wallets"
-version = "0.0.0"
-dependencies = [
- "ethers",
- "eyre",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
-name = "examples-wasm"
-version = "0.0.0"
-dependencies = [
- "console_error_panic_hook",
- "ethers",
- "hex",
- "serde",
- "serde-wasm-bindgen",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-bindgen-test",
- "web-sys",
 ]
 
 [[package]]
@@ -3563,12 +3415,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "scoped-tls"
-version = "1.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1cf6437eb19a8f4a6cc0f7dca544973b0b78843adbfeb3683d1a94a0024a294"
-
-[[package]]
 name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3667,17 +3513,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "314b5b092c0ade17c00142951e50ced110ec27cea304b1037c6969246c2469a4"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde-wasm-bindgen"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3b143e2833c57ab9ad3ea280d21fd34e285a42837aeb0ee301f4f41890fa00e"
-dependencies = [
- "js-sys",
- "serde",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -4585,8 +4420,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "31f8dcbc21f30d9b8f2ea926ecb58f6b91192c17e9d33594b3df58b2007ca53b"
 dependencies = [
  "cfg-if",
- "serde",
- "serde_json",
  "wasm-bindgen-macro",
 ]
 
@@ -4645,30 +4478,6 @@ name = "wasm-bindgen-shared"
 version = "0.2.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0046fef7e28c3804e5e38bfa31ea2a0f73905319b677e57ebe37e49358989b5d"
-
-[[package]]
-name = "wasm-bindgen-test"
-version = "0.3.34"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6db36fc0f9fb209e88fb3642590ae0205bb5a56216dabd963ba15879fe53a30b"
-dependencies = [
- "console_error_panic_hook",
- "js-sys",
- "scoped-tls",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "wasm-bindgen-test-macro",
-]
-
-[[package]]
-name = "wasm-bindgen-test-macro"
-version = "0.3.34"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0734759ae6b3b1717d661fe4f016efcfb9828f5edb4520c18eaee05af3b43be9"
-dependencies = [
- "proc-macro2",
- "quote",
-]
 
 [[package]]
 name = "web-sys"
