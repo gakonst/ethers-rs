@@ -87,6 +87,8 @@ pub enum Chain {
     Poa = 99,
     Sokol = 77,
 
+    ScrollAlphaTestnet = 534353,
+
     #[strum(to_string = "xdai", serialize = "gnosis", serialize = "gnosis-chain")]
     #[serde(alias = "xdai", alias = "gnosis", alias = "gnosis_chain")]
     XDai = 100,
@@ -268,7 +270,7 @@ impl Chain {
             Dev | AnvilHardhat => 200,
             Celo | CeloAlfajores | CeloBaklava => 5_000,
             FilecoinHyperspaceTestnet | FilecoinMainnet => 30_000,
-
+            ScrollAlphaTestnet => 3_000,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
@@ -327,7 +329,7 @@ impl Chain {
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
             Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
             EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet |
-            FilecoinMainnet => false,
+            ScrollAlphaTestnet | FilecoinMainnet => false,
         }
     }
 
@@ -410,6 +412,10 @@ impl Chain {
             // blockscout API is etherscan compatible
             XDai => {
                 ("https://blockscout.com/xdai/mainnet/api", "https://blockscout.com/xdai/mainnet")
+            }
+
+            ScrollAlphaTestnet => {
+                ("https://blockscout.scroll.io/api", "https://blockscout.scroll.io/")
             }
 
             Chiado => {
@@ -521,6 +527,7 @@ impl Chain {
 
             // Explicitly exhaustive. See NB above.
             XDai |
+            ScrollAlphaTestnet |
             Chiado |
             Sepolia |
             Rsk |
