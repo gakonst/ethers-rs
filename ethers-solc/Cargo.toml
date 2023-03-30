@@ -64,7 +64,7 @@ svm = { package = "svm-rs", version = "0.2", default-features = false, features 
     "blocking",
 ], optional = true }
 svm-builds = { package = "svm-rs-builds", version = "0.1", optional = true }
-tokio = { workspace = true, features = ["rt"] }
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 # NOTE: this enables wasm compatibility for getrandom indirectly

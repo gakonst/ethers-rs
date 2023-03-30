@@ -1200,7 +1200,7 @@ dependencies = [
 
 [[package]]
 name = "ethers"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "ethers-addressbook",
  "ethers-contract",
@@ -1216,7 +1216,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-addressbook"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "ethers-core",
  "once_cell",
@@ -1226,7 +1226,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "ethers-contract-abigen",
  "ethers-contract-derive",
@@ -1246,7 +1246,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-abigen"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "Inflector",
  "dunce",
@@ -1273,7 +1273,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-contract-derive"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "Inflector",
  "ethers-contract-abigen",
@@ -1287,7 +1287,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-core"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "arrayvec",
  "bincode",
@@ -1318,7 +1318,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-etherscan"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "ethers-core",
  "ethers-solc",
@@ -1337,7 +1337,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-middleware"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -1366,7 +1366,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-providers"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "async-trait",
  "auto_impl",
@@ -1405,7 +1405,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-signers"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "async-trait",
  "coins-bip32",
@@ -1437,7 +1437,7 @@ dependencies = [
 
 [[package]]
 name = "ethers-solc"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "cfg-if",
  "criterion",
