@@ -73,7 +73,7 @@ pub struct Transaction {
     pub mint: Option<U256>,
 
     #[serde(skip_serializing_if = "Option::is_none", rename = "isSystemTx")]
-    pub is_system_tx: Option<H256>,
+    pub is_system_tx: Option<bool>,
 
     /////////////////  Celo-specific transaction fields /////////////////
     /// The currency fees are paid in (None for native currency)
