@@ -13,7 +13,8 @@ use std::{
 use toml::Value;
 
 /// The default ethers dependency to generate.
-const DEFAULT_ETHERS_DEP: &str = "ethers = { git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }";
+const DEFAULT_ETHERS_DEP: &str =
+    "ethers = { version = \"2\", default-features = false, features = [\"abigen\"] }";
 
 /// Collects Abigen structs for a series of contracts, pending generation of
 /// the contract bindings.
