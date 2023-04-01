@@ -91,7 +91,7 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream, E
                 #abi.into()
             }
 
-            fn decode_log(log: &#ethers_core::abi::RawLog) -> ::std::result::Result<Self, #ethers_core::abi::Error> where Self: Sized {
+            fn decode_log(log: &#ethers_core::abi::RawLog) -> ::core::result::Result<Self, #ethers_core::abi::Error> where Self: Sized {
                 #decode_log_impl
             }
 

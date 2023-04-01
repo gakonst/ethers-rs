@@ -11,15 +11,22 @@ pub fn derive_codec_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
 
     quote! {
         impl #ethers_core::abi::AbiDecode for #name {
-            fn decode(bytes: impl AsRef<[u8]>) -> ::std::result::Result<Self, #ethers_core::abi::AbiError> {
-                if let #ethers_core::abi::ParamType::Tuple(params) = <Self as #ethers_core::abi::AbiType>::param_type() {
-                    let tokens = #ethers_core::abi::decode(&params, bytes.as_ref())?;
-                    Ok(<Self as #ethers_core::abi::Tokenizable>::from_token(#ethers_core::abi::Token::Tuple(tokens))?)
-                } else {
-                    Err(
-                        #ethers_core::abi::InvalidOutputType("Expected tuple".to_string()).into()
-                    )
+            fn decode(bytes: impl AsRef<[u8]>) -> ::core::result::Result<Self, #ethers_core::abi::AbiError> {
+                fn _decode(bytes: &[u8]) -> ::core::result::Result<#name, #ethers_core::abi::AbiError> {
+                    let #ethers_core::abi::ParamType::Tuple(params) =
+                        <#name as #ethers_core::abi::AbiType>::param_type() else { unreachable!() };
+                    let min_len = params.iter().map(#ethers_core::abi::minimum_size).sum();
+                    if bytes.len() < min_len {
+                        Err(#ethers_core::abi::AbiError::DecodingError(#ethers_core::abi::ethabi::Error::InvalidData))
+                    } else {
+                        let tokens = #ethers_core::abi::decode(&params, bytes)?;
+                        let tuple = #ethers_core::abi::Token::Tuple(tokens);
+                        let this = <#name as #ethers_core::abi::Tokenizable>::from_token(tuple)?;
+                        Ok(this)
+                    }
                 }
+
+                _decode(bytes.as_ref())
             }
         }
 
