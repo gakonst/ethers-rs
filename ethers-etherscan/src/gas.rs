@@ -7,11 +7,11 @@ use std::{collections::HashMap, str::FromStr};
 #[serde(rename_all = "PascalCase")]
 pub struct GasOracle {
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub safe_gas_price: u64,
+    pub safe_gas_price: f64,
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub propose_gas_price: u64,
+    pub propose_gas_price: f64,
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub fast_gas_price: u64,
+    pub fast_gas_price: f64,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub last_block: u64,
     #[serde(deserialize_with = "deserialize_number_from_string")]
@@ -80,5 +80,30 @@ impl Client {
         let response: Response<GasOracle> = self.get_json(&query).await?;
 
         Ok(response.result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn response_works() {
+        // Response from Polygon mainnet at 2023-04-05
+        let v = r#"{
+            "status": "1",
+            "message": "OK",
+            "result": {
+                "LastBlock": "41171167",
+                "SafeGasPrice": "119.9",
+                "ProposeGasPrice": "141.9",
+                "FastGasPrice": "142.9",
+                "suggestBaseFee": "89.82627877",
+                "gasUsedRatio": "0.399191166666667,0.4847166,0.997667533333333,0.538075133333333,0.343416033333333",
+                "UsdPrice": "1.15"
+            }
+        }"#;
+        let gas_oracle: Response<GasOracle> = serde_json::from_str(v).unwrap();
+        assert_eq!(gas_oracle.message, "OK");
     }
 }

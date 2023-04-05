@@ -1,6 +1,6 @@
 use super::{GasCategory, GasOracle, GasOracleError, Result, GWEI_TO_WEI_U256};
 use async_trait::async_trait;
-use ethers_core::types::U256;
+use ethers_core::{types::U256, utils::parse_units};
 use ethers_etherscan::Client;
 use std::ops::{Deref, DerefMut};
 
@@ -44,6 +44,8 @@ impl GasOracle for Etherscan {
             GasCategory::Fast => result.fast_gas_price,
             _ => unreachable!(),
         };
+        // returned gas prices are f64 value in gwei
+        let gas_price = parse_units(gas_price, "gwei")?;
         Ok(U256::from(gas_price) * GWEI_TO_WEI_U256)
     }
 
