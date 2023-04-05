@@ -36,6 +36,9 @@ use reqwest::Error as ReqwestError;
 use std::{error::Error, fmt::Debug};
 use thiserror::Error;
 
+pub(crate) const GWEI_TO_WEI: u64 = 1_000_000_000;
+pub(crate) const GWEI_TO_WEI_U256: U256 = U256([GWEI_TO_WEI, 0, 0, 0]);
+
 pub type Result<T, E = GasOracleError> = std::result::Result<T, E>;
 
 /// Generic [`GasOracle`] gas price categories.

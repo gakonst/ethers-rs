@@ -45,8 +45,8 @@ impl GasOracle for Etherscan {
             _ => unreachable!(),
         };
         // returned gas prices are f64 value in gwei
-        let gas_price = parse_units(gas_price, "gwei")?;
-        Ok(gas_price.into())
+        let gas_price = super::from_gwei_f64(gas_price);
+        Ok(gas_price)
     }
 
     async fn estimate_eip1559_fees(&self) -> Result<(U256, U256)> {
