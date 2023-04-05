@@ -82,3 +82,28 @@ impl Client {
         Ok(response.result)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn response_works() {
+        // Response from Polygon mainnet at 2023-04-05
+        let v = r#"{
+            "status": "1",
+            "message": "OK",
+            "result": {
+                "LastBlock": "41171167",
+                "SafeGasPrice": "119.9",
+                "ProposeGasPrice": "141.9",
+                "FastGasPrice": "142.9",
+                "suggestBaseFee": "89.82627877",
+                "gasUsedRatio": "0.399191166666667,0.4847166,0.997667533333333,0.538075133333333,0.343416033333333",
+                "UsdPrice": "1.15"
+            }
+        }"#;
+        let gas_oracle: Response<GasOracle> = serde_json::from_str(v).unwrap();
+        assert_eq!(gas_oracle.message, "OK");
+    }
+}
