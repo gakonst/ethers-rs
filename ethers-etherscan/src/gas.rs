@@ -7,11 +7,11 @@ use std::{collections::HashMap, str::FromStr};
 #[serde(rename_all = "PascalCase")]
 pub struct GasOracle {
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub safe_gas_price: u64,
+    pub safe_gas_price: f64,
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub propose_gas_price: u64,
+    pub propose_gas_price: f64,
     #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub fast_gas_price: u64,
+    pub fast_gas_price: f64,
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub last_block: u64,
     #[serde(deserialize_with = "deserialize_number_from_string")]
