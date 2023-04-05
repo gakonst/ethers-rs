@@ -35,6 +35,7 @@ legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
 eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
 ## providers
 ws = ["ethers-providers/ws"]
+legacy-ws = ["ethers-providers/legacy-ws"]
 ipc = ["ethers-providers/ipc"]
 rustls = ["ethers-middleware/rustls", "ethers-providers/rustls", "ethers-etherscan/rustls", "ethers-contract/rustls", "ethers-solc/rustls"]
 openssl = ["ethers-middleware/openssl", "ethers-providers/openssl", "ethers-etherscan/openssl", "ethers-contract/openssl", "ethers-solc/openssl"]
