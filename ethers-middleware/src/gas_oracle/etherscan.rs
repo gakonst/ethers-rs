@@ -1,4 +1,4 @@
-use super::{GasCategory, GasOracle, GasOracleError, Result, GWEI_TO_WEI_U256};
+use super::{GasCategory, GasOracle, GasOracleError, Result};
 use async_trait::async_trait;
 use ethers_core::{types::U256, utils::parse_units};
 use ethers_etherscan::Client;
@@ -46,7 +46,7 @@ impl GasOracle for Etherscan {
         };
         // returned gas prices are f64 value in gwei
         let gas_price = parse_units(gas_price, "gwei")?;
-        Ok(U256::from(gas_price) * GWEI_TO_WEI_U256)
+        Ok(gas_price.into())
     }
 
     async fn estimate_eip1559_fees(&self) -> Result<(U256, U256)> {
