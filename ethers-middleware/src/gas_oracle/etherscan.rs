@@ -1,6 +1,6 @@
 use super::{GasCategory, GasOracle, GasOracleError, Result};
 use async_trait::async_trait;
-use ethers_core::{types::U256, utils::parse_units};
+use ethers_core::types::U256;
 use ethers_etherscan::Client;
 use std::ops::{Deref, DerefMut};
 
