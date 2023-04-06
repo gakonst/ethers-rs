@@ -1489,12 +1489,6 @@ impl CompilerOutput {
         let files: HashSet<_> = files.into_iter().map(|s| s.to_lowercase()).collect();
         self.contracts.retain(|f, _| files.contains(f.to_lowercase().as_str()));
         self.sources.retain(|f, _| files.contains(f.to_lowercase().as_str()));
-        self.errors.retain(|err| {
-            err.source_location
-                .as_ref()
-                .map(|s| files.contains(s.file.to_lowercase().as_str()))
-                .unwrap_or(true)
-        });
     }
 
     pub fn merge(&mut self, other: CompilerOutput) {
