@@ -1,8 +1,8 @@
 //! Various utilities for manipulating Ethereum related data.
 
+use crate::abi::{self, ethabi::Bytes};
 use ethabi::ethereum_types::H256;
 use tiny_keccak::{Hasher, Keccak};
-
 /// Hash a message according to [EIP-191] (version `0x01`).
 ///
 /// The final message is a UTF-8 string, encoded as follows:
@@ -29,7 +29,6 @@ pub fn hash_message<T: AsRef<[u8]>>(message: T) -> H256 {
 /// Compute the Keccak-256 hash of input bytes.
 ///
 /// Note that strings are interpreted as UTF-8 bytes,
-// TODO: Add Solidity Keccak256 packing support
 pub fn keccak256<T: AsRef<[u8]>>(bytes: T) -> [u8; 32] {
     let mut output = [0u8; 32];
 
@@ -38,6 +37,13 @@ pub fn keccak256<T: AsRef<[u8]>>(bytes: T) -> [u8; 32] {
     hasher.finalize(&mut output);
 
     output
+}
+
+/// matches keccak256(abi.encode(....)) pattern in solidity
+///
+/// accepts a borrowed array of type abi::Token
+fn solidity_keccak256(args: &[abi::Token]) -> Bytes {
+    keccak256(abi::encode(args)).into()
 }
 
 /// Calculate the function selector as per the contract ABI specification. This
@@ -64,6 +70,8 @@ pub fn serialize<T: serde::Serialize>(t: &T) -> serde_json::Value {
 
 #[cfg(test)]
 mod tests {
+    use ethabi::Token;
+
     use super::*;
 
     #[test]
@@ -86,7 +94,14 @@ mod tests {
             "a1de988600a42c4b4ab089b619297c17d53cffae5d5120d82d8a92d0bb3b78f2".parse().unwrap()
         );
     }
-
+    #[test]
+    fn test_solidity_keccak256() {
+        let a: Bytes = solidity_keccak256(&[Token::String("Hello".to_owned())]);
+        assert_eq!(
+            Bytes::from("0xcec38027c6953ccda44f5b57cf4fda4925c96672df03eb5b853c4e49d07526fd"),
+            a
+        );
+    }
     #[test]
     fn simple_function_signature() {
         // test vector retrieved from
