@@ -47,10 +47,10 @@ hex.workspace = true
 once_cell = { workspace = true, optional = true }
 unicode-xid = "0.2"
 strum = { version = "0.24", features = ["derive"] }
-num_enum = "0.5"
+num_enum = "0.6"
 
 # macros feature enabled dependencies
-cargo_metadata = { version = "0.15.3", optional = true }
+cargo_metadata = { version = "0.15.4", optional = true }
 syn = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
