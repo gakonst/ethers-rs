@@ -70,6 +70,7 @@ solc-tests = ["ethers-solc/tests"]
 
 # Deprecated
 solc-sha2-asm = []
+eip712 = []
 
 [dependencies]
 ethers-addressbook.workspace = true
