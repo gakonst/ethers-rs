@@ -232,11 +232,15 @@ fn _derive_builtin_traits_struct(
     for (field, ty) in fields.iter().zip(params) {
         match &field.ty {
             FieldType::Struct(s_ty) => {
-                // a tuple here is actually a sol struct so we skip it
-                if !matches!(ty, ParamType::Tuple(_)) {
-                    *def &= can_derive_default(ty);
-                    *others &= can_derive_builtin_traits(ty);
+                // `ty` here can only be `Tuple`, `Array(Tuple)`, or `FixedArray(Tuple(), len)`.
+                // We recurse on the Tuple's fields and check the FixedArray's length.
+                match s_ty {
+                    StructFieldType::FixedArray(_, len) => {
+                        *def &= *len <= MAX_SUPPORTED_ARRAY_LEN;
+                    }
+                    _ => {}
                 }
+
                 let id = s_ty.identifier();
                 // TODO: InternalStructs does not contain this field's ID if the struct and field
                 // are in 2 different modules, like in `can_generate_internal_structs_multiple`
