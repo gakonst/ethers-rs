@@ -205,6 +205,13 @@ impl LedgerEthereum {
         self.sign_payload(INS::SIGN_ETH_EIP_712, &payload).await
     }
 
+    pub async fn sign_hash(&self, hash: &H256) -> Result<Signature, LedgerError> {
+        let mut payload = Self::path_to_bytes(&self.derivation);
+        payload.extend_from_slice(hash.as_bytes());
+
+        self.sign_payload(INS::SIGN, &payload).await
+    }
+
     #[tracing::instrument(err, skip_all, fields(command = %command, payload = hex::encode(payload)))]
     // Helper function for signing either transaction data, personal messages or EIP712 derived
     // structs

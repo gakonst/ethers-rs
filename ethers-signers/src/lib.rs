@@ -42,7 +42,7 @@ pub use aws::{AwsSigner, AwsSignerError};
 use async_trait::async_trait;
 use ethers_core::types::{
     transaction::{eip2718::TypedTransaction, eip712::Eip712},
-    Address, Signature,
+    Address, Signature, H256,
 };
 use std::error::Error;
 
@@ -73,6 +73,10 @@ pub trait Signer: std::fmt::Debug + Send + Sync {
         &self,
         payload: &T,
     ) -> Result<Signature, Self::Error>;
+
+    /// Sign a pre-formatted hash
+    /// This is useful for signing arbitrary data
+    async fn sign_hash(&self, hash: &H256) -> Result<Signature, Self::Error>;
 
     /// Returns the signer's Ethereum Address
     fn address(&self) -> Address;

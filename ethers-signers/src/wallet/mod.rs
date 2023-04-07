@@ -89,7 +89,7 @@ impl<D: Sync + Send + PrehashSigner<(RecoverableSignature, RecoveryId)>> Signer 
         let message = message.as_ref();
         let message_hash = hash_message(message);
 
-        self.sign_hash(message_hash)
+        self.sign_raw_hash(message_hash)
     }
 
     async fn sign_transaction(&self, tx: &TypedTransaction) -> Result<Signature, Self::Error> {
@@ -108,7 +108,11 @@ impl<D: Sync + Send + PrehashSigner<(RecoverableSignature, RecoveryId)>> Signer 
         let encoded =
             payload.encode_eip712().map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
-        self.sign_hash(H256::from(encoded))
+        self.sign_raw_hash(H256::from(encoded))
+    }
+
+    async fn sign_hash(&self, hash: &H256) -> Result<Signature, Self::Error> {
+        self.sign_raw_hash(*hash)
     }
 
     fn address(&self) -> Address {
@@ -138,15 +142,15 @@ impl<D: PrehashSigner<(RecoverableSignature, RecoveryId)>> Wallet<D> {
         tx.set_chain_id(chain_id);
 
         let sighash = tx.sighash();
-        let mut sig = self.sign_hash(sighash)?;
+        let mut sig = self.sign_raw_hash(sighash)?;
 
-        // sign_hash sets `v` to recid + 27, so we need to subtract 27 before normalizing
+        // sign_raw_hash sets `v` to recid + 27, so we need to subtract 27 before normalizing
         sig.v = to_eip155_v(sig.v as u8 - 27, chain_id);
         Ok(sig)
     }
 
     /// Signs the provided hash.
-    pub fn sign_hash(&self, hash: H256) -> Result<Signature, WalletError> {
+    pub fn sign_raw_hash(&self, hash: H256) -> Result<Signature, WalletError> {
         let (recoverable_sig, recovery_id) = self.signer.sign_prehash(hash.as_ref())?;
 
         let v = u8::from(recovery_id) as u64 + 27;

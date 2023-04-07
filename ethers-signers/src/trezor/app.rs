@@ -209,6 +209,12 @@ impl TrezorEthereum {
         unimplemented!()
     }
 
+    /// Signs a pre-computed hash
+    /// This is useful for signing arbitrary data
+    pub async fn sign_hash(&self, hash: &H256) -> Result<Signature, TrezorError> {
+        unimplemented!()
+    }
+
     // helper which converts a derivation path to [u32]
     fn convert_path(derivation: &DerivationType) -> Vec<u32> {
         let derivation = derivation.to_string();

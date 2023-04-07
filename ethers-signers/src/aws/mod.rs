@@ -258,6 +258,14 @@ impl super::Signer for AwsSigner {
         Ok(sig)
     }
 
+    async fn sign_hash(&self, hash: &H256) -> Result<EthSig, Self::Error> {
+        let hash = hash.as_fixed_bytes();
+        let sig = self.sign_digest(*hash).await?;
+        let sig = utils::sig_from_digest_bytes_trial_recovery(&sig, *hash, &self.pubkey);
+
+        Ok(sig)
+    }
+
     fn address(&self) -> Address {
         self.address
     }
