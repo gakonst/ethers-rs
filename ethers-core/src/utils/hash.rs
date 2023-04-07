@@ -40,7 +40,7 @@ pub fn keccak256<T: AsRef<[u8]>>(bytes: T) -> [u8; 32] {
     output
 }
 
-/// matches keccak256(abi.encode(....)) pattern in solidity
+/// Convenience function for an ABI encoded (non-packed) hash function -- keccak256(abi.encode(...))
 ///
 /// accepts a borrowed array of type abi::Token
 fn solidity_keccak256(args: &[abi::Token]) -> Bytes {
