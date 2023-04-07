@@ -1,6 +1,6 @@
 //! Various utilities for manipulating Ethereum related data.
 
-use crate::abi::{self, ethabi::Bytes};
+use crate::{abi, utils::Bytes};
 use ethabi::ethereum_types::H256;
 use tiny_keccak::{Hasher, Keccak};
 /// Hash a message according to [EIP-191] (version `0x01`).
@@ -29,6 +29,7 @@ pub fn hash_message<T: AsRef<[u8]>>(message: T) -> H256 {
 /// Compute the Keccak-256 hash of input bytes.
 ///
 /// Note that strings are interpreted as UTF-8 bytes,
+// TODO: Add Solidity Keccak256 packing support
 pub fn keccak256<T: AsRef<[u8]>>(bytes: T) -> [u8; 32] {
     let mut output = [0u8; 32];
 
@@ -70,9 +71,9 @@ pub fn serialize<T: serde::Serialize>(t: &T) -> serde_json::Value {
 
 #[cfg(test)]
 mod tests {
-    use ethabi::Token;
-
     use super::*;
+    use ethabi::Token;
+    use std::str::FromStr;
 
     #[test]
     // from https://emn178.github.io/online-tools/keccak_256.html
@@ -98,7 +99,8 @@ mod tests {
     fn test_solidity_keccak256() {
         let a: Bytes = solidity_keccak256(&[Token::String("Hello".to_owned())]);
         assert_eq!(
-            Bytes::from("0xcec38027c6953ccda44f5b57cf4fda4925c96672df03eb5b853c4e49d07526fd"),
+            Bytes::from_str("0xcec38027c6953ccda44f5b57cf4fda4925c96672df03eb5b853c4e49d07526fd")
+                .unwrap(),
             a
         );
     }
