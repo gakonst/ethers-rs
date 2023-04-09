@@ -8,27 +8,14 @@ on:
         branches: [master]
         paths: [Cargo.lock]
 
-env:
-    RUSTFLAGS: -D warnings
-    CARGO_TERM_COLOR: always
-
 concurrency: deps-${{ github.head_ref || github.run_id }}
 
 jobs:
     deny:
-        name: deny (${{ matrix.checks }})
+        name: deny
         runs-on: ubuntu-latest
-        strategy:
-            fail-fast: false
-            matrix:
-                checks:
-                    - advisories
-                    - bans licenses sources
-
-        continue-on-error: ${{ matrix.checks == 'advisories' }}
-
         steps:
             - uses: actions/checkout@v3
             - uses: EmbarkStudios/cargo-deny-action@v1
               with:
-                  command: check ${{ matrix.checks }}
+                  command: check all
