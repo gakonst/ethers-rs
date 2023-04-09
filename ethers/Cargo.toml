@@ -26,19 +26,36 @@ all-features = true
 [features]
 default = ["abigen", "rustls"]
 
-celo = ["ethers-core/celo", "ethers-providers/celo", "ethers-signers/celo", "ethers-contract/celo", "ethers-middleware/celo", "legacy"]
+celo = [
+    "ethers-core/celo",
+    "ethers-providers/celo",
+    "ethers-signers/celo",
+    "ethers-contract/celo",
+    "ethers-middleware/celo",
+    "legacy",
+]
 
 legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
 
 # individual features per sub-crate
-## core
-eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
 ## providers
 ws = ["ethers-providers/ws"]
 legacy-ws = ["ethers-providers/legacy-ws"]
 ipc = ["ethers-providers/ipc"]
-rustls = ["ethers-middleware/rustls", "ethers-providers/rustls", "ethers-etherscan/rustls", "ethers-contract/rustls", "ethers-solc/rustls"]
-openssl = ["ethers-middleware/openssl", "ethers-providers/openssl", "ethers-etherscan/openssl", "ethers-contract/openssl", "ethers-solc/openssl"]
+rustls = [
+    "ethers-middleware/rustls",
+    "ethers-providers/rustls",
+    "ethers-etherscan/rustls",
+    "ethers-contract/rustls",
+    "ethers-solc/rustls",
+]
+openssl = [
+    "ethers-middleware/openssl",
+    "ethers-providers/openssl",
+    "ethers-etherscan/openssl",
+    "ethers-contract/openssl",
+    "ethers-solc/openssl",
+]
 dev-rpc = ["ethers-providers/dev-rpc"]
 ## signers
 ledger = ["ethers-signers/ledger"]
@@ -54,6 +71,7 @@ solc-tests = ["ethers-solc/tests"]
 
 # Deprecated
 solc-sha2-asm = []
+eip712 = []
 
 [dependencies]
 ethers-addressbook.workspace = true
@@ -68,6 +86,6 @@ ethers-solc.workspace = true
 [dev-dependencies]
 serde.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-ethers-contract = { workspace = true, features = ["eip712"] }
+ethers-contract.workspace = true
 ethers-providers = { workspace = true, features = ["rustls"] } # allow https connections
 ethers-solc = { workspace = true, features = ["svm-solc"] }

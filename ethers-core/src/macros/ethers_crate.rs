@@ -220,7 +220,6 @@ pub enum EthersCrate {
     EthersContractAbigen,
     EthersContractDerive,
     EthersCore,
-    EthersDeriveEip712,
     EthersEtherscan,
     EthersMiddleware,
     EthersProviders,
@@ -250,7 +249,6 @@ impl EthersCrate {
             Self::EthersContractAbigen => "ethers-contract-abigen",
             Self::EthersContractDerive => "ethers-contract-derive",
             Self::EthersCore => "ethers-core",
-            Self::EthersDeriveEip712 => "ethers-derive-eip712",
             Self::EthersEtherscan => "ethers-etherscan",
             Self::EthersMiddleware => "ethers-middleware",
             Self::EthersProviders => "ethers-providers",
@@ -268,7 +266,6 @@ impl EthersCrate {
             Self::EthersContractAbigen => "::ethers_contract_abigen",
             Self::EthersContractDerive => "::ethers_contract_derive",
             Self::EthersCore => "::ethers_core",
-            Self::EthersDeriveEip712 => "::ethers_derive_eip712",
             Self::EthersEtherscan => "::ethers_etherscan",
             Self::EthersMiddleware => "::ethers_middleware",
             Self::EthersProviders => "::ethers_providers",
@@ -284,7 +281,6 @@ impl EthersCrate {
             // re-exported in ethers::contract
             Self::EthersContractAbigen => "::ethers::contract", // partially
             Self::EthersContractDerive => "::ethers::contract",
-            Self::EthersDeriveEip712 => "::ethers::contract",
 
             Self::EthersAddressbook => "::ethers::addressbook",
             Self::EthersContract => "::ethers::contract",
@@ -303,7 +299,6 @@ impl EthersCrate {
         match self {
             Self::EthersContractAbigen => "ethers-contract/ethers-contract-abigen",
             Self::EthersContractDerive => "ethers-contract/ethers-contract-derive",
-            Self::EthersDeriveEip712 => "ethers-core/ethers-derive-eip712",
             _ => self.crate_name(),
         }
     }
