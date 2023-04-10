@@ -1829,6 +1829,7 @@ mod tests {
         // check that the network id is correct
         assert_eq!(info.protocols.eth.unwrap().network, network);
 
+        #[cfg(not(windows))]
         dir.close().unwrap();
     }
 
@@ -1912,7 +1913,10 @@ mod tests {
         assert_eq!(H256::from_str(&peer.id).unwrap(), second_info.id);
 
         // remove directories
-        dir1.close().unwrap();
-        dir2.close().unwrap();
+        #[cfg(not(windows))]
+        {
+            dir1.close().unwrap();
+            dir2.close().unwrap();
+        }
     }
 }

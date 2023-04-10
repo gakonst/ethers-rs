@@ -566,6 +566,7 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let temp_dir_path = temp_dir.path();
         f(temp_dir_path);
+        #[cfg(not(windows))]
         temp_dir.close().unwrap();
     }
 
