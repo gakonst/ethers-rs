@@ -565,6 +565,7 @@ mod tests {
         let geth = Geth::new().disable_discovery().data_dir(temp_dir_path).spawn();
         let p2p_port = geth.p2p_port();
         assert!(p2p_port.is_some());
+        temp_dir.close().unwrap();
     }
 
     #[test]
@@ -576,6 +577,7 @@ mod tests {
         let geth = Geth::new().p2p_port(1234).data_dir(temp_dir_path).spawn();
         let p2p_port = geth.p2p_port();
         assert_eq!(p2p_port, Some(1234));
+        temp_dir.close().unwrap();
     }
 
     #[test]
@@ -587,6 +589,7 @@ mod tests {
         let geth = Geth::new().data_dir(temp_dir_path).spawn();
         let p2p_port = geth.p2p_port();
         assert!(p2p_port.is_none());
+        temp_dir.close().unwrap();
     }
 
     #[test]
@@ -603,6 +606,7 @@ mod tests {
 
         let clique_private_key = geth.clique_private_key().clone();
         assert!(clique_private_key.is_some());
+        temp_dir.close().unwrap();
     }
 
     #[test]
@@ -618,6 +622,7 @@ mod tests {
             .spawn();
 
         assert!(geth.genesis().is_some());
+        temp_dir.close().unwrap();
     }
 
     #[test]
@@ -634,5 +639,6 @@ mod tests {
 
         let p2p_port = geth.p2p_port();
         assert!(p2p_port.is_some());
+        temp_dir.close().unwrap();
     }
 }
