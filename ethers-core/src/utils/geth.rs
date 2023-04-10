@@ -554,59 +554,63 @@ impl Geth {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
+
+    /// Allows running tests with a temporary directory, which is cleaned up after the function is
+    /// called.
+    ///
+    /// Helps with tests that spawn a helper instance, which has to be dropped before the temporary
+    /// directory is cleaned up.
+    #[track_caller]
+    fn run_with_tempdir(f: impl Fn(&Path)) {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let temp_dir_path = temp_dir.path();
+        f(temp_dir_path);
+        temp_dir.close().unwrap();
+    }
 
     #[test]
     fn p2p_port() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let temp_dir_path = temp_dir.path().to_path_buf();
-
-        // disabling discovery should put the geth instance into non-dev mode, and it should have a
-        // p2p port.
-        let geth = Geth::new().disable_discovery().data_dir(temp_dir_path).spawn();
-        let p2p_port = geth.p2p_port();
-        assert!(p2p_port.is_some());
-        temp_dir.close().unwrap();
+        run_with_tempdir(|temp_dir_path| {
+            let geth = Geth::new().disable_discovery().data_dir(temp_dir_path).spawn();
+            let p2p_port = geth.p2p_port();
+            assert!(p2p_port.is_some());
+        });
     }
 
     #[test]
     fn explicit_p2p_port() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let temp_dir_path = temp_dir.path().to_path_buf();
-
-        // if a p2p port is explicitly set, it should be used
-        let geth = Geth::new().p2p_port(1234).data_dir(temp_dir_path).spawn();
-        let p2p_port = geth.p2p_port();
-        assert_eq!(p2p_port, Some(1234));
-        temp_dir.close().unwrap();
+        run_with_tempdir(|temp_dir_path| {
+            // if a p2p port is explicitly set, it should be used
+            let geth = Geth::new().p2p_port(1234).data_dir(temp_dir_path).spawn();
+            let p2p_port = geth.p2p_port();
+            assert_eq!(p2p_port, Some(1234));
+        });
     }
 
     #[test]
     fn dev_mode() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let temp_dir_path = temp_dir.path().to_path_buf();
-
-        // dev mode should not have a p2p port, and dev should be the default
-        let geth = Geth::new().data_dir(temp_dir_path).spawn();
-        let p2p_port = geth.p2p_port();
-        assert!(p2p_port.is_none());
-        temp_dir.close().unwrap();
+        run_with_tempdir(|temp_dir_path| {
+            // dev mode should not have a p2p port, and dev should be the default
+            let geth = Geth::new().data_dir(temp_dir_path).spawn();
+            let p2p_port = geth.p2p_port();
+            assert!(p2p_port.is_none());
+        })
     }
 
     #[test]
     fn clique_correctly_configured() {
-        let temp_dir = tempfile::tempdir().unwrap();
-        let temp_dir_path = temp_dir.path().to_path_buf();
+        run_with_tempdir(|temp_dir_path| {
+            let private_key = SigningKey::random(&mut rand::thread_rng());
+            let geth = Geth::new()
+                .set_clique_private_key(private_key)
+                .chain_id(1337u64)
+                .data_dir(temp_dir_path)
+                .spawn();
 
-        let private_key = SigningKey::random(&mut rand::thread_rng());
-        let geth = Geth::new()
-            .set_clique_private_key(private_key)
-            .chain_id(1337u64)
-            .data_dir(temp_dir_path)
-            .spawn();
-
-        assert!(geth.p2p_port.is_some());
-        assert!(geth.clique_private_key().is_some());
-        assert!(geth.genesis().is_some());
-        temp_dir.close().unwrap();
+            assert!(geth.p2p_port.is_some());
+            assert!(geth.clique_private_key().is_some());
+            assert!(geth.genesis().is_some());
+        })
     }
 }
