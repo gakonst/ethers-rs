@@ -1870,6 +1870,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(windows, ignore = "cannot spawn multiple geth instances")]
     async fn add_second_geth_peer() {
         // init each geth directory
         let dir1 = tempfile::tempdir().unwrap();

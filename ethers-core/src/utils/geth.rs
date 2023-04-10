@@ -40,7 +40,8 @@ pub enum GethInstanceError {
 
 /// A geth instance. Will close the instance when dropped.
 ///
-/// Construct this using [`Geth`](crate::utils::Geth)
+/// Construct this using [`Geth`](crate::utils::Geth).
+#[derive(Debug)]
 pub struct GethInstance {
     pid: Child,
     port: u16,
@@ -130,7 +131,7 @@ impl Drop for GethInstance {
 }
 
 /// Whether or not geth is in `dev` mode and configuration options that depend on the mode.
-#[derive(Debug, Clone)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GethMode {
     /// Options that can be set in dev mode
     Dev(DevOptions),
@@ -145,14 +146,14 @@ impl Default for GethMode {
 }
 
 /// Configuration options that can be set in dev mode.
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct DevOptions {
     /// The interval at which the dev chain will mine new blocks.
     pub block_time: Option<u64>,
 }
 
 /// Configuration options that cannot be set in dev mode.
-#[derive(Debug, Clone)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PrivateNetOptions {
     /// The p2p port to use.
     pub p2p_port: Option<u16>,
@@ -188,7 +189,7 @@ impl Default for PrivateNetOptions {
 ///
 /// drop(geth); // this will kill the instance
 /// ```
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 #[must_use = "This Builder struct does nothing unless it is `spawn`ed"]
 pub struct Geth {
     program: Option<PathBuf>,
@@ -205,7 +206,8 @@ pub struct Geth {
 
 impl Geth {
     /// Creates an empty Geth builder.
-    /// The default port is 8545. The mnemonic is chosen randomly.
+    ///
+    /// The mnemonic is chosen randomly.
     pub fn new() -> Self {
         Self::default()
     }
@@ -360,17 +362,18 @@ impl Geth {
 
         let mut unused_ports = unused_ports::<3>().into_iter();
         let mut unused_port = || unused_ports.next().unwrap();
-        let port = if let Some(port) = self.port { port } else { unused_port() };
-        let authrpc_port = if let Some(port) = self.authrpc_port { port } else { unused_port() };
+
+        let port = self.port.unwrap_or_else(&mut unused_port);
+        let port_s = port.to_string();
 
         // Open the HTTP API
         cmd.arg("--http");
-        cmd.arg("--http.port").arg(port.to_string());
+        cmd.arg("--http.port").arg(&port_s);
         cmd.arg("--http.api").arg(API);
 
         // Open the WS API
         cmd.arg("--ws");
-        cmd.arg("--ws.port").arg(port.to_string());
+        cmd.arg("--ws.port").arg(port_s);
         cmd.arg("--ws.api").arg(API);
 
         // pass insecure unlock flag if set
@@ -384,11 +387,12 @@ impl Geth {
         }
 
         // Set the port for authenticated APIs
+        let authrpc_port = self.authrpc_port.unwrap_or_else(&mut unused_port);
         cmd.arg("--authrpc.port").arg(authrpc_port.to_string());
 
         // use geth init to initialize the datadir if the genesis exists
-        if let Some(ref mut genesis) = self.genesis {
-            if is_clique {
+        if is_clique {
+            if let Some(genesis) = &mut self.genesis {
                 // set up a clique config with an instant sealing period and short (8 block) epoch
                 let clique_config = CliqueConfig { period: Some(0), epoch: Some(8) };
                 genesis.config.clique = Some(clique_config);
@@ -408,7 +412,7 @@ impl Geth {
                 // the entire address
                 cmd.arg("--miner.etherbase").arg(format!("{clique_addr:?}"));
             }
-        } else if is_clique {
+
             let clique_addr =
                 secret_key_to_address(self.clique_private_key.as_ref().expect("is_clique == true"));
 
@@ -447,11 +451,14 @@ impl Geth {
             init_cmd.stderr(Stdio::null());
 
             init_cmd.arg("init").arg(temp_genesis_path);
-            init_cmd
+            let res = init_cmd
                 .spawn()
                 .expect("failed to spawn geth init")
                 .wait()
                 .expect("failed to wait for geth init to exit");
+            if !res.success() {
+                panic!("geth init failed");
+            }
 
             // clean up the temp dir which is now persisted
             std::fs::remove_dir_all(temp_genesis_dir_path)
@@ -477,7 +484,7 @@ impl Geth {
                 None
             }
             GethMode::NonDev(PrivateNetOptions { p2p_port, discovery }) => {
-                let port = if let Some(port) = p2p_port { port } else { unused_port() };
+                let port = p2p_port.unwrap_or_else(unused_port);
                 cmd.arg("--port").arg(port.to_string());
 
                 // disable discovery if the flag is set
