@@ -40,8 +40,7 @@ impl Contracts {
 
 impl Parse for Contracts {
     fn parse(input: ParseStream) -> Result<Self> {
-        let inner =
-            input.parse_terminated::<_, Token![;]>(ContractArgs::parse)?.into_iter().collect();
+        let inner = input.parse_terminated(ContractArgs::parse, Token![;])?.into_iter().collect();
         Ok(Self { inner })
     }
 }
@@ -122,7 +121,7 @@ impl Parse for Parameter {
             "methods" => {
                 let content;
                 braced!(content in input);
-                let parsed = content.parse_terminated::<_, Token![;]>(Spanned::<Method>::parse)?;
+                let parsed = content.parse_terminated(Spanned::<Method>::parse, Token![;])?;
 
                 let mut methods = Vec::with_capacity(parsed.len());
                 let mut signatures = HashSet::new();
@@ -141,7 +140,7 @@ impl Parse for Parameter {
             "derives" | "event_derives" => {
                 let content;
                 parenthesized!(content in input);
-                let derives = content.parse_terminated::<_, Token![,]>(Path::parse)?;
+                let derives = content.parse_terminated(Path::parse, Token![,])?;
                 Ok(Parameter::Derives(derives))
             }
             _ => Err(Error::new(name.span(), "unexpected named parameter")),
@@ -168,7 +167,7 @@ impl Parse for Method {
         // function params
         let content;
         parenthesized!(content in input);
-        let params = content.parse_terminated::<_, Token![,]>(Ident::parse)?;
+        let params = content.parse_terminated(Ident::parse, Token![,])?;
         let last_i = params.len().saturating_sub(1);
 
         signature.push('(');

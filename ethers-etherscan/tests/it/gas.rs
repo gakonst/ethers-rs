@@ -34,9 +34,9 @@ async fn gas_oracle_success() {
 
         let oracle = result.unwrap();
 
-        assert!(oracle.safe_gas_price > 0);
-        assert!(oracle.propose_gas_price > 0);
-        assert!(oracle.fast_gas_price > 0);
+        assert!(oracle.safe_gas_price > 0f64);
+        assert!(oracle.propose_gas_price > 0f64);
+        assert!(oracle.fast_gas_price > 0f64);
         assert!(oracle.last_block > 0);
         assert!(oracle.suggested_base_fee > 0.0);
         assert!(!oracle.gas_used_ratio.is_empty());

@@ -1,6 +1,4 @@
-#![allow(clippy::extra_unused_type_parameters)]
-
-use ethers_contract_derive::EthAbiType;
+use ethers_contract_derive::{Eip712, EthAbiType};
 use ethers_core::{
     types::{
         transaction::eip712::{
@@ -11,7 +9,6 @@ use ethers_core::{
     },
     utils::{keccak256, parse_ether},
 };
-use ethers_derive_eip712::*;
 
 #[test]
 fn test_derive_eip712() {

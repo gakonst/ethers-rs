@@ -335,7 +335,7 @@ impl Transaction {
 /// Get a Transaction directly from a rlp encoded byte stream
 impl Decodable for Transaction {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, DecoderError> {
-        let mut txn = Self::default();
+        let mut txn = Self { hash: H256(keccak256(rlp.as_raw())), ..Default::default() };
         // we can get the type from the first value
         let mut offset = 0;
 
@@ -879,6 +879,19 @@ mod tests {
             decoded.recover_from().unwrap(),
             "0xc26ad91f4e7a0cad84c4b9315f420ca9217e315d".parse().unwrap()
         );
+    }
+
+    // Reference tx hash on Ethereum mainnet:
+    // 0x938913ef1df8cd17e0893a85586ade463014559fb1bd2d536ac282f3b1bdea53
+    #[test]
+    fn decode_tx_assert_hash() {
+        let raw_tx = hex::decode("02f874018201bb8405f5e10085096a1d45b782520894d696a5c568160bbbf5a1356f8ac56ee81a190588871550f7dca7000080c080a07df2299b0181d6d5b817795a7d2eff5897d0d3914ff5f602e17d5b75d32ec25fa051833973e8a8c222e682d2dcea02ad7bf3ec5bc3a86bfbcdbbaa3b853e52ad08").unwrap();
+        let tx: Transaction = Transaction::decode(&Rlp::new(&raw_tx)).unwrap();
+        assert_eq!(
+            tx.hash,
+            H256::from_str("938913ef1df8cd17e0893a85586ade463014559fb1bd2d536ac282f3b1bdea53")
+                .unwrap()
+        )
     }
 
     #[test]

@@ -323,13 +323,14 @@ impl Chain {
             PolygonMumbai |
             Avalanche |
             AvalancheFuji |
+            FilecoinMainnet |
             FilecoinHyperspaceTestnet => false,
 
             // Unknown / not applicable, default to false for backwards compatibility
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
             Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
             EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet |
-            ScrollAlphaTestnet | FilecoinMainnet => false,
+            ScrollAlphaTestnet => false,
         }
     }
 

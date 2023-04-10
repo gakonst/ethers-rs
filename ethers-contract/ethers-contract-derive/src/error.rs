@@ -11,11 +11,10 @@ use syn::{parse::Error, DeriveInput};
 
 /// Generates the `EthError` trait support
 pub(crate) fn derive_eth_error_impl(input: DeriveInput) -> Result<TokenStream, Error> {
-    let attributes = parse_calllike_attributes(&input, "etherror")?;
+    let attributes = parse_calllike_attributes!(input, "etherror");
 
-    let error_name = attributes.name.map(|(s, _)| s).unwrap_or_else(|| input.ident.to_string());
-
-    let mut error = if let Some((src, span)) = attributes.abi {
+    let error_name = attributes.name(&input.ident);
+    let mut error = if let Some((src, span)) = attributes.abi() {
         let raw_function_sig = src.trim_start_matches("error ").trim_start();
         // try to parse as solidity error
         match HumanReadableParser::parse_error(&src) {

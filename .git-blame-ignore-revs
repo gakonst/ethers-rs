@@ -8,5 +8,8 @@
 #
 # $ git config blame.ignoreRevsFile .git-blame-ignore-revs
 
+# chore: add rustfmt.toml (#537)
+dcf20022c66921779059bbfc58f5d378d20b84be
+
 # fmt: all (#1751)
 5c762c44d760ed9dad3900be079062174ada0245

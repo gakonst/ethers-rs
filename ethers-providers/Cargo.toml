@@ -75,7 +75,7 @@ getrandom.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros", "time"] }
-tempfile = "3.4.0"
+tempfile = "3.5.0"
 
 [features]
 default = ["ws", "rustls"]

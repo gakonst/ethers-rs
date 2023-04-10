@@ -84,15 +84,21 @@ macro_rules! impl_tuples {
         {
             fn from_token(token: Token) -> Result<Self, InvalidOutputType> {
                 match token {
-                    Token::Tuple(mut tokens) => {
-                        let mut it = tokens.drain(..);
-                        Ok(($(
-                            $ty::from_token(it.next().expect("All elements are in vector; qed"))?,
-                        )+))
+                    Token::Tuple(tokens) if tokens.len() == $num => {
+                        let mut it = tokens.into_iter();
+                        // SAFETY: length checked above
+                        unsafe {
+                            Ok(($(
+                                <$ty as Tokenizable>::from_token(it.next().unwrap_unchecked())?,
+                            )+))
+                        }
                     },
                     other => Err(InvalidOutputType(format!(
-                        "Expected `Tuple` of length {}, got {:?}",
-                        $num,
+                        concat!(
+                            "Expected `Tuple` of length ",
+                            stringify!($num),
+                            ", got {:?}",
+                        ),
                         other,
                     ))),
                 }
