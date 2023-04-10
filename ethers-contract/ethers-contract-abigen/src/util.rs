@@ -234,11 +234,8 @@ fn _derive_builtin_traits_struct(
             FieldType::Struct(s_ty) => {
                 // `ty` here can only be `Tuple`, `Array(Tuple)`, or `FixedArray(Tuple(), len)`.
                 // We recurse on the Tuple's fields and check the FixedArray's length.
-                match s_ty {
-                    StructFieldType::FixedArray(_, len) => {
-                        *def &= *len <= MAX_SUPPORTED_ARRAY_LEN;
-                    }
-                    _ => {}
+                if let StructFieldType::FixedArray(_, len) = s_ty {
+                    *def &= *len <= MAX_SUPPORTED_ARRAY_LEN;
                 }
 
                 let id = s_ty.identifier();
