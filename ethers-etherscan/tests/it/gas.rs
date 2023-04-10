@@ -1,5 +1,5 @@
 use crate::*;
-use ethers_core::types::Chain;
+use ethers_core::types::{Chain, U256};
 use serial_test::serial;
 
 #[tokio::test]
@@ -34,11 +34,11 @@ async fn gas_oracle_success() {
 
         let oracle = result.unwrap();
 
-        assert!(oracle.safe_gas_price > 0f64);
-        assert!(oracle.propose_gas_price > 0f64);
-        assert!(oracle.fast_gas_price > 0f64);
+        assert!(oracle.safe_gas_price > U256::zero());
+        assert!(oracle.propose_gas_price > U256::zero());
+        assert!(oracle.fast_gas_price > U256::zero());
         assert!(oracle.last_block > 0);
-        assert!(oracle.suggested_base_fee > 0.0);
+        assert!(oracle.suggested_base_fee > U256::zero());
         assert!(!oracle.gas_used_ratio.is_empty());
     })
     .await
