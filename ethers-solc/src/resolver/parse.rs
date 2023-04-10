@@ -56,8 +56,7 @@ impl SolData {
                             }
 
                             if pragma.name == "experimental" {
-                                experimental =
-                                    Some(SolDataUnit::from_loc(value.string.clone(), loc));
+                                experimental = Some(SolDataUnit::from_loc(value.string, loc));
                             }
                         }
                         SourceUnitPart::ImportDirective(import) => {

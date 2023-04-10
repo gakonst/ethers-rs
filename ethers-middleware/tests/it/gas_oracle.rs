@@ -1,5 +1,8 @@
 use async_trait::async_trait;
-use ethers_core::{types::*, utils::Anvil};
+use ethers_core::{
+    types::*,
+    utils::{parse_ether, Anvil},
+};
 use ethers_etherscan::Client;
 use ethers_middleware::gas_oracle::{
     BlockNative, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, GasOracleError,
@@ -102,6 +105,8 @@ async fn etherscan() {
 
     let gas_price = etherscan_oracle.fetch().await.unwrap();
     assert!(gas_price > U256::zero());
+    let ten_ethers = parse_ether(10).unwrap();
+    assert!(gas_price < ten_ethers, "gas calculation is wrong (too high)");
 }
 
 #[tokio::test]

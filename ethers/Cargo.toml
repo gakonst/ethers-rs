@@ -40,6 +40,7 @@ legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
 # individual features per sub-crate
 ## providers
 ws = ["ethers-providers/ws"]
+legacy-ws = ["ethers-providers/legacy-ws"]
 ipc = ["ethers-providers/ipc"]
 rustls = [
     "ethers-middleware/rustls",
@@ -70,6 +71,7 @@ solc-tests = ["ethers-solc/tests"]
 
 # Deprecated
 solc-sha2-asm = []
+eip712 = []
 
 [dependencies]
 ethers-addressbook.workspace = true

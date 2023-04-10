@@ -91,7 +91,7 @@ pub fn derive_codec_impls(
 
     let codec_impl = quote! {
         impl #ethers_core::abi::AbiDecode for #struct_name {
-            fn decode(bytes: impl AsRef<[u8]>) -> ::std::result::Result<Self, #ethers_core::abi::AbiError> {
+            fn decode(bytes: impl AsRef<[u8]>) -> ::core::result::Result<Self, #ethers_core::abi::AbiError> {
                 #decode_impl
             }
         }

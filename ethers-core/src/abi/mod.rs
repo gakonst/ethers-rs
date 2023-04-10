@@ -108,10 +108,32 @@ impl ErrorExt for ethabi::AbiError {
     }
 }
 
-/// A trait for types that can be represented in the ethereum ABI.
+/// A trait for types that can be represented in the Ethereum ABI.
 pub trait AbiType {
     /// The native ABI type this type represents.
     fn param_type() -> ParamType;
+
+    /// A hint of the minimum number of bytes this type takes up in the ABI.
+    fn minimum_size() -> usize {
+        minimum_size(&Self::param_type())
+    }
+}
+
+/// Returns the minimum number of bytes that `ty` takes up in the ABI.
+pub fn minimum_size(ty: &ParamType) -> usize {
+    match ty {
+        // 1 word
+        ParamType::Uint(_) |
+        ParamType::Int(_) |
+        ParamType::Bool |
+        ParamType::Address |
+        ParamType::FixedBytes(_) => 32,
+        // min 2 words (offset, length)
+        ParamType::Bytes | ParamType::String | ParamType::Array(_) => 64,
+        // sum of all elements
+        ParamType::FixedArray(ty, len) => minimum_size(ty) * len,
+        ParamType::Tuple(tys) => tys.iter().map(minimum_size).sum(),
+    }
 }
 
 impl AbiType for u8 {

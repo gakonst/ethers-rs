@@ -71,6 +71,7 @@
   - [ ] Transaction receipt
   - [ ] Transaction status
   - [x] Transfer ETH
+  - [X] Transfer ERC20 token
 - [x] Wallets
   - [x] Mnemonic
   - [x] Ledger
