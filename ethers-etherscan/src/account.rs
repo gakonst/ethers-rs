@@ -392,11 +392,11 @@ impl Display for Sort {
 /// Common optional arguments for the transaction or event list API endpoints
 #[derive(Clone, Copy, Debug)]
 pub struct TxListParams {
-    start_block: u64,
-    end_block: u64,
-    page: u64,
-    offset: u64,
-    sort: Sort,
+    pub start_block: u64,
+    pub end_block: u64,
+    pub page: u64,
+    pub offset: u64,
+    pub sort: Sort,
 }
 
 impl TxListParams {
@@ -480,17 +480,13 @@ impl Display for BlockType {
 impl Client {
     /// Returns the Ether balance of a given address.
     ///
-    /// ```no_run
-    /// # use ethers_etherscan::Client;
-    /// # use ethers_core::types::Chain;
+    /// # Examples
     ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
-    ///     let balance = client
-    ///         .get_ether_balance_single(&"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap(),
-    ///         None).await.unwrap();
-    /// # }
+    /// ```no_run
+    /// # async fn foo(client: ethers_etherscan::Client) -> Result<(), Box<dyn std::error::Error>> {
+    /// let address = "0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse()?;
+    /// let balance = client.get_ether_balance_single(&address, None).await?;
+    /// # Ok(()) }
     /// ```
     pub async fn get_ether_balance_single(
         &self,
@@ -515,21 +511,22 @@ impl Client {
 
     /// Returns the balance of the accounts from a list of addresses.
     ///
-    /// ```no_run
-    /// # use ethers_etherscan::Client;
-    /// # use ethers_core::types::Chain;
+    /// # Examples
     ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
-    ///     let balances = client
-    ///         .get_ether_balance_multi(&vec![&"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap()],
-    ///         None).await.unwrap();
-    /// # }
+    /// ```no_run
+    /// # use ethers_core::types::Address;
+    /// # async fn foo(client: ethers_etherscan::Client) -> Result<(), Box<dyn std::error::Error>> {
+    /// let addresses = [
+    ///     "0x3E3c00494d0b306a0739E480DBB5DB91FFb5d4CB".parse::<Address>()?,
+    ///     "0x7e9996ef050a9Fa7A01248e63271F69086aaFc9D".parse::<Address>()?,
+    /// ];
+    /// let balances = client.get_ether_balance_multi(&addresses, None).await?;
+    /// assert_eq!(addresses.len(), balances.len());
+    /// # Ok(()) }
     /// ```
     pub async fn get_ether_balance_multi(
         &self,
-        addresses: &[&Address],
+        addresses: &[Address],
         tag: Option<Tag>,
     ) -> Result<Vec<AccountBalance>> {
         let tag_str = tag.unwrap_or_default().to_string();
@@ -550,17 +547,13 @@ impl Client {
 
     /// Returns the list of transactions performed by an address, with optional pagination.
     ///
-    /// ```no_run
-    /// # use ethers_etherscan::Client;
-    /// # use ethers_core::types::Chain;
+    /// # Examples
     ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
-    ///     let txs = client
-    ///         .get_transactions(&"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap(),
-    ///         None).await.unwrap();
-    /// # }
+    /// ```no_run
+    /// # async fn foo(client: ethers_etherscan::Client) -> Result<(), Box<dyn std::error::Error>> {
+    /// let address = "0x1f162cf730564efD2Bb96eb27486A2801d76AFB6".parse()?;
+    /// let transactions = client.get_transactions(&address, None).await?;
+    /// # Ok(()) }
     /// ```
     pub async fn get_transactions(
         &self,
@@ -578,18 +571,16 @@ impl Client {
     /// Returns the list of internal transactions performed by an address or within a transaction,
     /// with optional pagination.
     ///
-    /// ```no_run
-    /// # use ethers_etherscan::{Client, account::InternalTxQueryOption};
-    /// # use ethers_core::types::Chain;
+    /// # Examples
     ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
-    ///     let txs = client
-    ///         .get_internal_transactions(
-    ///             InternalTxQueryOption::ByAddress(
-    ///                 "0x2c1ba59d6f58433fb1eaee7d20b26ed83bda51a3".parse().unwrap()), None).await.unwrap();
-    /// # }
+    /// ```no_run
+    /// use ethers_etherscan::account::InternalTxQueryOption;
+    ///
+    /// # async fn foo(client: ethers_etherscan::Client) -> Result<(), Box<dyn std::error::Error>> {
+    /// let address = "0x2c1ba59d6f58433fb1eaee7d20b26ed83bda51a3".parse()?;
+    /// let query = InternalTxQueryOption::ByAddress(address);
+    /// let internal_transactions = client.get_internal_transactions(query, None).await?;
+    /// # Ok(()) }
     /// ```
     pub async fn get_internal_transactions(
         &self,
@@ -615,18 +606,16 @@ impl Client {
     /// Returns the list of ERC-20 tokens transferred by an address, with optional filtering by
     /// token contract.
     ///
-    /// ```no_run
-    /// # use ethers_etherscan::{Client, account::TokenQueryOption};
-    /// # use ethers_core::types::Chain;
+    /// # Examples
     ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
-    ///     let txs = client
-    ///         .get_erc20_token_transfer_events(
-    ///             TokenQueryOption::ByAddress(
-    ///                 "0x4e83362442b8d1bec281594cea3050c8eb01311c".parse().unwrap()), None).await.unwrap();
-    /// # }
+    /// ```no_run
+    /// use ethers_etherscan::account::TokenQueryOption;
+    ///
+    /// # async fn foo(client: ethers_etherscan::Client) -> Result<(), Box<dyn std::error::Error>> {
+    /// let address = "0x4e83362442b8d1bec281594cea3050c8eb01311c".parse()?;
+    /// let query = TokenQueryOption::ByAddress(address);
+    /// let events = client.get_erc20_token_transfer_events(query, None).await?;
+    /// # Ok(()) }
     /// ```
     pub async fn get_erc20_token_transfer_events(
         &self,
@@ -643,20 +632,16 @@ impl Client {
     /// Returns the list of ERC-721 ( NFT ) tokens transferred by an address, with optional
     /// filtering by token contract.
     ///
-    /// ```no_run
-    /// # use ethers_etherscan::{Client, account::TokenQueryOption};
-    /// # use ethers_core::types::Chain;
+    /// # Examples
     ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
-    ///     let txs = client
-    ///         .get_erc721_token_transfer_events(
-    ///             TokenQueryOption::ByAddressAndContract(
-    ///                 "0x6975be450864c02b4613023c2152ee0743572325".parse().unwrap(),
-    ///                 "0x06012c8cf97bead5deae237070f9587f8e7a266d".parse().unwrap(),
-    ///          ), None).await.unwrap();
-    /// # }
+    /// ```no_run
+    /// use ethers_etherscan::account::TokenQueryOption;
+    ///
+    /// # async fn foo(client: ethers_etherscan::Client) -> Result<(), Box<dyn std::error::Error>> {
+    /// let contract = "0x06012c8cf97bead5deae237070f9587f8e7a266d".parse()?;
+    /// let query = TokenQueryOption::ByContract(contract);
+    /// let events = client.get_erc721_token_transfer_events(query, None).await?;
+    /// # Ok(()) }
     /// ```
     pub async fn get_erc721_token_transfer_events(
         &self,
@@ -673,20 +658,17 @@ impl Client {
     /// Returns the list of ERC-1155 ( NFT ) tokens transferred by an address, with optional
     /// filtering by token contract.
     ///
-    /// ```no_run
-    /// # use ethers_etherscan::{Client, account::TokenQueryOption};
-    /// # use ethers_core::types::Chain;
+    /// # Examples
     ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
-    ///     let txs = client
-    ///         .get_erc1155_token_transfer_events(
-    ///             TokenQueryOption::ByAddressAndContract(
-    ///                 "0x216CD350a4044e7016f14936663e2880Dd2A39d7".parse().unwrap(),
-    ///                 "0x495f947276749ce646f68ac8c248420045cb7b5e".parse().unwrap(),
-    ///          ), None).await.unwrap();
-    /// # }
+    /// ```no_run
+    /// use ethers_etherscan::account::TokenQueryOption;
+    ///
+    /// # async fn foo(client: ethers_etherscan::Client) -> Result<(), Box<dyn std::error::Error>> {
+    /// let address = "0x216CD350a4044e7016f14936663e2880Dd2A39d7".parse()?;
+    /// let contract = "0x495f947276749ce646f68ac8c248420045cb7b5e".parse()?;
+    /// let query = TokenQueryOption::ByAddressAndContract(address, contract);
+    /// let events = client.get_erc1155_token_transfer_events(query, None).await?;
+    /// # Ok(()) }
     /// ```
     pub async fn get_erc1155_token_transfer_events(
         &self,
@@ -702,17 +684,13 @@ impl Client {
 
     /// Returns the list of blocks mined by an address.
     ///
-    /// ```no_run
-    /// # use ethers_etherscan::Client;
-    /// # use ethers_core::types::Chain;
+    /// # Examples
     ///
-    /// # #[tokio::main]
-    /// # async fn main() {
-    ///     let client = Client::new(Chain::Mainnet, "API_KEY").unwrap();
-    ///     let blocks = client
-    ///         .get_mined_blocks(&"0x9dd134d14d1e65f84b706d6f205cd5b1cd03a46b".parse().unwrap(), None, None)
-    ///         .await.unwrap();
-    /// # }
+    /// ```no_run
+    /// # async fn foo(client: ethers_etherscan::Client) -> Result<(), Box<dyn std::error::Error>> {
+    /// let address = "0x9dd134d14d1e65f84b706d6f205cd5b1cd03a46b".parse()?;
+    /// let blocks = client.get_mined_blocks(&address, None, None).await?;
+    /// # Ok(()) }
     /// ```
     pub async fn get_mined_blocks(
         &self,
