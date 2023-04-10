@@ -89,6 +89,8 @@ pub enum GasOracleError {
     /// Error thrown when the provider failed.
     #[error("Provider error: {0}")]
     ProviderError(#[from] Box<dyn Error + Send + Sync>),
+    #[error("Failed to parse gas values: {0}")]
+    ConversionError(#[from] ethers_core::utils::ConversionError),
 }
 
 /// An Ethereum gas price oracle.

@@ -142,6 +142,10 @@ pub fn derive_abi_type(input: TokenStream) -> TokenStream {
 /// generalized codec traits used for types, calls, etc. However, encoding/decoding a call differs
 /// from the basic encoding/decoding, (`[selector + encode(self)]`)
 ///
+/// Note that this macro requires the `EthAbiType` macro to be derived or for the type to implement
+/// `AbiType` and `Tokenizable`. The type returned by the `AbiType` implementation must be a
+/// `Token::Tuple`, otherwise this macro's implementation of `AbiDecode` will panic at runtime.
+///
 /// # Example
 ///
 /// ```ignore
