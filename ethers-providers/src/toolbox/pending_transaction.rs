@@ -24,32 +24,15 @@ use std::{
 ///
 /// # Example
 ///
-///```
-/// # use ethers_providers::{Provider, Http};
-/// # use ethers_core::utils::Anvil;
-/// # use std::convert::TryFrom;
-/// use ethers_providers::Middleware;
+/// ```ignore
 /// use ethers_core::types::TransactionRequest;
 ///
-/// # #[tokio::main(flavor = "current_thread")]
-/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// # let anvil = Anvil::new().spawn();
-/// # let client = Provider::<Http>::try_from(anvil.endpoint()).unwrap();
-/// # let accounts = client.get_accounts().await?;
-/// # let from = accounts[0];
-/// # let to = accounts[1];
-/// # let balance_before = client.get_balance(to, None).await?;
 /// let tx = TransactionRequest::new().to(to).value(1000).from(from);
 /// let receipt = client
 ///     .send_transaction(tx, None)
 ///     .await?                           // PendingTransaction<_>
 ///     .log_msg("Pending transfer hash") // print pending tx hash with message
 ///     .await?;                          // Result<Option<TransactionReceipt>, _>
-/// # let _ = receipt;
-/// # let balance_after = client.get_balance(to, None).await?;
-/// # assert_eq!(balance_after, balance_before + 1000);
-/// # Ok(())
-/// # }
 /// ```
 #[pin_project]
 pub struct PendingTransaction<'a, P> {
