@@ -11,7 +11,7 @@ use ethers_core::{
 };
 
 #[test]
-fn test_derive_eip712() {
+fn derive_eip712() {
     #[derive(Debug, Clone, Eip712, EthAbiType)]
     #[eip712(
         name = "Radicle",
@@ -43,7 +43,7 @@ fn test_derive_eip712() {
 }
 
 #[test]
-fn test_struct_hash() {
+fn struct_hash() {
     #[derive(Debug, Clone, Eip712, EthAbiType)]
     #[eip712(
         name = "Radicle",
@@ -80,7 +80,7 @@ fn test_struct_hash() {
 }
 
 #[test]
-fn test_derive_eip712_nested() {
+fn derive_eip712_nested() {
     #[derive(Debug, Clone, Eip712, EthAbiType)]
     #[eip712(
         name = "MyDomain",
@@ -126,7 +126,7 @@ fn test_derive_eip712_nested() {
 }
 
 #[test]
-fn test_uniswap_v2_permit_hash() {
+fn uniswap_v2_permit_hash() {
     // See examples/permit_hash.rs for comparison
     // the following produces the same permit_hash as in the example
 
@@ -162,7 +162,7 @@ fn test_uniswap_v2_permit_hash() {
 }
 
 #[test]
-fn test_domain_hash_constants() {
+fn domain_hash_constants() {
     assert_eq!(
         EIP712_DOMAIN_TYPE_HASH,
         keccak256(
@@ -172,5 +172,23 @@ fn test_domain_hash_constants() {
     assert_eq!(
         EIP712_DOMAIN_TYPE_HASH_WITH_SALT,
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract,bytes32 salt)")
+    );
+}
+
+// https://t.me/ethers_rs/26844
+#[test]
+fn raw_ident_fields() {
+    #[derive(Debug, Clone, Eip712, EthAbiType)]
+    #[eip712(name = "replica", version = "1", chain_id = 6666)]
+    pub struct Message {
+        pub title: String,
+        pub href: String,
+        pub r#type: String,
+        pub timestamp: U256,
+    }
+
+    assert_eq!(
+        Message::type_hash().unwrap(),
+        keccak256("Message(string title,string href,string type,uint256 timestamp)")
     );
 }

@@ -138,8 +138,12 @@ fn parse_fields(input: &DeriveInput) -> Result<Vec<(String, ParamType)>> {
 
     let mut fields = Vec::with_capacity(named_fields.named.len());
     for f in named_fields.named.iter() {
-        let field_name = f.ident.as_ref().unwrap().to_string().to_camel_case();
-        let field_type =
+        // strip the raw identifier prefix
+        let name = f.ident.as_ref().unwrap().to_string();
+        let s = name.strip_prefix("r#").unwrap_or(&name);
+        let name = s.to_camel_case();
+
+        let ty =
             match f.attrs.iter().find(|a| a.path().segments.iter().any(|s| s.ident == "eip712")) {
                 // Found nested Eip712 Struct
                 // TODO: Implement custom
@@ -150,7 +154,7 @@ fn parse_fields(input: &DeriveInput) -> Result<Vec<(String, ParamType)>> {
                 None => crate::utils::find_parameter_type(&f.ty)?,
             };
 
-        fields.push((field_name, field_type));
+        fields.push((name, ty));
     }
 
     Ok(fields)
