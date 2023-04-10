@@ -82,7 +82,7 @@ impl GethInstance {
         &self.data_dir
     }
 
-    /// Returns the genesis configuration used to conifugre this instance
+    /// Returns the genesis configuration used to configure this instance
     pub fn genesis(&self) -> &Option<Genesis> {
         &self.genesis
     }
@@ -617,8 +617,7 @@ mod tests {
             .data_dir(temp_dir_path)
             .spawn();
 
-        let genesis = geth.genesis().clone();
-        assert!(genesis.is_some());
+        assert!(geth.genesis().is_some());
     }
 
     #[test]
