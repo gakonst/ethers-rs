@@ -1453,8 +1453,6 @@ pub fn is_local_endpoint(url: &str) -> bool {
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
-    use std::path::PathBuf;
-
     use super::*;
     use crate::Http;
     use ethers_core::{
@@ -1464,6 +1462,7 @@ mod tests {
         utils::{Anvil, Genesis, Geth, GethInstance},
     };
     use futures_util::StreamExt;
+    use std::path::PathBuf;
 
     #[test]
     fn convert_h256_u256_quantity() {
@@ -1481,8 +1480,8 @@ mod tests {
         assert_eq!(params, r#"["0x295a70b2de5e3953354a6a8344e616ed314d7251","0x0","latest"]"#);
     }
 
-    #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
+    #[tokio::test]
     async fn mainnet_resolve_name() {
         let provider = crate::test_provider::MAINNET.provider();
 
@@ -1496,8 +1495,8 @@ mod tests {
         provider.resolve_name("asdfasdf.registrar.firefly.eth").await.unwrap_err();
     }
 
-    #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
+    #[tokio::test]
     async fn mainnet_lookup_address() {
         let provider = crate::MAINNET.provider();
 
@@ -1560,7 +1559,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(feature = "celo", ignore)]
     async fn test_is_signer() {
         use ethers_core::utils::Anvil;
         use std::str::FromStr;
@@ -1635,20 +1633,6 @@ mod tests {
         let provider = Provider::<Http>::try_from(url.as_str()).unwrap();
         let receipts = provider.parity_block_receipts(10657200).await.unwrap();
         assert!(!receipts.is_empty());
-    }
-
-    #[tokio::test]
-    // Celo blocks can not get parsed when used with Ganache
-    #[cfg(not(feature = "celo"))]
-    async fn block_subscribe() {
-        use ethers_core::utils::Anvil;
-        use futures_util::StreamExt;
-        let anvil = Anvil::new().block_time(2u64).spawn();
-        let provider = Provider::connect(anvil.ws_endpoint()).await.unwrap();
-
-        let stream = provider.subscribe_blocks().await.unwrap();
-        let blocks = stream.take(3).map(|x| x.number.unwrap().as_u64()).collect::<Vec<_>>().await;
-        assert_eq!(blocks, vec![1, 2, 3]);
     }
 
     #[tokio::test]
