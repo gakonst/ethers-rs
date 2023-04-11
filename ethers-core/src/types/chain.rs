@@ -462,7 +462,7 @@ impl Chain {
             ),
 
             Boba => ("https://api.bobascan.com/api", "https://bobascan.com"),
- 
+
             BaseGoerli => ("https://api-goerli.basescan.org/api", "https://goerli.basescan.org"),
 
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
