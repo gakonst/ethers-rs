@@ -142,6 +142,8 @@ pub enum Chain {
     CantoTestnet = 740,
 
     Boba = 288,
+
+    BaseGoerli = 84531,
 }
 
 // === impl Chain ===
@@ -274,7 +276,7 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
-            EmeraldTestnet | Boba => return None,
+            EmeraldTestnet | Boba | BaseGoerli => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -313,7 +315,8 @@ impl Chain {
             Celo |
             CeloAlfajores |
             CeloBaklava |
-            Boba => true,
+            Boba |
+            BaseGoerli => true,
 
             // Known EIP-1559 chains
             Mainnet |
@@ -467,6 +470,8 @@ impl Chain {
 
             Boba => ("https://api.bobascan.com/api", "https://bobascan.com"),
 
+            BaseGoerli => ("https://api-goerli.basescan.org/api", "https://goerli.basescan.org"),
+
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
@@ -512,7 +517,8 @@ impl Chain {
             AuroraTestnet |
             Celo |
             CeloAlfajores |
-            CeloBaklava => "ETHERSCAN_API_KEY",
+            CeloBaklava |
+            BaseGoerli => "ETHERSCAN_API_KEY",
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
