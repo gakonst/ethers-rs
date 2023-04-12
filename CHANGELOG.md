@@ -10,6 +10,16 @@ which is configured [here](./cliff.toml).
 
 Please do not manually edit this file.
 
+## [Unreleased]
+
+### Miscellaneous Tasks
+
+- Fix clippy lints
+
+### Other
+
+- Revert "temp: disable cyclical dep"
+
 ## [2.0.3] - 2023-04-12
 
 ### Bug Fixes
@@ -20,11 +30,69 @@ Please do not manually edit this file.
 - No need to multiply again with `GWEI_TO_WEI_U256` ([#2326](https://github.com/gakonst/ethers-rs/issues/2326))
 - [**breaking**] Change the `GasOracle` fields to be `f64` ([#2325](https://github.com/gakonst/ethers-rs/issues/2325))
 - Docsrs cfg_attr ([#2309](https://github.com/gakonst/ethers-rs/issues/2309))
+
+### Documentation
+
+- Update some doctest examples ([#2339](https://github.com/gakonst/ethers-rs/issues/2339))
+- Add erc20 token transfer example ([#2295](https://github.com/gakonst/ethers-rs/issues/2295))
+
+### Features
+
+- Add Base Goerli chain ([#2338](https://github.com/gakonst/ethers-rs/issues/2338))
+- Very permissive etherscan gwei deser ([#2327](https://github.com/gakonst/ethers-rs/issues/2327))
+- Syn 2.0, merge eip712 crate into ethers-contract-derive ([#2279](https://github.com/gakonst/ethers-rs/issues/2279))
+- Add Settings sanitize ([#2329](https://github.com/gakonst/ethers-rs/issues/2329))
+- `Transaction::decode()` sets the hash ([#2303](https://github.com/gakonst/ethers-rs/issues/2303))
+
+### Miscellaneous Tasks
+
+- Minify test json files ([#2341](https://github.com/gakonst/ethers-rs/issues/2341))
+- Dont retain errors ([#2332](https://github.com/gakonst/ethers-rs/issues/2332))
+- Update solang-parser ([#2334](https://github.com/gakonst/ethers-rs/issues/2334))
+- Update deny config ([#2330](https://github.com/gakonst/ethers-rs/issues/2330))
+- Ignore another rev ([#2311](https://github.com/gakonst/ethers-rs/issues/2311))
+- Use ethers 2 by default when generating bindings ([#2317](https://github.com/gakonst/ethers-rs/issues/2317))
+
+### Other
+
+- Disable cyclical dep
+- Add scroll alpha testnet ([#2316](https://github.com/gakonst/ethers-rs/issues/2316))
+- Add legacy-ws feat to meta crate ([#2328](https://github.com/gakonst/ethers-rs/issues/2328))
+
+### Performance
+
+- Early return in EthCodec derive ([#2314](https://github.com/gakonst/ethers-rs/issues/2314))
+
+## [2.0.2] - 2023-03-28
+
+### Bug Fixes
+
 - Ensure ethers-solc has tokio-rt-multithread
 - Ambiguous_glob_reexports rustc lint ([#2301](https://github.com/gakonst/ethers-rs/issues/2301))
 - Broken eip155 logic in aws signer ([#2300](https://github.com/gakonst/ethers-rs/issues/2300))
 - Enable doc_cfg feature for docsrs ([#2294](https://github.com/gakonst/ethers-rs/issues/2294))
 - Add missing feature on ethers tests
+
+### Depedencies
+
+- Bump generic-array
+
+### Miscellaneous Tasks
+
+- Add eyre dependency ([#2305](https://github.com/gakonst/ethers-rs/issues/2305))
+
+### Other
+
+- Rm celo integration test, install missing solc version ([#2292](https://github.com/gakonst/ethers-rs/issues/2292))
+
+### Testing
+
+- Ensure multithreaded tokio rt
+
+## [2.0.1] - 2023-03-21
+
+### Bug Fixes
+
 - Ethers-contract circular dep on ethers-signers ([#2291](https://github.com/gakonst/ethers-rs/issues/2291))
 - Features ([#2290](https://github.com/gakonst/ethers-rs/issues/2290))
 - Handle all struct field types ([#2289](https://github.com/gakonst/ethers-rs/issues/2289))
@@ -98,7 +166,6 @@ Please do not manually edit this file.
 
 ### Depedencies
 
-- Bump generic-array
 - Bump MSRV from 1.64 to 1.65 ([#2277](https://github.com/gakonst/ethers-rs/issues/2277))
 - Bump and use workspace dependencies ([#2222](https://github.com/gakonst/ethers-rs/issues/2222))
 - Bump crypto deps ([#2260](https://github.com/gakonst/ethers-rs/issues/2260))
@@ -168,8 +235,6 @@ Please do not manually edit this file.
 
 ### Documentation
 
-- Update some doctest examples ([#2339](https://github.com/gakonst/ethers-rs/issues/2339))
-- Add erc20 token transfer example ([#2295](https://github.com/gakonst/ethers-rs/issues/2295))
 - Fix broken links, update documentation ([#2203](https://github.com/gakonst/ethers-rs/issues/2203))
 - Update providers book and examples ([#2098](https://github.com/gakonst/ethers-rs/issues/2098))
 - Rename `event_derives` to `derives` ([#2018](https://github.com/gakonst/ethers-rs/issues/2018))
@@ -181,11 +246,6 @@ Please do not manually edit this file.
 
 ### Features
 
-- Add Base Goerli chain ([#2338](https://github.com/gakonst/ethers-rs/issues/2338))
-- Very permissive etherscan gwei deser ([#2327](https://github.com/gakonst/ethers-rs/issues/2327))
-- Syn 2.0, merge eip712 crate into ethers-contract-derive ([#2279](https://github.com/gakonst/ethers-rs/issues/2279))
-- Add Settings sanitize ([#2329](https://github.com/gakonst/ethers-rs/issues/2329))
-- `Transaction::decode()` sets the hash ([#2303](https://github.com/gakonst/ethers-rs/issues/2303))
 - Improve error diagnostic ([#2280](https://github.com/gakonst/ethers-rs/issues/2280))
 - Roundtrip serde + to/from strings ([#2270](https://github.com/gakonst/ethers-rs/issues/2270))
 - Support empty events ([#2263](https://github.com/gakonst/ethers-rs/issues/2263))
@@ -242,13 +302,6 @@ Please do not manually edit this file.
 
 ### Miscellaneous Tasks
 
-- Minify test json files ([#2341](https://github.com/gakonst/ethers-rs/issues/2341))
-- Dont retain errors ([#2332](https://github.com/gakonst/ethers-rs/issues/2332))
-- Update solang-parser ([#2334](https://github.com/gakonst/ethers-rs/issues/2334))
-- Update deny config ([#2330](https://github.com/gakonst/ethers-rs/issues/2330))
-- Ignore another rev ([#2311](https://github.com/gakonst/ethers-rs/issues/2311))
-- Use ethers 2 by default when generating bindings ([#2317](https://github.com/gakonst/ethers-rs/issues/2317))
-- Add eyre dependency ([#2305](https://github.com/gakonst/ethers-rs/issues/2305))
 - Remove redundant clone
 - Make clippy happy ([#2264](https://github.com/gakonst/ethers-rs/issues/2264))
 - Allow clippy false positive ([#2259](https://github.com/gakonst/ethers-rs/issues/2259))
@@ -282,10 +335,6 @@ Please do not manually edit this file.
 
 ### Other
 
-- Disable cyclical dep
-- Add scroll alpha testnet ([#2316](https://github.com/gakonst/ethers-rs/issues/2316))
-- Add legacy-ws feat to meta crate ([#2328](https://github.com/gakonst/ethers-rs/issues/2328))
-- Rm celo integration test, install missing solc version ([#2292](https://github.com/gakonst/ethers-rs/issues/2292))
 - Prestwich/gas escalator dangle ([#2284](https://github.com/gakonst/ethers-rs/issues/2284))
 - Contracts chapter ([#2281](https://github.com/gakonst/ethers-rs/issues/2281))
 - Revert "chore: remove redundant clone"
@@ -328,7 +377,6 @@ Please do not manually edit this file.
 
 ### Performance
 
-- Early return in EthCodec derive ([#2314](https://github.com/gakonst/ethers-rs/issues/2314))
 - Wrap source content in Arc ([#2138](https://github.com/gakonst/ethers-rs/issues/2138))
 - Avoid unnecessary allocations ([#2046](https://github.com/gakonst/ethers-rs/issues/2046))
 
@@ -360,7 +408,6 @@ Please do not manually edit this file.
 
 ### Testing
 
-- Ensure multithreaded tokio rt
 - Simplify test cleanup ([#2220](https://github.com/gakonst/ethers-rs/issues/2220))
 - Add parse pk test ([#2194](https://github.com/gakonst/ethers-rs/issues/2194))
 - Disable signer integration tests temporarily
