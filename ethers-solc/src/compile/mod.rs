@@ -683,7 +683,7 @@ fn version_from_output(output: Output) -> Result<Version> {
         let version = output
             .stdout
             .lines()
-            .filter_map(|l| l.ok())
+            .map_while(std::result::Result::ok)
             .filter(|l| !l.trim().is_empty())
             .last()
             .ok_or_else(|| SolcError::solc("version not found in solc output"))?;
