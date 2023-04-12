@@ -40,7 +40,6 @@ ethers-contract-abigen = { workspace = true, optional = true }
 ethers-contract-derive = { workspace = true, optional = true }
 
 [dev-dependencies]
-ethers-signers.workspace = true
 ethers-solc.workspace = true
 ethers-providers = { workspace = true, features = ["ws"] }
 
