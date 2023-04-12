@@ -539,21 +539,19 @@ dependencies = [
 
 [[package]]
 name = "coins-bip39"
-version = "0.8.5"
+version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad2a68a46b9d8cc90484f0689adc0e4c890eb215bf698ae52e5235bb88f40be7"
+checksum = "84f4d04ee18e58356accd644896aeb2094ddeafb6a713e056cef0c0a8e468c15"
 dependencies = [
  "bitvec 0.17.4",
  "coins-bip32",
  "getrandom",
- "hex",
  "hmac 0.12.1",
  "once_cell",
  "pbkdf2 0.12.1",
  "rand",
  "sha2 0.10.6",
  "thiserror",
- "tracing",
 ]
 
 [[package]]
