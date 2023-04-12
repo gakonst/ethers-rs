@@ -2,7 +2,7 @@ use crate::utils;
 use ethers_core::{
     abi::{Address, ParamType},
     macros::ethers_core_crate,
-    types::transaction::eip712::EIP712Domain,
+    types::{transaction::eip712::EIP712Domain, H256},
     utils::keccak256,
 };
 use inflector::Inflector;
@@ -109,11 +109,19 @@ fn parse_attributes(input: &DeriveInput) -> Result<EIP712Domain> {
                 litstr.value().parse().map_err(|e| Error::new(litstr.span(), e))?;
             domain.verifying_contract = Some(addr);
         }
+        // hash string
         "salt", domain.salt => {
             meta.input.parse::<Token![=]>()?;
             let litstr: LitStr = meta.input.parse()?;
             let hash = keccak256(litstr.value());
             domain.salt = Some(hash);
+        }
+        // parse string as H256
+        "raw_salt", domain.salt => {
+            meta.input.parse::<Token![=]>()?;
+            let litstr: LitStr = meta.input.parse()?;
+            let bytes = litstr.value().parse::<H256>().map_err(|e| Error::new(litstr.span(), e))?;
+            domain.salt = Some(bytes.0);
         }
     );
     Ok(domain)
