@@ -211,16 +211,14 @@ impl<P: JsonRpcClient> Provider<P> {
     /// [`call_raw::spoof`]: crate::call_raw::spoof
     ///
     /// # Example
+    ///
     /// ```no_run
     /// # use ethers_core::{
     /// #     types::{Address, TransactionRequest, H256},
     /// #     utils::{parse_ether, Geth},
     /// # };
     /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
-    /// # use std::convert::TryFrom;
-    /// #
-    /// # #[tokio::main(flavor = "current_thread")]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// let geth = Geth::new().spawn();
     /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
     ///
@@ -234,8 +232,7 @@ impl<P: JsonRpcClient> Provider<P> {
     /// // override the sender's balance for the call
     /// let mut state = spoof::balance(adr1, pay_amt * 2);
     /// provider.call_raw(&tx).state(&state).await?;
-    /// # Ok(())
-    /// # }
+    /// # Ok(()) }
     /// ```
     pub fn call_raw<'a>(&'a self, tx: &'a TypedTransaction) -> CallBuilder<'a, P> {
         CallBuilder::new(self, tx)

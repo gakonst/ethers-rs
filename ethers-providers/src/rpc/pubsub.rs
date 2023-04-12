@@ -94,16 +94,18 @@ where
             return Poll::Ready(next_element)
         }
 
-        let this = self.project();
-        match futures_util::ready!(this.rx.poll_next(ctx)) {
-            Some(item) => match serde_json::from_str(item.get()) {
-                Ok(res) => Poll::Ready(Some(res)),
-                Err(err) => {
-                    error!("failed to deserialize item {:?}", err);
-                    Poll::Pending
-                }
-            },
-            None => Poll::Ready(None),
+        let mut this = self.project();
+        loop {
+            return match futures_util::ready!(this.rx.as_mut().poll_next(ctx)) {
+                Some(item) => match serde_json::from_str(item.get()) {
+                    Ok(res) => Poll::Ready(Some(res)),
+                    Err(err) => {
+                        error!("failed to deserialize item {:?}", err);
+                        continue
+                    }
+                },
+                None => Poll::Ready(None),
+            }
         }
     }
 }

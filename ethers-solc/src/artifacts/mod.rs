@@ -2316,9 +2316,9 @@ mod tests {
 
     #[test]
     fn test_lossless_storage_layout() {
-        let input = include_str!("../../test-data/foundryissue2462.json");
+        let input = include_str!("../../test-data/foundryissue2462.json").trim();
         let layout: StorageLayout = serde_json::from_str(input).unwrap();
-        pretty_assertions::assert_eq!(input, &serde_json::to_string_pretty(&layout).unwrap());
+        pretty_assertions::assert_eq!(input, &serde_json::to_string(&layout).unwrap());
     }
 
     // <https://github.com/foundry-rs/foundry/issues/3012>

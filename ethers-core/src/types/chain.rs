@@ -87,6 +87,8 @@ pub enum Chain {
     Poa = 99,
     Sokol = 77,
 
+    ScrollAlphaTestnet = 534353,
+
     #[strum(to_string = "xdai", serialize = "gnosis", serialize = "gnosis-chain")]
     #[serde(alias = "xdai", alias = "gnosis", alias = "gnosis_chain")]
     XDai = 100,
@@ -140,6 +142,8 @@ pub enum Chain {
     CantoTestnet = 740,
 
     Boba = 288,
+
+    BaseGoerli = 84531,
 }
 
 // === impl Chain ===
@@ -268,11 +272,11 @@ impl Chain {
             Dev | AnvilHardhat => 200,
             Celo | CeloAlfajores | CeloBaklava => 5_000,
             FilecoinHyperspaceTestnet | FilecoinMainnet => 30_000,
-
+            ScrollAlphaTestnet => 3_000,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
-            EmeraldTestnet | Boba => return None,
+            EmeraldTestnet | Boba | BaseGoerli => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -311,7 +315,8 @@ impl Chain {
             Celo |
             CeloAlfajores |
             CeloBaklava |
-            Boba => true,
+            Boba |
+            BaseGoerli => true,
 
             // Known EIP-1559 chains
             Mainnet |
@@ -327,7 +332,8 @@ impl Chain {
             // Unknown / not applicable, default to false for backwards compatibility
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
             Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
-            EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet => false,
+            EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet |
+            ScrollAlphaTestnet => false,
         }
     }
 
@@ -412,6 +418,10 @@ impl Chain {
                 ("https://blockscout.com/xdai/mainnet/api", "https://blockscout.com/xdai/mainnet")
             }
 
+            ScrollAlphaTestnet => {
+                ("https://blockscout.scroll.io/api", "https://blockscout.scroll.io/")
+            }
+
             Chiado => {
                 ("https://blockscout.chiadochain.net/api", "https://blockscout.chiadochain.net")
             }
@@ -460,6 +470,8 @@ impl Chain {
 
             Boba => ("https://api.bobascan.com/api", "https://bobascan.com"),
 
+            BaseGoerli => ("https://api-goerli.basescan.org/api", "https://goerli.basescan.org"),
+
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
@@ -505,7 +517,8 @@ impl Chain {
             AuroraTestnet |
             Celo |
             CeloAlfajores |
-            CeloBaklava => "ETHERSCAN_API_KEY",
+            CeloBaklava |
+            BaseGoerli => "ETHERSCAN_API_KEY",
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
@@ -521,6 +534,7 @@ impl Chain {
 
             // Explicitly exhaustive. See NB above.
             XDai |
+            ScrollAlphaTestnet |
             Chiado |
             Sepolia |
             Rsk |

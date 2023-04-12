@@ -2,21 +2,19 @@
 //!
 //! # Example
 //!
-//!```
+//! ```no_run
 //! use ethers_providers::{Provider, Http, Middleware, DevRpcMiddleware};
 //! use ethers_core::types::TransactionRequest;
 //! use ethers_core::utils::Anvil;
-//! use std::convert::TryFrom;
 //!
-//! # #[tokio::main(flavor = "current_thread")]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
 //! let anvil = Anvil::new().spawn();
-//! let provider = Provider::<Http>::try_from(anvil.endpoint()).unwrap();
+//! let provider = Provider::<Http>::try_from(anvil.endpoint())?;
 //! let client = DevRpcMiddleware::new(provider);
 //!
 //! // snapshot the initial state
-//! let block0 = client.get_block_number().await.unwrap();
-//! let snap_id = client.snapshot().await.unwrap();
+//! let block0 = client.get_block_number().await?;
+//! let snap_id = client.snapshot().await?;
 //!
 //! // send a transaction
 //! let accounts = client.get_accounts().await?;
@@ -29,12 +27,12 @@
 //! assert_eq!(balance_after, balance_before + 1000);
 //!
 //! // revert to snapshot
-//! client.revert_to_snapshot(snap_id).await.unwrap();
+//! client.revert_to_snapshot(snap_id).await?;
 //! let balance_after_revert = client.get_balance(to, None).await?;
 //! assert_eq!(balance_after_revert, balance_before);
-//! # Ok(())
-//! # }
+//! # Ok(()) }
 //! ```
+
 use crate::{Middleware, MiddlewareError, ProviderError};
 use async_trait::async_trait;
 use ethers_core::types::U256;
