@@ -78,6 +78,7 @@ impl Drop for GanacheInstance {
 /// drop(ganache); // this will kill the instance
 /// ```
 #[derive(Clone, Default)]
+#[must_use = "This Builder struct does nothing unless it is `spawn`ed"]
 pub struct Ganache {
     port: Option<u16>,
     block_time: Option<u64>,
@@ -102,21 +103,18 @@ impl Ganache {
     }
 
     /// Sets the port which will be used when the `ganache-cli` instance is launched.
-    #[must_use]
     pub fn port<T: Into<u16>>(mut self, port: T) -> Self {
         self.port = Some(port.into());
         self
     }
 
     /// Sets the mnemonic which will be used when the `ganache-cli` instance is launched.
-    #[must_use]
     pub fn mnemonic<T: Into<String>>(mut self, mnemonic: T) -> Self {
         self.mnemonic = Some(mnemonic.into());
         self
     }
 
     /// Sets the block-time which will be used when the `ganache-cli` instance is launched.
-    #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
         self
@@ -126,21 +124,18 @@ impl Ganache {
     /// at a given block. Input should be the HTTP location and port of the other client,
     /// e.g. `http://localhost:8545`. You can optionally specify the block to fork from
     /// using an @ sign: `http://localhost:8545@1599200`
-    #[must_use]
     pub fn fork<T: Into<String>>(mut self, fork: T) -> Self {
         self.fork = Some(fork.into());
         self
     }
 
     /// Adds an argument to pass to the `ganache-cli`.
-    #[must_use]
     pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
         self.args.push(arg.into());
         self
     }
 
     /// Adds multiple arguments to pass to the `ganache-cli`.
-    #[must_use]
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -152,9 +147,12 @@ impl Ganache {
         self
     }
 
-    /// Consumes the builder and spawns `ganache-cli` with stdout redirected
-    /// to /dev/null. This takes ~2 seconds to execute as it blocks while
-    /// waiting for `ganache-cli` to launch.
+    /// Consumes the builder and spawns `ganache-cli`.
+    ///
+    /// # Panics
+    ///
+    /// If spawning the instance fails at any point.
+    #[track_caller]
     pub fn spawn(self) -> GanacheInstance {
         let mut cmd = Command::new("ganache-cli");
         cmd.stdout(std::process::Stdio::piped());

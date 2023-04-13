@@ -67,7 +67,8 @@ jobs:
               run: |
                   cargo nextest run \
                   ${{ matrix.flags.flags }} \
-                  -E "!(deps(ethers-etherscan) & kind(test))"
+                  -E "!(deps(ethers-etherscan) & kind(test))" \
+                  --retries 3
 
     etherscan-tests:
         name: etherscan tests

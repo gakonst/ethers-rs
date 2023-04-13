@@ -635,7 +635,7 @@ mod tests {
     fn serde_to_string_match() {
         for chain in Chain::iter() {
             let chain_serde = serde_json::to_string(&chain).unwrap();
-            let chain_string = format!("\"{}\"", chain);
+            let chain_string = format!("\"{chain}\"");
             assert_eq!(chain_serde, chain_string);
         }
     }

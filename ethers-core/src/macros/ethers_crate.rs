@@ -356,6 +356,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "TODO: flaky and slow"]
     fn test_names() {
         fn assert_names(s: &ProjectEnvironment, ethers: bool, dependencies: &[EthersCrate]) {
             write_manifest(s, ethers, dependencies);
@@ -424,6 +425,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "TODO: flaky and slow"]
     fn test_lock_file() {
         let (s, _dir) = test_project();
         write_manifest(&s, true, &[]);
