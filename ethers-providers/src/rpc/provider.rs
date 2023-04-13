@@ -13,6 +13,7 @@ use crate::{
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{HttpRateLimitRetryPolicy, RetryClient};
+use std::net::Ipv4Addr;
 
 #[cfg(feature = "celo")]
 pub use crate::CeloMiddleware;
@@ -40,7 +41,7 @@ use std::{
 };
 use tracing::trace;
 use tracing_futures::Instrument;
-use url::{ParseError, Url};
+use url::{Host, ParseError, Url};
 
 /// Node Clients
 #[derive(Copy, Clone)]
@@ -1443,13 +1444,24 @@ impl ProviderExt for Provider<HttpProvider> {
 /// ```
 /// use ethers_providers::is_local_endpoint;
 /// assert!(is_local_endpoint("http://localhost:8545"));
+/// assert!(is_local_endpoint("http://169.254.0.0:8545"));
 /// assert!(is_local_endpoint("http://127.0.0.1:8545"));
+/// assert!(!is_local_endpoint("http://206.71.50.230:8545"));
+/// assert!(!is_local_endpoint("blabla"));
 /// ```
 #[inline]
-pub fn is_local_endpoint(url: &str) -> bool {
-    url.contains("127.0.0.1") || url.contains("localhost")
+pub fn is_local_endpoint(host: &str) -> bool {
+    if let Ok(url) = Url::parse(host) {
+        if let Some(host) = url.host() {
+            match host {
+                Host::Domain("localhost") => return true,
+                Host::Ipv4(ipv4) => return ipv4 == Ipv4Addr::LOCALHOST || ipv4.is_link_local(),
+                _ => return false,
+            }
+        }
+    }
+    false
 }
-
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
