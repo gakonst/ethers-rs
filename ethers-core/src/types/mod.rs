@@ -81,3 +81,6 @@ pub use syncing::{SyncProgress, SyncingStatus};
 
 mod opcode;
 pub use opcode::Opcode;
+
+mod withdrawal;
+pub use withdrawal::Withdrawal;

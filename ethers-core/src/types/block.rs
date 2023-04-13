@@ -1,6 +1,6 @@
 // Modified from <https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs>
 
-use crate::types::{Address, Bloom, Bytes, Transaction, TxHash, H256, U256, U64};
+use crate::types::{Address, Bloom, Bytes, Transaction, TxHash, Withdrawal, H256, U256, U64};
 use chrono::{DateTime, TimeZone, Utc};
 use serde::{
     de::{MapAccess, Visitor},
@@ -84,10 +84,14 @@ pub struct Block<TX> {
     /// Base fee per unit of gas (if past London)
     #[serde(rename = "baseFeePerGas")]
     pub base_fee_per_gas: Option<U256>,
-    /// Withdrawals root hash (EIP-4895)
-    #[serde(rename = "withdrawalsRoot")]
+    /// Withdrawals root hash (if past Shanghai)
+    #[serde(skip_serializing_if = "Option::is_none", rename = "withdrawalsRoot")]
     #[cfg(not(feature = "celo"))]
     pub withdrawals_root: Option<H256>,
+    /// Withdrawals (if past Shanghai)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg(not(feature = "celo"))]
+    pub withdrawals: Option<Vec<Withdrawal>>,
 
     #[cfg(feature = "celo")]
     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
@@ -223,6 +227,7 @@ impl Block<TxHash> {
                 nonce,
                 base_fee_per_gas,
                 withdrawals_root,
+                withdrawals,
                 other,
                 ..
             } = self;
@@ -249,6 +254,7 @@ impl Block<TxHash> {
                 nonce,
                 base_fee_per_gas,
                 withdrawals_root,
+                withdrawals,
                 transactions,
                 other,
             }
@@ -329,6 +335,7 @@ impl From<Block<Transaction>> for Block<TxHash> {
                 nonce,
                 base_fee_per_gas,
                 withdrawals_root,
+                withdrawals,
                 other,
             } = full;
             Block {
@@ -354,6 +361,7 @@ impl From<Block<Transaction>> for Block<TxHash> {
                 nonce,
                 base_fee_per_gas,
                 withdrawals_root,
+                withdrawals,
                 transactions: transactions.iter().map(|tx| tx.hash).collect(),
                 other,
             }
