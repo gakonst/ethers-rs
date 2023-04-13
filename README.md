@@ -138,7 +138,7 @@ You should be able to build a wasm app that uses ethers-rs (see the [example](./
 compile in WASM, please
 [open an issue](https://github.com/gakonst/ethers-rs/issues/new/choose).
 There is currently no plan to provide an official JS/TS-accessible library
-interface. we believe [ethers.js](https://docs.ethers.io/v5/) serves that need
+interface. We believe [viem](https://viem.sh) or [ethers.js](https://docs.ethers.io/v6/) serves that need
 very well.
 
 Similarly, you should be able to build FFI bindings to ethers-rs. If ethers
