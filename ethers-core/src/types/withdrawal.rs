@@ -10,7 +10,7 @@ pub struct Withdrawal {
 
     /// Index of validator associated with withdrawal
     #[serde(rename = "validatorIndex")]
-    pub validator: U64,
+    pub validator_index: U64,
 
     /// Target address for withdrawn ether
     pub address: Address,
