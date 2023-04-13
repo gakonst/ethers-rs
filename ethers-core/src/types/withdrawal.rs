@@ -23,7 +23,7 @@ impl rlp::Encodable for Withdrawal {
     fn rlp_append(&self, s: &mut rlp::RlpStream) {
         s.begin_list(4);
         s.append(&self.index);
-        s.append(&self.validator);
+        s.append(&self.validator_index);
         s.append(&self.address);
         s.append(&self.amount);
     }
