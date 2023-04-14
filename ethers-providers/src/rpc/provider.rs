@@ -1476,7 +1476,6 @@ mod tests {
     use std::path::PathBuf;
 
     use super::*;
-
     use crate::Http;
     use ethers_core::{
         types::{
