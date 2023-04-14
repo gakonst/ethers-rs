@@ -9,6 +9,8 @@ pub enum EtherscanError {
     ExecutionFailed(String),
     #[error("Balance failed")]
     BalanceFailed,
+    #[error("Block by timestamp failed")]
+    BlockNumberByTimestampFailed,
     #[error("Transaction receipt failed")]
     TransactionReceiptFailed,
     #[error("Gas estimation failed")]

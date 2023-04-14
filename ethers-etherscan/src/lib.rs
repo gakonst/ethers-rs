@@ -20,6 +20,7 @@ use std::{
 use tracing::{error, trace};
 
 pub mod account;
+pub mod blocks;
 pub mod contract;
 pub mod errors;
 pub mod gas;
