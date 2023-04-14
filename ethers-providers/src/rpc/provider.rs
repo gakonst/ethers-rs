@@ -1447,7 +1447,7 @@ impl ProviderExt for Provider<HttpProvider> {
 /// assert!(is_local_endpoint("http://169.254.0.0:8545"));
 /// assert!(is_local_endpoint("http://127.0.0.1:8545"));
 /// assert!(!is_local_endpoint("http://206.71.50.230:8545"));
-/// assert!(!is_local_endpoint("blabla"));
+/// assert!(!is_local_endpoint("havenofearlucishere"));
 /// ```
 #[inline]
 pub fn is_local_endpoint(endpoint: &str) -> bool {
