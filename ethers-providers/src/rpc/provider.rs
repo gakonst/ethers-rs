@@ -1447,6 +1447,8 @@ impl ProviderExt for Provider<HttpProvider> {
 /// assert!(is_local_endpoint("http://169.254.0.0:8545"));
 /// assert!(is_local_endpoint("http://127.0.0.1:8545"));
 /// assert!(!is_local_endpoint("http://206.71.50.230:8545"));
+/// assert!(!is_local_endpoint("http://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]"));
+/// assert!(is_local_endpoint("http://[::1]"));
 /// assert!(!is_local_endpoint("havenofearlucishere"));
 /// ```
 #[inline]
@@ -1454,26 +1456,27 @@ pub fn is_local_endpoint(endpoint: &str) -> bool {
     if let Ok(url) = Url::parse(endpoint) {
         if let Some(host) = url.host() {
             match host {
-                Host::Domain("localhost") => return true,
+                Host::Domain(domain) => return domain.contains("localhost"),
                 Host::Ipv4(ipv4) => {
                     return ipv4 == Ipv4Addr::LOCALHOST ||
                         ipv4.is_link_local() ||
                         ipv4.is_loopback() ||
                         ipv4.is_private()
                 }
-                // skipping IPV6 check
-                _ => return false,
+                Host::Ipv6(ipv6) => return ipv6.is_loopback(),
             }
         }
     }
     false
 }
+
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use std::path::PathBuf;
 
     use super::*;
+
     use crate::Http;
     use ethers_core::{
         types::{
