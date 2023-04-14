@@ -1450,12 +1450,13 @@ impl ProviderExt for Provider<HttpProvider> {
 /// assert!(!is_local_endpoint("blabla"));
 /// ```
 #[inline]
-pub fn is_local_endpoint(host: &str) -> bool {
-    if let Ok(url) = Url::parse(host) {
+pub fn is_local_endpoint(endpoint: &str) -> bool {
+    if let Ok(url) = Url::parse(endpoint) {
         if let Some(host) = url.host() {
             match host {
                 Host::Domain("localhost") => return true,
                 Host::Ipv4(ipv4) => return ipv4 == Ipv4Addr::LOCALHOST || ipv4.is_link_local(),
+                // skipping IPV6 check
                 _ => return false,
             }
         }
