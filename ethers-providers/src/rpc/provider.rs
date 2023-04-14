@@ -1455,7 +1455,12 @@ pub fn is_local_endpoint(endpoint: &str) -> bool {
         if let Some(host) = url.host() {
             match host {
                 Host::Domain("localhost") => return true,
-                Host::Ipv4(ipv4) => return ipv4 == Ipv4Addr::LOCALHOST || ipv4.is_link_local(),
+                Host::Ipv4(ipv4) => {
+                    return ipv4 == Ipv4Addr::LOCALHOST ||
+                        ipv4.is_link_local() ||
+                        ipv4.is_loopback() ||
+                        ipv4.is_private()
+                }
                 // skipping IPV6 check
                 _ => return false,
             }
