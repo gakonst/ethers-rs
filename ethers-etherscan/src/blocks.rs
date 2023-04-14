@@ -14,7 +14,19 @@ pub struct BlockNumberByTimestamp {
 
 
 impl Client {
-    /// Returns block by timestamp
+    /// Returns either (1) the oldest block since a particular timestamp occurred or (2) the newest
+    /// block that occurred prior to that timestamp
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn foo(client: ethers_etherscan::Client) -> Result<(), Box<dyn std::error::Error>> {
+    /// // The newest block that occurred prior to 1 January 2020
+    /// let block_number_before = client.get_block_by_timestamp(1577836800, "before");
+    /// // The oldest block that occurred after 1 January 2020
+    /// let block_number_after = client.get_block_by_timestamp(1577836800, "after");
+    /// # Ok(()) }
+    /// ```
     pub async fn get_block_by_timestamp(&self, timestamp: u64, closest: &str) -> Result<BlockNumberByTimestamp> {
         let query = self.create_query(
             "block",
