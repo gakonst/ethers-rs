@@ -157,6 +157,27 @@ impl BaseContract {
         decode_function_data(function, bytes, true)
     }
 
+    /// Decodes the provided ABI encoded input bytes
+    ///
+    /// Returns a [`Token`] vector, which lets you decode function arguments dynamically
+    /// without knowing the return type.
+    pub fn decode_input_raw<T: AsRef<[u8]>>(
+        &self,
+        bytes: T,
+    ) -> Result<Vec<Token>, AbiError> {
+        let function = self.get_fn_from_input(bytes.as_ref())?;
+        decode_function_data_raw(function, bytes, true)
+    }
+
+    /// Decodes the provided ABI encoded input bytes
+    pub fn decode_input<D: Detokenize, T: AsRef<[u8]>>(
+        &self,
+        bytes: T,
+    ) -> Result<D, AbiError> {
+        let function = self.get_fn_from_input(bytes.as_ref())?;
+        decode_function_data(function, bytes, true)
+    }
+
     /// Decode the provided ABI encoded bytes as the output of the provided
     /// function selector
     pub fn decode_output_with_selector<D: Detokenize, T: AsRef<[u8]>>(
@@ -179,6 +200,11 @@ impl BaseContract {
     ) -> Result<Vec<Token>, AbiError> {
         let function = self.get_from_signature(signature)?;
         decode_function_data_raw(function, bytes, false)
+    }
+
+    fn get_fn_from_input(&self, input: &[u8]) -> Result<&Function, AbiError> {
+        let sig: [u8; 4] = input[0..4].try_into().map_err(|_e| AbiError::WrongSelector)?;
+        self.get_from_signature(sig)
     }
 
     fn get_from_signature(&self, signature: Selector) -> Result<&Function, AbiError> {
@@ -308,6 +334,20 @@ mod tests {
         let (spender2, amount2): (Address, U256) = abi.decode("approve", encoded).unwrap();
         assert_eq!(spender, spender2);
         assert_eq!(amount, amount2);
+    }
+
+    #[test]
+    fn test_sig_from_input() {
+        let abi = BaseContract::from(parse_abi(&[
+            "function approve(address _spender, uint256 value) external view returns (bool, bool)"
+        ]).unwrap());
+        let spender = "7a250d5630b4cf539739df2c5dacb4c659f2488d".parse::<Address>().unwrap();
+        let amount = U256::MAX;
+        let encoded = abi.encode("approve", (spender, amount)).unwrap();
+
+        let decoded: (Address, U256) = abi.decode_input(&encoded).unwrap();
+        assert_eq!(spender, decoded.0);
+        assert_eq!(amount, decoded.1);
     }
 
     #[test]
