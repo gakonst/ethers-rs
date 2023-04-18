@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use crate::{
     types::{Address, Bytes, H256, U256, U64},
-    utils::{from_int_or_hex, from_int_or_hex_opt, from_u64_or_hex_opt, from_unformatted_hex_map},
+    utils::{
+        from_int_or_hex, from_int_or_hex_opt, from_u64_or_hex, from_u64_or_hex_opt,
+        from_unformatted_hex_map,
+    },
 };
 use serde::{Deserialize, Serialize};
 
@@ -16,11 +19,11 @@ pub struct Genesis {
     pub config: ChainConfig,
 
     /// The genesis header nonce.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "from_u64_or_hex")]
     pub nonce: U64,
 
     /// The genesis header timestamp.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "from_u64_or_hex")]
     pub timestamp: U64,
 
     /// The genesis header extra data.
@@ -28,6 +31,7 @@ pub struct Genesis {
     pub extra_data: Bytes,
 
     /// The genesis header gas limit.
+    #[serde(default, deserialize_with = "from_u64_or_hex")]
     pub gas_limit: U64,
 
     /// The genesis header difficulty.
@@ -48,11 +52,19 @@ pub struct Genesis {
     // The following fields are only included for tests, and should not be used in real genesis
     // blocks.
     /// The block number
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "from_u64_or_hex_opt",
+        default
+    )]
     pub number: Option<U64>,
 
     /// The block gas gasUsed
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "from_u64_or_hex_opt",
+        default
+    )]
     pub gas_used: Option<U64>,
 
     /// The block parent hash
@@ -60,7 +72,11 @@ pub struct Genesis {
     pub parent_hash: Option<H256>,
 
     /// The base fee
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "from_int_or_hex_opt",
+        default
+    )]
     pub base_fee_per_gas: Option<U256>,
 }
 
