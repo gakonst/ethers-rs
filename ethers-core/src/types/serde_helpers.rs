@@ -44,7 +44,7 @@ impl FromStr for Numeric {
 pub enum StringifiedNumeric {
     String(String),
     U256(U256),
-    Num(u64),
+    Num(serde_json::Number),
 }
 
 impl TryFrom<StringifiedNumeric> for U256 {
@@ -53,7 +53,9 @@ impl TryFrom<StringifiedNumeric> for U256 {
     fn try_from(value: StringifiedNumeric) -> Result<Self, Self::Error> {
         match value {
             StringifiedNumeric::U256(n) => Ok(n),
-            StringifiedNumeric::Num(n) => Ok(U256::from(n)),
+            StringifiedNumeric::Num(n) => {
+                Ok(U256::from_dec_str(&n.to_string()).map_err(|err| err.to_string())?)
+            }
             StringifiedNumeric::String(s) => {
                 if let Ok(val) = s.parse::<u128>() {
                     Ok(val.into())

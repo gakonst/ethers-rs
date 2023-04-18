@@ -36,14 +36,13 @@ pub use rlp;
 /// Re-export hex
 pub use hex;
 
-use crate::types::{Address, Bytes, ParseI256Error, H256, I256, U256, U64};
+use crate::types::{Address, Bytes, ParseI256Error, H256, I256, U256};
 use ethabi::ethereum_types::FromDecStrErr;
 use k256::ecdsa::SigningKey;
 use std::{
     collections::HashMap,
     convert::{TryFrom, TryInto},
     fmt,
-    str::FromStr,
 };
 use thiserror::Error;
 
@@ -507,76 +506,6 @@ where
     }
 }
 
-/// Deserializes the input into a U256, accepting both 0x-prefixed hex and decimal strings with
-/// arbitrary precision, defined by serde_json's [`Number`](serde_json::Number).
-pub fn from_int_or_hex<'de, D>(deserializer: D) -> Result<U256, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum IntOrString {
-        Int(serde_json::Number),
-        JsonString(String),
-    }
-
-    match IntOrString::deserialize(deserializer)? {
-        IntOrString::JsonString(s) => {
-            if s.starts_with("0x") {
-                U256::from_str(s.as_str()).map_err(serde::de::Error::custom)
-            } else {
-                // if there is no 0x prefix, this is a decimal string
-                U256::from_dec_str(&s).map_err(serde::de::Error::custom)
-            }
-        }
-        IntOrString::Int(n) => U256::from_dec_str(&n.to_string()).map_err(serde::de::Error::custom),
-    }
-}
-
-/// Deserializes the input into a U64, accepting both 0x-prefixed hex and decimal strings with
-/// arbitrary precision, defined by serde_json's [`Number`](serde_json::Number).
-pub fn from_u64_or_hex<'de, D>(deserializer: D) -> Result<U64, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum IntOrString {
-        Int(serde_json::Number),
-        JsonString(String),
-    }
-
-    match IntOrString::deserialize(deserializer)? {
-        IntOrString::JsonString(s) => {
-            if s.starts_with("0x") {
-                U64::from_str(s.as_str()).map_err(serde::de::Error::custom)
-            } else {
-                // if there is no 0x prefix, this is a decimal string
-                U64::from_dec_str(&s).map_err(serde::de::Error::custom)
-            }
-        }
-        IntOrString::Int(n) => U64::from_dec_str(&n.to_string()).map_err(serde::de::Error::custom),
-    }
-}
-
-/// Deserializes the input into an `Option<U256>`, using [`from_int_or_hex`] to deserialize the
-/// inner value.
-pub fn from_int_or_hex_opt<'de, D>(deserializer: D) -> Result<Option<U256>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    Ok(Some(from_int_or_hex(deserializer)?))
-}
-
-/// Deserializes the input into an `Option<u64>`, using [`from_u64_or_hex`] to deserialize the
-/// inner value.
-pub fn from_u64_or_hex_opt<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    Ok(Some(from_u64_or_hex(deserializer)?.as_u64()))
-}
-
 fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {
     let mut rewards: Vec<U256> =
         rewards.iter().map(|r| r[0]).filter(|r| *r > U256::zero()).collect();
@@ -658,6 +587,7 @@ pub(crate) fn unused_ports<const N: usize>() -> [u16; N] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::serde_helpers::deserialize_stringified_numeric;
     use hex_literal::hex;
 
     #[test]
@@ -1141,9 +1071,10 @@ mod tests {
         ];
 
         #[derive(Deserialize)]
-        struct TestUint(#[serde(deserialize_with = "from_int_or_hex")] U256);
+        struct TestUint(#[serde(deserialize_with = "deserialize_stringified_numeric")] U256);
 
         for (string, expected) in cases {
+            println!("testing {}", string);
             let test: TestUint = serde_json::from_str(string).unwrap();
             assert_eq!(test.0, expected);
         }
