@@ -130,6 +130,7 @@ pub struct GenesisAccount {
         default
     )]
     pub nonce: Option<u64>,
+    #[serde(deserialize_with = "from_int_or_hex")]
     pub balance: U256,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub code: Option<Bytes>,
@@ -308,6 +309,67 @@ mod tests {
         "#;
 
         let _genesis: Genesis = serde_json::from_str(geth_genesis).unwrap();
+    }
+
+    #[test]
+    fn parse_non_hex_prefixed_balance() {
+        // tests that we can parse balance / difficulty fields that are either hex or decimal
+        let example_balance_json = r#"
+        {
+            "nonce": "0x0000000000000042",
+            "difficulty": "34747478",
+            "mixHash": "0x123456789abcdef123456789abcdef123456789abcdef123456789abcdef1234",
+            "coinbase": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "timestamp": "0x123456",
+            "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "extraData": "0xfafbfcfd",
+            "gasLimit": "0x2fefd8",
+            "alloc": {
+                "0x3E951C9f69a06Bc3AD71fF7358DbC56bEd94b9F2": {
+                  "balance": "1000000000000000000000000000"
+                },
+                "0xe228C30d4e5245f967ac21726d5412dA27aD071C": {
+                  "balance": "1000000000000000000000000000"
+                },
+                "0xD59Ce7Ccc6454a2D2C2e06bbcf71D0Beb33480eD": {
+                  "balance": "1000000000000000000000000000"
+                },
+                "0x1CF4D54414eF51b41f9B2238c57102ab2e61D1F2": {
+                  "balance": "1000000000000000000000000000"
+                },
+                "0x249bE3fDEd872338C733cF3975af9736bdCb9D4D": {
+                  "balance": "1000000000000000000000000000"
+                },
+                "0x3fCd1bff94513712f8cD63d1eD66776A67D5F78e": {
+                  "balance": "1000000000000000000000000000"
+                }
+            },
+            "config": {
+                "ethash": {},
+                "chainId": 10,
+                "homesteadBlock": 0,
+                "eip150Block": 0,
+                "eip155Block": 0,
+                "eip158Block": 0,
+                "byzantiumBlock": 0,
+                "constantinopleBlock": 0,
+                "petersburgBlock": 0,
+                "istanbulBlock": 0
+            }
+        }
+        "#;
+
+        let genesis: Genesis = serde_json::from_str(example_balance_json).unwrap();
+
+        // check difficulty against hex ground truth
+        let expected_difficulty = U256::from_str("0x2123456").unwrap();
+        assert_eq!(expected_difficulty, genesis.difficulty);
+
+        // check all alloc balances
+        let dec_balance = U256::from_dec_str("1000000000000000000000000000").unwrap();
+        for alloc in &genesis.alloc {
+            assert_eq!(alloc.1.balance, dec_balance);
+        }
     }
 
     #[test]
