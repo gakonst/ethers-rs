@@ -1,6 +1,6 @@
 //! Some convenient serde helpers
 
-use crate::types::{BlockNumber, U256};
+use crate::types::{BlockNumber, U256, U64};
 use serde::{Deserialize, Deserializer};
 use std::{
     convert::{TryFrom, TryInto},
@@ -67,6 +67,18 @@ impl TryFrom<StringifiedNumeric> for U256 {
     }
 }
 
+impl TryFrom<StringifiedNumeric> for U64 {
+    type Error = String;
+
+    fn try_from(value: StringifiedNumeric) -> Result<Self, Self::Error> {
+        let value = U256::try_from(value)?;
+        let mut be_bytes = [0u8; 32];
+        value.to_big_endian(&mut be_bytes);
+        U64::try_from(&be_bytes[value.leading_zeros() as usize / 8..])
+            .map_err(|err| err.to_string())
+    }
+}
+
 /// Supports parsing numbers as strings
 ///
 /// See <https://github.com/gakonst/ethers-rs/issues/1507>
@@ -89,6 +101,32 @@ where
 {
     if let Some(num) = Option::<StringifiedNumeric>::deserialize(deserializer)? {
         num.try_into().map(Some).map_err(serde::de::Error::custom)
+    } else {
+        Ok(None)
+    }
+}
+
+/// Supports parsing ethereum-types U64
+///
+/// See <https://github.com/gakonst/ethers-rs/issues/1507>
+pub fn deserialize_stringified_eth_u64<'de, D>(deserializer: D) -> Result<U64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let num = StringifiedNumeric::deserialize(deserializer)?;
+    num.try_into().map_err(serde::de::Error::custom)
+}
+
+/// Supports parsing ethereum-types Option<U64>
+///
+/// See <https://github.com/gakonst/ethers-rs/issues/1507>
+pub fn deserialize_stringified_eth_u64_opt<'de, D>(deserializer: D) -> Result<Option<U64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    if let Some(num) = Option::<StringifiedNumeric>::deserialize(deserializer)? {
+        let num: U64 = num.try_into().map_err(serde::de::Error::custom)?;
+        Ok(Some(num))
     } else {
         Ok(None)
     }
