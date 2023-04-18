@@ -119,7 +119,7 @@ where
     num.try_into().map_err(serde::de::Error::custom)
 }
 
-/// Supports parsing ethereum-types Option<U64>
+/// Supports parsing ethereum-types `Option<U64>`
 ///
 /// See <https://github.com/gakonst/ethers-rs/issues/1507>
 pub fn deserialize_stringified_eth_u64_opt<'de, D>(deserializer: D) -> Result<Option<U64>, D::Error>
