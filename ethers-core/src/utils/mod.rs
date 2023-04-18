@@ -525,6 +525,7 @@ where
             if s.starts_with("0x") {
                 U256::from_str(s.as_str()).map_err(serde::de::Error::custom)
             } else {
+                // if there is no 0x prefix, this is a decimal string
                 U256::from_dec_str(&s).map_err(serde::de::Error::custom)
             }
         }
@@ -540,20 +541,21 @@ where
 {
     #[derive(Deserialize)]
     #[serde(untagged)]
-    enum IntOrHex {
+    enum IntOrString {
         Int(serde_json::Number),
-        Hex(String),
+        JsonString(String),
     }
 
-    match IntOrHex::deserialize(deserializer)? {
-        IntOrHex::Hex(s) => {
+    match IntOrString::deserialize(deserializer)? {
+        IntOrString::JsonString(s) => {
             if s.starts_with("0x") {
                 U64::from_str(s.as_str()).map_err(serde::de::Error::custom)
             } else {
+                // if there is no 0x prefix, this is a decimal string
                 U64::from_dec_str(&s).map_err(serde::de::Error::custom)
             }
         }
-        IntOrHex::Int(n) => U64::from_dec_str(&n.to_string()).map_err(serde::de::Error::custom),
+        IntOrString::Int(n) => U64::from_dec_str(&n.to_string()).map_err(serde::de::Error::custom),
     }
 }
 
