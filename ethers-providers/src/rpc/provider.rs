@@ -908,6 +908,26 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("debug_traceCall", [req, block, trace_options]).await
     }
 
+    async fn debug_trace_block_by_number(
+        &self,
+        block: Option<BlockNumber>,
+        trace_options: GethDebugTracingOptions,
+    ) -> Result<Vec<GethTrace>, ProviderError> {
+        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        let trace_options = utils::serialize(&trace_options);
+        self.request("debug_traceBlockByNumber", [block, trace_options]).await
+    }
+
+    async fn debug_trace_block_by_hash(
+        &self,
+        block: H256,
+        trace_options: GethDebugTracingOptions,
+    ) -> Result<Vec<GethTrace>, ProviderError> {
+        let block = utils::serialize(&block);
+        let trace_options = utils::serialize(&trace_options);
+        self.request("debug_traceBlockByHash", [block, trace_options]).await
+    }
+
     async fn trace_call<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         req: T,
@@ -1457,7 +1477,9 @@ mod tests {
     use crate::Http;
     use ethers_core::{
         types::{
-            transaction::eip2930::AccessList, Eip1559TransactionRequest, TransactionRequest, H256,
+            transaction::eip2930::AccessList, Eip1559TransactionRequest,
+            GethDebugBuiltInTracerConfig, GethDebugBuiltInTracerType, GethDebugTracerConfig,
+            GethDebugTracerType, PreStateConfig, TransactionRequest, H256,
         },
         utils::{Anvil, Genesis, Geth, GethInstance},
     };
@@ -1633,6 +1655,41 @@ mod tests {
         let provider = Provider::<Http>::try_from(url.as_str()).unwrap();
         let receipts = provider.parity_block_receipts(10657200).await.unwrap();
         assert!(!receipts.is_empty());
+    }
+
+    #[tokio::test]
+    async fn debug_trace_block() {
+        let provider = Provider::<Http>::try_from("https://eth.llamarpc.com").unwrap();
+
+        let mut opts = GethDebugTracingOptions::default();
+        opts.disable_storage = Some(false);
+        opts.tracer =
+            Some(GethDebugTracerType::BuiltInTracer(GethDebugBuiltInTracerType::PreStateTracer));
+        opts.tracer_config = Some(GethDebugTracerConfig::BuiltInTracer(
+            GethDebugBuiltInTracerConfig::PreStateTracer(PreStateConfig { diff_mode: Some(true) }),
+        ));
+
+        let latest_block = provider.get_block(BlockNumber::Latest).await.unwrap().unwrap();
+
+        // debug_traceBlockByNumber
+        let latest_block_num = BlockNumber::Number(latest_block.number.unwrap());
+        let traces_by_num = provider
+            .debug_trace_block_by_number(Some(latest_block_num), opts.clone())
+            .await
+            .unwrap();
+        for trace in &traces_by_num {
+            assert!(matches!(trace, GethTrace::Known(..)));
+        }
+
+        // debug_traceBlockByHash
+        let latest_block_hash = latest_block.hash.unwrap();
+        let traces_by_hash =
+            provider.debug_trace_block_by_hash(latest_block_hash, opts).await.unwrap();
+        for trace in &traces_by_hash {
+            assert!(matches!(trace, GethTrace::Known(..)));
+        }
+
+        assert_eq!(traces_by_num, traces_by_hash);
     }
 
     #[tokio::test]
