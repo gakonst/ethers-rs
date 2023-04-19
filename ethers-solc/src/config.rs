@@ -991,6 +991,7 @@ mod tests {
     #[test]
     fn can_find_library_ancestor() {
         let mut config = ProjectPathsConfig::builder().lib("lib").build().unwrap();
+        config.slash_paths();
         config.root = "/root/".into();
 
         assert_eq!(config.find_library_ancestor("lib/src/Greeter.sol").unwrap(), Path::new("lib"));
