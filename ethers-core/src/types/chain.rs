@@ -97,11 +97,11 @@ pub enum Chain {
     #[strum(to_string = "mumbai", serialize = "polygon-mumbai")]
     #[serde(alias = "mumbai")]
     PolygonMumbai = 80001,
-    #[strum(to_string = "polygonzkevm", serialize = "polygon-zkevm", serialize = "zkevm")]
+    #[strum(to_string = "polygon-zkevm", serialize = "polygon-zkevm", serialize = "zkevm")]
     #[serde(alias = "zkevm", alias = "polygon_zkevm")]
     PolygonZkEvm = 1101,
     #[strum(
-        to_string = "polygonzkevmtestnet",
+        to_string = "polygon-zkevm-testnet",
         serialize = "polygon-zkevm-testnet",
         serialize = "zkevm-testnet"
     )]
