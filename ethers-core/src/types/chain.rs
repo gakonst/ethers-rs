@@ -97,6 +97,16 @@ pub enum Chain {
     #[strum(to_string = "mumbai", serialize = "polygon-mumbai")]
     #[serde(alias = "mumbai")]
     PolygonMumbai = 80001,
+    #[strum(to_string = "polygonzkevm", serialize = "polygon-zkevm", serialize = "zkevm")]
+    #[serde(alias = "zkevm", alias = "polygon_zkevm")]
+    PolygonZkEvm = 1101,
+    #[strum(
+        to_string = "polygonzkevmtestnet",
+        serialize = "polygon-zkevm-testnet",
+        serialize = "zkevm-testnet"
+    )]
+    #[serde(alias = "zkevm_testnet", alias = "polygon_zkevm_testnet")]
+    PolygonZkEvmTestnet = 1442,
 
     Fantom = 250,
     FantomTestnet = 4002,
@@ -280,7 +290,9 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
-            EmeraldTestnet | Boba | BaseGoerli | ZkSync => return None,
+            EmeraldTestnet | Boba | BaseGoerli | ZkSync | PolygonZkEvm | PolygonZkEvmTestnet => {
+                return None
+            }
         };
 
         Some(Duration::from_millis(ms))
@@ -321,7 +333,9 @@ impl Chain {
             CeloBaklava |
             Boba |
             ZkSync |
-            BaseGoerli => true,
+            BaseGoerli |
+            PolygonZkEvm |
+            PolygonZkEvmTestnet => true,
 
             // Known EIP-1559 chains
             Mainnet |
@@ -376,6 +390,14 @@ impl Chain {
             PolygonMumbai => {
                 ("https://api-testnet.polygonscan.com/api", "https://mumbai.polygonscan.com")
             }
+
+            PolygonZkEvm => {
+                ("https://api-zkevm.polygonscan.com/api", "https://zkevm.polygonscan.com")
+            }
+            PolygonZkEvmTestnet => (
+                "https://api-testnet-zkevm.polygonscan.com/api",
+                "https://testnet-zkevm.polygonscan.com",
+            ),
 
             Avalanche => ("https://api.snowtrace.io/api", "https://snowtrace.io"),
             AvalancheFuji => {
@@ -531,7 +553,7 @@ impl Chain {
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
-            Polygon | PolygonMumbai => "POLYGONSCAN_API_KEY",
+            Polygon | PolygonMumbai | PolygonZkEvm | PolygonZkEvmTestnet => "POLYGONSCAN_API_KEY",
 
             Fantom | FantomTestnet => "FTMSCAN_API_KEY",
 
@@ -628,6 +650,8 @@ mod tests {
             (BinanceSmartChainTestnet, &["bsc-testnet", "binance-smart-chain-testnet"]),
             (XDai, &["xdai", "gnosis", "gnosis-chain"]),
             (PolygonMumbai, &["mumbai"]),
+            (PolygonZkEvm, &["zkevm", "polygon-zkevm"]),
+            (PolygonZkEvmTestnet, &["zkevm-testnet", "polygon-zkevm-testnet"]),
             (AnvilHardhat, &["anvil", "hardhat"]),
             (AvalancheFuji, &["fuji"]),
             (ZkSync, &["zksync"]),
