@@ -1868,7 +1868,7 @@ impl fmt::Display for Error {
                 f.write_str("\n")?;
 
                 if let Some((note, msg)) = line.split_once(':') {
-                    styled(f, Color::Cyan.style().bold(), |f| f.write_str(note))?;
+                    styled(f, Self::secondary_style(), |f| f.write_str(note))?;
                     fmt_msg(f, msg)?;
                 } else {
                     f.write_str(line)?;
@@ -1982,21 +1982,22 @@ fn fmt_source_location(f: &mut fmt::Formatter, lines: &mut std::str::Lines) -> f
     // line 1, just a frame
     fmt_framed_location(f, line1, None)?;
 
-    // line 2, frame and code; highlight the text that line 3's carets points to
-    // or the entire line after the caret if it's the special "spans across multiple lines" message
+    // line 2, frame and code; highlight the text based on line 3's carets
     let hl_start = line3.find('^');
-    let highlight = hl_start.map(|mut start| {
-        let mut end = line2.len();
-        if !line3.contains("^ (") {
-            if let Some(carets) = line3[start..].find(|c: char| c != '^') {
-                end = start + carets;
-            }
-        };
-        // in case carets are misplaced
-        if start > end {
-            start = end;
+    let highlight = hl_start.map(|start| {
+        let end = if line3.contains("^ (") {
+            // highlight the entire line because of "spans across multiple lines" diagnostic
+            line2.len()
+        } else if let Some(carets) = line3[start..].find(|c: char| c != '^') {
+            // highlight the text that the carets point to
+            start + carets
+        } else {
+            // the carets span the entire third line
+            line3.len()
         }
-        (start..end, Error::highlight_style())
+        // bound in case carets span longer than the code they point to
+        .min(line2.len());
+        (start.min(end)..end, Error::highlight_style())
     });
     fmt_framed_location(f, line2, highlight)?;
 
