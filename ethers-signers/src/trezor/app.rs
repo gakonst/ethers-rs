@@ -432,4 +432,24 @@ mod tests {
         let foo_bar_hash = foo_bar.encode_eip712().unwrap();
         sig.verify(foo_bar_hash, trezor.address).unwrap();
     }
+
+    #[tokio::test]
+    async fn signs_hash() {
+        let trezor = TrezorEthereum::new(DerivationType::TrezorLive(0), 1u64, None).await.unwrap();
+
+        let data = b"Some data";
+        let hash = H256::from(ethers_core::utils::keccak256(data));
+        let address = trezor.address;
+
+        // sign a hash
+        let signature = trezor.sign_raw_hash(&hash).await.unwrap();
+
+        // recover hash from signature
+        let recovered = signature.recover(hash).unwrap();
+
+        // verifies the signature is produced by `address`
+        signature.verify(hash, address).unwrap();
+
+        assert_eq!(recovered, address);
+    }
 }

@@ -324,4 +324,30 @@ mod tests {
         let sig = signer.sign_message(&message).await.unwrap();
         sig.verify(message, signer.address).expect("valid sig");
     }
+
+    #[tokio::test]
+    async fn it_signs_hash() {
+        let chain_id = 1;
+        let key_id = match std::env::var("AWS_KEY_ID") {
+            Ok(id) => id,
+            _ => return,
+        };
+        let client = env_client();
+        let signer = AwsSigner::new(client, key_id, chain_id).await.unwrap();
+
+        let data = b"Some data";
+        let hash = H256::from(ethers_core::utils::keccak256(data));
+        let address = signer.address;
+
+        // sign a hash
+        let signature = signer.sign_raw_hash(&hash).await.unwrap();
+
+        // recover hash from signature
+        let recovered = signature.recover(hash).unwrap();
+
+        // verifies the signature is produced by `address`
+        signature.verify(hash, address).unwrap();
+
+        assert_eq!(recovered, address);
+    }
 }

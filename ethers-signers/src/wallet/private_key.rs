@@ -11,6 +11,7 @@ use eth_keystore::KeystoreError;
 use ethers_core::{
     k256::ecdsa::{self, SigningKey},
     rand::{CryptoRng, Rng},
+    types::H256,
     utils::secret_key_to_address,
 };
 #[cfg(not(target_arch = "wasm32"))]
@@ -310,6 +311,25 @@ mod tests {
         tx.set_chain_id(chain_id);
         let sighash = tx.sighash();
         sig.verify(sighash, wallet.address).unwrap();
+    }
+
+    #[tokio::test]
+    async fn signs_hash() {
+        let data = b"Some data";
+        let hash = H256::from(ethers_core::utils::keccak256(data));
+        let key = Wallet::<SigningKey>::new(&mut rand::thread_rng());
+        let address = key.address;
+
+        // sign a hash
+        let signature = key.sign_raw_hash(&hash).await.unwrap();
+
+        // recover hash from signature
+        let recovered = signature.recover(hash).unwrap();
+
+        // verifies the signature is produced by `address`
+        signature.verify(hash, address).unwrap();
+
+        assert_eq!(recovered, address);
     }
 
     #[test]
