@@ -74,8 +74,8 @@ web-sys = { version = "0.3", features = ["console"] }
 getrandom.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { workspace = true, features = ["rt", "macros", "time"] }
-tempfile = "3.4.0"
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
+tempfile = "3.5.0"
 
 [features]
 default = ["ws", "rustls"]

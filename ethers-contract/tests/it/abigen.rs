@@ -767,6 +767,15 @@ fn can_generate_large_output_struct() {
 }
 
 #[test]
+fn can_generate_large_structs() {
+    abigen!(LargeStructs, "ethers-contract/tests/solidity-contracts/LargeStructs.json");
+
+    assert_struct::<PoolStorage>();
+    assert_struct::<AssetStorage>();
+    assert_struct::<ChainStorage>();
+}
+
+#[test]
 fn can_generate_complex_function() {
     abigen!(
         WyvernExchangeV1,

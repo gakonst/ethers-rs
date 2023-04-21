@@ -24,11 +24,11 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
-ethers-core = { workspace = true, features = ["eip712"] }
+ethers-core.workspace = true
 
 # crypto
 coins-bip32 = "0.8.3"
-coins-bip39 = "0.8.3"
+coins-bip39 = "0.8.6"
 elliptic-curve.workspace = true
 sha2.workspace = true
 rand.workspace = true
@@ -66,7 +66,6 @@ yubihsm = { version = "0.42.0-pre.0", features = ["secp256k1", "http", "usb"], o
 
 [dev-dependencies]
 ethers-contract-derive.workspace = true
-ethers-derive-eip712.workspace = true
 
 serde_json.workspace = true
 tempfile.workspace = true
@@ -74,7 +73,7 @@ tracing-subscriber.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 yubihsm = { version = "0.42.0-pre.0", features = ["secp256k1", "usb", "mockhsm"] }
-tokio = { workspace = true, features = ["macros", "rt"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]
 futures = ["futures-util", "futures-executor"]

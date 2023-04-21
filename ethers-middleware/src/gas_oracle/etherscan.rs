@@ -44,8 +44,6 @@ impl GasOracle for Etherscan {
             GasCategory::Fast => result.fast_gas_price,
             _ => unreachable!(),
         };
-        // returned gas prices are f64 value in gwei
-        let gas_price = super::from_gwei_f64(gas_price);
         Ok(gas_price)
     }
 

@@ -211,16 +211,14 @@ impl<P: JsonRpcClient> Provider<P> {
     /// [`call_raw::spoof`]: crate::call_raw::spoof
     ///
     /// # Example
+    ///
     /// ```no_run
     /// # use ethers_core::{
     /// #     types::{Address, TransactionRequest, H256},
     /// #     utils::{parse_ether, Geth},
     /// # };
     /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
-    /// # use std::convert::TryFrom;
-    /// #
-    /// # #[tokio::main(flavor = "current_thread")]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// let geth = Geth::new().spawn();
     /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
     ///
@@ -234,8 +232,7 @@ impl<P: JsonRpcClient> Provider<P> {
     /// // override the sender's balance for the call
     /// let mut state = spoof::balance(adr1, pay_amt * 2);
     /// provider.call_raw(&tx).state(&state).await?;
-    /// # Ok(())
-    /// # }
+    /// # Ok(()) }
     /// ```
     pub fn call_raw<'a>(&'a self, tx: &'a TypedTransaction) -> CallBuilder<'a, P> {
         CallBuilder::new(self, tx)
@@ -1456,8 +1453,6 @@ pub fn is_local_endpoint(url: &str) -> bool {
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
-    use std::path::PathBuf;
-
     use super::*;
     use crate::Http;
     use ethers_core::{
@@ -1467,6 +1462,7 @@ mod tests {
         utils::{Anvil, Genesis, Geth, GethInstance},
     };
     use futures_util::StreamExt;
+    use std::path::PathBuf;
 
     #[test]
     fn convert_h256_u256_quantity() {
@@ -1484,8 +1480,8 @@ mod tests {
         assert_eq!(params, r#"["0x295a70b2de5e3953354a6a8344e616ed314d7251","0x0","latest"]"#);
     }
 
-    #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
+    #[tokio::test]
     async fn mainnet_resolve_name() {
         let provider = crate::test_provider::MAINNET.provider();
 
@@ -1499,8 +1495,8 @@ mod tests {
         provider.resolve_name("asdfasdf.registrar.firefly.eth").await.unwrap_err();
     }
 
-    #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
+    #[tokio::test]
     async fn mainnet_lookup_address() {
         let provider = crate::MAINNET.provider();
 
@@ -1563,7 +1559,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(feature = "celo", ignore)]
     async fn test_is_signer() {
         use ethers_core::utils::Anvil;
         use std::str::FromStr;
@@ -1638,20 +1633,6 @@ mod tests {
         let provider = Provider::<Http>::try_from(url.as_str()).unwrap();
         let receipts = provider.parity_block_receipts(10657200).await.unwrap();
         assert!(!receipts.is_empty());
-    }
-
-    #[tokio::test]
-    // Celo blocks can not get parsed when used with Ganache
-    #[cfg(not(feature = "celo"))]
-    async fn block_subscribe() {
-        use ethers_core::utils::Anvil;
-        use futures_util::StreamExt;
-        let anvil = Anvil::new().block_time(2u64).spawn();
-        let provider = Provider::connect(anvil.ws_endpoint()).await.unwrap();
-
-        let stream = provider.subscribe_blocks().await.unwrap();
-        let blocks = stream.take(3).map(|x| x.number.unwrap().as_u64()).collect::<Vec<_>>().await;
-        assert_eq!(blocks, vec![1, 2, 3]);
     }
 
     #[tokio::test]
@@ -1834,9 +1815,10 @@ mod tests {
     async fn geth_admin_nodeinfo() {
         // we can't use the test provider because infura does not expose admin endpoints
         let network = 1337u64;
-        let temp_dir = tempfile::tempdir().unwrap().into_path();
+        let dir = tempfile::tempdir().unwrap();
 
-        let (geth, provider) = spawn_geth_and_create_provider(network, Some(temp_dir), None);
+        let (geth, provider) =
+            spawn_geth_and_create_provider(network, Some(dir.path().into()), None);
 
         let info = provider.node_info().await.unwrap();
         drop(geth);
@@ -1846,9 +1828,12 @@ mod tests {
 
         // check that the network id is correct
         assert_eq!(info.protocols.eth.unwrap().network, network);
+
+        #[cfg(not(windows))]
+        dir.close().unwrap();
     }
 
-    /// Spawn a new `GethInstance` without discovery and crate a `Provider` for it.
+    /// Spawn a new `GethInstance` without discovery and create a `Provider` for it.
     ///
     /// These will all use the same genesis config.
     fn spawn_geth_and_create_provider(
@@ -1876,36 +1861,27 @@ mod tests {
     /// Spawn a set of [`GethInstance`]s with the list of given data directories and [`Provider`]s
     /// for those [`GethInstance`]s without discovery, setting sequential ports for their p2p, rpc,
     /// and authrpc ports.
-    fn spawn_geth_instances(
-        datadirs: Vec<PathBuf>,
+    fn spawn_geth_instances<const N: usize>(
+        datadirs: [PathBuf; N],
         chain_id: u64,
         genesis: Option<Genesis>,
-    ) -> Vec<(GethInstance, Provider<HttpProvider>)> {
-        let mut geths = Vec::with_capacity(datadirs.len());
-
-        for dir in datadirs {
-            let (geth, provider) =
-                spawn_geth_and_create_provider(chain_id, Some(dir), genesis.clone());
-
-            geths.push((geth, provider));
-        }
-
-        geths
+    ) -> [(GethInstance, Provider<HttpProvider>); N] {
+        datadirs.map(|dir| spawn_geth_and_create_provider(chain_id, Some(dir), genesis.clone()))
     }
 
     #[tokio::test]
+    #[cfg_attr(windows, ignore = "cannot spawn multiple geth instances")]
     async fn add_second_geth_peer() {
         // init each geth directory
-        let dir1 = tempfile::tempdir().unwrap().into_path();
-        let dir2 = tempfile::tempdir().unwrap().into_path();
+        let dir1 = tempfile::tempdir().unwrap();
+        let dir2 = tempfile::tempdir().unwrap();
 
         // use the default genesis
         let genesis = utils::Genesis::default();
 
         // spawn the geths
-        let mut geths = spawn_geth_instances(vec![dir1.clone(), dir2.clone()], 1337, Some(genesis));
-        let (mut first_geth, first_peer) = geths.pop().unwrap();
-        let (second_geth, second_peer) = geths.pop().unwrap();
+        let [(mut first_geth, first_peer), (second_geth, second_peer)] =
+            spawn_geth_instances([dir1.path().into(), dir2.path().into()], 1337, Some(genesis));
 
         // get nodeinfo for each geth instance
         let first_info = first_peer.node_info().await.unwrap();
@@ -1938,7 +1914,10 @@ mod tests {
         assert_eq!(H256::from_str(&peer.id).unwrap(), second_info.id);
 
         // remove directories
-        std::fs::remove_dir_all(dir1).unwrap();
-        std::fs::remove_dir_all(dir2).unwrap();
+        #[cfg(not(windows))]
+        {
+            dir1.close().unwrap();
+            dir2.close().unwrap();
+        }
     }
 }

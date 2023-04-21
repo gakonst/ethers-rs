@@ -39,20 +39,16 @@ hex.workspace = true
 ethers-contract-abigen = { workspace = true, optional = true }
 ethers-contract-derive = { workspace = true, optional = true }
 
-# eip712
-ethers-derive-eip712 = { workspace = true, optional = true }
-
 [dev-dependencies]
+ethers-signers.workspace = true
 ethers-solc.workspace = true
 ethers-providers = { workspace = true, features = ["ws"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { workspace = true, features = ["macros"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]
 default = ["abigen"]
-
-eip712 = ["ethers-derive-eip712", "ethers-core/eip712"]
 
 abigen-offline = ["ethers-contract-abigen", "ethers-contract-derive"]
 abigen = ["abigen-offline", "ethers-contract-abigen/online"]
@@ -62,3 +58,6 @@ legacy = []
 
 rustls = ["ethers-contract-abigen/rustls"]
 openssl = ["ethers-contract-abigen/openssl"]
+
+# Deprecated
+eip712 = []

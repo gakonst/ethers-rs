@@ -11,12 +11,10 @@ use syn::{parse::Error, DeriveInput};
 
 /// Generates the `ethcall` trait support
 pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> Result<TokenStream, Error> {
-    let attributes = parse_calllike_attributes(&input, "ethcall")?;
+    let attributes = parse_calllike_attributes!(input, "ethcall");
 
-    let function_call_name =
-        attributes.name.map(|(s, _)| s).unwrap_or_else(|| input.ident.to_string());
-
-    let mut function = if let Some((abi, span)) = attributes.abi {
+    let function_call_name = attributes.name(&input.ident);
+    let mut function = if let Some((abi, span)) = attributes.abi() {
         let sig = abi.trim_start_matches("function ").trim_start();
         // try to parse as solidity function
         match HumanReadableParser::parse_function(&abi) {

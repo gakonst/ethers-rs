@@ -30,10 +30,10 @@ ethers-core = { workspace = true, features = ["macros"] }
 
 proc-macro2.workspace = true
 quote.workspace = true
-syn.workspace = true
-prettyplease = "0.1.25"
+syn = { workspace = true, features = ["full"] }
+prettyplease = "0.2.4"
 
-Inflector = "0.11"
+Inflector.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 hex.workspace = true

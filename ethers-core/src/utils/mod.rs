@@ -36,14 +36,13 @@ pub use rlp;
 /// Re-export hex
 pub use hex;
 
-use crate::types::{Address, Bytes, ParseI256Error, H256, I256, U256, U64};
+use crate::types::{Address, Bytes, ParseI256Error, H256, I256, U256};
 use ethabi::ethereum_types::FromDecStrErr;
 use k256::ecdsa::SigningKey;
 use std::{
     collections::HashMap,
     convert::{TryFrom, TryInto},
     fmt,
-    str::FromStr,
 };
 use thiserror::Error;
 
@@ -52,11 +51,9 @@ const OVERFLOW_I256_UNITS: usize = 77;
 /// U256 overflows for numbers wider than 78 units.
 const OVERFLOW_U256_UNITS: usize = 78;
 
-/// Re-export of serde-json
+// Re-export serde-json for macro usage
 #[doc(hidden)]
-pub mod __serde_json {
-    pub use serde_json::*;
-}
+pub use serde_json as __serde_json;
 
 #[derive(Error, Debug)]
 pub enum ConversionError {
@@ -509,62 +506,6 @@ where
     }
 }
 
-/// Deserializes the input into a U256, accepting both 0x-prefixed hex and decimal strings with
-/// arbitrary precision, defined by serde_json's [`Number`](serde_json::Number).
-pub fn from_int_or_hex<'de, D>(deserializer: D) -> Result<U256, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum IntOrHex {
-        Int(serde_json::Number),
-        Hex(String),
-    }
-
-    match IntOrHex::deserialize(deserializer)? {
-        IntOrHex::Hex(s) => U256::from_str(s.as_str()).map_err(serde::de::Error::custom),
-        IntOrHex::Int(n) => U256::from_dec_str(&n.to_string()).map_err(serde::de::Error::custom),
-    }
-}
-
-/// Deserializes the input into a U64, accepting both 0x-prefixed hex and decimal strings with
-/// arbitrary precision, defined by serde_json's [`Number`](serde_json::Number).
-pub fn from_u64_or_hex<'de, D>(deserializer: D) -> Result<U64, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum IntOrHex {
-        Int(serde_json::Number),
-        Hex(String),
-    }
-
-    match IntOrHex::deserialize(deserializer)? {
-        IntOrHex::Hex(s) => U64::from_str(s.as_str()).map_err(serde::de::Error::custom),
-        IntOrHex::Int(n) => U64::from_dec_str(&n.to_string()).map_err(serde::de::Error::custom),
-    }
-}
-
-/// Deserializes the input into an `Option<U256>`, using [`from_int_or_hex`] to deserialize the
-/// inner value.
-pub fn from_int_or_hex_opt<'de, D>(deserializer: D) -> Result<Option<U256>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    Ok(Some(from_int_or_hex(deserializer)?))
-}
-
-/// Deserializes the input into an `Option<u64>`, using [`from_u64_or_hex`] to deserialize the
-/// inner value.
-pub fn from_u64_or_hex_opt<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    Ok(Some(from_u64_or_hex(deserializer)?.as_u64()))
-}
-
 fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {
     let mut rewards: Vec<U256> =
         rewards.iter().map(|r| r[0]).filter(|r| *r > U256::zero()).collect();
@@ -646,6 +587,7 @@ pub(crate) fn unused_ports<const N: usize>() -> [u16; N] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::serde_helpers::deserialize_stringified_numeric;
     use hex_literal::hex;
 
     #[test]
@@ -1106,5 +1048,35 @@ mod tests {
         let overflow = U256::from(u32::MAX) + 1;
         let rewards_overflow: Vec<Vec<U256>> = vec![vec![overflow], vec![overflow]];
         assert_eq!(estimate_priority_fee(rewards_overflow), overflow);
+    }
+
+    #[test]
+    fn int_or_hex_combinations() {
+        // make sure we can deserialize all combinations of int and hex
+        // including large numbers that would overflow u64
+        //
+        // format: (string, expected value)
+        let cases = vec![
+            // hex strings
+            ("\"0x0\"", U256::from(0)),
+            ("\"0x1\"", U256::from(1)),
+            ("\"0x10\"", U256::from(16)),
+            ("\"0x100000000000000000000000000000000000000000000000000\"", U256::from_dec_str("1606938044258990275541962092341162602522202993782792835301376").unwrap()),
+            // small num, both num and str form
+            ("10", U256::from(10)),
+            ("\"10\"", U256::from(10)),
+            // max u256, in both num and str form
+            ("115792089237316195423570985008687907853269984665640564039457584007913129639935", U256::from_dec_str("115792089237316195423570985008687907853269984665640564039457584007913129639935").unwrap()),
+            ("\"115792089237316195423570985008687907853269984665640564039457584007913129639935\"", U256::from_dec_str("115792089237316195423570985008687907853269984665640564039457584007913129639935").unwrap())
+        ];
+
+        #[derive(Deserialize)]
+        struct TestUint(#[serde(deserialize_with = "deserialize_stringified_numeric")] U256);
+
+        for (string, expected) in cases {
+            println!("testing {}", string);
+            let test: TestUint = serde_json::from_str(string).unwrap();
+            assert_eq!(test.0, expected);
+        }
     }
 }

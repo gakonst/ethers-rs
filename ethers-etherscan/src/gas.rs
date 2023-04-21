@@ -1,25 +1,55 @@
 use crate::{Client, EtherscanError, Response, Result};
-use ethers_core::types::U256;
+use ethers_core::{types::U256, utils::parse_units};
 use serde::{de, Deserialize, Deserializer};
 use std::{collections::HashMap, str::FromStr};
+
+const WEI_PER_GWEI: u64 = 1_000_000_000;
 
 #[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct GasOracle {
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub safe_gas_price: f64,
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub propose_gas_price: f64,
-    #[serde(deserialize_with = "deserialize_number_from_string")]
-    pub fast_gas_price: f64,
+    /// Safe Gas Price in wei
+    #[serde(deserialize_with = "deser_gwei_amount")]
+    pub safe_gas_price: U256,
+    /// Propose Gas Price in wei
+    #[serde(deserialize_with = "deser_gwei_amount")]
+    pub propose_gas_price: U256,
+    /// Fast Gas Price in wei
+    #[serde(deserialize_with = "deser_gwei_amount")]
+    pub fast_gas_price: U256,
+    /// Last Block
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub last_block: u64,
-    #[serde(deserialize_with = "deserialize_number_from_string")]
+    /// Suggested Base Fee in wei
+    #[serde(deserialize_with = "deser_gwei_amount")]
     #[serde(rename = "suggestBaseFee")]
-    pub suggested_base_fee: f64,
+    pub suggested_base_fee: U256,
+    /// Gas Used Ratio
     #[serde(deserialize_with = "deserialize_f64_vec")]
     #[serde(rename = "gasUsedRatio")]
     pub gas_used_ratio: Vec<f64>,
+}
+
+// This function is used to deserialize a string or number into a U256 with an
+// amount of gwei. If the contents is a number, deserialize it. If the contents
+// is a string, attempt to deser as first a decimal f64 then a decimal U256.
+fn deser_gwei_amount<'de, D>(deserializer: D) -> Result<U256, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrInt {
+        Number(u64),
+        String(String),
+    }
+
+    match StringOrInt::deserialize(deserializer)? {
+        StringOrInt::Number(i) => Ok(U256::from(i) * WEI_PER_GWEI),
+        StringOrInt::String(s) => {
+            parse_units(s, "gwei").map(Into::into).map_err(serde::de::Error::custom)
+        }
+    }
 }
 
 fn deserialize_number_from_string<'de, T, D>(deserializer: D) -> Result<T, D::Error>
@@ -105,5 +135,42 @@ mod tests {
         }"#;
         let gas_oracle: Response<GasOracle> = serde_json::from_str(v).unwrap();
         assert_eq!(gas_oracle.message, "OK");
+        assert_eq!(
+            gas_oracle.result.propose_gas_price,
+            parse_units("141.9", "gwei").unwrap().into()
+        );
+
+        let v = r#"{
+            "status":"1",
+            "message":"OK",
+            "result":{
+               "LastBlock":"13053741",
+               "SafeGasPrice":"20",
+               "ProposeGasPrice":"22",
+               "FastGasPrice":"24",
+               "suggestBaseFee":"19.230609716",
+               "gasUsedRatio":"0.370119078777807,0.8954731,0.550911766666667,0.212457033333333,0.552463633333333"
+            }
+        }"#;
+        let gas_oracle: Response<GasOracle> = serde_json::from_str(v).unwrap();
+        assert_eq!(gas_oracle.message, "OK");
+        assert_eq!(gas_oracle.result.propose_gas_price, parse_units(22, "gwei").unwrap().into());
+
+        // remove quotes around integers
+        let v = r#"{
+            "status":"1",
+            "message":"OK",
+            "result":{
+               "LastBlock":13053741,
+               "SafeGasPrice":20,
+               "ProposeGasPrice":22,
+               "FastGasPrice":24,
+               "suggestBaseFee":"19.230609716",
+               "gasUsedRatio":"0.370119078777807,0.8954731,0.550911766666667,0.212457033333333,0.552463633333333"
+            }
+        }"#;
+        let gas_oracle: Response<GasOracle> = serde_json::from_str(v).unwrap();
+        assert_eq!(gas_oracle.message, "OK");
+        assert_eq!(gas_oracle.result.propose_gas_price, parse_units(22, "gwei").unwrap().into());
     }
 }

@@ -300,11 +300,10 @@ impl LedgerEthereum {
 mod tests {
     use super::*;
     use crate::Signer;
-    use ethers_contract_derive::EthAbiType;
+    use ethers_contract_derive::{Eip712, EthAbiType};
     use ethers_core::types::{
         transaction::eip712::Eip712, Address, TransactionRequest, I256, U256,
     };
-    use ethers_derive_eip712::*;
     use std::str::FromStr;
 
     #[derive(Debug, Clone, Eip712, EthAbiType)]

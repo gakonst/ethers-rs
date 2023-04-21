@@ -20,7 +20,7 @@ Please do not manually edit this file.\n
 # https://tera.netlify.app/docs/#introduction
 body = """
 {% if version %}\
-    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+    ## [{{ version | trim_start_matches(pat="ethers-") | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
 {% else %}\
     ## [Unreleased]
 {% endif %}\
@@ -69,12 +69,12 @@ commit_parsers = [
 protect_breaking_commits = true
 # filter out the commits that are not matched by commit parsers
 filter_commits = false
-# glob pattern for matching git tags
+# *glob pattern* for matching git tags
 tag_pattern = "*"
-# regex for skipping tags
+# *regex* for skipping tagged commits entirely
 # skip_tags = "v0.1.0-beta.1"
-# regex for ignoring tags
-ignore_tags = "^ethers.*"
+# *regex* for ignoring tags, but including the commits into the next one
+ignore_tags = "^ethers-.*-.*"
 # sort the tags topologically
 topo_order = false
 # sort the commits inside sections by oldest/newest order
