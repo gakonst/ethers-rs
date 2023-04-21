@@ -752,13 +752,10 @@ impl<'a> OutputDiagnostics<'a> {
 
 impl<'a> fmt::Display for OutputDiagnostics<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let has_error = self.has_error();
-        let has_warning = self.has_warning();
-
         f.write_str("Compiler run ")?;
-        if has_error {
+        if self.has_error() {
             Paint::red("failed:")
-        } else if has_warning {
+        } else if self.has_warning() {
             Paint::yellow("successful with warnings:")
         } else {
             Paint::green("successful!")
