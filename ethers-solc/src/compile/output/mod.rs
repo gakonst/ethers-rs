@@ -402,7 +402,7 @@ impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
             f.write_str("Nothing to compile")
         } else {
             self.compiler_output
-                .diagnostics(&self.ignored_error_codes, self.compiler_severity_filter.clone())
+                .diagnostics(&self.ignored_error_codes, self.compiler_severity_filter)
                 .fmt(f)
         }
     }
