@@ -2060,9 +2060,9 @@ impl FromStr for Severity {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "error" => Ok(Self::Error),
-            "warning" => Ok(Self::Warning),
-            "info" => Ok(Self::Info),
+            "Error" | "error" => Ok(Self::Error),
+            "Warning" | "warning" => Ok(Self::Warning),
+            "Info" | "info" => Ok(Self::Info),
             s => Err(format!("Invalid severity: {s}")),
         }
     }
