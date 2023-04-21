@@ -9,12 +9,13 @@ use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{BTreeMap, HashSet},
     fmt, fs,
+    ops::Range,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
 };
 use tracing::warn;
-use yansi::Paint;
+use yansi::{Color, Paint, Style};
 
 pub mod ast;
 pub use ast::*;
@@ -1837,31 +1838,210 @@ pub struct Error {
     pub formatted_message: Option<String>,
 }
 
+/// Tries to mimic Solidity's own error formatting.
+///
+/// <https://github.com/ethereum/solidity/blob/a297a687261a1c634551b1dac0e36d4573c19afe/liblangutil/SourceReferenceFormatter.cpp#L105>
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(msg) = &self.formatted_message {
-            match self.severity {
-                Severity::Error => {
-                    if let Some(code) = self.error_code {
-                        Paint::red(format!("error[{code}]: ")).fmt(f)?;
-                    }
-                    Paint::red(msg).fmt(f)
-                }
-                Severity::Warning | Severity::Info => {
-                    if let Some(code) = self.error_code {
-                        Paint::yellow(format!("warning[{code}]: ")).fmt(f)?;
-                    }
-                    Paint::yellow(msg).fmt(f)
-                }
-            }
-        } else {
-            self.severity.fmt(f)?;
-            writeln!(f, ": {}", self.message)
+        if !Paint::is_enabled() {
+            let msg = self.formatted_message.as_ref().unwrap_or(&self.message);
+            self.fmt_severity(f)?;
+            f.write_str(": ")?;
+            return f.write_str(msg)
         }
+
+        // Error (XXXX): Error Message
+        styled(f, self.severity.color().style().bold(), |f| self.fmt_severity(f))?;
+        fmt_msg(f, &self.message)?;
+
+        if let Some(msg) = &self.formatted_message {
+            let mut lines = msg.lines();
+
+            // skip first line, it should be similar to the error message we wrote above
+            lines.next();
+
+            // format the main source location
+            fmt_source_location(f, &mut lines)?;
+
+            // format remaining lines as secondary locations
+            while let Some(line) = lines.next() {
+                f.write_str("\n")?;
+
+                if let Some((note, msg)) = line.split_once(':') {
+                    styled(f, Color::Cyan.style().bold(), |f| f.write_str(note))?;
+                    fmt_msg(f, msg)?;
+                } else {
+                    f.write_str(line)?;
+                }
+
+                fmt_source_location(f, &mut lines)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Default)]
+impl Error {
+    /// The style of the diagnostic severity.
+    pub fn error_style(&self) -> Style {
+        self.severity.color().style().bold()
+    }
+
+    /// The style of the diagnostic message.
+    pub fn message_style() -> Style {
+        Color::White.style().bold()
+    }
+
+    /// The style of the secondary source location.
+    pub fn secondary_style() -> Style {
+        Color::Cyan.style().bold()
+    }
+
+    /// The style of the source location highlight.
+    pub fn highlight_style() -> Style {
+        Color::Yellow.style()
+    }
+
+    /// The style of the diagnostics.
+    pub fn diag_style() -> Style {
+        Color::Yellow.style().bold()
+    }
+
+    /// The style of the source location frame.
+    pub fn frame_style() -> Style {
+        Color::Blue.style()
+    }
+
+    /// Formats the diagnostic severity:
+    ///
+    /// ```text
+    /// Error (XXXX)
+    /// ```
+    fn fmt_severity(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.severity.as_str())?;
+        if let Some(code) = self.error_code {
+            write!(f, " ({code})")?;
+        }
+        Ok(())
+    }
+}
+
+/// Calls `fun` in between [`Style::fmt_prefix`] and [`Style::fmt_suffix`].
+fn styled<F>(f: &mut fmt::Formatter, style: Style, fun: F) -> fmt::Result
+where
+    F: FnOnce(&mut fmt::Formatter) -> fmt::Result,
+{
+    style.fmt_prefix(f)?;
+    fun(f)?;
+    style.fmt_suffix(f)
+}
+
+/// Formats the diagnostic message.
+fn fmt_msg(f: &mut fmt::Formatter, msg: &str) -> fmt::Result {
+    styled(f, Error::message_style(), |f| {
+        f.write_str(": ")?;
+        f.write_str(msg.trim_start())
+    })
+}
+
+/// Colors a Solidity source location:
+///
+/// ```text
+/// --> /home/user/contract.sol:420:69:
+///     |
+/// 420 |       bad_code()
+///     |                ^
+/// ```
+fn fmt_source_location(f: &mut fmt::Formatter, lines: &mut std::str::Lines) -> fmt::Result {
+    // --> source
+    if let Some(line) = lines.next() {
+        f.write_str("\n")?;
+
+        let arrow = "-->";
+        if let Some((left, loc)) = line.split_once(arrow) {
+            f.write_str(left)?;
+            styled(f, Error::frame_style(), |f| f.write_str(arrow))?;
+            f.write_str(loc)?;
+        } else {
+            f.write_str(line)?;
+        }
+    }
+
+    // get the next 3 lines
+    // FIXME: Somehow do this without allocating
+    let next_3 = lines.take(3).collect::<Vec<_>>();
+    let [line1, line2, line3] = next_3[..] else {
+        for line in next_3 {
+            f.write_str("\n")?;
+            f.write_str(line)?;
+        }
+        return Ok(())
+    };
+
+    // line 1, just a frame
+    fmt_framed_location(f, line1, None)?;
+
+    // line 2, frame and code; highlight the text that line 3's carets points to
+    // or the entire line after the caret if it's the special "spans across multiple lines" message
+    let hl_start = line3.find('^');
+    let highlight = hl_start.map(|mut start| {
+        let mut end = line2.len();
+        if !line3.contains("^ (") {
+            if let Some(carets) = line3[start..].find(|c: char| c != '^') {
+                end = start + carets;
+            }
+        };
+        // in case carets are misplaced
+        if start > end {
+            start = end;
+        }
+        (start..end, Error::highlight_style())
+    });
+    fmt_framed_location(f, line2, highlight)?;
+
+    // line 3, frame and maybe highlight, this time till the end unconditionally
+    let highlight = hl_start.map(|i| (i..line3.len(), Error::diag_style()));
+    fmt_framed_location(f, line3, highlight)
+}
+
+/// Colors a single Solidity framed source location line. Part of [`fmt_source_location`].
+fn fmt_framed_location(
+    f: &mut fmt::Formatter,
+    line: &str,
+    highlight: Option<(Range<usize>, Style)>,
+) -> fmt::Result {
+    f.write_str("\n")?;
+
+    if let Some((space_or_line_number, rest)) = line.split_once('|') {
+        // if the potential frame is not just whitespace or numbers, don't color it
+        if !space_or_line_number.chars().all(|c| c.is_whitespace() || c.is_numeric()) {
+            return f.write_str(line)
+        }
+
+        styled(f, Error::frame_style(), |f| {
+            f.write_str(space_or_line_number)?;
+            f.write_str("|")
+        })?;
+
+        if let Some((range, style)) = highlight {
+            let Range { start, end } = range.clone();
+            let rest_start = line.len() - rest.len();
+            f.write_str(&line[rest_start..start])?;
+            styled(f, style, |f| f.write_str(&line[range]))?;
+            f.write_str(&line[end..])
+        } else {
+            f.write_str(rest)
+        }
+    } else {
+        f.write_str(line)
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
+#[serde(rename_all = "lowercase")]
 pub enum Severity {
     #[default]
     Error,
@@ -1871,25 +2051,7 @@ pub enum Severity {
 
 impl fmt::Display for Severity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Severity::Error => Paint::red("Error").fmt(f),
-            Severity::Warning => Paint::yellow("Warning").fmt(f),
-            Severity::Info => f.write_str("Info"),
-        }
-    }
-}
-
-impl Severity {
-    pub fn is_error(&self) -> bool {
-        matches!(self, Severity::Error)
-    }
-
-    pub fn is_warning(&self) -> bool {
-        matches!(self, Severity::Warning)
-    }
-
-    pub fn is_info(&self) -> bool {
-        matches!(self, Severity::Info)
+        f.write_str(self.as_str())
     }
 }
 
@@ -1898,50 +2060,46 @@ impl FromStr for Severity {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "error" => Ok(Severity::Error),
-            "warning" => Ok(Severity::Warning),
-            "info" => Ok(Severity::Info),
+            "error" => Ok(Self::Error),
+            "warning" => Ok(Self::Warning),
+            "info" => Ok(Self::Info),
             s => Err(format!("Invalid severity: {s}")),
         }
     }
 }
 
-impl Serialize for Severity {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
+impl Severity {
+    /// Returns `true` if the severity is `Error`.
+    pub const fn is_error(&self) -> bool {
+        matches!(self, Self::Error)
+    }
+
+    /// Returns `true` if the severity is `Warning`.
+    pub const fn is_warning(&self) -> bool {
+        matches!(self, Self::Warning)
+    }
+
+    /// Returns `true` if the severity is `Info`.
+    pub const fn is_info(&self) -> bool {
+        matches!(self, Self::Info)
+    }
+
+    /// Returns the string representation of the severity.
+    pub const fn as_str(&self) -> &'static str {
         match self {
-            Severity::Error => serializer.serialize_str("error"),
-            Severity::Warning => serializer.serialize_str("warning"),
-            Severity::Info => serializer.serialize_str("info"),
+            Self::Error => "Error",
+            Self::Warning => "Warning",
+            Self::Info => "Info",
         }
     }
-}
 
-impl<'de> Deserialize<'de> for Severity {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct SeverityVisitor;
-
-        impl<'de> Visitor<'de> for SeverityVisitor {
-            type Value = Severity;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(formatter, "severity string")
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                value.parse().map_err(serde::de::Error::custom)
-            }
+    /// Returns the color to format the severity with.
+    pub const fn color(&self) -> Color {
+        match self {
+            Self::Error => Color::Red,
+            Self::Warning => Color::Yellow,
+            Self::Info => Color::White,
         }
-
-        deserializer.deserialize_str(SeverityVisitor)
     }
 }
 

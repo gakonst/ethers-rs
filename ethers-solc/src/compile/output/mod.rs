@@ -14,6 +14,7 @@ use contracts::{VersionedContract, VersionedContracts};
 use semver::Version;
 use std::{collections::BTreeMap, fmt, path::Path};
 use tracing::trace;
+use yansi::Paint;
 
 pub mod contracts;
 pub mod info;
@@ -751,35 +752,41 @@ impl<'a> OutputDiagnostics<'a> {
 
 impl<'a> fmt::Display for OutputDiagnostics<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.has_error() {
-            f.write_str("Compiler run failed")?;
-        } else if self.has_warning() {
-            f.write_str("Compiler run successful (with warnings)")?;
+        let has_error = self.has_error();
+        let has_warning = self.has_warning();
+
+        f.write_str("Compiler run ")?;
+        if has_error {
+            Paint::red("failed:")
+        } else if has_warning {
+            Paint::yellow("successful with warnings:")
         } else {
-            f.write_str("Compiler run successful")?;
+            Paint::green("successful!")
         }
+        .fmt(f)?;
+
         for err in &self.compiler_output.errors {
+            let mut ignored = false;
             if err.severity.is_warning() {
-                let is_ignored = err.error_code.as_ref().map_or(false, |code| {
+                if let Some(code) = err.error_code {
                     if let Some(source_location) = &err.source_location {
                         // we ignore spdx and contract size warnings in test
                         // files. if we are looking at one of these warnings
                         // from a test file we skip
-                        if self.is_test(&source_location.file) && (*code == 1878 || *code == 5574) {
-                            return true
-                        }
+                        ignored =
+                            self.is_test(&source_location.file) && (code == 1878 || code == 5574);
                     }
 
-                    self.ignored_error_codes.contains(code)
-                });
-
-                if !is_ignored {
-                    writeln!(f, "\n{err}")?;
+                    ignored |= self.ignored_error_codes.contains(&code);
                 }
-            } else {
-                writeln!(f, "\n{err}")?;
+            }
+
+            if !ignored {
+                f.write_str("\n")?;
+                err.fmt(f)?;
             }
         }
+
         Ok(())
     }
 }
