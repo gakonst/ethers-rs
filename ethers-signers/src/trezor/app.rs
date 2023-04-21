@@ -211,7 +211,7 @@ impl TrezorEthereum {
 
     /// Signs a pre-computed hash
     /// This is useful for signing arbitrary data
-    pub async fn sign_hash(&self, hash: &H256) -> Result<Signature, TrezorError> {
+    pub async fn sign_raw_hash(&self, hash: &H256) -> Result<Signature, TrezorError> {
         unimplemented!()
     }
 

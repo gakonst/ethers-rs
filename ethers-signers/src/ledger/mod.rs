@@ -5,8 +5,8 @@ use crate::Signer;
 use app::LedgerEthereum;
 use async_trait::async_trait;
 use ethers_core::types::{
-    transaction::{eip2718::TypedTransaction, eip712::Eip712}, H256,
-    Address, Signature,
+    transaction::{eip2718::TypedTransaction, eip712::Eip712},
+    Address, Signature, H256,
 };
 use types::LedgerError;
 
@@ -43,8 +43,8 @@ impl Signer for LedgerEthereum {
 
     /// Signs a pre-computed hash
     /// This is useful for signing arbitrary data
-    async fn sign_hash(&self, hash: &H256) -> Result<Signature, Self::Error> {
-        self.sign_hash(hash).await
+    async fn sign_raw_hash(&self, hash: &H256) -> Result<Signature, Self::Error> {
+        self.sign_raw_hash(hash).await
     }
 
     /// Returns the signer's Ethereum Address

@@ -76,7 +76,7 @@ pub trait Signer: std::fmt::Debug + Send + Sync {
 
     /// Sign a pre-formatted hash
     /// This is useful for signing arbitrary data
-    async fn sign_hash(&self, hash: &H256) -> Result<Signature, Self::Error>;
+    async fn sign_raw_hash(&self, hash: &H256) -> Result<Signature, Self::Error>;
 
     /// Returns the signer's Ethereum Address
     fn address(&self) -> Address;

@@ -205,7 +205,7 @@ impl LedgerEthereum {
         self.sign_payload(INS::SIGN_ETH_EIP_712, &payload).await
     }
 
-    pub async fn sign_hash(&self, hash: &H256) -> Result<Signature, LedgerError> {
+    pub async fn sign_raw_hash(&self, hash: &H256) -> Result<Signature, LedgerError> {
         let mut payload = Self::path_to_bytes(&self.derivation);
         payload.extend_from_slice(hash.as_bytes());
 
