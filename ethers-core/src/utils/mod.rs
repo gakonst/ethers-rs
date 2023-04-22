@@ -421,6 +421,23 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
     })
 }
 
+/// checks if the given address is a valid checksum address
+///
+/// Returns `true` if addr is a valid checksum address, `false` otherwise.
+pub fn verify_checksum(addr: &str, chain_id: Option<u8>) -> bool {
+    let addr = addr.strip_prefix("0x").unwrap_or(addr);
+    let address = addr.parse::<Address>();
+
+    // wrong address string
+    if address.is_err() {
+        return false
+    }
+
+    let checksum_addr = to_checksum(&address.unwrap(), chain_id);
+
+    return checksum_addr.strip_prefix("0x").unwrap_or(&checksum_addr) == addr
+}
+
 /// Returns a bytes32 string representation of text. If the length of text exceeds 32 bytes,
 /// an error is returned.
 pub fn format_bytes32_string(text: &str) -> Result<[u8; 32], ConversionError> {
@@ -889,6 +906,51 @@ mod tests {
         for (chain_id, addr, checksummed_addr) in addr_list {
             let addr = addr.parse::<Address>().unwrap();
             assert_eq!(to_checksum(&addr, chain_id), String::from(checksummed_addr));
+        }
+    }
+
+    #[test]
+    fn checksum_verify() {
+        let cases = vec![
+            // mainnet
+            // wrong case
+            (None, "0x27b1fdb04752bbc536007a920d24acb045561c26", true),
+            (None, "0x27B1fdb04752bbc536007a920d24acb045561c26", false),
+            // no checksummed
+            (None, "0x52908400098527886e0f7030069857d2e4169ee7", false),
+            // without 0x
+            (None, "0x42712D45473476b98452f434e72461577D686318", true),
+            (None, "42712D45473476b98452f434e72461577D686318", true),
+            // invalid address string
+            (None, "0x52908400098527886E0F7030069857D2E4169EE7", true),
+            (None, "0x52908400098527886E0F7030069857D2E4169EEX", false),
+            (None, "0x52908400098527886E0F7030069857D2E4169EE70", false),
+            // mistyped address
+            (None, "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed", true),
+            (None, "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAe1", false),
+            // rsk mainnet
+            // wrong case
+            (Some(30), "0x27b1FdB04752BBc536007A920D24ACB045561c26", true),
+            (Some(30), "0x27b1FdB04752BBc536007A920D24ACB045561C26", false),
+            // without 0x
+            (Some(30), "0x3599689E6292B81B2D85451025146515070129Bb", true),
+            (Some(30), "3599689E6292B81B2D85451025146515070129Bb", true),
+            // invalid address string
+            (Some(30), "0x42712D45473476B98452f434E72461577d686318", true),
+            (Some(30), "0x42712D45473476B98452f434E72461577d686318Z", false),
+            // mistyped address
+            (Some(30), "0x52908400098527886E0F7030069857D2E4169ee7", true),
+            (Some(30), "0x52908400098527886E0F7030069857D2E4169ee9", false),
+        ]; // mainnet
+
+        for (chain_id, addr, expected) in cases {
+            assert_eq!(
+                verify_checksum(addr, chain_id),
+                expected,
+                "chain_id: {:?} addr: {:?}",
+                chain_id,
+                addr
+            );
         }
     }
 
