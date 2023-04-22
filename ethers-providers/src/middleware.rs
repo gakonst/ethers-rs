@@ -355,7 +355,10 @@ pub trait Middleware: Sync + Send + Debug {
         calldata: &[u8],
         urls: Vec<&str>,
     ) -> Result<Bytes, Self::Error> {
-        self.inner().ccip_request(sender, tx, calldata, urls).await.map_err(MiddlewareError::from_err)
+        self.inner()
+            .ccip_request(sender, tx, calldata, urls)
+            .await
+            .map_err(MiddlewareError::from_err)
     }
 
     /// Sends the read-only (constant) transaction to a single Ethereum node and return the result
@@ -365,7 +368,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         tx: &TypedTransaction,
         block: Option<BlockId>,
-        attempt: u8
+        attempt: u8,
     ) -> Result<Bytes, Self::Error> {
         self.inner()._call(tx, block, attempt).await.map_err(MiddlewareError::from_err)
     }

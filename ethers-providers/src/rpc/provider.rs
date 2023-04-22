@@ -505,7 +505,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     /// # Returns
     ///
     /// an opaque byte string to send to callbackFunction on Offchain Resolver contract.
-    ///
     async fn ccip_request(
         &self,
         sender: Address,
@@ -515,7 +514,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     ) -> Result<Bytes, ProviderError> {
         // If there are no URLs or the transaction's destination is empty, return an empty result
         if urls.is_empty() || tx.to().is_none() {
-            return Ok(Bytes::from([]));
+            return Ok(Bytes::from([]))
         }
 
         // Convert calldata to a hex string
@@ -546,17 +545,17 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             if let Some(returned_data) = result.get("data") {
                 let decoded: Vec<u8> =
                     hex::decode(&returned_data.as_str().unwrap().to_string()[2..])?;
-                return Ok(Bytes::from(decoded));
+                return Ok(Bytes::from(decoded))
             };
 
             if let Some(_message) = result.get("message") {
-                error_message = &result["message"].as_str().unwrap();
+                error_message = result["message"].as_str().unwrap();
             }
 
             error_messages.push(error_message.to_string());
         }
 
-        return Err(ProviderError::CustomError("Error during CCIP fetch".to_string()));
+        return Err(ProviderError::CustomError("Error during CCIP fetch".to_string()))
     }
 
     async fn _call(
@@ -569,7 +568,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             // may need more info
             return Err(ProviderError::CustomError(
                 "CCIP Read exceeded maximum redirections".to_string(),
-            ));
+            ))
         }
 
         let tx_sender = match transaction.to().unwrap() {
@@ -582,18 +581,17 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let result =
             match self.request::<_, String>("eth_call", [tx_value, block_value.clone()]).await {
                 Ok(response) => response,
-                Err(error) => {
-                    let provider_error = ProviderError::from(error);
+                Err(provider_error) => {
                     let content = provider_error.as_error_response().unwrap();
                     let data = content.data.as_ref().unwrap();
-                    format!("{}", data.to_string().trim_matches('"').trim_start_matches("0x"))
+                    data.to_string().trim_matches('"').trim_start_matches("0x").to_string()
                 }
             };
 
-        if block_value.eq("latest")
-            && !tx_sender.is_zero()
-            && result.starts_with("556f1830")
-            && hex::decode(result.clone())?.len() % 32 == 4
+        if block_value.eq("latest") &&
+            !tx_sender.is_zero() &&
+            result.starts_with("556f1830") &&
+            hex::decode(result.clone())?.len() % 32 == 4
         {
             let output_types = vec![
                 ParamType::Address,                            // 'address'
@@ -635,14 +633,14 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                 if !sender.eq(&tx_sender) {
                     return Err(ProviderError::CustomError(
                         "CCIP Read sender did not match".to_string(),
-                    ));
+                    ))
                 }
 
-                let ccip_result = self.ccip_request(sender, transaction, &call_data, urls).await?;
+                let ccip_result = self.ccip_request(sender, transaction, call_data, urls).await?;
                 if ccip_result.is_empty() {
                     return Err(ProviderError::CustomError(
                         "CCIP Read disabled or provided no URLs".to_string(),
-                    ));
+                    ))
                 }
 
                 let ccip_result_token = Token::Bytes(ccip_result.as_ref().to_vec());
@@ -656,15 +654,13 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                     [callback_selector.clone(), encoded_data.clone()].concat(),
                 ));
 
-                return self._call(&new_transaction, block_id, attempt + 1).await;
+                return self._call(&new_transaction, block_id, attempt + 1).await
             }
         }
 
         let result = match Bytes::from_str(&result) {
             Ok(bytes) => bytes,
-            Err(_) => {
-                return Err(ProviderError::CustomError("Bad result from backend".to_string()))
-            }
+            Err(_) => return Err(ProviderError::CustomError("Bad result from backend".to_string())),
         };
 
         Ok(result)
@@ -675,7 +671,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         tx: &TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<Bytes, ProviderError> {
-        return Ok(self._call(tx, block, 0).await?);
+        return self._call(tx, block, 0).await
     }
 
     async fn estimate_gas(
@@ -827,7 +823,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         block: Option<BlockId>,
     ) -> Result<H256, ProviderError> {
         let from = match from.into() {
-            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Name(ens_name) => self.resolve_name(ens_name.as_ref()).await?,
             NameOrAddress::Address(addr) => addr,
         };
 
@@ -984,7 +980,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                         };
                         let data = self.call(&tx.into(), None).await?;
                         if decode_bytes::<Address>(ParamType::Address, data) != owner {
-                            return Err(ProviderError::CustomError("Incorrect owner.".to_string()));
+                            return Err(ProviderError::CustomError("Incorrect owner.".to_string()))
                         }
                     }
                     erc::ERCNFTType::ERC1155 => {
@@ -1004,9 +1000,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                         };
                         let data = self.call(&tx.into(), None).await?;
                         if decode_bytes::<u64>(ParamType::Uint(64), data) == 0 {
-                            return Err(ProviderError::CustomError(
-                                "Incorrect balance.".to_string(),
-                            ));
+                            return Err(ProviderError::CustomError("Incorrect balance.".to_string()))
                         }
                     }
                 }
@@ -1271,7 +1265,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                 if fallback.is_err() {
                     // if the older fallback also resulted in an error, we return the error from the
                     // initial attempt
-                    return err;
+                    return err
                 }
                 fallback
             }
@@ -1280,7 +1274,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 }
 
 impl<P: JsonRpcClient> Provider<P> {
-
     /// The supports_wildcard checks if a given resolver supports the wildcard resolution by calling
     /// its `supportsInterface` function with the `resolve(bytes,bytes)` selector.
     ///
@@ -1290,9 +1283,8 @@ impl<P: JsonRpcClient> Provider<P> {
     ///
     /// # Returns
     ///
-    /// A `Result` with either a `bool` value indicating if the resolver supports wildcard resolution
-    /// or a `ProviderError`.
-    ///
+    /// A `Result` with either a `bool` value indicating if the resolver supports wildcard
+    /// resolution or a `ProviderError`.
     async fn supports_wildcard(&self, resolver_address: H160) -> Result<bool, ProviderError> {
         // Prepare the data for the `supportsInterface` call, providing the selector for
         // the "resolve(bytes,bytes)" function
@@ -1312,27 +1304,27 @@ impl<P: JsonRpcClient> Provider<P> {
 
         // If the response is empty, the resolver does not support wildcard resolution
         if _tx.0.is_empty() {
-            return Ok(false);
+            return Ok(false)
         }
 
         let _result: U256 = decode_bytes(ParamType::Uint(256), _tx);
 
         // If the result is one, the resolver supports wildcard resolution; otherwise, it does not
-        return Ok(_result.eq(&U256::one()));
+        Ok(_result.eq(&U256::one()))
     }
 
     async fn get_resolver(&self, ens_name: &str) -> Result<H160, ProviderError> {
-        let mut current_name: String = ens_name.clone().to_string();
+        let mut current_name: String = ens_name.to_string();
         // Get the ENS address, prioritize the local override variable
         let ens_addr = self.ens.unwrap_or(ens::ENS_ADDRESS);
 
         loop {
             if current_name.eq("") || current_name.eq(".") {
-                return Ok(H160::zero());
+                return Ok(H160::zero())
             }
 
             if !ens_name.eq("eth") && current_name.eq("eth") {
-                return Ok(H160::zero());
+                return Ok(H160::zero())
             }
 
             let data = self
@@ -1340,17 +1332,17 @@ impl<P: JsonRpcClient> Provider<P> {
                 .await?;
 
             if data.0.is_empty() {
-                return Ok(H160::zero());
+                return Ok(H160::zero())
             }
 
             let resolver_address: Address = decode_bytes(ParamType::Address, data);
             if resolver_address != Address::zero() {
                 if current_name != ens_name && !self.supports_wildcard(resolver_address).await? {
-                    return Ok(H160::zero());
+                    return Ok(H160::zero())
                 }
-                return Ok(resolver_address);
+                return Ok(resolver_address)
             }
-            let mut splitted_name: Vec<&str> = current_name.split(".").collect();
+            let mut splitted_name: Vec<&str> = current_name.split('.').collect();
             current_name = splitted_name.split_off(1).join(".").to_string();
         }
     }
@@ -1396,7 +1388,7 @@ impl<P: JsonRpcClient> Provider<P> {
             let resolve_selector = "9061b923";
 
             // selector("resolve(bytes,bytes)")
-            tx.set_data(Bytes::from([hex::decode(&resolve_selector)?, encoded_data].concat()));
+            tx.set_data(Bytes::from([hex::decode(resolve_selector)?, encoded_data].concat()));
         }
 
         // resolve
@@ -1421,7 +1413,7 @@ impl<P: JsonRpcClient> Provider<P> {
         if data.is_empty() {
             return Err(ProviderError::EnsError(format!(
                 "`{ens_name}` resolver ({resolver_address:?}) is invalid."
-            )));
+            )))
         }
 
         let supports_selector = abi::decode(&[ParamType::Bool], data.as_ref())
@@ -1434,7 +1426,7 @@ impl<P: JsonRpcClient> Provider<P> {
                 ens_name,
                 resolver_address,
                 hex::encode(selector)
-            )));
+            )))
         }
 
         Ok(())
@@ -1575,9 +1567,8 @@ fn decode_bytes<T: Detokenize>(param: ParamType, bytes: Bytes) -> T {
 ///
 /// # Returns
 ///
-/// * A `Result` containing the encoded domain name as a `Vec<u8>` on success,
-///   or an error message as a `String` if any of the labels in the domain name
-///   are too long (exceeding 63 characters).
+/// * A `Result` containing the encoded domain name as a `Vec<u8>` on success, or an error message
+///   as a `String` if any of the labels in the domain name are too long (exceeding 63 characters).
 ///
 /// # Example
 ///
@@ -1592,7 +1583,7 @@ fn dns_encode(domain: &str) -> Result<Vec<u8>, String> {
     for label in labels {
         let label_len = label.len();
         if label_len > 63 {
-            return Err(format!("Label is too long: {}", label));
+            return Err(format!("Label is too long: {}", label))
         }
 
         encoded.push(label_len as u8);
