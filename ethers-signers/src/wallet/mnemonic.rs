@@ -168,7 +168,7 @@ impl<W: Wordlist> MnemonicBuilder<W> {
         // Write the mnemonic phrase to storage if a directory has been provided.
         if let Some(dir) = &self.write_to {
             let mut file = File::create(dir.as_path().join(to_checksum(&wallet.address, None)))?;
-            file.write_all(mnemonic.to_phrase()?.as_bytes())?;
+            file.write_all(mnemonic.to_phrase().as_bytes())?;
         }
 
         Ok(wallet)

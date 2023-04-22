@@ -13,7 +13,8 @@ use std::{
 use toml::Value;
 
 /// The default ethers dependency to generate.
-const DEFAULT_ETHERS_DEP: &str = "ethers = { git = \"https://github.com/gakonst/ethers-rs\", default-features = false, features = [\"abigen\"] }";
+const DEFAULT_ETHERS_DEP: &str =
+    "ethers = { version = \"2\", default-features = false, features = [\"abigen\"] }";
 
 /// Collects Abigen structs for a series of contracts, pending generation of
 /// the contract bindings.
@@ -129,7 +130,7 @@ impl MultiAbigen {
 
     /// Removes all `Abigen` items that should not be included based on the given filter
     pub fn apply_filter(&mut self, filter: &ContractFilter) {
-        self.abigens.retain(|abi| filter.is_match(&abi.contract_name))
+        self.abigens.retain(|abi| filter.is_match(abi.contract_name.to_string()))
     }
 
     /// Add another Abigen to the module or lib

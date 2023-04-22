@@ -1,18 +1,31 @@
 [package]
 name = "ethers-addressbook"
-version = "1.0.2"
-edition = "2021"
-rust-version = "1.64"
-authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
-license = "MIT OR Apache-2.0"
+authors = ["Rohit Narurkar <rohit.narurkar@protonmail.com>"]
+readme = "README.md"
 description = "Common Ethereum name to address mappings"
-homepage = "https://docs.rs/ethers"
-repository = "https://github.com/gakonst/ethers-rs"
-keywords = ["ethereum", "web3", "celo", "ethers"]
+
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
+keywords.workspace = true
+exclude.workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+rustc-args = ["--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+[package.metadata.playground]
+all-features = true
 
 [dependencies]
-ethers-core = { version = "^1.0.0", path = "../ethers-core", default-features = false }
+ethers-core.workspace = true
 
-once_cell = "1.17.1"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+once_cell.workspace = true
+serde.workspace = true
+serde_json.workspace = true

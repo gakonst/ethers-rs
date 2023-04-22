@@ -1,62 +1,86 @@
 [package]
 name = "ethers-signers"
-version = "1.0.2"
-edition = "2021"
-rust-version = "1.64"
 authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
-license = "MIT OR Apache-2.0"
-description = "Signer implementations for the ethers-rs crate"
-homepage = "https://docs.rs/ethers"
-repository = "https://github.com/gakonst/ethers-rs"
-keywords = ["ethereum", "web3", "celo", "ethers"]
+readme = "README.md"
+description = "A unified interface for locally signing Ethereum transactions"
+
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
+keywords.workspace = true
+exclude.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
+rustc-args = ["--cfg", "docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
+[package.metadata.playground]
+all-features = true
+
 [dependencies]
-ethers-core = { version = "^1.0.0", path = "../ethers-core", features = ["eip712"] }
-thiserror = { version = "1.0.38", default-features = false }
-coins-bip32 = "0.7.0"
-coins-bip39 = "0.7.0"
-coins-ledger = { version = "0.7.1", default-features = false, optional = true }
-hex = { version = "0.4.3", default-features = false, features = ["std"] }
-async-trait = { version = "0.1.50", default-features = false }
-elliptic-curve = { version = "0.12.3", default-features = false }
-sha2 = { version = "0.10.6", default-features = false }
-rand = { version = "0.8.5", default-features = false }
-yubihsm = { version = "0.41.0", features = ["secp256k1", "http", "usb"], optional = true }
-futures-util = { version = "^0.3", optional = true }
-futures-executor = { version = "^0.3", optional = true }
-semver = { version = "1.0.16", optional = true }
-tracing = { version = "0.1.37" }
-trezor-client = { version = "0.0.7", optional = true, default-features = false, features = [
-    "f_ethereum",
-] }
+ethers-core.workspace = true
+
+# crypto
+coins-bip32 = "0.8.3"
+coins-bip39 = "0.8.6"
+elliptic-curve.workspace = true
+sha2.workspace = true
+rand.workspace = true
+
+# misc
+thiserror.workspace = true
+tracing.workspace = true
+async-trait.workspace = true
+hex.workspace = true
+
+# futures
+futures-util = { workspace = true, optional = true }
+futures-executor = { workspace = true, optional = true }
 
 # aws
 rusoto_core = { version = "0.48.0", default-features = false, optional = true }
 rusoto_kms = { version = "0.48.0", default-features = false, optional = true }
-spki = { version = "0.6.0", optional = true }
+spki = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-eth-keystore = { version = "0.5.0" }
+eth-keystore = "0.5.0"
 home = { version = "0.5.4", optional = true }
 
-[dev-dependencies]
-ethers-contract-derive = { version = "^1.0.0", path = "../ethers-contract/ethers-contract-derive" }
-ethers-derive-eip712 = { version = "^1.0.0", path = "../ethers-core/ethers-derive-eip712" }
+# ledger
+coins-ledger = { version = "0.8.3", default-features = false, optional = true }
+semver = { workspace = true, optional = true }
 
-serde_json = { version = "1.0.64" }
-yubihsm = { version = "0.41.0", features = ["secp256k1", "usb", "mockhsm"] }
-tokio = { version = "1.18", default-features = false, features = ["macros", "rt"] }
-tempfile = "3.4.0"
-tracing-subscriber = "0.3.16"
+# trezor
+trezor-client = { version = "0.0.7", default-features = false, features = [
+    "f_ethereum",
+], optional = true }
+
+# yubi
+yubihsm = { version = "0.42.0-pre.0", features = ["secp256k1", "http", "usb"], optional = true }
+
+[dev-dependencies]
+ethers-contract-derive.workspace = true
+
+serde_json.workspace = true
+tempfile.workspace = true
+tracing-subscriber.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+yubihsm = { version = "0.42.0-pre.0", features = ["secp256k1", "usb", "mockhsm"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]
 futures = ["futures-util", "futures-executor"]
+
 celo = ["ethers-core/celo"]
+
 ledger = ["coins-ledger", "futures", "semver"]
-yubi = ["yubihsm"]
-aws = ["rusoto_core/rustls", "rusoto_kms/rustls", "spki"]
 trezor = ["trezor-client", "futures", "semver", "home"]
+aws = ["rusoto_core/rustls", "rusoto_kms/rustls", "spki"]
+yubi = ["yubihsm"]

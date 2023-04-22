@@ -1,127 +1,138 @@
-[package]
-name = "ethers"
-version = "1.0.2"
+[workspace.package]
+version = "2.0.3"
 edition = "2021"
-rust-version = "1.64" # must also be changed in **/Cargo.toml and .clippy.toml
-authors = ["Georgios Konstantopoulos <me@gakonst.com>"]
+rust-version = "1.65"
 license = "MIT OR Apache-2.0"
-readme = "README.md"
 documentation = "https://docs.rs/ethers"
 repository = "https://github.com/gakonst/ethers-rs"
-homepage = "https://docs.rs/ethers"
-description = "A complete Ethereum and Celo Rust library"
+homepage = "https://github.com/gakonst/ethers-rs"
+categories = ["cryptography::cryptocurrencies"]
+keywords = ["crypto", "ethers", "ethereum", "web3", "celo"]
+exclude = [
+    ".github/",
+    "bin/",
+    "book/",
+    "**/tests/",
+    "**/test-data/",
+    "**/testdata/",
+    "examples",
+    "scripts/",
+]
+
+# https://docs.rs/about/metadata
+[workspace.metadata.docs.rs]
+all-features = true
+rustc-args = ["--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs"]
+
+# https://github.com/integer32llc/rust-playground/blob/c6165a36923db5d99313e6056b5b610a2ede5bb0/top-crates/src/lib.rs#L175-L184
+[workspace.metadata.playground]
+all-features = true
 
 [workspace]
 members = [
+    "ethers",
     "ethers-addressbook",
     "ethers-contract",
+    "ethers-core",
+    "ethers-etherscan",
+    "ethers-middleware",
     "ethers-providers",
     "ethers-signers",
-    "ethers-core",
-    "ethers-middleware",
-    "ethers-etherscan",
     "ethers-solc",
+
     # Example crates
     "examples/*",
 ]
 
+# Do not include example crates in default members
 default-members = [
+    "ethers",
     "ethers-addressbook",
     "ethers-contract",
+    "ethers-core",
+    "ethers-etherscan",
+    "ethers-middleware",
     "ethers-providers",
     "ethers-signers",
-    "ethers-core",
-    "ethers-middleware",
-    "ethers-etherscan",
     "ethers-solc",
 ]
 
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+# Explicitly set the resolver to version 2, which is the default for packages with edition >= 2021
+# https://doc.rust-lang.org/edition-guide/rust-2021/default-cargo-resolver.html
+resolver = "2"
 
-[package.metadata.playground]
-features = ["full"]
+[workspace.dependencies]
+# workspace crates
+ethers = { version = "2.0.3", path = "ethers", default-features = false }
+ethers-addressbook = { version = "2.0.3", path = "ethers-addressbook", default-features = false }
+ethers-contract = { version = "2.0.3", path = "ethers-contract", default-features = false }
+ethers-core = { version = "2.0.3", path = "ethers-core", default-features = false }
+ethers-etherscan = { version = "2.0.3", path = "ethers-etherscan", default-features = false }
+ethers-middleware = { version = "2.0.3", path = "ethers-middleware", default-features = false }
+ethers-providers = { version = "2.0.3", path = "ethers-providers", default-features = false }
+ethers-signers = { version = "2.0.3", path = "ethers-signers", default-features = false }
+ethers-solc = { version = "2.0.3", path = "ethers-solc", default-features = false }
 
-[features]
-default = ["abigen"]
+ethers-contract-abigen = { version = "2.0.3", path = "ethers-contract/ethers-contract-abigen", default-features = false }
+ethers-contract-derive = { version = "2.0.3", path = "ethers-contract/ethers-contract-derive", default-features = false }
 
-celo = [
-    "ethers-core/celo",
-    "ethers-providers/celo",
-    "ethers-signers/celo",
-    "ethers-contract/celo",
-    "ethers-middleware/celo",
-    "legacy",
-]
+# async / async utils
+tokio = "1.27"
+tokio-tungstenite = { version = "0.18.0", default-features = false }
+futures = { version = "0.3.28", default-features = false, features = ["std"] }
+futures-core = "0.3.28"
+futures-util = "0.3.28"
+futures-executor = "0.3.28"
+futures-channel = "0.3.28"
+futures-locks = { version = "0.7.1", default-features = false }
+futures-timer = { version = "3.0.2", default-features = false, features = ["wasm-bindgen"] }
+pin-project = "1.0"
+reqwest = { version = "0.11.16", default-features = false }
+url = { version = "2.3", default-features = false }
 
-legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
+# crypto
+elliptic-curve = { version = "0.13.3", default-features = false }
+generic-array = { version = "0.14.7", default-features = false }
+k256 = { version = "0.13.0", default-features = false, features = ["ecdsa", "std"] }
+sha2 = { version = "0.10.6", default-features = false }
+tiny-keccak = { version = "2.0.2", default-features = false }
+spki = { version = "0.7.1", default-features = false }
 
-# individual features per sub-crate
-## core
-eip712 = ["ethers-contract/eip712", "ethers-core/eip712"]
-## providers
-ws = ["ethers-providers/ws"]
-ipc = ["ethers-providers/ipc"]
-rustls = [
-    "ethers-middleware/rustls",
-    "ethers-providers/rustls",
-    "ethers-etherscan/rustls",
-    "ethers-contract/rustls",
-    "ethers-solc/rustls",
-]
-openssl = [
-    "ethers-middleware/openssl",
-    "ethers-providers/openssl",
-    "ethers-etherscan/openssl",
-    "ethers-contract/openssl",
-    "ethers-solc/openssl",
-]
-dev-rpc = ["ethers-providers/dev-rpc"]
-## signers
-ledger = ["ethers-signers/ledger"]
-trezor = ["ethers-signers/trezor"]
-yubi = ["ethers-signers/yubi"]
-## contracts
-abigen = ["ethers-contract/abigen"]
-### abigen without reqwest
-abigen-offline = ["ethers-contract/abigen-offline"]
-## solc
-ethers-solc = ["dep:ethers-solc", "ethers-etherscan/ethers-solc"]
-solc-full = ["ethers-solc", "ethers-solc/full"]
-solc-tests = ["ethers-solc", "ethers-solc/tests"]
-solc-sha2-asm = ["ethers-solc", "ethers-solc/asm"]
+# serde
+serde = "1.0"
+serde_json = "1.0"
 
-[dependencies]
-ethers-addressbook = { version = "^1.0.0", default-features = false, path = "./ethers-addressbook" }
-ethers-contract = { version = "^1.0.0", default-features = false, path = "./ethers-contract" }
-ethers-core = { version = "^1.0.0", default-features = false, path = "./ethers-core" }
-ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers" }
-ethers-signers = { version = "^1.0.0", default-features = false, path = "./ethers-signers" }
-ethers-middleware = { version = "^1.0.0", default-features = false, path = "./ethers-middleware" }
-ethers-solc = { version = "^1.0.0", default-features = false, path = "./ethers-solc", optional = true }
-ethers-etherscan = { version = "^1.0.0", default-features = false, path = "./ethers-etherscan" }
+# macros
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["extra-traits"] }
+async-trait = "0.1.68"
+auto_impl = "1.0"
 
-[dev-dependencies]
-ethers-contract = { version = "^1.0.0", default-features = false, path = "./ethers-contract", features = [
-    "abigen",
-    "eip712",
-] }
-ethers-providers = { version = "^1.0.0", default-features = false, path = "./ethers-providers", features = [
-    "ws",
-    "ipc",
-] }
-
-bytes = "1.4.0"
+# misc
+Inflector = "0.11"
+thiserror = "1.0"
+once_cell = "1.17"
+hex = "0.4"
 eyre = "0.6"
-hex = "0.4.3"
-rand = "0.8.5"
-serde = { version = "1.0.124", features = ["derive"] }
-serde_json = "1.0.64"
-tempfile = "3.3.0"
-tokio = { version = "1.18", features = ["macros", "rt-multi-thread"] }
+tempfile = "3.5"
+dunce = "1.0"
+walkdir = "2.3"
+regex = "1.7"
+toml = "0.7"
+hex-literal = "0.4"
+rand = "0.8"
+bytes = "1.4"
+semver = "1.0"
+criterion = "0.4"
+rayon = "1.7"
 
-# profile for the wasm example
-[profile.release.package.ethers-wasm]
-# Tell `rustc` to optimize for small code size.
-opt-level = "s"
+# tracing
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.16", default-features = false }
+tracing-futures = "0.2.5"
+
+# wasm
+getrandom = { version = "0.2", features = ["js"] }
+instant = "0.1.12"

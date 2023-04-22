@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+# Creates a new release of all the ethers crates in the workspace
+#
+# Note that this intended be run with the --execute flag, as the dry run will
+# perform all the checks that a normal `cargo release` command would.
+# This is because this script will execute only a few of the steps because it
+# has to run `git-cliff` to create the changelog in between steps, and exclude
+# all the example crates from the version bump.
+
+set -e
+
+info() {
+    printf "\e[34;1minfo\e[0m: %s\n" "$1"
+}
+
+throw() {
+    printf "\e[31;1merror\e[0m: %s\n\n%s\n" "$1" "$USAGE" 1>&2
+    exit 1
+}
+
+exec_or_print() {
+    if [ "$EXECUTE" ]; then
+        "$@"
+    else
+        echo "Skipping due to dry run. Command:" "$@"
+    fi
+}
+
+USAGE="Create a new release of the ethers workspace crates
+
+Usage:
+    $(basename "$0") [OPTIONS] <VERSION>
+
+Options:
+    -s, --sign      Sign commits and tag
+    -v, --verbose   Use verbose Cargo output
+    -e, --execute   Actually perform a release. Dry-run mode is the default
+    -h, --help      Show this help text and exit
+
+Arguments:
+    <VERSION>       See 'cargo release --help'. Levels are not supported"
+
+SIGN_COMMIT=""
+SIGN_TAG=""
+VERBOSE=""
+EXECUTE=""
+VERSION=""
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -s|--sign)
+            SIGN_COMMIT="--sign-commit"
+            SIGN_TAG="--sign-tag"
+            shift
+            ;;
+        -v|--verbose)
+            VERBOSE="--verbose"
+            shift
+            ;;
+        -x|--execute)
+            EXECUTE="--execute"
+            shift
+            ;;
+        -h|--help)
+            echo "$USAGE"
+            exit 0
+            ;;
+
+        --)
+            VERSION="$2"
+            break
+            ;;
+
+        -*)
+            throw "unrecognized option: '$1'"
+            ;;
+
+        *)
+            if [ "$VERSION" ]; then
+                throw "only one version can be specified"
+            else
+                VERSION="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+if [ ! "$VERSION" ]; then
+    throw "a version must be set" 1>&2
+fi
+
+# check for necessary binaries
+NECESSARY=(cargo-release git-cliff)
+MISSING=""
+for bin in "${NECESSARY[@]}"; do
+    if ! command -v "$bin" &>/dev/null; then
+        MISSING=true
+        echo "'$bin' is required to run this command, but it is not installed" 1>&2
+    fi
+done
+[ "$MISSING" ] && throw "missing necessary binaries"
+
+# exclude examples
+WORKSPACE_FLAGS=(--workspace)
+for ex in examples/*; do
+    if [ -d "$ex" ]; then
+        crate=$(echo "$ex" | tr / -)
+        WORKSPACE_FLAGS+=(--exclude "$crate")
+    fi
+done
+
+# shellcheck disable=SC2206
+COMMON_FLAGS=($VERBOSE $EXECUTE)
+
+info "bumping crate versions"
+cargo release version "${WORKSPACE_FLAGS[@]}" "${COMMON_FLAGS[@]}" "$VERSION"
+
+info "creating changelog"
+exec_or_print git cliff -t "$VERSION" -o CHANGELOG.md
+
+info "creating git commit"
+exec_or_print cargo release commit "${COMMON_FLAGS[@]}" $SIGN_COMMIT
+
+info "publishing crates"
+exec_or_print cargo release publish "${COMMON_FLAGS[@]}" "${WORKSPACE_FLAGS[@]}"
+
+info "tagging commits"
+cargo release tag "${COMMON_FLAGS[@]}" "${WORKSPACE_FLAGS[@]}" $SIGN_TAG
+
+info "pushing commits and tags to remote"
+cargo release push "${COMMON_FLAGS[@]}" "${WORKSPACE_FLAGS[@]}"

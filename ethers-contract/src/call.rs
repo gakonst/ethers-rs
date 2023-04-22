@@ -360,6 +360,7 @@ where
     type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send>>;
 
     fn into_future(self) -> Self::IntoFuture {
+        #[allow(clippy::redundant_async_block)]
         Box::pin(async move { self.call().await })
     }
 }

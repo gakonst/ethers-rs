@@ -232,11 +232,12 @@ fn _derive_builtin_traits_struct(
     for (field, ty) in fields.iter().zip(params) {
         match &field.ty {
             FieldType::Struct(s_ty) => {
-                // a tuple here is actually a sol struct so we skip it
-                if !matches!(ty, ParamType::Tuple(_)) {
-                    *def &= can_derive_default(ty);
-                    *others &= can_derive_builtin_traits(ty);
+                // `ty` here can only be `Tuple`, `Array(Tuple)`, or `FixedArray(Tuple(), len)`.
+                // We recurse on the Tuple's fields and check the FixedArray's length.
+                if let StructFieldType::FixedArray(_, len) = s_ty {
+                    *def &= *len <= MAX_SUPPORTED_ARRAY_LEN;
                 }
+
                 let id = s_ty.identifier();
                 // TODO: InternalStructs does not contain this field's ID if the struct and field
                 // are in 2 different modules, like in `can_generate_internal_structs_multiple`
@@ -263,14 +264,15 @@ fn _derive_builtin_traits_struct(
     }
 }
 
+/// Recurses on the type until it reaches the struct tuple `ParamType`.
 fn get_struct_params<'a>(s_ty: &StructFieldType, ty: &'a ParamType) -> &'a [ParamType] {
     match (s_ty, ty) {
-        (StructFieldType::Type(_), ParamType::Tuple(params)) => params,
-        (StructFieldType::Array(s_ty), ParamType::Array(ty)) => get_struct_params(s_ty, ty),
-        (StructFieldType::FixedArray(s_ty, _), ParamType::FixedArray(ty, _)) => {
-            get_struct_params(s_ty, ty)
-        }
-        _ => unreachable!(),
+        (_, ParamType::Tuple(params)) => params,
+        (
+            StructFieldType::Array(s_ty) | StructFieldType::FixedArray(s_ty, _),
+            ParamType::Array(param) | ParamType::FixedArray(param, _),
+        ) => get_struct_params(s_ty, param),
+        _ => unreachable!("Unhandled struct field: {s_ty:?} | {ty:?}"),
     }
 }
 

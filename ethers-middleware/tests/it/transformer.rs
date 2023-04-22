@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 type HttpWallet = SignerMiddleware<Provider<Http>, LocalWallet>;
 
-abigen!(SimpleStorage, "../tests/testdata/SimpleStorage.json");
+abigen!(SimpleStorage, "../testdata/SimpleStorage.json");
 
 #[tokio::test]
 #[ignore]

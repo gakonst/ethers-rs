@@ -9,6 +9,7 @@
 
 #![deny(rustdoc::broken_intra_doc_links, missing_docs, unsafe_code)]
 #![warn(unreachable_pub)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 #[cfg(test)]
 #[allow(missing_docs)]
@@ -36,7 +37,7 @@ pub use ethers_core::types::Address;
 
 use contract::{Context, ExpandedContract};
 use eyre::{Context as _, Result};
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::ToTokens;
 use std::{collections::HashMap, fmt, fs, io, path::Path};
 
@@ -57,11 +58,10 @@ use std::{collections::HashMap, fmt, fs, io, path::Path};
 /// which exports an `ERC20Token` struct, along with all its events.
 ///
 /// ```no_run
-/// # use ethers_contract_abigen::Abigen;
-/// # fn foo() -> Result<(), Box<dyn std::error::Error>> {
+/// use ethers_contract_abigen::Abigen;
+///
 /// Abigen::new("ERC20Token", "./abi.json")?.generate()?.write_to_file("token.rs")?;
-/// # Ok(())
-/// # }
+/// # Ok::<_, Box<dyn std::error::Error>>(())
 #[derive(Clone, Debug)]
 #[must_use = "Abigen does nothing unless you generate or expand it."]
 pub struct Abigen {
@@ -69,37 +69,54 @@ pub struct Abigen {
     abi_source: Source,
 
     /// The contract's name to use for the generated type.
-    contract_name: String,
-
-    /// Manually specified contract method aliases.
-    method_aliases: HashMap<String, String>,
-
-    /// Manually specified `derive` macros added to all structs and enums.
-    derives: Vec<String>,
+    contract_name: Ident,
 
     /// Whether to format the generated bindings using [`prettyplease`].
     format: bool,
+
+    /// Manually specified contract method aliases.
+    method_aliases: HashMap<String, String>,
 
     /// Manually specified event name aliases.
     event_aliases: HashMap<String, String>,
 
     /// Manually specified error name aliases.
     error_aliases: HashMap<String, String>,
+
+    /// Manually specified `derive` macros added to all structs and enums.
+    derives: Vec<syn::Path>,
 }
 
 impl Abigen {
-    /// Creates a new builder with the given [ABI Source][Source].
-    pub fn new<T: Into<String>, S: AsRef<str>>(contract_name: T, abi_source: S) -> Result<Self> {
-        let abi_source = abi_source.as_ref().parse()?;
+    /// Creates a new builder with the given contract name and ABI source strings.
+    ///
+    /// # Errors
+    ///
+    /// If `contract_name` could not be parsed as a valid [Ident], or if `abi_source` could not be
+    /// parsed as a valid [Source].
+    pub fn new<T: AsRef<str>, S: AsRef<str>>(contract_name: T, abi_source: S) -> Result<Self> {
         Ok(Self {
-            abi_source,
-            contract_name: contract_name.into(),
+            abi_source: abi_source.as_ref().parse()?,
+            contract_name: syn::parse_str(contract_name.as_ref())?,
             format: true,
             method_aliases: Default::default(),
             derives: Default::default(),
             event_aliases: Default::default(),
             error_aliases: Default::default(),
         })
+    }
+
+    /// Creates a new builder with the given contract name [Ident] and [ABI source][Source].
+    pub fn new_raw(contract_name: Ident, abi_source: Source) -> Self {
+        Self {
+            contract_name,
+            abi_source,
+            format: true,
+            method_aliases: Default::default(),
+            derives: Default::default(),
+            event_aliases: Default::default(),
+            error_aliases: Default::default(),
+        }
     }
 
     /// Attempts to load a new builder from an ABI JSON file at the specific path.
@@ -155,6 +172,20 @@ impl Abigen {
         self
     }
 
+    #[deprecated = "Use add_derive instead"]
+    #[doc(hidden)]
+    pub fn add_event_derive<S: AsRef<str>>(self, derive: S) -> Result<Self> {
+        self.add_derive(derive)
+    }
+
+    /// Add a custom derive to the derives for all structs and enums.
+    ///
+    /// For example, this makes it possible to derive serde::Serialize and serde::Deserialize.
+    pub fn add_derive<S: AsRef<str>>(mut self, derive: S) -> Result<Self> {
+        self.derives.push(syn::parse_str(derive.as_ref())?);
+        Ok(self)
+    }
+
     #[deprecated = "Use format instead"]
     #[doc(hidden)]
     pub fn rustfmt(mut self, rustfmt: bool) -> Self {
@@ -171,25 +202,10 @@ impl Abigen {
         self
     }
 
-    #[deprecated = "Use add_derive instead"]
-    #[doc(hidden)]
-    pub fn add_event_derive<S: Into<String>>(mut self, derive: S) -> Self {
-        self.derives.push(derive.into());
-        self
-    }
-
-    /// Add a custom derive to the derives for all structs and enums.
-    ///
-    /// For example, this makes it possible to derive serde::Serialize and serde::Deserialize.
-    pub fn add_derive<S: Into<String>>(mut self, derive: S) -> Self {
-        self.derives.push(derive.into());
-        self
-    }
-
     /// Generates the contract bindings.
     pub fn generate(self) -> Result<ContractBindings> {
         let format = self.format;
-        let name = self.contract_name.clone();
+        let name = self.contract_name.to_string();
         let (expanded, _) = self.expand()?;
         Ok(ContractBindings { tokens: expanded.into_tokens(), format, name })
     }
@@ -202,7 +218,59 @@ impl Abigen {
     }
 }
 
-/// Type-safe contract bindings generated by `Abigen`.
+impl Abigen {
+    /// Returns a reference to the contract's ABI source.
+    pub fn source(&self) -> &Source {
+        &self.abi_source
+    }
+
+    /// Returns a mutable reference to the contract's ABI source.
+    pub fn source_mut(&mut self) -> &mut Source {
+        &mut self.abi_source
+    }
+
+    /// Returns a reference to the contract's name.
+    pub fn name(&self) -> &Ident {
+        &self.contract_name
+    }
+
+    /// Returns a mutable reference to the contract's name.
+    pub fn name_mut(&mut self) -> &mut Ident {
+        &mut self.contract_name
+    }
+
+    /// Returns a reference to the contract's method aliases.
+    pub fn method_aliases(&self) -> &HashMap<String, String> {
+        &self.method_aliases
+    }
+
+    /// Returns a mutable reference to the contract's method aliases.
+    pub fn method_aliases_mut(&mut self) -> &mut HashMap<String, String> {
+        &mut self.method_aliases
+    }
+
+    /// Returns a reference to the contract's event aliases.
+    pub fn event_aliases(&self) -> &HashMap<String, String> {
+        &self.event_aliases
+    }
+
+    /// Returns a mutable reference to the contract's event aliases.
+    pub fn error_aliases_mut(&mut self) -> &mut HashMap<String, String> {
+        &mut self.error_aliases
+    }
+
+    /// Returns a reference to the contract's derives.
+    pub fn derives(&self) -> &Vec<syn::Path> {
+        &self.derives
+    }
+
+    /// Returns a mutable reference to the contract's derives.
+    pub fn derives_mut(&mut self) -> &mut Vec<syn::Path> {
+        &mut self.derives
+    }
+}
+
+/// Type-safe contract bindings generated by [Abigen].
 ///
 /// This type can be either written to file or converted to a token stream for a procedural macro.
 #[derive(Clone)]

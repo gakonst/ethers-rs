@@ -1,12 +1,12 @@
-//! Implementation of procedural macro for generating type-safe bindings to an
-//! ethereum smart contract.
+//! Procedural macros for generating type-safe bindings to an Ethereum smart contract.
+
 #![deny(missing_docs, unsafe_code, unused_crate_dependencies)]
 #![deny(rustdoc::broken_intra_doc_links)]
-
-use proc_macro::TokenStream;
-use syn::{parse_macro_input, DeriveInput};
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 use abigen::Contracts;
+use proc_macro::TokenStream;
+use syn::{parse_macro_input, DeriveInput};
 
 pub(crate) mod abi_ty;
 mod abigen;
@@ -14,23 +14,48 @@ mod call;
 pub(crate) mod calllike;
 mod codec;
 mod display;
+mod eip712;
 mod error;
 mod event;
 mod spanned;
 pub(crate) mod utils;
 
-/// Proc macro to generate type-safe bindings to a contract(s). This macro
-/// accepts one or more Ethereum contract ABI or a path. Note that relative paths are
-/// rooted in the crate's root `CARGO_MANIFEST_DIR`.
-/// Environment variable interpolation is supported via `$` prefix, like
-/// `"$CARGO_MANIFEST_DIR/contracts/c.json"`
+/// Generates type-safe bindings to an Ethereum smart contract from its ABI.
+///
+/// All the accepted ABI sources are listed in the examples below and in [Source].
+///
+/// Note:
+/// - relative paths are rooted in the crate's root (`CARGO_MANIFEST_DIR`).
+/// - Environment variable interpolation is supported via `$` prefix, like
+///   `"$CARGO_MANIFEST_DIR/contracts/c.json"`
+/// - Etherscan rate-limits requests to their API. To avoid this, set the `ETHERSCAN_API_KEY`
+///   environment variable.
+///
+/// Additionally, this macro accepts additional parameters to configure some aspects of the code
+/// generation:
+/// - `methods`: A list of mappings from method signatures to method names allowing methods names to
+///   be explicitely set for contract methods. This also provides a workaround for generating code
+///   for contracts with multiple methods with the same name.
+/// - `derives`: A list of additional derive macros that are added to all the generated structs and
+///   enums, after the default ones which are ([when applicable][tuple_derive_ref]):
+///   * [PartialEq]
+///   * [Eq]
+///   * [Debug]
+///   * [Default]
+///   * [Hash]
+///
+/// [Source]: ethers_contract_abigen::Source
+/// [tuple_derive_ref]: https://doc.rust-lang.org/stable/std/primitive.tuple.html#trait-implementations-1
 ///
 /// # Examples
 ///
+/// All the possible ABI sources:
+///
 /// ```ignore
-/// # use ethers_contract_derive::abigen;
+/// use ethers_contract_derive::abigen;
+///
 /// // ABI Path
-/// abigen!(MyContract, "MyContract.json");
+/// abigen!(MyContract, "./MyContractABI.json");
 ///
 /// // HTTP(S) source
 /// abigen!(MyContract, "https://my.domain.local/path/to/contract.json");
@@ -50,19 +75,7 @@ pub(crate) mod utils;
 /// ]");
 /// ```
 ///
-/// Note that Etherscan rate-limits requests to their API, to avoid this an
-/// `ETHERSCAN_API_KEY` environment variable can be set. If it is, it will use
-/// that API key when retrieving the contract ABI.
-///
-/// Currently, the proc macro accepts additional parameters to configure some
-/// aspects of the code generation. Specifically it accepts:
-/// - `methods`: A list of mappings from method signatures to method names allowing methods names to
-///   be explicitely set for contract methods. This also provides a workaround for generating code
-///   for contracts with multiple methods with the same name.
-/// - `event_derives`: A list of additional derives that should be added to contract event structs
-///   and enums.
-///
-/// # Example
+/// Specify additional parameters:
 ///
 /// ```ignore
 /// abigen!(
@@ -71,7 +84,7 @@ pub(crate) mod utils;
 ///     methods {
 ///         myMethod(uint256,bool) as my_renamed_method;
 ///     },
-///     event_derives (serde::Deserialize, serde::Serialize),
+///     derives(serde::Deserialize, serde::Serialize),
 /// );
 /// ```
 ///
@@ -83,7 +96,6 @@ pub(crate) mod utils;
 /// `abigen!` bundles all type duplicates so that all rust contracts also use
 /// the same rust types.
 ///
-/// # Example Multiple contracts
 /// ```ignore
 /// abigen!(
 ///     MyContract,
@@ -91,18 +103,21 @@ pub(crate) mod utils;
 ///     methods {
 ///         myMethod(uint256,bool) as my_renamed_method;
 ///     },
-///     event_derives (serde::Deserialize, serde::Serialize);
+///     derives(serde::Deserialize, serde::Serialize);
 ///
 ///     MyOtherContract,
 ///     "path/to/MyOtherContract.json",
-///     event_derives (serde::Deserialize, serde::Serialize);
+///     derives(serde::Deserialize, serde::Serialize);
 /// );
 /// ```
 #[proc_macro]
 pub fn abigen(input: TokenStream) -> TokenStream {
     let contracts = parse_macro_input!(input as Contracts);
-
-    contracts.expand().unwrap_or_else(|err| err.to_compile_error()).into()
+    match contracts.expand() {
+        Ok(tokens) => tokens,
+        Err(err) => err.to_compile_error(),
+    }
+    .into()
 }
 
 /// Derives the `AbiType` and all `Tokenizable` traits for the labeled type.
@@ -127,6 +142,10 @@ pub fn derive_abi_type(input: TokenStream) -> TokenStream {
 /// generalized codec traits used for types, calls, etc. However, encoding/decoding a call differs
 /// from the basic encoding/decoding, (`[selector + encode(self)]`)
 ///
+/// Note that this macro requires the `EthAbiType` macro to be derived or for the type to implement
+/// `AbiType` and `Tokenizable`. The type returned by the `AbiType` implementation must be a
+/// `Token::Tuple`, otherwise this macro's implementation of `AbiDecode` will panic at runtime.
+///
 /// # Example
 ///
 /// ```ignore
@@ -146,7 +165,7 @@ pub fn derive_abi_type(input: TokenStream) -> TokenStream {
 #[proc_macro_derive(EthAbiCodec)]
 pub fn derive_abi_codec(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    TokenStream::from(codec::derive_codec_impl(&input))
+    codec::derive_codec_impl(&input).into()
 }
 
 /// Derives `fmt::Display` trait and generates a convenient format for all the
@@ -341,6 +360,78 @@ pub fn derive_abi_error(input: TokenStream) -> TokenStream {
     match error::derive_eth_error_impl(input) {
         Ok(tokens) => tokens,
         Err(err) => err.to_compile_error(),
+    }
+    .into()
+}
+
+/// EIP-712 derive macro.
+///
+/// This crate provides a derive macro `Eip712` that is used to encode a rust struct
+/// into a payload hash, according to <https://eips.ethereum.org/EIPS/eip-712>
+///
+/// The trait used to derive the macro is found in `ethers_core::transaction::eip712::Eip712`
+/// Both the derive macro and the trait must be in context when using
+///
+/// This derive macro requires the `#[eip712]` attributes to be included
+/// for specifying the domain separator used in encoding the hash.
+///
+/// NOTE: In addition to deriving `Eip712` trait, the `EthAbiType` trait must also be derived.
+/// This allows the struct to be parsed into `ethers_core::abi::Token` for encoding.
+///
+/// # Optional Eip712 Parameters
+///
+/// The only optional parameter is `salt`, which accepts a string
+/// that is hashed using keccak256 and stored as bytes.
+///
+/// # Example Usage
+///
+/// ```ignore
+/// use ethers_contract::EthAbiType;
+/// use ethers_derive_eip712::*;
+/// use ethers_core::types::{transaction::eip712::Eip712, H160};
+///
+/// #[derive(Debug, Eip712, EthAbiType)]
+/// #[eip712(
+///     name = "Radicle",
+///     version = "1",
+///     chain_id = 1,
+///     verifying_contract = "0x0000000000000000000000000000000000000000"
+///     // salt is an optional parameter
+///     salt = "my-unique-spice"
+/// )]
+/// pub struct Puzzle {
+///     pub organization: H160,
+///     pub contributor: H160,
+///     pub commit: String,
+///     pub project: String,
+/// }
+///
+/// let puzzle = Puzzle {
+///     organization: "0000000000000000000000000000000000000000"
+///         .parse::<H160>()
+///         .expect("failed to parse address"),
+///     contributor: "0000000000000000000000000000000000000000"
+///         .parse::<H160>()
+///         .expect("failed to parse address"),
+///     commit: "5693b7019eb3e4487a81273c6f5e1832d77acb53".to_string(),
+///     project: "radicle-reward".to_string(),
+/// };
+///
+/// let hash = puzzle.encode_eip712().unwrap();
+/// ```
+///
+/// # Limitations
+///
+/// At the moment, the derive macro does not recursively encode nested Eip712 structs.
+///
+/// There is an Inner helper attribute `#[eip712]` for fields that will eventually be used to
+/// determine if there is a nested eip712 struct. However, this work is not yet complete.
+#[proc_macro_derive(Eip712, attributes(eip712))]
+pub fn derive_eip712(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    match eip712::impl_derive_eip712(&input) {
+        Ok(tokens) => tokens,
+        Err(e) => e.to_compile_error(),
     }
     .into()
 }

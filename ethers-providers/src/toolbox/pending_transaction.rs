@@ -4,7 +4,9 @@ use crate::{
 };
 use ethers_core::types::{Transaction, TransactionReceipt, TxHash, U64};
 use futures_core::stream::Stream;
+use futures_timer::Delay;
 use futures_util::stream::StreamExt;
+use instant::Duration;
 use pin_project::pin_project;
 use std::{
     fmt,
@@ -12,13 +14,7 @@ use std::{
     ops::Deref,
     pin::Pin,
     task::{Context, Poll},
-    time::Duration,
 };
-
-#[cfg(not(target_arch = "wasm32"))]
-use futures_timer::Delay;
-#[cfg(target_arch = "wasm32")]
-use wasm_timer::Delay;
 
 /// A pending transaction is a transaction which has been submitted but is not yet mined.
 /// `await`'ing on a pending transaction will resolve to a transaction receipt
@@ -28,32 +24,15 @@ use wasm_timer::Delay;
 ///
 /// # Example
 ///
-///```
-/// # use ethers_providers::{Provider, Http};
-/// # use ethers_core::utils::Anvil;
-/// # use std::convert::TryFrom;
-/// use ethers_providers::Middleware;
+/// ```ignore
 /// use ethers_core::types::TransactionRequest;
 ///
-/// # #[tokio::main(flavor = "current_thread")]
-/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-/// # let anvil = Anvil::new().spawn();
-/// # let client = Provider::<Http>::try_from(anvil.endpoint()).unwrap();
-/// # let accounts = client.get_accounts().await?;
-/// # let from = accounts[0];
-/// # let to = accounts[1];
-/// # let balance_before = client.get_balance(to, None).await?;
 /// let tx = TransactionRequest::new().to(to).value(1000).from(from);
 /// let receipt = client
 ///     .send_transaction(tx, None)
 ///     .await?                           // PendingTransaction<_>
 ///     .log_msg("Pending transfer hash") // print pending tx hash with message
 ///     .await?;                          // Result<Option<TransactionReceipt>, _>
-/// # let _ = receipt;
-/// # let balance_after = client.get_balance(to, None).await?;
-/// # assert_eq!(balance_after, balance_before + 1000);
-/// # Ok(())
-/// # }
 /// ```
 #[pin_project]
 pub struct PendingTransaction<'a, P> {

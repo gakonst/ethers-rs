@@ -15,7 +15,7 @@ use rusoto_kms::{
 use tracing::{debug, instrument, trace};
 
 mod utils;
-use utils::{apply_eip155, rsig_to_ethsig, verifying_key_to_address};
+use utils::{apply_eip155, verifying_key_to_address};
 
 /// An ethers Signer that uses keys held in Amazon AWS KMS.
 ///
@@ -57,7 +57,7 @@ impl std::fmt::Debug for AwsSigner {
         f.debug_struct("AwsSigner")
             .field("key_id", &self.key_id)
             .field("chain_id", &self.chain_id)
-            .field("pubkey", &hex::encode(self.pubkey.to_bytes()))
+            .field("pubkey", &hex::encode(self.pubkey.to_sec1_bytes()))
             .field("address", &self.address)
             .finish()
     }
@@ -165,7 +165,7 @@ impl AwsSigner {
 
         debug!(
             "Instantiated AWS signer with pubkey 0x{} and address 0x{}",
-            hex::encode(pubkey.to_bytes()),
+            hex::encode(pubkey.to_sec1_bytes()),
             hex::encode(address)
         );
 
@@ -211,10 +211,8 @@ impl AwsSigner {
         chain_id: u64,
     ) -> Result<EthSig, AwsSignerError> {
         let sig = self.sign_digest(digest.into()).await?;
-
-        let sig = utils::rsig_from_digest_bytes_trial_recovery(&sig, digest.into(), &self.pubkey);
-
-        let mut sig = rsig_to_ethsig(&sig);
+        let mut sig =
+            utils::sig_from_digest_bytes_trial_recovery(&sig, digest.into(), &self.pubkey);
         apply_eip155(&mut sig, chain_id);
         Ok(sig)
     }
@@ -255,8 +253,7 @@ impl super::Signer for AwsSigner {
             payload.encode_eip712().map_err(|e| Self::Error::Eip712Error(e.to_string()))?;
 
         let sig = self.sign_digest(digest).await?;
-        let sig = utils::rsig_from_digest_bytes_trial_recovery(&sig, digest, &self.pubkey);
-        let sig = rsig_to_ethsig(&sig);
+        let sig = utils::sig_from_digest_bytes_trial_recovery(&sig, digest, &self.pubkey);
 
         Ok(sig)
     }

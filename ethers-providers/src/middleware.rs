@@ -225,6 +225,7 @@ pub trait Middleware: Sync + Send + Debug {
     }
 
     /// Returns the ENS name the `address` resolves to (or None if not configured).
+    ///
     /// # Panics
     ///
     /// If the bytes returned from the ENS registrar/resolver cannot be interpreted as
@@ -236,16 +237,14 @@ pub trait Middleware: Sync + Send + Debug {
     /// Returns the avatar HTTP link of the avatar that the `ens_name` resolves to (or None
     /// if not configured)
     ///
-    /// # Example
+    /// # Examples
+    ///
     /// ```no_run
-    /// # use ethers_providers::{Provider, Http as HttpProvider, Middleware};
-    /// # use std::convert::TryFrom;
-    /// # #[tokio::main(flavor = "current_thread")]
-    /// # async fn main() {
-    /// # let provider = Provider::<HttpProvider>::try_from("https://eth.llamarpc.com").unwrap();
-    /// let avatar = provider.resolve_avatar("parishilton.eth").await.unwrap();
+    /// # use ethers_providers::{Provider, Http, Middleware};
+    /// # async fn foo(provider: Provider<Http>) -> Result<(), Box<dyn std::error::Error>> {
+    /// let avatar = provider.resolve_avatar("parishilton.eth").await?;
     /// assert_eq!(avatar.to_string(), "https://i.imgur.com/YW3Hzph.jpg");
-    /// # }
+    /// # Ok(()) }
     /// ```
     ///
     /// # Panics
@@ -260,15 +259,16 @@ pub trait Middleware: Sync + Send + Debug {
     ///
     /// # Example
     /// ```no_run
-    /// # use ethers_providers::{Provider, Http as HttpProvider, Middleware};
-    /// # use std::{str::FromStr, convert::TryFrom};
-    /// # #[tokio::main(flavor = "current_thread")]
-    /// # async fn main() {
-    /// # let provider = Provider::<HttpProvider>::try_from("https://eth.llamarpc.com").unwrap();
-    /// let token = ethers_providers::erc::ERCNFT::from_str("erc721:0xc92ceddfb8dd984a89fb494c376f9a48b999aafc/9018").unwrap();
-    /// let token_image = provider.resolve_nft(token).await.unwrap();
-    /// assert_eq!(token_image.to_string(), "https://creature.mypinata.cloud/ipfs/QmNwj3aUzXfG4twV3no7hJRYxLLAWNPk6RrfQaqJ6nVJFa/9018.jpg");
-    /// # }
+    /// # use ethers_providers::{Provider, Http, Middleware};
+    /// use ethers_providers::erc::ERCNFT;
+    /// # async fn foo(provider: Provider<Http>) -> Result<(), Box<dyn std::error::Error>> {
+    /// let token = "erc721:0xc92ceddfb8dd984a89fb494c376f9a48b999aafc/9018".parse()?;
+    /// let token_image = provider.resolve_nft(token).await?;
+    /// assert_eq!(
+    ///     token_image.to_string(),
+    ///     "https://creature.mypinata.cloud/ipfs/QmNwj3aUzXfG4twV3no7hJRYxLLAWNPk6RrfQaqJ6nVJFa/9018.jpg"
+    /// );
+    /// # Ok(()) }
     /// ```
     ///
     /// # Panics

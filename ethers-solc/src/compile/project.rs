@@ -140,7 +140,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     /// let project = Project::builder().build().unwrap();
     /// let output = project.compile().unwrap();
     /// ```
-    #[cfg(all(feature = "svm-solc"))]
+    #[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
     pub fn new(project: &'a Project<T>) -> Result<Self> {
         Self::with_sources(project, project.paths.read_input_files()?)
     }
@@ -151,7 +151,7 @@ impl<'a, T: ArtifactOutput> ProjectCompiler<'a, T> {
     ///
     /// Multiple (`Solc` -> `Sources`) pairs can be compiled in parallel if the `Project` allows
     /// multiple `jobs`, see [`crate::Project::set_solc_jobs()`].
-    #[cfg(all(feature = "svm-solc"))]
+    #[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
     pub fn with_sources(project: &'a Project<T>, sources: Sources) -> Result<Self> {
         let graph = Graph::resolve_sources(&project.paths, sources)?;
         let (versions, edges) = graph.into_sources_by_version(project.offline)?;
@@ -358,13 +358,14 @@ impl<'a, T: ArtifactOutput> ArtifactsState<'a, T> {
     ///
     /// this concludes the [`Project::compile()`] statemachine
     fn write_cache(self) -> Result<ProjectCompileOutput<T>> {
-        trace!("write cache");
         let ArtifactsState { output, cache, compiled_artifacts } = self;
         let project = cache.project();
         let ignored_error_codes = project.ignored_error_codes.clone();
         let compiler_severity_filter = project.compiler_severity_filter.clone();
-        let skip_write_to_disk = project.no_artifacts ||
-            output.has_error(&ignored_error_codes, &compiler_severity_filter);
+        let has_error = output.has_error(&ignored_error_codes, &compiler_severity_filter);
+        let skip_write_to_disk = project.no_artifacts || has_error;
+        trace!(has_error, project.no_artifacts, skip_write_to_disk, cache_path=?project.cache_path(),"prepare writing cache file");
+
         let cached_artifacts = cache.consume(&compiled_artifacts, !skip_write_to_disk)?;
         Ok(ProjectCompileOutput {
             compiler_output: output,

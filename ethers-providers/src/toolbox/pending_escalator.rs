@@ -1,19 +1,11 @@
 #![allow(clippy::return_self_not_must_use)]
 
 use ethers_core::types::{Bytes, TransactionReceipt, H256};
-use futures_util::{stream::FuturesUnordered, StreamExt};
-use pin_project::pin_project;
-use std::{
-    future::Future,
-    pin::Pin,
-    task::Poll,
-    time::{Duration, Instant},
-};
-
-#[cfg(not(target_arch = "wasm32"))]
 use futures_timer::Delay;
-#[cfg(target_arch = "wasm32")]
-use wasm_timer::Delay;
+use futures_util::{stream::FuturesUnordered, StreamExt};
+use instant::{Duration, Instant};
+use pin_project::pin_project;
+use std::{future::Future, pin::Pin, task::Poll};
 
 use crate::{
     utils::PinBoxFut, JsonRpcClient, Middleware, PendingTransaction, Provider, ProviderError,

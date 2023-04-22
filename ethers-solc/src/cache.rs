@@ -922,7 +922,10 @@ impl<'a, T: ArtifactOutput> ArtifactsCache<'a, T> {
         write_to_disk: bool,
     ) -> Result<Artifacts<T::Artifact>> {
         match self {
-            ArtifactsCache::Ephemeral(_, _) => Ok(Default::default()),
+            ArtifactsCache::Ephemeral(_, _) => {
+                tracing::trace!("no cache configured, ephemeral");
+                Ok(Default::default())
+            }
             ArtifactsCache::Cached(cache) => {
                 let ArtifactsCacheInner {
                     mut cache,

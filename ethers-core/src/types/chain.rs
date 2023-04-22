@@ -16,9 +16,15 @@ pub type ParseChainError = TryFromPrimitiveError<Chain>;
 // When adding a new chain:
 //   1. add new variant to the Chain enum;
 //   2. add extra information in the last `impl` block (explorer URLs, block time) when applicable;
-//   3. (optional) add aliases: `#[strum(serialize = "main", serialize = "alias", ...)]`;
-//      "main" must be present and will be used in `Display`, `Serialize` and `FromStr`,
-//      while the aliases will be added only to `FromStr`.
+//   3. (optional) add aliases:
+//     - Strum (in kebab-case): `#[strum(to_string = "<main>", serialize = "<aliasX>", ...)]`
+//      `to_string = "<main>"` must be present and will be used in `Display`, `Serialize`
+//      and `FromStr`, while `serialize = "<aliasX>"` will be appended to `FromStr`.
+//      More info: <https://docs.rs/strum/latest/strum/additional_attributes/index.html#attributes-on-variants>
+//     - Serde (in snake_case): `#[serde(alias = "<aliasX>", ...)]`
+//      Aliases are appended to the `Deserialize` implementation.
+//      More info: <https://serde.rs/variant-attrs.html>
+//     - Add a test at the bottom of the file
 
 // We don't derive Serialize because it is manually implemented using AsRef<str> and it would
 // break a lot of things since Serialize is `kebab-case` vs Deserialize `snake_case`.
@@ -47,6 +53,8 @@ pub type ParseChainError = TryFromPrimitiveError<Chain>;
 #[strum(serialize_all = "kebab-case")]
 #[repr(u64)]
 pub enum Chain {
+    #[strum(to_string = "mainnet", serialize = "ethlive")]
+    #[serde(alias = "ethlive")]
     Mainnet = 1,
     Morden = 2,
     Ropsten = 3,
@@ -69,19 +77,25 @@ pub enum Chain {
 
     Rsk = 30,
 
-    #[strum(serialize = "bsc")]
+    #[strum(to_string = "bsc", serialize = "binance-smart-chain")]
+    #[serde(alias = "bsc")]
     BinanceSmartChain = 56,
-    #[strum(serialize = "bsc-testnet")]
+    #[strum(to_string = "bsc-testnet", serialize = "binance-smart-chain-testnet")]
+    #[serde(alias = "bsc_testnet")]
     BinanceSmartChainTestnet = 97,
 
     Poa = 99,
     Sokol = 77,
 
-    #[strum(serialize = "gnosis", serialize = "xdai", serialize = "gnosis-chain")]
+    ScrollAlphaTestnet = 534353,
+
+    #[strum(to_string = "xdai", serialize = "gnosis", serialize = "gnosis-chain")]
+    #[serde(alias = "xdai", alias = "gnosis", alias = "gnosis_chain")]
     XDai = 100,
 
     Polygon = 137,
-    #[strum(serialize = "mumbai", serialize = "polygon-mumbai")]
+    #[strum(to_string = "mumbai", serialize = "polygon-mumbai")]
+    #[serde(alias = "mumbai")]
     PolygonMumbai = 80001,
 
     Fantom = 250,
@@ -94,9 +108,9 @@ pub enum Chain {
 
     Moonbase = 1287,
 
-    #[strum(serialize = "dev")]
     Dev = 1337,
-    #[strum(serialize = "anvil-hardhat", serialize = "anvil", serialize = "hardhat")]
+    #[strum(to_string = "anvil-hardhat", serialize = "anvil", serialize = "hardhat")]
+    #[serde(alias = "anvil", alias = "hardhat")]
     AnvilHardhat = 31337,
 
     Evmos = 9001,
@@ -113,7 +127,8 @@ pub enum Chain {
     FilecoinHyperspaceTestnet = 3141,
 
     Avalanche = 43114,
-    #[strum(serialize = "fuji", serialize = "avalanche-fuji")]
+    #[strum(to_string = "fuji", serialize = "avalanche-fuji")]
+    #[serde(alias = "fuji")]
     AvalancheFuji = 43113,
 
     Celo = 42220,
@@ -125,6 +140,14 @@ pub enum Chain {
 
     Canto = 7700,
     CantoTestnet = 740,
+
+    Boba = 288,
+
+    BaseGoerli = 84531,
+
+    #[strum(to_string = "zksync")]
+    #[serde(alias = "zksync")]
+    ZkSync = 324,
 }
 
 // === impl Chain ===
@@ -211,6 +234,7 @@ impl Serialize for Chain {
 
 // NB: all utility functions *should* be explicitly exhaustive (not use `_` matcher) so we don't
 //     forget to update them when adding a new `Chain` variant.
+#[allow(clippy::match_like_matches_macro)]
 impl Chain {
     /// Returns the chain's average blocktime, if applicable.
     ///
@@ -252,11 +276,11 @@ impl Chain {
             Dev | AnvilHardhat => 200,
             Celo | CeloAlfajores | CeloBaklava => 5_000,
             FilecoinHyperspaceTestnet | FilecoinMainnet => 30_000,
-
+            ScrollAlphaTestnet => 3_000,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
-            EmeraldTestnet => return None,
+            EmeraldTestnet | Boba | BaseGoerli | ZkSync => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -272,7 +296,6 @@ impl Chain {
     /// assert!(!Chain::Mainnet.is_legacy());
     /// assert!(Chain::Celo.is_legacy());
     /// ```
-    #[allow(clippy::match_like_matches_macro)]
     pub const fn is_legacy(&self) -> bool {
         use Chain::*;
 
@@ -295,7 +318,10 @@ impl Chain {
             EmeraldTestnet |
             Celo |
             CeloAlfajores |
-            CeloBaklava => true,
+            CeloBaklava |
+            Boba |
+            ZkSync |
+            BaseGoerli => true,
 
             // Known EIP-1559 chains
             Mainnet |
@@ -305,13 +331,14 @@ impl Chain {
             PolygonMumbai |
             Avalanche |
             AvalancheFuji |
+            FilecoinMainnet |
             FilecoinHyperspaceTestnet => false,
 
             // Unknown / not applicable, default to false for backwards compatibility
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
             Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
             EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet |
-            FilecoinMainnet => false,
+            ScrollAlphaTestnet => false,
         }
     }
 
@@ -344,14 +371,17 @@ impl Chain {
             Rinkeby => ("https://api-rinkeby.etherscan.io/api", "https://rinkeby.etherscan.io"),
             Goerli => ("https://api-goerli.etherscan.io/api", "https://goerli.etherscan.io"),
             Sepolia => ("https://api-sepolia.etherscan.io/api", "https://sepolia.etherscan.io"),
+
             Polygon => ("https://api.polygonscan.com/api", "https://polygonscan.com"),
             PolygonMumbai => {
                 ("https://api-testnet.polygonscan.com/api", "https://mumbai.polygonscan.com")
             }
+
             Avalanche => ("https://api.snowtrace.io/api", "https://snowtrace.io"),
             AvalancheFuji => {
                 ("https://api-testnet.snowtrace.io/api", "https://testnet.snowtrace.io")
             }
+
             Optimism => {
                 ("https://api-optimistic.etherscan.io/api", "https://optimistic.etherscan.io")
             }
@@ -363,39 +393,56 @@ impl Chain {
                 "https://api-kovan-optimistic.etherscan.io/api",
                 "https://kovan-optimistic.etherscan.io",
             ),
+
             Fantom => ("https://api.ftmscan.com/api", "https://ftmscan.com"),
             FantomTestnet => ("https://api-testnet.ftmscan.com/api", "https://testnet.ftmscan.com"),
+
             BinanceSmartChain => ("https://api.bscscan.com/api", "https://bscscan.com"),
             BinanceSmartChainTestnet => {
                 ("https://api-testnet.bscscan.com/api", "https://testnet.bscscan.com")
             }
+
             Arbitrum => ("https://api.arbiscan.io/api", "https://arbiscan.io"),
             ArbitrumTestnet => {
                 ("https://api-testnet.arbiscan.io/api", "https://testnet.arbiscan.io")
             }
             ArbitrumGoerli => ("https://api-goerli.arbiscan.io/api", "https://goerli.arbiscan.io"),
             ArbitrumNova => ("https://api-nova.arbiscan.io/api", "https://nova.arbiscan.io/"),
+
             Cronos => ("https://api.cronoscan.com/api", "https://cronoscan.com"),
             CronosTestnet => {
                 ("https://api-testnet.cronoscan.com/api", "https://testnet.cronoscan.com")
             }
+
             Moonbeam => ("https://api-moonbeam.moonscan.io/api", "https://moonbeam.moonscan.io/"),
             Moonbase => ("https://api-moonbase.moonscan.io/api", "https://moonbase.moonscan.io/"),
             Moonriver => ("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io"),
+
             // blockscout API is etherscan compatible
             XDai => {
                 ("https://blockscout.com/xdai/mainnet/api", "https://blockscout.com/xdai/mainnet")
             }
+
+            ScrollAlphaTestnet => {
+                ("https://blockscout.scroll.io/api", "https://blockscout.scroll.io/")
+            }
+
             Chiado => {
                 ("https://blockscout.chiadochain.net/api", "https://blockscout.chiadochain.net")
             }
+
             FilecoinHyperspaceTestnet => {
                 ("https://api.hyperspace.node.glif.io/rpc/v1", "https://hyperspace.filfox.info")
             }
+
             Sokol => ("https://blockscout.com/poa/sokol/api", "https://blockscout.com/poa/sokol"),
+
             Poa => ("https://blockscout.com/poa/core/api", "https://blockscout.com/poa/core"),
+
             Rsk => ("https://blockscout.com/rsk/mainnet/api", "https://blockscout.com/rsk/mainnet"),
+
             Oasis => ("https://scan.oasischain.io/api", "https://scan.oasischain.io/"),
+
             Emerald => {
                 ("https://explorer.emerald.oasis.dev/api", "https://explorer.emerald.oasis.dev/")
             }
@@ -403,24 +450,37 @@ impl Chain {
                 "https://testnet.explorer.emerald.oasis.dev/api",
                 "https://testnet.explorer.emerald.oasis.dev/",
             ),
+
             Aurora => ("https://api.aurorascan.dev/api", "https://aurorascan.dev"),
             AuroraTestnet => {
                 ("https://testnet.aurorascan.dev/api", "https://testnet.aurorascan.dev")
             }
+
             Evmos => ("https://evm.evmos.org/api", "https://evm.evmos.org/"),
             EvmosTestnet => ("https://evm.evmos.dev/api", "https://evm.evmos.dev/"),
-            Celo => ("https://explorer.celo.org/mainnet", "https://explorer.celo.org/mainnet/api"),
+
+            Celo => ("https://explorer.celo.org/mainnet/api", "https://explorer.celo.org/mainnet"),
             CeloAlfajores => {
-                ("https://explorer.celo.org/alfajores", "https://explorer.celo.org/alfajores/api")
+                ("https://explorer.celo.org/alfajores/api", "https://explorer.celo.org/alfajores")
             }
             CeloBaklava => {
-                ("https://explorer.celo.org/baklava", "https://explorer.celo.org/baklava/api")
+                ("https://explorer.celo.org/baklava/api", "https://explorer.celo.org/baklava")
             }
-            Canto => ("https://evm.explorer.canto.io/", "https://evm.explorer.canto.io/api"),
+
+            Canto => ("https://evm.explorer.canto.io/api", "https://evm.explorer.canto.io/"),
             CantoTestnet => (
-                "https://testnet-explorer.canto.neobase.one/",
                 "https://testnet-explorer.canto.neobase.one/api",
+                "https://testnet-explorer.canto.neobase.one/",
             ),
+
+            Boba => ("https://api.bobascan.com/api", "https://bobascan.com"),
+
+            BaseGoerli => ("https://api-goerli.basescan.org/api", "https://goerli.basescan.org"),
+
+            ZkSync => {
+                ("https://zksync2-mainnet-explorer.zksync.io/", "https://explorer.zksync.io/")
+            }
+
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
@@ -466,7 +526,9 @@ impl Chain {
             AuroraTestnet |
             Celo |
             CeloAlfajores |
-            CeloBaklava => "ETHERSCAN_API_KEY",
+            CeloBaklava |
+            BaseGoerli => "ETHERSCAN_API_KEY",
+
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
             Polygon | PolygonMumbai => "POLYGONSCAN_API_KEY",
@@ -477,8 +539,11 @@ impl Chain {
 
             Canto | CantoTestnet => "BLOCKSCOUT_API_KEY",
 
+            Boba => "BOBASCAN_API_KEY",
+
             // Explicitly exhaustive. See NB above.
             XDai |
+            ScrollAlphaTestnet |
             Chiado |
             Sepolia |
             Rsk |
@@ -491,6 +556,7 @@ impl Chain {
             EvmosTestnet |
             AnvilHardhat |
             Dev |
+            ZkSync |
             FilecoinMainnet |
             FilecoinHyperspaceTestnet => return None,
         };
@@ -521,12 +587,67 @@ mod tests {
     use strum::IntoEnumIterator;
 
     #[test]
-    fn test_default_chain() {
+    fn default() {
         assert_eq!(serde_json::to_string(&Chain::default()).unwrap(), "\"mainnet\"");
     }
 
     #[test]
-    fn test_enum_iter() {
+    fn enum_iter() {
         assert_eq!(Chain::COUNT, Chain::iter().size_hint().0);
+    }
+
+    #[test]
+    fn roundtrip_string() {
+        for chain in Chain::iter() {
+            let chain_string = chain.to_string();
+            assert_eq!(chain_string, format!("{chain}"));
+            assert_eq!(chain_string.as_str(), chain.as_ref());
+            assert_eq!(serde_json::to_string(&chain).unwrap(), format!("\"{chain_string}\""));
+
+            assert_eq!(chain_string.parse::<Chain>().unwrap(), chain);
+        }
+    }
+
+    #[test]
+    fn roundtrip_serde() {
+        for chain in Chain::iter() {
+            let chain_string = serde_json::to_string(&chain).unwrap();
+            let chain_string = chain_string.replace('-', "_");
+            assert_eq!(serde_json::from_str::<'_, Chain>(&chain_string).unwrap(), chain);
+        }
+    }
+
+    #[test]
+    fn aliases() {
+        use Chain::*;
+
+        // kebab-case
+        const ALIASES: &[(Chain, &[&str])] = &[
+            (Mainnet, &["ethlive"]),
+            (BinanceSmartChain, &["bsc", "binance-smart-chain"]),
+            (BinanceSmartChainTestnet, &["bsc-testnet", "binance-smart-chain-testnet"]),
+            (XDai, &["xdai", "gnosis", "gnosis-chain"]),
+            (PolygonMumbai, &["mumbai"]),
+            (AnvilHardhat, &["anvil", "hardhat"]),
+            (AvalancheFuji, &["fuji"]),
+            (ZkSync, &["zksync"]),
+        ];
+
+        for &(chain, aliases) in ALIASES {
+            for &alias in aliases {
+                assert_eq!(alias.parse::<Chain>().unwrap(), chain);
+                let s = alias.to_string().replace('-', "_");
+                assert_eq!(serde_json::from_str::<Chain>(&format!("\"{s}\"")).unwrap(), chain);
+            }
+        }
+    }
+
+    #[test]
+    fn serde_to_string_match() {
+        for chain in Chain::iter() {
+            let chain_serde = serde_json::to_string(&chain).unwrap();
+            let chain_string = format!("\"{chain}\"");
+            assert_eq!(chain_serde, chain_string);
+        }
     }
 }

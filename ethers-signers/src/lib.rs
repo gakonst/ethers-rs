@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![deny(unsafe_code, rustdoc::broken_intra_doc_links)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod wallet;
 pub use wallet::{MnemonicBuilder, Wallet, WalletError};
@@ -10,32 +11,31 @@ pub use coins_bip39;
 /// A wallet instantiated with a locally stored private key
 pub type LocalWallet = Wallet<ethers_core::k256::ecdsa::SigningKey>;
 
-#[cfg(feature = "yubi")]
+#[cfg(all(feature = "yubihsm", not(target_arch = "wasm32")))]
 /// A wallet instantiated with a YubiHSM
 pub type YubiWallet = Wallet<yubihsm::ecdsa::Signer<ethers_core::k256::Secp256k1>>;
 
-#[cfg(feature = "ledger")]
+#[cfg(all(feature = "ledger", not(target_arch = "wasm32")))]
 mod ledger;
-#[cfg(feature = "ledger")]
+#[cfg(all(feature = "ledger", not(target_arch = "wasm32")))]
 pub use ledger::{
     app::LedgerEthereum as Ledger,
     types::{DerivationType as HDPath, LedgerError},
 };
 
-#[cfg(feature = "trezor")]
+#[cfg(all(feature = "trezor", not(target_arch = "wasm32")))]
 mod trezor;
-#[cfg(feature = "trezor")]
+#[cfg(all(feature = "trezor", not(target_arch = "wasm32")))]
 pub use trezor::{
     app::TrezorEthereum as Trezor,
     types::{DerivationType as TrezorHDPath, TrezorError},
 };
 
-#[cfg(feature = "yubi")]
+#[cfg(all(feature = "yubihsm", not(target_arch = "wasm32")))]
 pub use yubihsm;
 
 #[cfg(feature = "aws")]
 mod aws;
-
 #[cfg(feature = "aws")]
 pub use aws::{AwsSigner, AwsSignerError};
 

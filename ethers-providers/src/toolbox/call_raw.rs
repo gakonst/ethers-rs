@@ -329,21 +329,19 @@ pub mod spoof {
     /// Returns an empty state override set.
     ///
     /// # Example
+    ///
     /// ```no_run
     /// # use ethers_core::{
     /// #     types::{Address, TransactionRequest, H256},
     /// #     utils::{parse_ether, Geth},
     /// # };
     /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{spoof, RawCall}};
-    /// # use std::convert::TryFrom;
-    /// #
-    /// # #[tokio::main(flavor = "current_thread")]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// let geth = Geth::new().spawn();
     /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
     ///
-    /// let adr1: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap();
-    /// let adr2: Address = "0x295a70b2de5e3953354a6a8344e616ed314d7251".parse().unwrap();
+    /// let adr1: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
+    /// let adr2: Address = "0x295a70b2de5e3953354a6a8344e616ed314d7251".parse()?;
     /// let key = H256::from_low_u64_be(1);
     /// let val = H256::from_low_u64_be(17);
     ///
@@ -356,7 +354,7 @@ pub mod spoof {
     /// // override the nonce at `adr1`
     /// state.account(adr1).nonce(2.into());
     ///
-    /// provider.call_raw(&tx).state(&state).await.unwrap();
+    /// provider.call_raw(&tx).state(&state).await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -373,10 +371,7 @@ pub mod spoof {
     /// #     utils::{parse_ether, Geth},
     /// # };
     /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
-    /// # use std::convert::TryFrom;
-    /// #
-    /// # #[tokio::main(flavor = "current_thread")]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// let geth = Geth::new().spawn();
     /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
     ///
@@ -408,10 +403,7 @@ pub mod spoof {
     /// #     utils::{parse_ether, Geth},
     /// # };
     /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
-    /// # use std::convert::TryFrom;
-    /// #
-    /// # #[tokio::main(flavor = "current_thread")]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// let geth = Geth::new().spawn();
     /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
     ///
@@ -441,10 +433,7 @@ pub mod spoof {
     /// #     utils::{parse_ether, Geth},
     /// # };
     /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
-    /// # use std::convert::TryFrom;
-    /// #
-    /// # #[tokio::main(flavor = "current_thread")]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// let geth = Geth::new().spawn();
     /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
     ///
@@ -469,16 +458,14 @@ pub mod spoof {
     /// and key.
     ///
     /// # Example
+    ///
     /// ```no_run
     /// # use ethers_core::{
     /// #     types::{Address, TransactionRequest, H256},
     /// #     utils::{parse_ether, Geth},
     /// # };
     /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
-    /// # use std::convert::TryFrom;
-    /// #
-    /// # #[tokio::main(flavor = "current_thread")]
-    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// let geth = Geth::new().spawn();
     /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
     ///

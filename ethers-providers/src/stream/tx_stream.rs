@@ -56,6 +56,8 @@ pub struct TransactionStream<'a, P, St> {
     pub(crate) provider: &'a Provider<P>,
     /// A stream of transaction hashes.
     pub(crate) stream: St,
+    /// Marks if the stream is done
+    stream_done: bool,
     /// max allowed futures to execute at once.
     pub(crate) max_concurrent: usize,
 }
@@ -68,6 +70,7 @@ impl<'a, P: JsonRpcClient, St> TransactionStream<'a, P, St> {
             buffered: Default::default(),
             provider,
             stream,
+            stream_done: false,
             max_concurrent,
         }
     }
@@ -102,21 +105,22 @@ where
             }
         }
 
-        let mut stream_done = false;
-        loop {
-            match Stream::poll_next(Pin::new(&mut this.stream), cx) {
-                Poll::Ready(Some(tx)) => {
-                    if this.pending.len() < this.max_concurrent {
-                        this.push_tx(tx);
-                    } else {
-                        this.buffered.push_back(tx);
+        if !this.stream_done {
+            loop {
+                match Stream::poll_next(Pin::new(&mut this.stream), cx) {
+                    Poll::Ready(Some(tx)) => {
+                        if this.pending.len() < this.max_concurrent {
+                            this.push_tx(tx);
+                        } else {
+                            this.buffered.push_back(tx);
+                        }
                     }
+                    Poll::Ready(None) => {
+                        this.stream_done = true;
+                        break
+                    }
+                    _ => break,
                 }
-                Poll::Ready(None) => {
-                    stream_done = true;
-                    break
-                }
-                _ => break,
             }
         }
 
@@ -125,7 +129,7 @@ where
             return tx
         }
 
-        if stream_done && this.pending.is_empty() {
+        if this.stream_done && this.pending.is_empty() {
             // all done
             return Poll::Ready(None)
         }
@@ -174,7 +178,7 @@ mod tests {
         utils::Anvil,
     };
     use futures_util::{FutureExt, StreamExt};
-    use std::{collections::HashSet, convert::TryFrom, time::Duration};
+    use std::{collections::HashSet, time::Duration};
 
     #[tokio::test]
     async fn can_stream_pending_transactions() {

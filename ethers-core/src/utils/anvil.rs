@@ -2,6 +2,7 @@ use crate::{
     types::{Address, Chain},
     utils::{secret_key_to_address, unused_ports},
 };
+use generic_array::GenericArray;
 use k256::{ecdsa::SigningKey, SecretKey as K256SecretKey};
 use std::{
     io::{BufRead, BufReader},
@@ -84,6 +85,7 @@ impl Drop for AnvilInstance {
 /// drop(anvil); // this will kill the instance
 /// ```
 #[derive(Debug, Clone, Default)]
+#[must_use = "This Builder struct does nothing unless it is `spawn`ed"]
 pub struct Anvil {
     program: Option<PathBuf>,
     port: Option<u16>,
@@ -134,35 +136,30 @@ impl Anvil {
     ///
     /// By default, it's expected that `anvil` is in `$PATH`, see also
     /// [`std::process::Command::new()`]
-    #[must_use]
     pub fn path<T: Into<PathBuf>>(mut self, path: T) -> Self {
         self.program = Some(path.into());
         self
     }
 
     /// Sets the port which will be used when the `anvil` instance is launched.
-    #[must_use]
     pub fn port<T: Into<u16>>(mut self, port: T) -> Self {
         self.port = Some(port.into());
         self
     }
 
     /// Sets the chain_id the `anvil` instance will use.
-    #[must_use]
     pub fn chain_id<T: Into<u64>>(mut self, chain_id: T) -> Self {
         self.chain_id = Some(chain_id.into());
         self
     }
 
     /// Sets the mnemonic which will be used when the `anvil` instance is launched.
-    #[must_use]
     pub fn mnemonic<T: Into<String>>(mut self, mnemonic: T) -> Self {
         self.mnemonic = Some(mnemonic.into());
         self
     }
 
     /// Sets the block-time in seconds which will be used when the `anvil` instance is launched.
-    #[must_use]
     pub fn block_time<T: Into<u64>>(mut self, block_time: T) -> Self {
         self.block_time = Some(block_time.into());
         self
@@ -171,7 +168,6 @@ impl Anvil {
     /// Sets the `fork-block-number` which will be used in addition to [`Self::fork`].
     ///
     /// **Note:** if set, then this requires `fork` to be set as well
-    #[must_use]
     pub fn fork_block_number<T: Into<u64>>(mut self, fork_block_number: T) -> Self {
         self.fork_block_number = Some(fork_block_number.into());
         self
@@ -181,21 +177,18 @@ impl Anvil {
     /// at a given block. Input should be the HTTP location and port of the other client,
     /// e.g. `http://localhost:8545`. You can optionally specify the block to fork from
     /// using an @ sign: `http://localhost:8545@1599200`
-    #[must_use]
     pub fn fork<T: Into<String>>(mut self, fork: T) -> Self {
         self.fork = Some(fork.into());
         self
     }
 
     /// Adds an argument to pass to the `anvil`.
-    #[must_use]
     pub fn arg<T: Into<String>>(mut self, arg: T) -> Self {
         self.args.push(arg.into());
         self
     }
 
     /// Adds multiple arguments to pass to the `anvil`.
-    #[must_use]
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -208,14 +201,17 @@ impl Anvil {
     }
 
     /// Sets the timeout which will be used when the `anvil` instance is launched.
-    #[must_use]
     pub fn timeout<T: Into<u64>>(mut self, timeout: T) -> Self {
         self.timeout = Some(timeout.into());
         self
     }
 
-    /// Consumes the builder and spawns `anvil` with stdout redirected
-    /// to /dev/null.
+    /// Consumes the builder and spawns `anvil`.
+    ///
+    /// # Panics
+    ///
+    /// If spawning the instance fails at any point.
+    #[track_caller]
     pub fn spawn(self) -> AnvilInstance {
         let mut cmd = if let Some(ref prg) = self.program {
             Command::new(prg)
@@ -278,7 +274,8 @@ impl Anvil {
             if is_private_key && line.starts_with('(') {
                 let key_str = &line[6..line.len() - 1];
                 let key_hex = hex::decode(key_str).expect("could not parse as hex");
-                let key = K256SecretKey::from_be_bytes(&key_hex).expect("did not get private key");
+                let key = K256SecretKey::from_bytes(&GenericArray::clone_from_slice(&key_hex))
+                    .expect("did not get private key");
                 addresses.push(secret_key_to_address(&SigningKey::from(&key)));
                 private_keys.push(key);
             }

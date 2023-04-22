@@ -21,6 +21,8 @@ To set up a new project with ethers-rs, you will need to install the Rust progra
     # Since Rust doesn't provide an async runtime itself, you can
     # include the excellent tokio library
     tokio = { version = "1.23.0", features = ["macros"] }
+    # Flexible concrete Error Reporting type built on std::error::Error with customizable Reports
+    eyre = "0.6.8"
     ```
 
     If you want to make experiments and/or play around with early ethers-rs features link our GitHub repo in the `Cargo.toml`.

@@ -1,0 +1,20 @@
+[package]
+name = "examples-geth"
+version = "0.0.0"
+publish = false
+authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
+
+license.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+
+[dev-dependencies]
+ethers.workspace = true
+
+tokio = { workspace = true, features = ["macros"] }
+
+serde.workspace = true
+serde_json.workspace = true
+
+eyre.workspace = true
+tempfile.workspace = true

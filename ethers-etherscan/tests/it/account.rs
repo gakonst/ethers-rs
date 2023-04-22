@@ -23,7 +23,7 @@ async fn get_ether_balance_multi_success() {
     run_with_client(Chain::Mainnet, |client| async move {
         let balances = client
             .get_ether_balance_multi(
-                &[&"0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap()],
+                &["0x58eB28A67731c570Ef827C365c89B5751F9E6b0a".parse().unwrap()],
                 None,
             )
             .await;

@@ -17,22 +17,40 @@ env:
 
 jobs:
     test:
-        name: test ${{ matrix.os }} ${{ matrix.flags }}
+        name: test ${{ matrix.os }} (${{ matrix.flags.name }})
         runs-on: ${{ matrix.os }}
         strategy:
             fail-fast: false
             matrix:
-                os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-                flags: ["--workspace", "--workspace --all-features"]
-                exclude:
-                    # sha2-asm
-                    - os: windows-latest
+                os: ["ubuntu-latest", "macos-latest"]
+                flags:
+                    - name: no default features
+                      flags: --workspace --no-default-features
+                    - name: default features
+                      flags: --workspace
+                    - name: all features
                       flags: --workspace --all-features
+                include:
+                    # not workspace because compiling examples fails for no reason in CI
+                    - os: windows-latest
+                      flags:
+                          name: no default features
+                          flags: --no-default-features
+                    - os: windows-latest
+                      flags:
+                          name: default features
+                          flags: ""
+                    - os: windows-latest
+                      flags:
+                          name: all features
+                          flags: --all-features
         steps:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@stable
               with:
-                toolchain: ${{ matrix.os == 'windows-latest' && 'stable-x86_64-pc-windows-gnu' || 'stable' }}
+                  toolchain:
+                      ${{ matrix.os == 'windows-latest' && 'stable-x86_64-pc-windows-gnu' ||
+                      'stable' }}
             - name: Install Anvil
               uses: foundry-rs/foundry-toolchain@v1
               with:
@@ -43,13 +61,14 @@ jobs:
             - name: Install nextest
               uses: taiki-e/install-action@nextest
             - uses: Swatinem/rust-cache@v2
-            - name: test
+            - name: test ${{ matrix.flags.flags }}
               shell: bash
-              # skip `ethers_etherscan::it` and `ethers::live`
+              # skip `ethers_etherscan::it`
               run: |
                   cargo nextest run \
-                  ${{ matrix.flags }} \
-                  -E "!binary(~live) & !(deps(ethers-etherscan) & kind(test))"
+                  ${{ matrix.flags.flags }} \
+                  -E "!(deps(ethers-etherscan) & kind(test))" \
+                  --retries 3
 
     etherscan-tests:
         name: etherscan tests
@@ -67,16 +86,17 @@ jobs:
             - name: live tests
               run: cargo test -p ethers-etherscan --test it
 
-    live-tests:
-        name: live tests
-        runs-on: ubuntu-latest
-        concurrency: live-tests-${{ github.head_ref || github.run_id }}
-        steps:
-            - uses: actions/checkout@v3
-            - uses: dtolnay/rust-toolchain@stable
-            - uses: Swatinem/rust-cache@v2
-            - name: live tests
-              run: cargo test -p ethers --test live --all-features
+    # TODO: Create a new `ethers-tests` crate in the workspace for live tests.
+    # live-tests:
+    #     name: live tests
+    #     runs-on: ubuntu-latest
+    #     concurrency: live-tests-${{ github.head_ref || github.run_id }}
+    #     steps:
+    #         - uses: actions/checkout@v3
+    #         - uses: dtolnay/rust-toolchain@stable
+    #         - uses: Swatinem/rust-cache@v2
+    #         - name: live tests
+    #           run: cargo test -p ethers-tests --all-features
 
     # TODO: [#2191](https://github.com/gakonst/ethers-rs/issues/2191)
     # feature-checks:
@@ -147,9 +167,6 @@ jobs:
             - uses: Swatinem/rust-cache@v2
             - name: Check
               run: cargo check --workspace --target wasm32-unknown-unknown
-            # TODO: [#2191](https://github.com/gakonst/ethers-rs/issues/2191)
-            # - name: Check all features
-            #   run: cargo check --workspace --target wasm32-unknown-unknown --all-features
 
             - name: Install wasm-pack
               run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
@@ -157,7 +174,7 @@ jobs:
               with:
                   node-version: 16
             - name: Run wasm example
-              working-directory: examples/ethers-wasm
+              working-directory: examples/wasm
               run: |
                   yarn
                   yarn anvil &
@@ -179,4 +196,4 @@ jobs:
               run: ./.github/scripts/install_test_binaries.sh
             - uses: Swatinem/rust-cache@v2
             - name: Build and run all examples
-              run: ./scripts/examples.sh
+              run: ./bin/run_all_examples

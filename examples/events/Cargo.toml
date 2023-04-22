@@ -1,13 +1,19 @@
 [package]
 name = "examples-events"
-version = "1.0.2"
+version = "0.0.0"
+publish = false
 authors = ["Andrea Simeoni <andreasimeoni84@gmail.com>"]
-edition = "2021"
+
+license.workspace = true
+rust-version.workspace = true
+edition.workspace = true
 
 [dev-dependencies]
-ethers = { path = "../..", version = "1.0.0" }
+ethers = { workspace = true, features = ["rustls"] }
 
-eyre = "0.6"
-serde = { version = "1.0.144", features = ["derive"] }
-serde_json = "1.0.64"
-tokio = { version = "1.18", features = ["macros"] }
+tokio = { workspace = true, features = ["macros"] }
+
+serde.workspace = true
+serde_json.workspace = true
+
+eyre.workspace = true

@@ -7,97 +7,50 @@ use ethers_core::{
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::{parse::Error, spanned::Spanned, AttrStyle, DeriveInput, Lit, Meta, NestedMeta};
+use syn::{DeriveInput, LitStr, Result};
 
 /// All the attributes the `EthCall`/`EthError` macro supports
 #[derive(Default)]
 pub struct EthCalllikeAttributes {
-    pub name: Option<(String, Span)>,
-    pub abi: Option<(String, Span)>,
+    pub name: Option<LitStr>,
+    pub abi: Option<LitStr>,
 }
 
-/// extracts the attributes from the struct annotated with the given attribute
-pub fn parse_calllike_attributes(
-    input: &DeriveInput,
-    attr_name: &str,
-) -> Result<EthCalllikeAttributes, Error> {
-    let mut result = EthCalllikeAttributes::default();
-    for a in input.attrs.iter() {
-        if let AttrStyle::Outer = a.style {
-            if let Ok(Meta::List(meta)) = a.parse_meta() {
-                if meta.path.is_ident(attr_name) {
-                    for n in meta.nested.iter() {
-                        if let NestedMeta::Meta(meta) = n {
-                            match meta {
-                                Meta::Path(path) => {
-                                    return Err(Error::new(
-                                        path.span(),
-                                        format!("unrecognized {attr_name} parameter"),
-                                    ))
-                                }
-                                Meta::List(meta) => {
-                                    return Err(Error::new(
-                                        meta.path.span(),
-                                        format!("unrecognized {attr_name} parameter"),
-                                    ))
-                                }
-                                Meta::NameValue(meta) => {
-                                    if meta.path.is_ident("name") {
-                                        if let Lit::Str(ref lit_str) = meta.lit {
-                                            if result.name.is_none() {
-                                                result.name =
-                                                    Some((lit_str.value(), lit_str.span()));
-                                            } else {
-                                                return Err(Error::new(
-                                                    meta.span(),
-                                                    "name already specified",
-                                                ))
-                                            }
-                                        } else {
-                                            return Err(Error::new(
-                                                meta.span(),
-                                                "name must be a string",
-                                            ))
-                                        }
-                                    } else if meta.path.is_ident("abi") {
-                                        if let Lit::Str(ref lit_str) = meta.lit {
-                                            if result.abi.is_none() {
-                                                result.abi =
-                                                    Some((lit_str.value(), lit_str.span()));
-                                            } else {
-                                                return Err(Error::new(
-                                                    meta.span(),
-                                                    "abi already specified",
-                                                ))
-                                            }
-                                        } else {
-                                            return Err(Error::new(
-                                                meta.span(),
-                                                "abi must be a string",
-                                            ))
-                                        }
-                                    } else {
-                                        return Err(Error::new(
-                                            meta.span(),
-                                            format!("unrecognized {attr_name} parameter"),
-                                        ))
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+impl EthCalllikeAttributes {
+    pub fn name(&self, fallback: &Ident) -> String {
+        self.name.as_ref().map(|s| s.value()).unwrap_or_else(|| fallback.to_string())
     }
-    Ok(result)
+
+    pub fn abi(&self) -> Option<(String, Span)> {
+        self.abi.as_ref().map(|s| (s.value(), s.span()))
+    }
 }
+
+macro_rules! parse_calllike_attributes {
+    ($input:ident, $attr_ident:literal) => {{
+        let mut result = EthCalllikeAttributes::default();
+        $crate::utils::parse_attributes!($input.attrs.iter(), $attr_ident, meta,
+            "name", result.name => {
+                meta.input.parse::<::syn::Token![=]>()?;
+                let litstr: ::syn::LitStr = meta.input.parse()?;
+                result.name = Some(litstr);
+            }
+            "abi", result.abi => {
+                meta.input.parse::<::syn::Token![=]>()?;
+                let litstr: ::syn::LitStr = meta.input.parse()?;
+                result.abi = Some(litstr);
+            }
+        );
+        result
+    }};
+}
+pub(crate) use parse_calllike_attributes;
 
 /// Generates the decode implementation based on the type's runtime `AbiType` impl
 pub fn derive_decode_impl_with_abi_type(
     input: &DeriveInput,
     trait_ident: Ident,
-) -> Result<TokenStream, Error> {
+) -> Result<TokenStream> {
     let datatypes_array = utils::abi_parameters_array(input, &trait_ident.to_string())?;
     Ok(derive_decode_impl(datatypes_array, trait_ident))
 }
@@ -130,7 +83,7 @@ pub fn derive_codec_impls(
     input: &DeriveInput,
     decode_impl: TokenStream,
     trait_ident: Ident,
-) -> Result<TokenStream, Error> {
+) -> Result<TokenStream> {
     // the ethers crates to use
     let ethers_core = ethers_core_crate();
     let ethers_contract = ethers_contract_crate();
@@ -138,7 +91,7 @@ pub fn derive_codec_impls(
 
     let codec_impl = quote! {
         impl #ethers_core::abi::AbiDecode for #struct_name {
-            fn decode(bytes: impl AsRef<[u8]>) -> ::std::result::Result<Self, #ethers_core::abi::AbiError> {
+            fn decode(bytes: impl AsRef<[u8]>) -> ::core::result::Result<Self, #ethers_core::abi::AbiError> {
                 #decode_impl
             }
         }

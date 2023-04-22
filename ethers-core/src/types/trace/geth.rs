@@ -4,15 +4,12 @@ mod noop;
 mod pre_state;
 
 pub use self::{
-    call::{CallConfig, CallFrame},
+    call::{CallConfig, CallFrame, CallLogFrame},
     four_byte::FourByteFrame,
     noop::NoopFrame,
     pre_state::{PreStateConfig, PreStateFrame},
 };
-use crate::{
-    types::{Bytes, H256, U256},
-    utils::from_int_or_hex,
-};
+use crate::types::{serde_helpers::deserialize_stringified_numeric, Bytes, H256, U256};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -21,7 +18,7 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DefaultFrame {
     pub failed: bool,
-    #[serde(deserialize_with = "from_int_or_hex")]
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub gas: U256,
     #[serde(rename = "returnValue")]
     pub return_value: Bytes,

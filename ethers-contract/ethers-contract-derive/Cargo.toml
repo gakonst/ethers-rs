@@ -1,33 +1,33 @@
 [package]
 name = "ethers-contract-derive"
-version = "1.0.2"
-edition = "2021"
-rust-version = "1.64"
 authors = [
     "Nicholas Rodrigues Lordello <nlordell@gmail.com>",
     "Georgios Konstantopoulos <me@gakonst.com>",
 ]
-license = "MIT OR Apache-2.0"
-description = "Proc macro for type-safe bindings generation to Ethereum and Celo smart contracts"
-homepage = "https://docs.rs/ethers"
-repository = "https://github.com/gakonst/ethers-rs"
-keywords = ["ethereum", "web3", "celo", "ethers"]
+readme = "README.md"
+description = "Proc macros for type-safe bindings generation to Ethereum smart contracts"
+
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+documentation.workspace = true
+repository.workspace = true
+homepage.workspace = true
+categories.workspace = true
+keywords.workspace = true
 
 [lib]
 proc-macro = true
 
 [dependencies]
-ethers-core = { version = "^1.0.0", path = "../../ethers-core" }
-ethers-contract-abigen = { version = "^1.0.0", path = "../ethers-contract-abigen", default-features = false }
+ethers-core.workspace = true
+ethers-contract-abigen.workspace = true
 
-proc-macro2 = "1.0"
-quote = "1.0"
-syn = "1.0.12"
+proc-macro2.workspace = true
+quote.workspace = true
+syn.workspace = true
 
-serde_json = "1.0.53"
-hex = { version = "0.4.3", default-features = false, features = ["std"] }
-eyre = "0.6"
-
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+Inflector.workspace = true
+hex.workspace = true
+serde_json.workspace = true

@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![deny(unsafe_code, rustdoc::broken_intra_doc_links)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 use crate::errors::{is_blocked_by_cloudflare_response, is_cloudflare_security_challenge};
 use contract::ContractMetadata;
@@ -23,11 +24,11 @@ pub mod contract;
 pub mod errors;
 pub mod gas;
 pub mod source_tree;
-pub mod transaction;
+mod transaction;
 pub mod utils;
 pub mod verify;
 
-pub(crate) type Result<T> = std::result::Result<T, EtherscanError>;
+pub(crate) type Result<T, E = EtherscanError> = std::result::Result<T, E>;
 
 /// The Etherscan.io API client.
 #[derive(Clone, Debug)]
@@ -214,14 +215,15 @@ impl Client {
         })?;
 
         match res {
-            ResponseData::Error { result, .. } => {
-                if result.starts_with("Max rate limit reached") {
-                    Err(EtherscanError::RateLimitExceeded)
-                } else if result.to_lowercase() == "invalid api key" {
-                    Err(EtherscanError::InvalidApiKey)
-                } else {
-                    Err(EtherscanError::Unknown(result))
+            ResponseData::Error { result, message, status } => {
+                if let Some(ref result) = result {
+                    if result.starts_with("Max rate limit reached") {
+                        return Err(EtherscanError::RateLimitExceeded)
+                    } else if result.to_lowercase() == "invalid api key" {
+                        return Err(EtherscanError::InvalidApiKey)
+                    }
                 }
+                Err(EtherscanError::ErrorResponse { status, message, result })
             }
             ResponseData::Success(res) => Ok(res),
         }
@@ -426,7 +428,7 @@ pub struct Response<T> {
 #[serde(untagged)]
 pub enum ResponseData<T> {
     Success(Response<T>),
-    Error { status: String, message: String, result: String },
+    Error { status: String, message: String, result: Option<String> },
 }
 
 /// The type that gets serialized as query
@@ -461,8 +463,16 @@ fn into_url(url: impl IntoUrl) -> std::result::Result<Url, reqwest::Error> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Client, EtherscanError};
+    use crate::{Client, EtherscanError, ResponseData};
     use ethers_core::types::{Address, Chain, H256};
+
+    // <https://github.com/foundry-rs/foundry/issues/4406>
+    #[test]
+    fn can_parse_block_scout_err() {
+        let err = "{\"message\":\"Something went wrong.\",\"result\":null,\"status\":\"0\"}";
+        let resp: ResponseData<Address> = serde_json::from_str(err).unwrap();
+        assert!(matches!(resp, ResponseData::Error { .. }));
+    }
 
     #[test]
     fn test_api_paths() {
