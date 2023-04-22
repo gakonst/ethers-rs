@@ -757,7 +757,7 @@ impl EvmVersion {
     pub fn normalize_version(self, version: &Version) -> Option<EvmVersion> {
         // the EVM version flag was only added at 0.4.21
         // we work our way backwards
-        if version >= &CONSTANTINOPLE_SOLC {
+        if version >= &BYZANTIUM_SOLC {
             // If the Solc is at least at london, it supports all EVM versions
             Some(if version >= &LONDON_SOLC {
                 self
@@ -769,8 +769,10 @@ impl EvmVersion {
                 EvmVersion::Istanbul
             } else if version >= &PETERSBURG_SOLC && self >= EvmVersion::Petersburg {
                 EvmVersion::Petersburg
-            } else if self >= EvmVersion::Constantinople {
+            } else if version >= &CONSTANTINOPLE_SOLC && self >= EvmVersion::Constantinople {
                 EvmVersion::Constantinople
+            } else if self >= EvmVersion::Byzantium {
+                EvmVersion::Byzantium
             } else {
                 self
             })
@@ -2151,12 +2153,16 @@ mod tests {
     #[test]
     fn test_evm_version_normalization() {
         for (solc_version, evm_version, expected) in &[
-            // Ensure 0.4.21 it always returns None
+            // Ensure before 0.4.21 it always returns None
             ("0.4.20", EvmVersion::Homestead, None),
-            // Constantinople clipping
+            // Byzantium clipping
             ("0.4.21", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
-            ("0.4.21", EvmVersion::Constantinople, Some(EvmVersion::Constantinople)),
-            ("0.4.21", EvmVersion::London, Some(EvmVersion::Constantinople)),
+            ("0.4.21", EvmVersion::Constantinople, Some(EvmVersion::Byzantium)),
+            ("0.4.21", EvmVersion::London, Some(EvmVersion::Byzantium)),
+            // Constantinople bug fix
+            ("0.4.22", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.4.22", EvmVersion::Constantinople, Some(EvmVersion::Constantinople)),
+            ("0.4.22", EvmVersion::London, Some(EvmVersion::Constantinople)),
             // Petersburg
             ("0.5.5", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
             ("0.5.5", EvmVersion::Petersburg, Some(EvmVersion::Petersburg)),
