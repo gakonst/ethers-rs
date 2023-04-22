@@ -22,7 +22,7 @@ pub const SOLC: &str = "solc";
 
 /// Support for configuring the EVM version
 /// <https://blog.soliditylang.org/2018/03/08/solidity-0.4.21-release-announcement/>
-pub const CONSTANTINOPLE_SOLC: Version = Version::new(0, 4, 21);
+pub const CONSTANTINOPLE_SOLC: Version = Version::new(0, 4, 22);
 
 /// Petersburg support
 /// <https://blog.soliditylang.org/2019/03/05/solidity-0.5.5-release-announcement/>
