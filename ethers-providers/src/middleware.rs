@@ -346,6 +346,30 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().estimate_gas(tx, block).await.map_err(MiddlewareError::from_err)
     }
 
+    /// Makes a Cross-Chain Interoperability Protocol (CCIP-Read) request
+    /// and returns the result as `Bytes` or an error message.
+    async fn ccip_request(
+        &self,
+        sender: Address,
+        tx: &TypedTransaction,
+        calldata: &[u8],
+        urls: Vec<&str>,
+    ) -> Result<Bytes, Self::Error> {
+        self.inner().ccip_request(sender, tx, calldata, urls).await.map_err(MiddlewareError::from_err)
+    }
+
+    /// Sends the read-only (constant) transaction to a single Ethereum node and return the result
+    /// (as bytes) of executing it. This is free, since it does not change any state on the
+    /// blockchain.
+    async fn _call(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+        attempt: u8
+    ) -> Result<Bytes, Self::Error> {
+        self.inner()._call(tx, block, attempt).await.map_err(MiddlewareError::from_err)
+    }
+
     /// Sends the read-only (constant) transaction to a single Ethereum node and return the result
     /// (as bytes) of executing it. This is free, since it does not change any state on the
     /// blockchain.

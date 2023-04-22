@@ -1,4 +1,6 @@
-use ethers_core::types::SyncingStatus;
+use ethers_core::types::{SyncingStatus, H160};
+use reqwest::Response;
+use serde_json::Value;
 
 use crate::{
     call_raw::CallBuilder,
@@ -21,7 +23,7 @@ pub use crate::Middleware;
 use async_trait::async_trait;
 
 use ethers_core::{
-    abi::{self, Detokenize, ParamType},
+    abi::{self, Detokenize, ParamType, Token},
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Chain, EIP1186ProofResponse,
@@ -42,6 +44,7 @@ use tracing::trace;
 use tracing_futures::Instrument;
 use url::{ParseError, Url};
 
+static MAX_CCIP_REDIRECT_ATTEMPT: u8 = 10;
 /// Node Clients
 #[derive(Copy, Clone)]
 pub enum NodeClient {
@@ -489,14 +492,190 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("net_version", ()).await
     }
 
+    /// This function makes a Cross-Chain Interoperability Protocol (CCIP-Read) request
+    /// and returns the result as `Bytes` or an error message.
+    ///
+    /// # Arguments
+    ///
+    /// * `sender`: The sender's address.
+    /// * `tx`: The typed transaction.
+    /// * `calldata`: The function call data as bytes.
+    /// * `urls`: A vector of Offchain Gateway URLs to send the request to.
+    ///
+    /// # Returns
+    ///
+    /// an opaque byte string to send to callbackFunction on Offchain Resolver contract.
+    ///
+    async fn ccip_request(
+        &self,
+        sender: Address,
+        tx: &TypedTransaction,
+        calldata: &[u8],
+        urls: Vec<&str>,
+    ) -> Result<Bytes, ProviderError> {
+        // If there are no URLs or the transaction's destination is empty, return an empty result
+        if urls.is_empty() || tx.to().is_none() {
+            return Ok(Bytes::from([]));
+        }
+
+        // Convert calldata to a hex string
+        let data: String = calldata.iter().map(|byte| format!("{:02x}", byte)).collect();
+
+        let mut error_messages: Vec<String> = vec![];
+
+        for (_i, url) in urls.iter().enumerate() {
+            // Replace the placeholders in the URL with the sender address and data
+            let href = url
+                .replace("{sender}", &format!("0x{:x}", sender))
+                .replace("{data}", &format!("0x{}", &data.to_lowercase()).to_string());
+
+            let mut request: reqwest::RequestBuilder = reqwest::Client::new().get(&href);
+
+            // If the URL does not contain the "{data}" placeholder, create a POST request instead
+            if !url.contains("{data}") {
+                let body = serde_json::json!({ "data": data, "sender": sender });
+                request = reqwest::Client::new().post(&href).json(&body);
+            }
+
+            let resp: Response = request.send().await?;
+
+            let result: Value = resp.json().await?;
+            let mut error_message = "unknown error";
+
+            // If the result contains the "data" field, decode the data and return it as Bytes
+            if let Some(returned_data) = result.get("data") {
+                let decoded: Vec<u8> =
+                    hex::decode(&returned_data.as_str().unwrap().to_string()[2..])?;
+                return Ok(Bytes::from(decoded));
+            };
+
+            if let Some(_message) = result.get("message") {
+                error_message = &result["message"].as_str().unwrap();
+            }
+
+            error_messages.push(error_message.to_string());
+        }
+
+        return Err(ProviderError::CustomError("Error during CCIP fetch".to_string()));
+    }
+
+    async fn _call(
+        &self,
+        transaction: &TypedTransaction,
+        block_id: Option<BlockId>,
+        attempt: u8,
+    ) -> Result<Bytes, ProviderError> {
+        if attempt >= MAX_CCIP_REDIRECT_ATTEMPT {
+            // may need more info
+            return Err(ProviderError::CustomError(
+                "CCIP Read exceeded maximum redirections".to_string(),
+            ));
+        }
+
+        let tx_sender = match transaction.to().unwrap() {
+            NameOrAddress::Name(ens_name) => self.resolve_name(&ens_name).await?,
+            NameOrAddress::Address(addr) => *addr,
+        };
+
+        let tx_value: Value = utils::serialize(transaction);
+        let block_value = utils::serialize(&block_id.unwrap_or_else(|| BlockNumber::Latest.into()));
+        let result =
+            match self.request::<_, String>("eth_call", [tx_value, block_value.clone()]).await {
+                Ok(response) => response,
+                Err(error) => {
+                    let provider_error = ProviderError::from(error);
+                    let content = provider_error.as_error_response().unwrap();
+                    let data = content.data.as_ref().unwrap();
+                    format!("{}", data.to_string().trim_matches('"').trim_start_matches("0x"))
+                }
+            };
+
+        if block_value.eq("latest")
+            && !tx_sender.is_zero()
+            && result.starts_with("556f1830")
+            && hex::decode(result.clone())?.len() % 32 == 4
+        {
+            let output_types = vec![
+                ParamType::Address,                            // 'address'
+                ParamType::Array(Box::new(ParamType::String)), // 'string[]'
+                ParamType::Bytes,                              // 'bytes'
+                ParamType::FixedBytes(4),                      // 'bytes4'
+                ParamType::Bytes,                              // 'bytes'
+            ];
+
+            let decoded_data: Vec<abi::Token> =
+                abi::decode(&output_types, &Vec::from_hex(&result.clone()[8..])?).unwrap();
+
+            if let (
+                Token::Address(addr),
+                Token::Array(strings),
+                Token::Bytes(bytes),
+                Token::FixedBytes(bytes4),
+                Token::Bytes(bytes2),
+            ) = (
+                decoded_data.get(0).unwrap(),
+                decoded_data.get(1).unwrap(),
+                decoded_data.get(2).unwrap(),
+                decoded_data.get(3).unwrap(),
+                decoded_data.get(4).unwrap(),
+            ) {
+                let sender: Address = *addr;
+                let urls: Vec<&str> = strings
+                    .iter()
+                    .map(|t| match t {
+                        Token::String(s) => s.as_str(),
+                        _ => panic!("CCIP Read contained corrupt URL string"),
+                    })
+                    .collect();
+
+                let call_data: &[u8] = bytes;
+                let callback_selector: Vec<u8> = bytes4.clone();
+                let extra_data: &[u8] = bytes2;
+
+                if !sender.eq(&tx_sender) {
+                    return Err(ProviderError::CustomError(
+                        "CCIP Read sender did not match".to_string(),
+                    ));
+                }
+
+                let ccip_result = self.ccip_request(sender, transaction, &call_data, urls).await?;
+                if ccip_result.is_empty() {
+                    return Err(ProviderError::CustomError(
+                        "CCIP Read disabled or provided no URLs".to_string(),
+                    ));
+                }
+
+                let ccip_result_token = Token::Bytes(ccip_result.as_ref().to_vec());
+                let extra_data_token = Token::Bytes(extra_data.into());
+
+                let tokens = vec![ccip_result_token, extra_data_token];
+
+                let encoded_data = abi::encode(&tokens);
+                let mut new_transaction = transaction.clone();
+                new_transaction.set_data(Bytes::from(
+                    [callback_selector.clone(), encoded_data.clone()].concat(),
+                ));
+
+                return self._call(&new_transaction, block_id, attempt + 1).await;
+            }
+        }
+
+        let result = match Bytes::from_str(&result) {
+            Ok(bytes) => bytes,
+            Err(_) => {
+                return Err(ProviderError::CustomError("Bad result from backend".to_string()))
+            }
+        };
+
+        Ok(result)
+    }
+
     async fn call(
         &self,
         tx: &TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<Bytes, ProviderError> {
-        let tx = utils::serialize(tx);
-        let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
-        self.request("eth_call", [tx, block]).await
+        return Ok(self._call(tx, block, 0).await?);
     }
 
     async fn estimate_gas(
@@ -805,7 +984,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                         };
                         let data = self.call(&tx.into(), None).await?;
                         if decode_bytes::<Address>(ParamType::Address, data) != owner {
-                            return Err(ProviderError::CustomError("Incorrect owner.".to_string()))
+                            return Err(ProviderError::CustomError("Incorrect owner.".to_string()));
                         }
                     }
                     erc::ERCNFTType::ERC1155 => {
@@ -825,7 +1004,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                         };
                         let data = self.call(&tx.into(), None).await?;
                         if decode_bytes::<u64>(ParamType::Uint(64), data) == 0 {
-                            return Err(ProviderError::CustomError("Incorrect balance.".to_string()))
+                            return Err(ProviderError::CustomError(
+                                "Incorrect balance.".to_string(),
+                            ));
                         }
                     }
                 }
@@ -1090,7 +1271,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                 if fallback.is_err() {
                     // if the older fallback also resulted in an error, we return the error from the
                     // initial attempt
-                    return err
+                    return err;
                 }
                 fallback
             }
@@ -1099,6 +1280,81 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 }
 
 impl<P: JsonRpcClient> Provider<P> {
+
+    /// The supports_wildcard checks if a given resolver supports the wildcard resolution by calling
+    /// its `supportsInterface` function with the `resolve(bytes,bytes)` selector.
+    ///
+    /// # Arguments
+    ///
+    /// * `resolver_address`: The resolver's address.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` with either a `bool` value indicating if the resolver supports wildcard resolution
+    /// or a `ProviderError`.
+    ///
+    async fn supports_wildcard(&self, resolver_address: H160) -> Result<bool, ProviderError> {
+        // Prepare the data for the `supportsInterface` call, providing the selector for
+        // the "resolve(bytes,bytes)" function
+        let data = Some(
+            "0x01ffc9a79061b92300000000000000000000000000000000000000000000000000000000"
+                .parse()
+                .unwrap(),
+        );
+
+        let _tx_request = TransactionRequest {
+            data,
+            to: Some(NameOrAddress::Address(resolver_address)),
+            ..Default::default()
+        };
+
+        let _tx = self.call(&_tx_request.into(), None).await?;
+
+        // If the response is empty, the resolver does not support wildcard resolution
+        if _tx.0.is_empty() {
+            return Ok(false);
+        }
+
+        let _result: U256 = decode_bytes(ParamType::Uint(256), _tx);
+
+        // If the result is one, the resolver supports wildcard resolution; otherwise, it does not
+        return Ok(_result.eq(&U256::one()));
+    }
+
+    async fn get_resolver(&self, ens_name: &str) -> Result<H160, ProviderError> {
+        let mut current_name: String = ens_name.clone().to_string();
+        // Get the ENS address, prioritize the local override variable
+        let ens_addr = self.ens.unwrap_or(ens::ENS_ADDRESS);
+
+        loop {
+            if current_name.eq("") || current_name.eq(".") {
+                return Ok(H160::zero());
+            }
+
+            if !ens_name.eq("eth") && current_name.eq("eth") {
+                return Ok(H160::zero());
+            }
+
+            let data = self
+                .call(&ens::get_resolver(ens_addr, &current_name.to_string()).into(), None)
+                .await?;
+
+            if data.0.is_empty() {
+                return Ok(H160::zero());
+            }
+
+            let resolver_address: Address = decode_bytes(ParamType::Address, data);
+            if resolver_address != Address::zero() {
+                if current_name != ens_name && !self.supports_wildcard(resolver_address).await? {
+                    return Ok(H160::zero());
+                }
+                return Ok(resolver_address);
+            }
+            let mut splitted_name: Vec<&str> = current_name.split(".").collect();
+            current_name = splitted_name.split_off(1).join(".").to_string();
+        }
+    }
+
     async fn query_resolver<T: Detokenize>(
         &self,
         param: ParamType,
@@ -1115,32 +1371,39 @@ impl<P: JsonRpcClient> Provider<P> {
         selector: Selector,
         parameters: Option<&[u8]>,
     ) -> Result<T, ProviderError> {
-        // Get the ENS address, prioritize the local override variable
-        let ens_addr = self.ens.unwrap_or(ens::ENS_ADDRESS);
+        let resolver_address = self.get_resolver(ens_name).await?;
 
-        // first get the resolver responsible for this name
-        // the call will return a Bytes array which we convert to an address
-        let data = self.call(&ens::get_resolver(ens_addr, ens_name).into(), None).await?;
+        // to do remove here we do not validate resolver if offchain
+        // if let ParamType::Address = param {
+        //     // Reverse resolver reverts when calling `supportsInterface(bytes4)`
+        //     self.validate_resolver(resolver_address, selector, ens_name).await?;
+        // }
 
-        // otherwise, decode_bytes panics
-        if data.0.is_empty() {
-            return Err(ProviderError::EnsError(ens_name.to_string()))
-        }
+        let mut tx: TypedTransaction =
+            ens::resolve(resolver_address, selector, ens_name, parameters).into();
 
-        let resolver_address: Address = decode_bytes(ParamType::Address, data);
-        if resolver_address == Address::zero() {
-            return Err(ProviderError::EnsError(ens_name.to_string()))
-        }
+        let mut parse_bytes = false;
+        if self.supports_wildcard(resolver_address).await? {
+            parse_bytes = true;
 
-        if let ParamType::Address = param {
-            // Reverse resolver reverts when calling `supportsInterface(bytes4)`
-            self.validate_resolver(resolver_address, selector, ens_name).await?;
+            let dns_encode_token = Token::Bytes(dns_encode(ens_name).unwrap());
+            let tx_data_token = Token::Bytes(tx.data().unwrap().to_vec());
+
+            let tokens = vec![dns_encode_token, tx_data_token];
+
+            let encoded_data = abi::encode(&tokens);
+
+            let resolve_selector = "9061b923";
+
+            // selector("resolve(bytes,bytes)")
+            tx.set_data(Bytes::from([hex::decode(&resolve_selector)?, encoded_data].concat()));
         }
 
         // resolve
-        let data = self
-            .call(&ens::resolve(resolver_address, selector, ens_name, parameters).into(), None)
-            .await?;
+        let mut data = self.call(&tx, None).await?;
+        if parse_bytes {
+            data = decode_bytes(ParamType::Bytes, data);
+        }
 
         Ok(decode_bytes(param, data))
     }
@@ -1158,7 +1421,7 @@ impl<P: JsonRpcClient> Provider<P> {
         if data.is_empty() {
             return Err(ProviderError::EnsError(format!(
                 "`{ens_name}` resolver ({resolver_address:?}) is invalid."
-            )))
+            )));
         }
 
         let supports_selector = abi::decode(&[ParamType::Bool], data.as_ref())
@@ -1171,7 +1434,7 @@ impl<P: JsonRpcClient> Provider<P> {
                 ens_name,
                 resolver_address,
                 hex::encode(selector)
-            )))
+            )));
         }
 
         Ok(())
@@ -1299,6 +1562,47 @@ fn decode_bytes<T: Detokenize>(param: ParamType, bytes: Bytes) -> T {
     let tokens = abi::decode(&[param], bytes.as_ref())
         .expect("could not abi-decode bytes to address tokens");
     T::from_tokens(tokens).expect("could not parse tokens as address")
+}
+
+/// Encodes a domain name into its binary representation according to the DNS
+/// wire format. Each label (i.e., substring separated by dots) in the domain
+/// is prefixed with its length, and the encoded domain name is terminated
+/// with a root label (length 0).
+///
+/// # Arguments
+///
+/// * `domain` - A domain name as a string (e.g., "tanrikulu.eth").
+///
+/// # Returns
+///
+/// * A `Result` containing the encoded domain name as a `Vec<u8>` on success,
+///   or an error message as a `String` if any of the labels in the domain name
+///   are too long (exceeding 63 characters).
+///
+/// # Example
+///
+/// ```
+/// let encoded = dns_encode("tanrikulu.eth").unwrap();
+/// assert_eq!(encoded, vec![9, b't', b'a', b'n', b'r', b'i', b'k', b'u', b'l', b'u', 3, b'e', b't', b'h', 0]);
+/// ```
+fn dns_encode(domain: &str) -> Result<Vec<u8>, String> {
+    let mut encoded = Vec::new();
+    let labels = domain.split('.');
+
+    for label in labels {
+        let label_len = label.len();
+        if label_len > 63 {
+            return Err(format!("Label is too long: {}", label));
+        }
+
+        encoded.push(label_len as u8);
+        encoded.extend(label.as_bytes());
+    }
+
+    // Append the root label (length 0)
+    encoded.push(0);
+
+    Ok(encoded)
 }
 
 impl TryFrom<&str> for Provider<HttpProvider> {
@@ -1487,7 +1791,7 @@ mod tests {
     #[tokio::test]
     // Test vector from: https://docs.ethers.io/ethers.js/v5-beta/api-providers.html#id2
     async fn mainnet_resolve_name() {
-        let provider = crate::test_provider::MAINNET.provider();
+        let provider: Provider<Http> = crate::test_provider::MAINNET.provider();
 
         let addr = provider.resolve_name("registrar.firefly.eth").await.unwrap();
         assert_eq!(addr, "6fC21092DA55B392b045eD78F4732bff3C580e2c".parse().unwrap());
@@ -1940,5 +2244,30 @@ mod tests {
         // remove directories
         std::fs::remove_dir_all(dir1).unwrap();
         std::fs::remove_dir_all(dir2).unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_eip_2544_ens_wildcards() {
+        let provider = crate::MAINNET.provider();
+
+        let ens_name = "1.offchainexample.eth";
+        let resolver_address = provider.get_resolver(ens_name).await.unwrap();
+        assert_eq!(
+            resolver_address,
+            Address::from_str("0xC1735677a60884ABbCF72295E88d47764BeDa282").unwrap(),
+            "Expected resolver_address to be 0xC1735677a60884ABbCF72295E88d47764BeDa282, but got {}",
+            resolver_address
+        );
+
+        let supports_wildcard = provider.supports_wildcard(resolver_address).await.unwrap();
+        assert_eq!(supports_wildcard, true, "Wildcard is not supported, expected to be true");
+
+        let resolved_address = provider.resolve_name(ens_name).await.unwrap();
+        assert_eq!(
+            resolved_address,
+            Address::from_str("0x41563129cDbbD0c5D3e1c86cf9563926b243834d").unwrap(),
+            "Expected resolved_address to be 0x41563129cDbbD0c5D3e1c86cf9563926b243834d, but got {}",
+            resolved_address
+        );
     }
 }
