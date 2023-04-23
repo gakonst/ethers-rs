@@ -51,7 +51,7 @@ impl WsClient {
     }
 
     /// Establishes a new websocket connection. This method allows specifying a custom websocket
-    /// configuration.
+    /// configuration, see the [tungstenite docs](https://docs.rs/tungstenite/latest/tungstenite/protocol/struct.WebSocketConfig.html) for all avaible options.
     pub async fn connect_with_config(
         conn: impl Into<ConnectionDetails>,
         config: impl Into<WebSocketConfig>,
@@ -62,16 +62,16 @@ impl WsClient {
     }
 
     /// Establishes a new websocket connection with auto-reconnects. This method allows specifying a
-    /// custom websocket configuration.
-    pub async fn connect_with_reconnects_and_config(
+    /// custom websocket configuration, see the [tungstenite docs](https://docs.rs/tungstenite/latest/tungstenite/protocol/struct.WebSocketConfig.html) for all avaible options.
+    pub async fn connect_with_config_and_reconnects(
         conn: impl Into<ConnectionDetails>,
-        reconnects: usize,
         config: impl Into<WebSocketConfig>,
+        reconnects: usize,
     ) -> Result<Self, WsClientError> {
-        let (man, this) = RequestManager::connect_with_reconnects_and_config(
+        let (man, this) = RequestManager::connect_with_config_and_reconnects(
             conn.into(),
-            reconnects,
             config.into(),
+            reconnects,
         )
         .await?;
         man.spawn();

@@ -241,10 +241,10 @@ impl RequestManager {
         Self::connect_with_reconnects_and_config(conn, DEFAULT_RECONNECTS, config).await
     }
 
-    pub async fn connect_with_reconnects_and_config(
+    pub async fn connect_with_config_and_reconnects(
         conn: ConnectionDetails,
-        reconnects: usize,
         config: WebSocketConfig,
+        reconnects: usize,
     ) -> Result<(Self, WsClient), WsClientError> {
         let (ws, backend) = WsBackend::connect_with_config(conn.clone(), config).await?;
 
