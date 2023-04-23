@@ -50,6 +50,34 @@ impl WsClient {
         Ok(this)
     }
 
+    /// Establishes a new websocket connection. This method allows specifying a custom websocket
+    /// configuration.
+    pub async fn connect_with_config(
+        conn: impl Into<ConnectionDetails>,
+        config: impl Into<WebSocketConfig>,
+    ) -> Result<Self, WsClientError> {
+        let (man, this) = RequestManager::connect_with_config(conn.into(), config.into()).await?;
+        man.spawn();
+        Ok(this)
+    }
+
+    /// Establishes a new websocket connection with auto-reconnects. This method allows specifying a
+    /// custom websocket configuration.
+    pub async fn connect_with_reconnects_and_config(
+        conn: impl Into<ConnectionDetails>,
+        reconnects: usize,
+        config: impl Into<WebSocketConfig>,
+    ) -> Result<Self, WsClientError> {
+        let (man, this) = RequestManager::connect_with_reconnects_and_config(
+            conn.into(),
+            reconnects,
+            config.into(),
+        )
+        .await?;
+        man.spawn();
+        Ok(this)
+    }
+
     #[tracing::instrument(skip(self, params), err)]
     async fn make_request<R>(&self, method: &str, params: Box<RawValue>) -> Result<R, WsClientError>
     where

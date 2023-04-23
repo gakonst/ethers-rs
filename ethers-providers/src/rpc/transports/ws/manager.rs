@@ -1,7 +1,7 @@
 use super::{
     backend::{BackendDriver, WsBackend},
     ActiveSub, ConnectionDetails, InFlight, Instruction, Notification, PubSubItem, Response, SubId,
-    WsClient, WsClientError,
+    WebSocketConfig, WsClient, WsClientError,
 };
 use crate::JsonRpcError;
 use ethers_core::types::U256;
@@ -214,6 +214,39 @@ impl RequestManager {
         reconnects: usize,
     ) -> Result<(Self, WsClient), WsClientError> {
         let (ws, backend) = WsBackend::connect(conn.clone()).await?;
+
+        let (instructions_tx, instructions_rx) = mpsc::unbounded();
+        let channel_map: SharedChannelMap = Default::default();
+
+        ws.spawn();
+
+        Ok((
+            Self {
+                id: Default::default(),
+                reconnects,
+                subs: SubscriptionManager::new(channel_map.clone()),
+                reqs: Default::default(),
+                backend,
+                conn,
+                instructions: instructions_rx,
+            },
+            WsClient { instructions: instructions_tx, channel_map },
+        ))
+    }
+
+    pub async fn connect_with_config(
+        conn: ConnectionDetails,
+        config: WebSocketConfig,
+    ) -> Result<(Self, WsClient), WsClientError> {
+        Self::connect_with_reconnects_and_config(conn, DEFAULT_RECONNECTS, config).await
+    }
+
+    pub async fn connect_with_reconnects_and_config(
+        conn: ConnectionDetails,
+        reconnects: usize,
+        config: WebSocketConfig,
+    ) -> Result<(Self, WsClient), WsClientError> {
+        let (ws, backend) = WsBackend::connect_with_config(conn.clone(), config).await?;
 
         let (instructions_tx, instructions_rx) = mpsc::unbounded();
         let channel_map: SharedChannelMap = Default::default();
