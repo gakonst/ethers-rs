@@ -9,8 +9,9 @@ use crate::{
     rpc::pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
     utils::maybe,
-    Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MiddlewareError,
-    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient,
+    Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, JsonRpcError, LogQuery,
+    MiddlewareError, MockProvider, MockResponse, NodeInfo, PeerInfo, PendingTransaction,
+    QuorumProvider, RwClient,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -38,7 +39,8 @@ use futures_util::{lock::Mutex, try_join};
 use hex::FromHex;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
-    collections::VecDeque, convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration,
+    collections::VecDeque, convert::TryFrom, fmt::Debug, panic::AssertUnwindSafe, str::FromStr,
+    sync::Arc, time::Duration,
 };
 use tracing::trace;
 use tracing_futures::Instrument;
@@ -579,6 +581,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             match self.request::<_, String>("eth_call", [tx_value, block_value.clone()]).await {
                 Ok(response) => response,
                 Err(provider_error) => {
+                    println!("provider_error: {:?}", provider_error);
                     let content = provider_error.as_error_response().unwrap();
                     let data = content.data.as_ref().unwrap();
                     data.to_string().trim_matches('"').trim_start_matches("0x").to_string()
@@ -647,9 +650,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
                 let encoded_data = abi::encode(&tokens);
                 let mut new_transaction = transaction.clone();
-                new_transaction.set_data(Bytes::from(
-                    [callback_selector.clone(), encoded_data.clone()].concat(),
-                ));
+                let _new_data = [callback_selector.clone(), encoded_data.clone()].concat();
+                println!("_new_data: {:?}", Bytes::from(_new_data.clone(),));
+                new_transaction.set_data(Bytes::from(_new_data));
 
                 return self._call(&new_transaction, block_id, attempt + 1).await
             }
@@ -1757,7 +1760,8 @@ mod tests {
         utils::{Anvil, Genesis, Geth, GethInstance},
     };
     use futures_util::StreamExt;
-    use std::path::PathBuf;
+    use serde_json::json;
+    use std::{panic::catch_unwind, path::PathBuf};
 
     #[test]
     fn convert_h256_u256_quantity() {
@@ -2239,5 +2243,71 @@ mod tests {
             "Expected resolved_address to be 0x41563129cDbbD0c5D3e1c86cf9563926b243834d, but got {}",
             resolved_address
         );
+
+        let email = provider.resolve_field(ens_name, "email").await.unwrap();
+        println!("email: {:?}", email);
+    }
+
+    #[tokio::test]
+    async fn test_ccip_call() {
+        let resolver_address = "0xC1735677a60884ABbCF72295E88d47764BeDa282";
+        let email = "nick@ens.domains";
+
+        let provider = crate::MAINNET.provider();
+
+        let tx = TransactionRequest {
+            // parameters = text(bytes32 node, string calldata key) node: namehash('1.offchainexample.eth'), key: 'email'
+            // tx_data = selector(resolve(bytes,bytes)), namehash(name), parameters
+            // ensip10 interface + encode(dnsencode(name), tx_data)
+            data: Some(Bytes::from(hex::decode("9061b92300000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000001701310f6f6666636861696e6578616d706c650365746800000000000000000000000000000000000000000000000000000000000000000000000000000000008459d1d43c1c9fb8c1fe76f464ccec6d2c003169598fdfcbcb6bbddf6af9c097a39fa0048c00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000005656d61696c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").unwrap())),
+            to: Some(resolver_address.into()),
+            ..Default::default()
+        }.into();
+
+        let result = provider.call(&tx, None).await.unwrap();
+
+        let data: Bytes = decode_bytes(ParamType::Bytes, result);
+        let record: String = decode_bytes(ParamType::String, data);
+
+        assert_eq!(record, email);
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn test_mismatched_sender() {
+        let resolver_address = "0xC1735677a60884ABbCF72295E88d47764BeDa282";
+
+        let (provider, mock) = Provider::mocked();
+
+        let tx: TypedTransaction = TransactionRequest {
+            // parameters = text(bytes32 node, string calldata key) node: namehash('1.offchainexample.eth'), key: 'email'
+            // tx_data = selector(resolve(bytes,bytes)), namehash(name), parameters
+            // ensip10 interface + encode(dnsencode(name), tx_data)
+            data: Some(Bytes::from(hex::decode("9061b92300000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000001701310f6f6666636861696e6578616d706c650365746800000000000000000000000000000000000000000000000000000000000000000000000000000000008459d1d43c1c9fb8c1fe76f464ccec6d2c003169598fdfcbcb6bbddf6af9c097a39fa0048c00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000005656d61696c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000").unwrap())),
+            to: Some(resolver_address.into()),
+            ..Default::default()
+        }.into();
+
+        let error_code = 3;
+        // sender information altered to c1735677a60884abbcf72295e88d47764beda283
+        let error_data = r#""0x556f1830000000000000000000000000c1735677a60884abbcf72295e88d47764beda28300000000000000000000000000000000000000000000000000000000000000a00000000000000000000000000000000000000000000000000000000000000160f4d4d2f80000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002e000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000004768747470733a2f2f6f6666636861696e2d7265736f6c7665722d6578616d706c652e75632e722e61707073706f742e636f6d2f7b73656e6465727d2f7b646174617d2e6a736f6e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001449061b92300000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000001701310f6f6666636861696e6578616d706c650365746800000000000000000000000000000000000000000000000000000000000000000000000000000000008459d1d43c1c9fb8c1fe76f464ccec6d2c003169598fdfcbcb6bbddf6af9c097a39fa0048c00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000005656d61696c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001449061b92300000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000001701310f6f6666636861696e6578616d706c650365746800000000000000000000000000000000000000000000000000000000000000000000000000000000008459d1d43c1c9fb8c1fe76f464ccec6d2c003169598fdfcbcb6bbddf6af9c097a39fa0048c00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000005656d61696c0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000""#;
+        let error_message = "execution reverted";
+        let error = super::JsonRpcError {
+            code: error_code,
+            data: Some(serde_json::from_str(error_data).unwrap()),
+            message: error_message.to_string(),
+        };
+        mock.push_response(MockResponse::Error(error.clone()));
+
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            provider.call(&tx, None);
+        }));
+        assert!(result.is_err());
+        let panic_message = result
+            .err()
+            .and_then(|e| e.downcast_ref::<&'static str>().map(|s| s.to_string()))
+            .unwrap_or_else(|| "No panic message".to_string());
+
+        assert_eq!(panic_message, "CCIP Read sender did not match");
     }
 }
