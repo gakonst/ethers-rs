@@ -66,8 +66,9 @@ abigen = ["ethers-contract/abigen"]
 ### abigen without reqwest
 abigen-offline = ["ethers-contract/abigen-offline"]
 ## solc
-solc-full = ["ethers-solc/full"]
-solc-tests = ["ethers-solc/tests"]
+ethers-solc = ["dep:ethers-solc", "ethers-etherscan/ethers-solc"]
+solc-full = ["ethers-solc?/full"]
+solc-tests = ["ethers-solc?/tests"]
 
 # Deprecated
 solc-sha2-asm = []
@@ -77,11 +78,12 @@ eip712 = []
 ethers-addressbook.workspace = true
 ethers-contract.workspace = true
 ethers-core.workspace = true
-ethers-etherscan = { workspace = true, features = ["ethers-solc"] }
+ethers-etherscan.workspace = true
 ethers-middleware.workspace = true
 ethers-providers.workspace = true
 ethers-signers.workspace = true
-ethers-solc.workspace = true
+
+ethers-solc = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde.workspace = true
