@@ -297,6 +297,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::types::U256;
 
     #[test]
     #[cfg(feature = "eip712")]
@@ -314,5 +316,39 @@ mod tests {
 
         let domain: EIP712Domain = serde_json::from_value(val).unwrap();
         assert_eq!(domain.chain_id, Some(137u64.into()));
+    }
+
+    // <https://github.com/gakonst/ethers-rs/issues/2353>
+    #[test]
+    fn deserialize_stringified() {
+        #[derive(Debug, Deserialize, Eq, PartialEq)]
+        struct TestValues {
+            #[serde(deserialize_with = "deserialize_stringified_numeric")]
+            value_1: U256,
+            #[serde(deserialize_with = "deserialize_stringified_numeric")]
+            value_2: U256,
+            #[serde(deserialize_with = "deserialize_stringified_numeric")]
+            value_3: U256,
+            #[serde(deserialize_with = "deserialize_stringified_numeric")]
+            value_4: U256,
+        }
+
+        let data = r#"
+        {
+            "value_1": "750000000000000000",
+            "value_2": "21000000000000000",
+            "value_3": "0",
+            "value_4": "1"
+        }
+    "#;
+
+        let deserialized: TestValues = serde_json::from_str(data).unwrap();
+        let expected = TestValues {
+            value_1: U256::from(750_000_000_000_000_000u64),
+            value_2: U256::from(21_000_000_000_000_000u64),
+            value_3: U256::from(0u64),
+            value_4: U256::from(1u64),
+        };
+        assert_eq!(deserialized, expected);
     }
 }
