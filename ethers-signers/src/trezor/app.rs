@@ -35,7 +35,9 @@ pub struct TrezorEthereum {
     pub(crate) address: Address,
 }
 
-const FIRMWARE_MIN_VERSION: &str = ">=2.4.2";
+// we need firmware that supports EIP-1559 and EIP-712
+const FIRMWARE_1_MIN_VERSION: &str = ">=1.11.1";
+const FIRMWARE_2_MIN_VERSION: &str = ">=2.5.1";
 
 // https://docs.trezor.io/trezor-firmware/common/communication/sessions.html
 const SESSION_ID_LENGTH: usize = 32;
@@ -73,12 +75,20 @@ impl TrezorEthereum {
     }
 
     fn check_version(version: String) -> Result<(), TrezorError> {
-        let req = semver::VersionReq::parse(FIRMWARE_MIN_VERSION)?;
         let version = semver::Version::parse(&version)?;
 
-        // Enforce firmware version is greater than FIRMWARE_MIN_VERSION
+        let min_version = match version.major {
+            1 => FIRMWARE_1_MIN_VERSION,
+            2 => FIRMWARE_2_MIN_VERSION,
+            // unknown major version, possibly newer models that we don't know about yet
+            // it's probably safe to assume they support EIP-1559 and EIP-712
+            _ => return Ok(()),
+        };
+
+        let req = semver::VersionReq::parse(min_version)?;
+        // Enforce firmware version is greater than "min_version"
         if !req.matches(&version) {
-            return Err(TrezorError::UnsupportedFirmwareVersion(FIRMWARE_MIN_VERSION.to_string()))
+            return Err(TrezorError::UnsupportedFirmwareVersion(min_version.to_string()))
         }
 
         Ok(())
