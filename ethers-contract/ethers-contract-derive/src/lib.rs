@@ -200,9 +200,9 @@ pub fn derive_abi_codec(input: TokenStream) -> TokenStream {
     codec::derive_codec_impl(&input).into()
 }
 
-/// Derives the [`Display`] trait by formatting .
+/// Derives the [`Display`] trait on structs by formatting each field based on its Ethereum type.
 ///
-/// The fields of the structure are formatted comma separated, like
+/// The final output is a comma separated list of the struct's fields, formatted as follows:
 /// `self.0, self.1, self.2,...`
 ///
 /// [`Display`]: std::fmt::Display
