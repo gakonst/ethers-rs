@@ -581,7 +581,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
             match self.request::<_, String>("eth_call", [tx_value, block_value.clone()]).await {
                 Ok(response) => response,
                 Err(provider_error) => {
-                    println!("provider_error: {:?}", provider_error);
                     let content = provider_error.as_error_response().unwrap();
                     let data = content.data.as_ref().unwrap();
                     data.to_string().trim_matches('"').trim_start_matches("0x").to_string()
@@ -650,9 +649,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
                 let encoded_data = abi::encode(&tokens);
                 let mut new_transaction = transaction.clone();
-                let _new_data = [callback_selector.clone(), encoded_data.clone()].concat();
-                println!("_new_data: {:?}", Bytes::from(_new_data.clone(),));
-                new_transaction.set_data(Bytes::from(_new_data));
+                new_transaction.set_data(Bytes::from(
+                    [callback_selector.clone(), encoded_data.clone()].concat(),
+                ));
 
                 return self._call(&new_transaction, block_id, attempt + 1).await
             }
@@ -2243,9 +2242,6 @@ mod tests {
             "Expected resolved_address to be 0x41563129cDbbD0c5D3e1c86cf9563926b243834d, but got {}",
             resolved_address
         );
-
-        let email = provider.resolve_field(ens_name, "email").await.unwrap();
-        println!("email: {:?}", email);
     }
 
     #[tokio::test]
