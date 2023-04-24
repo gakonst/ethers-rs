@@ -342,7 +342,7 @@ mod tests {
         }
     "#;
 
-        let deserialized: TestValues = serde_json::from_str(&data).unwrap();
+        let deserialized: TestValues = serde_json::from_str(data).unwrap();
         let expected = TestValues {
             value_1: U256::from(750_000_000_000_000_000u64),
             value_2: U256::from(21_000_000_000_000_000u64),
