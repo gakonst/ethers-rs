@@ -989,6 +989,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(windows, ignore = "Windows remappings #2347")]
     fn can_find_library_ancestor() {
         let mut config = ProjectPathsConfig::builder().lib("lib").build().unwrap();
         config.root = "/root/".into();

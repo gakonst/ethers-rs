@@ -805,6 +805,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(windows, ignore = "Windows remappings #2347")]
     fn find_remapping_dapptools() {
         let tmp_dir = tempdir("lib").unwrap();
         let tmp_dir_path = tmp_dir.path();
@@ -821,6 +822,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(windows, ignore = "Windows remappings #2347")]
     fn can_resolve_contract_dir_combinations() {
         let tmp_dir = tempdir("demo").unwrap();
         let paths =
@@ -837,6 +839,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(windows, ignore = "Windows remappings #2347")]
     fn can_resolve_geb_remappings() {
         let tmp_dir = tempdir("geb").unwrap();
         let paths = [
@@ -1050,6 +1053,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(windows, ignore = "Windows remappings #2347")]
     fn recursive_remappings() {
         let tmp_dir = tempdir("lib").unwrap();
         let tmp_dir_path = tmp_dir.path();
@@ -1151,6 +1155,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(windows, ignore = "Windows remappings #2347")]
     fn simple_dapptools_remappings() {
         let tmp_dir = tempdir("lib").unwrap();
         let tmp_dir_path = tmp_dir.path();
@@ -1189,6 +1194,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(windows, ignore = "Windows remappings #2347")]
     fn hardhat_remappings() {
         let tmp_dir = tempdir("node_modules").unwrap();
         let tmp_dir_node_modules = tmp_dir.path().join("node_modules");
@@ -1245,6 +1251,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(windows, ignore = "Windows remappings #2347")]
     fn find_openzeppelin_remapping() {
         let tmp_dir = tempdir("lib").unwrap();
         let tmp_dir_path = tmp_dir.path();
