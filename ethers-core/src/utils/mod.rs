@@ -426,16 +426,13 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
 /// Returns `true` if addr is a valid checksum address, `false` otherwise.
 pub fn verify_checksum(addr: &str, chain_id: Option<u8>) -> bool {
     let addr = addr.strip_prefix("0x").unwrap_or(addr);
-    let address = addr.parse::<Address>();
 
-    // wrong address string
-    if address.is_err() {
-        return false
+    if let Ok(address) = addr.parse::<Address>() {
+        let checksum_addr = to_checksum(&address, chain_id);
+
+        return checksum_addr.strip_prefix("0x").unwrap_or(&checksum_addr) == addr
     }
-
-    let checksum_addr = to_checksum(&address.unwrap(), chain_id);
-
-    return checksum_addr.strip_prefix("0x").unwrap_or(&checksum_addr) == addr
+    false
 }
 
 /// Returns a bytes32 string representation of text. If the length of text exceeds 32 bytes,
