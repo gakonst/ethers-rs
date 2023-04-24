@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 use std::str::FromStr;
-
 use ethers_core::types::BlockNumber;
 use serde::{Deserialize, Serialize};
-
 use crate::{Client, EtherscanError, Response, Result};
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
