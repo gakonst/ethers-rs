@@ -52,8 +52,7 @@ pub(crate) mod utils;
 /// All the possible ABI sources:
 ///
 /// ```ignore
-/// use ethers_contract_derive::abigen;
-///
+/// # use ethers_contract_derive::abigen;
 /// // ABI Path
 /// abigen!(MyContract, "./MyContractABI.json");
 ///
@@ -78,6 +77,7 @@ pub(crate) mod utils;
 /// Specify additional parameters:
 ///
 /// ```ignore
+/// # use ethers_contract_derive::abigen;
 /// abigen!(
 ///     MyContract,
 ///     "path/to/MyContract.json",
@@ -120,10 +120,39 @@ pub fn abigen(input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Derives the `AbiType` and all `Tokenizable` traits for the labeled type.
+/// Derives the [`AbiType`] and all `Tokenizable` traits for the labeled type.
 ///
-/// This derive macro automatically adds a type bound `field: Tokenizable` for
-/// each field type.
+/// This derive macro adds a type bound `field: Tokenizable` for each field type.
+///
+/// [`AbiType`]: ethers_core::abi::AbiType
+///
+/// # Examples
+///
+/// ```
+/// use ethers_contract_derive::EthAbiType;
+/// use ethers_core::types::*;
+/// use ethers_core::abi::{AbiType, ParamType};
+///
+/// #[derive(Clone, EthAbiType)]
+/// struct MyStruct {
+///     a: U256,
+///     b: Address,
+///     c: Bytes,
+///     d: String,
+///     e: H256,
+/// }
+///
+/// assert_eq!(
+///     MyStruct::param_type(),
+///     ParamType::Tuple(vec![
+///         ParamType::Uint(256),
+///         ParamType::Address,
+///         ParamType::Bytes,
+///         ParamType::String,
+///         ParamType::FixedBytes(32),
+///     ]),
+/// );
+/// ```
 #[proc_macro_derive(EthAbiType)]
 pub fn derive_abi_type(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -134,33 +163,36 @@ pub fn derive_abi_type(input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Derives the `AbiEncode`, `AbiDecode` and traits for the labeled type.
+/// Derives the [`AbiEncode`] and [`AbiDecode`] traits for the labeled type.
 ///
-/// This is an addition to `EthAbiType` that lacks the `AbiEncode`, `AbiDecode` implementation.
+/// This is separate from other derive macros because this derives a generic codec implementation
+/// for structs, while [`EthEvent`] and others derive a specialized implementation.
 ///
-/// The reason why this is a separate macro is the `AbiEncode` / `AbiDecode` are `ethers`
-/// generalized codec traits used for types, calls, etc. However, encoding/decoding a call differs
-/// from the basic encoding/decoding, (`[selector + encode(self)]`)
+/// [`AbiEncode`]: ethers_core::abi::AbiEncode
+/// [`AbiDecode`]: ethers_core::abi::AbiDecode
 ///
 /// Note that this macro requires the `EthAbiType` macro to be derived or for the type to implement
 /// `AbiType` and `Tokenizable`. The type returned by the `AbiType` implementation must be a
 /// `Token::Tuple`, otherwise this macro's implementation of `AbiDecode` will panic at runtime.
 ///
-/// # Example
+/// # Examples
 ///
-/// ```ignore
-/// use ethers_contract::{EthAbiCodec, EthAbiType};
-/// use ethers_core::types::*;
+/// ```
+/// use ethers_contract_derive::{EthAbiCodec, EthAbiType};
+/// use ethers_core::types::Address;
+/// use ethers_core::abi::{AbiDecode, AbiEncode};
 ///
-/// #[derive(Debug, Clone, EthAbiType, EthAbiCodec)]
+/// #[derive(Clone, Debug, Default, PartialEq, EthAbiType, EthAbiCodec)]
 /// struct MyStruct {
 ///     addr: Address,
 ///     old_value: String,
 ///     new_value: String,
 /// }
-/// let val = MyStruct {..};
-/// let bytes = val.encode();
-/// let val = MyStruct::decode(&bytes).unwrap();
+///
+/// let value = MyStruct::default();
+/// let encoded = value.clone().encode();
+/// let decoded = MyStruct::decode(&encoded).unwrap();
+/// assert_eq!(decoded, value);
 /// ```
 #[proc_macro_derive(EthAbiCodec)]
 pub fn derive_abi_codec(input: TokenStream) -> TokenStream {
@@ -168,19 +200,20 @@ pub fn derive_abi_codec(input: TokenStream) -> TokenStream {
     codec::derive_codec_impl(&input).into()
 }
 
-/// Derives `fmt::Display` trait and generates a convenient format for all the
-/// underlying primitive types/tokens.
+/// Derives the [`Display`] trait by formatting .
 ///
-/// The fields of the structure are formatted comma separated, like `self.0,
-/// self.1, self.2,...`
+/// The fields of the structure are formatted comma separated, like
+/// `self.0, self.1, self.2,...`
 ///
-/// # Example
+/// [`Display`]: std::fmt::Display
 ///
-/// ```ignore
-/// use ethers_contract::{EthDisplay, EthAbiType};
+/// # Examples
+///
+/// ```
+/// use ethers_contract_derive::{EthAbiType, EthDisplay};
 /// use ethers_core::types::*;
 ///
-/// #[derive(Debug, Clone, EthAbiType, EthDisplay)]
+/// #[derive(Clone, Default, EthAbiType, EthDisplay)]
 /// struct MyStruct {
 ///     addr: Address,
 ///     old_value: String,
@@ -190,8 +223,9 @@ pub fn derive_abi_codec(input: TokenStream) -> TokenStream {
 ///     arr_u16: [u16; 32],
 ///     v: Vec<u8>,
 /// }
-/// let val = MyStruct {..};
-/// format!("{}", val);
+///
+/// let s = MyStruct::default();
+/// assert!(!format!("{s}").is_empty());
 /// ```
 #[proc_macro_derive(EthDisplay, attributes(ethdisplay))]
 pub fn derive_eth_display(input: TokenStream) -> TokenStream {
@@ -203,41 +237,40 @@ pub fn derive_eth_display(input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Derives the `EthEvent` and `Tokenizeable` trait for the labeled type.
+/// Derives the [`EthEvent`] and `Tokenizable` traits for the labeled type.
 ///
-/// Additional arguments can be specified using the `#[ethevent(...)]`
-/// attribute:
+/// Additional arguments can be specified using the `#[ethevent(...)]` attribute:
 ///
 /// For the struct:
 ///
-/// - `name`, `name = "..."`: Overrides the generated `EthEvent` name, default is the
-///  struct's name.
-/// - `signature`, `signature = "..."`: The signature as hex string to override the
-///  event's signature.
-/// - `abi`, `abi = "..."`: The ABI signature for the event this event's data corresponds to.
-///  The `abi` should be solidity event definition or a tuple of the event's
-/// types in case the  event has non elementary (other `EthAbiType`) types as
-/// members
-/// - `anonymous`: A flag to mark this as an anonymous event
+/// - `name = "..."`: Overrides the generated event name. Defaults to the struct's name;
+/// - `signature = "..."`: The signature as hex string to override the event's signature;
+/// - `abi = "..."`: The ABI signature of the event. The `abi` should be a Solidity event definition
+///   or a tuple of the event's types in case the event has non elementary (other `EthAbiType`)
+///   types as members;
+/// - `anonymous`: A flag to mark this as an anonymous event.
 ///
 /// For fields:
 ///
-/// - `indexed`: flag to mark a field as an indexed event input
-/// - `name`: override the name of an indexed event input, default is the rust field name
+/// - `indexed`: flag to mark a field as an indexed event input;
+/// - `name = "..."`: override the name of an indexed event input, default is the rust field name.
 ///
-/// # Example
+/// [`EthEvent`]: https://docs.rs/ethers/latest/ethers/contract/trait.EthEvent.html
+///
+/// # Examples
+///
 /// ```ignore
-/// use ethers_contract::EthCall;
+/// use ethers_contract_derive::{EthAbiType, EthEvent};
 /// use ethers_core::types::Address;
 ///
-/// #[derive(Debug, EthAbiType)]
+/// #[derive(EthAbiType)]
 /// struct Inner {
 ///     inner: Address,
 ///     msg: String,
 /// }
 ///
-/// #[derive(Debug, EthEvent)]
-/// #[ethevent(abi = "ValueChangedEvent((address,string),string)")]
+/// #[derive(EthEvent)]
+/// #[ethevent(abi = "ValueChangedEvent(address,string,(address,string))")]
 /// struct ValueChangedEvent {
 ///     #[ethevent(indexed, name = "_target")]
 ///     target: Address,
@@ -255,52 +288,53 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Derives the `EthCall` and `Tokenizeable` trait for the labeled type.
+/// Derives the [`EthCall`] and `Tokenizeable` trait for the labeled type.
 ///
-/// Additional arguments can be specified using the `#[ethcall(...)]`
-/// attribute:
+/// Additional arguments can be specified using the `#[ethcall(...)]` attribute:
 ///
 /// For the struct:
 ///
-/// - `name`, `name = "..."`: Overrides the generated `EthCall` function name, default is the
-///  struct's name.
-/// - `abi`, `abi = "..."`: The ABI signature for the function this call's data corresponds to.
+/// - `name = "..."`: Overrides the generated function name. Defaults to the struct's name;
+/// - `abi = "..."`: The ABI signature of the function.
 ///
-///  NOTE: in order to successfully parse the `abi` (`<name>(<args>,...)`) the `<name`>
-///   must match either the struct name or the name attribute: `#[ethcall(name ="<name>"]`
+/// NOTE: in order to successfully parse the `abi` (`<name>(<args>,...)`), `<name>` must match
+/// either the struct's name or the name attribute: `#[ethcall(name = "<name>"]`
 ///
-/// # Example
+/// [`EthCall`]: https://docs.rs/ethers/latest/ethers/contract/trait.EthCall.html
+///
+/// # Examples
 ///
 /// ```ignore
-/// use ethers_contract::EthCall;
+/// use ethers_contract_derive::EthCall;
+/// use ethers_core::abi::{Address, FunctionExt};
 ///
-/// #[derive(Debug, Clone, EthCall)]
-/// #[ethcall(name ="my_call")]
+/// #[derive(EthCall)]
+/// #[ethcall(name = "my_call")]
 /// struct MyCall {
 ///     addr: Address,
 ///     old_value: String,
 ///     new_value: String,
 /// }
+///
 /// assert_eq!(
-///     MyCall::abi_signature().as_ref(),
+///     MyCall::abi_signature(),
 ///     "my_call(address,string,string)"
 /// );
 /// ```
 ///
-/// # Example
-///
 /// Call with struct inputs
 ///
 /// ```ignore
-/// use ethers_core::abi::Address;
+/// use ethers_core::abi::{Address, EventExt};
+/// use ethers_contract_derive::EthCall;
 ///
-/// #[derive(Debug, Clone, PartialEq, EthAbiType)]
+/// #[derive(Clone, PartialEq, EthAbiType)]
 /// struct SomeType {
 ///     inner: Address,
 ///     msg: String,
 /// }
 ///
-/// #[derive(Debug, PartialEq, EthCall)]
+/// #[derive(PartialEq, EthCall)]
 /// #[ethcall(name = "foo", abi = "foo(address,(address,string),string)")]
 /// struct FooCall {
 ///     old_author: Address,
@@ -309,7 +343,7 @@ pub fn derive_abi_event(input: TokenStream) -> TokenStream {
 /// }
 ///
 /// assert_eq!(
-///     FooCall::abi_signature().as_ref(),
+///     FooCall::abi_signature(),
 ///     "foo(address,(address,string),string)"
 /// );
 /// ```
@@ -323,34 +357,36 @@ pub fn derive_abi_call(input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// Derives the `EthError` and `Tokenizeable` trait for the labeled type.
+/// Derives the [`EthError`] and `Tokenizeable` trait for the labeled type.
 ///
-/// Additional arguments can be specified using the `#[etherror(...)]`
-/// attribute:
+/// Additional arguments can be specified using the `#[etherror(...)]` attribute:
 ///
 /// For the struct:
 ///
-/// - `name`, `name = "..."`: Overrides the generated `EthCall` function name, default is the
-///  struct's name.
-/// - `abi`, `abi = "..."`: The ABI signature for the function this call's data corresponds to.
+/// - `name = "..."`: Overrides the generated error name. Defaults to the struct's name;
+/// - `abi = "..."`: The ABI signature of the error.
 ///
-///  NOTE: in order to successfully parse the `abi` (`<name>(<args>,...)`) the `<name`>
-///   must match either the struct name or the name attribute: `#[ethcall(name ="<name>"]`
+/// NOTE: in order to successfully parse the `abi` (`<name>(<args>,...)`), `<name>` must match
+/// either the struct's name or the name attribute: `#[ethcall(name = "<name>"]`
 ///
-/// # Example
+/// [`EthError`]: https://docs.rs/ethers/latest/ethers/contract/trait.EthError.html
+///
+/// # Examples
 ///
 /// ```ignore
-/// use ethers_contract::EthError;
+/// use ethers_core::abi::{Address, ErrorExt};
+/// use ethers_contract_derive::EthError;
 ///
-/// #[derive(Debug, Clone, EthError)]
-/// #[etherror(name ="my_error")]
+/// #[derive(Clone, EthError)]
+/// #[etherror(name = "my_error")]
 /// struct MyError {
 ///     addr: Address,
 ///     old_value: String,
 ///     new_value: String,
 /// }
+///
 /// assert_eq!(
-///     MyCall::abi_signature().as_ref(),
+///     MyError::abi_signature(),
 ///     "my_error(address,string,string)"
 /// );
 /// ```
@@ -364,40 +400,45 @@ pub fn derive_abi_error(input: TokenStream) -> TokenStream {
     .into()
 }
 
-/// EIP-712 derive macro.
+/// Derives the [`Eip712`] trait for the labeled type.
 ///
-/// This crate provides a derive macro `Eip712` that is used to encode a rust struct
-/// into a payload hash, according to <https://eips.ethereum.org/EIPS/eip-712>
+/// Encodes a Rust struct into a payload hash, according to [eip-712](https://eips.ethereum.org/EIPS/eip-712).
 ///
-/// The trait used to derive the macro is found in `ethers_core::transaction::eip712::Eip712`
-/// Both the derive macro and the trait must be in context when using
+/// The following traits are required to be implemented for the struct:
+/// - [`Clone`]
+/// - [`Tokenizable`]: can be derived with [`EthAbiType`]
 ///
-/// This derive macro requires the `#[eip712]` attributes to be included
-/// for specifying the domain separator used in encoding the hash.
+/// [`Tokenizable`]: ethers_core::abi::Tokenizable
 ///
-/// NOTE: In addition to deriving `Eip712` trait, the `EthAbiType` trait must also be derived.
-/// This allows the struct to be parsed into `ethers_core::abi::Token` for encoding.
+/// # Attribute parameters
 ///
-/// # Optional Eip712 Parameters
+/// Required:
 ///
-/// The only optional parameter is `salt`, which accepts a string
-/// that is hashed using keccak256 and stored as bytes.
+/// - `name = "..."`: The name of the EIP712 domain separator.
+/// - `version = "..."`: The version of the EIP712 domain separator.
+/// - `chain_id = ...`: The chain id of the EIP712 domain separator.
+/// - `verifying_contract = "..."`: The verifying contract's address of the EIP712 domain separator.
 ///
-/// # Example Usage
+/// Optional:
 ///
-/// ```ignore
-/// use ethers_contract::EthAbiType;
-/// use ethers_derive_eip712::*;
+/// - `salt = "..."` or `raw_salt = "..."`: The salt of the EIP712 domain separator;
+///   - `salt` is interpreted as UTF-8 bytes and hashed, while `raw_salt` is interpreted as a hex
+///     string.
+///
+/// # Examples
+///
+/// ```
+/// use ethers_contract_derive::{EthAbiType, Eip712};
 /// use ethers_core::types::{transaction::eip712::Eip712, H160};
 ///
-/// #[derive(Debug, Eip712, EthAbiType)]
+/// #[derive(Clone, Default, EthAbiType, Eip712)]
 /// #[eip712(
 ///     name = "Radicle",
 ///     version = "1",
 ///     chain_id = 1,
-///     verifying_contract = "0x0000000000000000000000000000000000000000"
-///     // salt is an optional parameter
-///     salt = "my-unique-spice"
+///     verifying_contract = "0x0000000000000000000000000000000000000000",
+///     // salt/raw_salt are optional parameters
+///     salt = "my-unique-spice",
 /// )]
 /// pub struct Puzzle {
 ///     pub organization: H160,
@@ -406,17 +447,7 @@ pub fn derive_abi_error(input: TokenStream) -> TokenStream {
 ///     pub project: String,
 /// }
 ///
-/// let puzzle = Puzzle {
-///     organization: "0000000000000000000000000000000000000000"
-///         .parse::<H160>()
-///         .expect("failed to parse address"),
-///     contributor: "0000000000000000000000000000000000000000"
-///         .parse::<H160>()
-///         .expect("failed to parse address"),
-///     commit: "5693b7019eb3e4487a81273c6f5e1832d77acb53".to_string(),
-///     project: "radicle-reward".to_string(),
-/// };
-///
+/// let puzzle = Puzzle::default();
 /// let hash = puzzle.encode_eip712().unwrap();
 /// ```
 ///
