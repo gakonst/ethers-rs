@@ -132,6 +132,11 @@ impl FromStr for Wallet<SigningKey> {
     fn from_str(src: &str) -> Result<Self, Self::Err> {
         let src = src.strip_prefix("0x").or_else(|| src.strip_prefix("0X")).unwrap_or(src);
         let src = hex::decode(src)?;
+
+        if src.len() != 32 {
+            return Err(WalletError::HexError(hex::FromHexError::InvalidStringLength))
+        }
+
         let sk = SigningKey::from_bytes(src.as_slice().into())?;
         Ok(sk.into())
     }
@@ -157,7 +162,7 @@ impl TryFrom<String> for Wallet<SigningKey> {
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
-    use crate::Signer;
+    use crate::{LocalWallet, Signer};
     use ethers_core::types::Address;
     use tempfile::tempdir;
 
@@ -165,6 +170,17 @@ mod tests {
     fn parse_pk() {
         let s = "6f142508b4eea641e33cb2a0161221105086a84584c74245ca463a49effea30b";
         let _pk: Wallet<SigningKey> = s.parse().unwrap();
+    }
+
+    #[test]
+    fn parse_short_key() {
+        let s = "6f142508b4eea641e33cb2a0161221105086a84584c74245ca463a49effea3";
+        assert!(s.len() < 64);
+        let pk = s.parse::<LocalWallet>().unwrap_err();
+        match pk {
+            WalletError::HexError(hex::FromHexError::InvalidStringLength) => {}
+            _ => panic!("Unexpected error"),
+        }
     }
 
     #[tokio::test]
