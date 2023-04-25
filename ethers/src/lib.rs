@@ -99,7 +99,7 @@ pub use ethers_providers as providers;
 #[doc(inline)]
 pub use ethers_signers as signers;
 #[doc(inline)]
-#[cfg(feature = "solc")]
+#[cfg(feature = "ethers-solc")]
 pub use ethers_solc as solc;
 
 #[doc(inline)]
@@ -123,7 +123,7 @@ pub mod prelude {
 
     pub use super::signers::*;
 
-    #[cfg(feature = "solc")]
+    #[cfg(feature = "ethers-solc")]
     pub use super::solc::*;
 }
 
