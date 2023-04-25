@@ -65,6 +65,16 @@ pub struct Transaction {
     /// ECDSA signature s
     pub s: U256,
 
+    ///////////////// Optimism-specific transaction fields //////////////
+    #[serde(skip_serializing_if = "Option::is_none", rename = "sourceHash")]
+    pub source_hash: Option<H256>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mint: Option<U256>,
+
+    #[serde(skip_serializing_if = "Option::is_none", rename = "isSystemTx")]
+    pub is_system_tx: Option<bool>,
+
     /////////////////  Celo-specific transaction fields /////////////////
     /// The currency fees are paid in (None for native currency)
     #[cfg(feature = "celo")]
@@ -174,6 +184,17 @@ impl Transaction {
                     rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
                 }
             }
+            // Optimism Deposited Transaction
+            Some(x) if x == U64::from(0x7E) => {
+                rlp.append(&self.source_hash);
+                rlp.append(&self.from);
+                rlp_opt(&mut rlp, &self.to);
+                rlp_opt(&mut rlp, &self.mint);
+                rlp.append(&self.value);
+                rlp.append(&self.input.as_ref());
+                rlp.append(&self.is_system_tx.unwrap_or_default());
+                rlp.append(&self.gas);
+            },
             // Legacy (0x00)
             _ => {
                 rlp.append(&self.nonce);

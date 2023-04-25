@@ -42,7 +42,7 @@ members = [
     "ethers-solc",
 
     # Example crates
-    "examples/*",
+    # "examples/*",
 ]
 
 # Do not include example crates in default members
