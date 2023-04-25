@@ -2028,7 +2028,7 @@ fn fmt_framed_location(
         })?;
 
         if let Some((range, style)) = highlight {
-            let Range { start, end } = range.clone();
+            let Range { start, end } = range;
             let rest_start = line.len() - rest.len();
             f.write_str(&line[rest_start..start])?;
             styled(f, style, |f| f.write_str(&line[range]))?;
