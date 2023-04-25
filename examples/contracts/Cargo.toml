@@ -13,7 +13,7 @@ default = ["legacy"]
 legacy = ["ethers/legacy"]
 
 [dev-dependencies]
-ethers = { workspace = true, features = ["abigen", "rustls", "ws"] }
+ethers = { workspace = true, features = ["abigen", "rustls", "ws", "ethers-solc"] }
 
 tokio = { workspace = true, features = ["macros"] }
 
