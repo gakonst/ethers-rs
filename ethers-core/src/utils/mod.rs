@@ -71,6 +71,8 @@ pub enum ConversionError {
     ParseOverflow,
     #[error(transparent)]
     ParseI256Error(#[from] ParseI256Error),
+    #[error("Invalid address checksum")]
+    InvalidAddressChecksum,
 }
 
 /// 1 Ether = 1e18 Wei == 0x0de0b6b3a7640000 Wei
@@ -421,18 +423,22 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
     })
 }
 
-/// checks if the given address is a valid checksum address
+/// Parses an [EIP-1191](https://eips.ethereum.org/EIPS/eip-1191) checksum address.
 ///
-/// Returns `true` if addr is a valid checksum address, `false` otherwise.
-pub fn verify_checksum(addr: &str, chain_id: Option<u8>) -> bool {
+/// Returns `Ok(address)` if the checksummed address is valid, `Err()` otherwise.
+/// If `chain_id` is `None`, falls back to [EIP-55](https://eips.ethereum.org/EIPS/eip-55) address checksum method
+pub fn parse_checksummed(addr: &str, chain_id: Option<u8>) -> Result<Address, ConversionError> {
     let addr = addr.strip_prefix("0x").unwrap_or(addr);
 
     if let Ok(address) = addr.parse::<Address>() {
         let checksum_addr = to_checksum(&address, chain_id);
-
-        return checksum_addr.strip_prefix("0x").unwrap_or(&checksum_addr) == addr
+        if checksum_addr.strip_prefix("0x").unwrap_or(&checksum_addr) == addr {
+            return Ok(address)
+        } else {
+            return Err(ConversionError::InvalidAddressChecksum)
+        }
     }
-    false
+    Err(ConversionError::TextTooLong)
 }
 
 /// Returns a bytes32 string representation of text. If the length of text exceeds 32 bytes,
@@ -942,7 +948,7 @@ mod tests {
 
         for (chain_id, addr, expected) in cases {
             assert_eq!(
-                verify_checksum(addr, chain_id),
+                parse_checksummed(addr, chain_id).is_ok(),
                 expected,
                 "chain_id: {:?} addr: {:?}",
                 chain_id,
