@@ -66,8 +66,8 @@ pub struct Transaction {
     pub s: U256,
 
     ///////////////// Optimism-specific transaction fields //////////////
-    #[serde(rename = "sourceHash")]
-    pub source_hash: H256,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "sourceHash")]
+    pub source_hash: Option<H256>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mint: Option<U256>,
