@@ -435,9 +435,9 @@ pub fn parse_checksummed(addr: &str, chain_id: Option<u8>) -> Result<Address, Co
     let checksum_addr = to_checksum(&address, chain_id);
 
     if checksum_addr.strip_prefix("0x").unwrap_or(&checksum_addr) == addr {
-        return Ok(address)
+        Ok(address)
     } else {
-        return Err(ConversionError::InvalidAddressChecksum)
+        Err(ConversionError::InvalidAddressChecksum)
     }
 }
 

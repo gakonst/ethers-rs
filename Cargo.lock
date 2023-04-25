@@ -88,6 +88,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
+name = "as-any"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8c3419eecc9f5967e6f0f29a0c3fefe22bda6ea34b15798f3c452cb81f2c3fa7"
+
+[[package]]
 name = "ascii-canvas"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1439,11 +1445,13 @@ dependencies = [
 name = "ethers-solc"
 version = "2.0.3"
 dependencies = [
+ "as-any",
  "cfg-if",
  "criterion",
  "dunce",
  "env_logger",
  "ethers-core",
+ "eyre",
  "fs_extra",
  "futures-util",
  "getrandom",
@@ -1453,6 +1461,7 @@ dependencies = [
  "md-5 0.10.5",
  "num_cpus",
  "once_cell",
+ "paste",
  "path-slash",
  "pretty_assertions",
  "rand",
@@ -2805,6 +2814,12 @@ dependencies = [
  "rand_core",
  "subtle",
 ]
+
+[[package]]
+name = "paste"
+version = "1.0.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f746c4065a8fa3fe23974dd82f15431cc8d40779821001404d10d2e79ca7d79"
 
 [[package]]
 name = "path-slash"
