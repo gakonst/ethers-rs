@@ -73,6 +73,8 @@ pub enum ConversionError {
     ParseI256Error(#[from] ParseI256Error),
     #[error("Invalid address checksum")]
     InvalidAddressChecksum,
+    #[error(transparent)]
+    FromHexError(<Address as std::str::FromStr>::Err),
 }
 
 /// 1 Ether = 1e18 Wei == 0x0de0b6b3a7640000 Wei
@@ -429,16 +431,14 @@ pub fn to_checksum(addr: &Address, chain_id: Option<u8>) -> String {
 /// If `chain_id` is `None`, falls back to [EIP-55](https://eips.ethereum.org/EIPS/eip-55) address checksum method
 pub fn parse_checksummed(addr: &str, chain_id: Option<u8>) -> Result<Address, ConversionError> {
     let addr = addr.strip_prefix("0x").unwrap_or(addr);
+    let address: Address = addr.parse().map_err(ConversionError::FromHexError)?;
+    let checksum_addr = to_checksum(&address, chain_id);
 
-    if let Ok(address) = addr.parse::<Address>() {
-        let checksum_addr = to_checksum(&address, chain_id);
-        if checksum_addr.strip_prefix("0x").unwrap_or(&checksum_addr) == addr {
-            return Ok(address)
-        } else {
-            return Err(ConversionError::InvalidAddressChecksum)
-        }
+    if checksum_addr.strip_prefix("0x").unwrap_or(&checksum_addr) == addr {
+        return Ok(address)
+    } else {
+        return Err(ConversionError::InvalidAddressChecksum)
     }
-    Err(ConversionError::TextTooLong)
 }
 
 /// Returns a bytes32 string representation of text. If the length of text exceeds 32 bytes,
@@ -913,7 +913,7 @@ mod tests {
     }
 
     #[test]
-    fn checksum_verify() {
+    fn checksummed_parse() {
         let cases = vec![
             // mainnet
             // wrong case
@@ -947,12 +947,14 @@ mod tests {
         ]; // mainnet
 
         for (chain_id, addr, expected) in cases {
+            let result = parse_checksummed(addr, chain_id);
             assert_eq!(
-                parse_checksummed(addr, chain_id).is_ok(),
+                result.is_ok(),
                 expected,
-                "chain_id: {:?} addr: {:?}",
+                "chain_id: {:?} addr: {:?} error: {:?}",
                 chain_id,
-                addr
+                addr,
+                result.err()
             );
         }
     }
