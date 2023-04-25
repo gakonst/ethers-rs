@@ -89,6 +89,8 @@ pub enum Chain {
 
     ScrollAlphaTestnet = 534353,
 
+    Metis = 1088,
+
     #[strum(to_string = "xdai", serialize = "gnosis", serialize = "gnosis-chain")]
     #[serde(alias = "xdai", alias = "gnosis", alias = "gnosis_chain")]
     XDai = 100,
@@ -286,9 +288,8 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
-            EmeraldTestnet | Boba | BaseGoerli | ZkSync | PolygonZkEvm | PolygonZkEvmTestnet => {
-                return None
-            }
+            EmeraldTestnet | Boba | BaseGoerli | ZkSync | PolygonZkEvm | PolygonZkEvmTestnet |
+            Metis => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -348,7 +349,7 @@ impl Chain {
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
             Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
             EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet |
-            ScrollAlphaTestnet => false,
+            ScrollAlphaTestnet | Metis => false,
         }
     }
 
@@ -443,6 +444,10 @@ impl Chain {
 
             ScrollAlphaTestnet => {
                 ("https://blockscout.scroll.io/api", "https://blockscout.scroll.io/")
+            }
+
+            Metis => {
+                ("https://andromeda-explorer.metis.io/api", "https://andromeda-explorer.metis.io/")
             }
 
             Chiado => {
@@ -562,6 +567,7 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             XDai |
             ScrollAlphaTestnet |
+            Metis |
             Chiado |
             Sepolia |
             Rsk |
