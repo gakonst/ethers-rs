@@ -288,9 +288,8 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
-            EmeraldTestnet | Boba | BaseGoerli | ZkSync | PolygonZkEvm | PolygonZkEvmTestnet | Metis => {
-                return None
-            }
+            EmeraldTestnet | Boba | BaseGoerli | ZkSync | PolygonZkEvm | PolygonZkEvmTestnet |
+            Metis => return None,
         };
 
         Some(Duration::from_millis(ms))
