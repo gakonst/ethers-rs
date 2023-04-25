@@ -194,7 +194,7 @@ impl Transaction {
                 rlp.append(&self.input.as_ref());
                 rlp.append(&self.is_system_tx.unwrap_or_default());
                 rlp.append(&self.gas);
-            },
+            }
             // Legacy (0x00)
             _ => {
                 rlp.append(&self.nonce);
@@ -615,6 +615,9 @@ mod tests {
                 16,
             )
             .unwrap(),
+            source_hash: None,
+            mint: None,
+            is_system_tx: None,
             other: Default::default(),
         };
         println!("0x{}", hex::encode(&tx.rlp()));
@@ -659,6 +662,9 @@ mod tests {
                 16,
             )
             .unwrap(),
+            source_hash: None,
+            mint: None,
+            is_system_tx: None,
             other: Default::default(),
         };
         println!("0x{}", hex::encode(&tx.rlp()));
@@ -694,6 +700,9 @@ mod tests {
             access_list: None,
             max_fee_per_gas: None,
             max_priority_fee_per_gas: None,
+            source_hash: None,
+            mint: None,
+            is_system_tx: None,
             other: Default::default()
         };
         assert_eq!(
@@ -740,6 +749,9 @@ mod tests {
             max_priority_fee_per_gas: Some(1500000000.into()),
             max_fee_per_gas: Some(1500000009.into()),
             chain_id: Some(5.into()),
+            source_hash: None,
+            mint: None,
+            is_system_tx: None,
             other: Default::default(),
         };
         assert_eq!(
@@ -787,6 +799,9 @@ mod tests {
             max_priority_fee_per_gas: Some(1500000000.into()),
             max_fee_per_gas: Some(1500000009.into()),
             chain_id: Some(5.into()),
+            source_hash: None,
+            mint: None,
+            is_system_tx: None,
             other: Default::default(),
         };
 
@@ -850,6 +865,9 @@ mod tests {
             access_list: None,
             max_fee_per_gas: None,
             max_priority_fee_per_gas: None,
+            source_hash: None,
+            mint: None,
+            is_system_tx: None,
             other: Default::default()
         };
 
@@ -885,6 +903,9 @@ mod tests {
             access_list: None,
             max_fee_per_gas: None,
             max_priority_fee_per_gas: None,
+            source_hash: None,
+            mint: None,
+            is_system_tx: None,
             other: Default::default()
         };
 
@@ -951,6 +972,9 @@ mod tests {
             max_priority_fee_per_gas: Some(1500000000.into()),
             max_fee_per_gas: Some(1500000009.into()),
             chain_id: Some(5.into()),
+            source_hash: None,
+            mint: None,
+            is_system_tx: None,
             other: Default::default(),
         };
 
