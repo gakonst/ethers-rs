@@ -191,9 +191,9 @@ impl Transaction {
                 rlp_opt(&mut rlp, &self.to);
                 rlp_opt(&mut rlp, &self.mint);
                 rlp.append(&self.value);
-                rlp.append(&self.input.as_ref());
-                rlp.append(&self.is_system_tx.unwrap_or_default());
                 rlp.append(&self.gas);
+                rlp.append(&self.is_system_tx);
+                rlp.append(&self.input.as_ref());
             }
             // Legacy (0x00)
             _ => {
