@@ -152,7 +152,7 @@ impl Transaction {
 
         match self.transaction_type {
             // EIP-2930 (0x01)
-            Some(x) if x == U64::from(1) => {
+            Some(x) if x == U64::from(0x1) => {
                 rlp_opt(&mut rlp, &self.chain_id);
                 rlp.append(&self.nonce);
                 rlp_opt(&mut rlp, &self.gas_price);
@@ -170,7 +170,7 @@ impl Transaction {
                 }
             }
             // EIP-1559 (0x02)
-            Some(x) if x == U64::from(2) => {
+            Some(x) if x == U64::from(0x2) => {
                 rlp_opt(&mut rlp, &self.chain_id);
                 rlp.append(&self.nonce);
                 rlp_opt(&mut rlp, &self.max_priority_fee_per_gas);
@@ -219,13 +219,18 @@ impl Transaction {
         let rlp_bytes: Bytes = rlp.out().freeze().into();
         let mut encoded = vec![];
         match self.transaction_type {
-            Some(x) if x == U64::from(1) => {
+            Some(x) if x == U64::from(0x1) => {
                 encoded.extend_from_slice(&[0x1]);
                 encoded.extend_from_slice(rlp_bytes.as_ref());
                 encoded.into()
             }
-            Some(x) if x == U64::from(2) => {
+            Some(x) if x == U64::from(0x2) => {
                 encoded.extend_from_slice(&[0x2]);
+                encoded.extend_from_slice(rlp_bytes.as_ref());
+                encoded.into()
+            }
+            Some(x) if x == U64::from(0x7E) => {
+                encoded.extend_from_slice(&[0x7E]);
                 encoded.extend_from_slice(rlp_bytes.as_ref());
                 encoded.into()
             }
