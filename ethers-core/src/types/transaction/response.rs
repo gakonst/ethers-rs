@@ -186,6 +186,7 @@ impl Transaction {
             }
             // Optimism Deposited Transaction
             Some(x) if x == U64::from(0x7E) => {
+                rlp.append_raw(&[0x7E], 1);
                 rlp.append(&self.source_hash);
                 rlp.append(&self.from);
                 rlp_opt(&mut rlp, &self.to);
@@ -226,11 +227,6 @@ impl Transaction {
             }
             Some(x) if x == U64::from(0x2) => {
                 encoded.extend_from_slice(&[0x2]);
-                encoded.extend_from_slice(rlp_bytes.as_ref());
-                encoded.into()
-            }
-            Some(x) if x == U64::from(0x7E) => {
-                encoded.extend_from_slice(&[0x7E]);
                 encoded.extend_from_slice(rlp_bytes.as_ref());
                 encoded.into()
             }
