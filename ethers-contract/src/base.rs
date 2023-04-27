@@ -161,19 +161,13 @@ impl BaseContract {
     ///
     /// Returns a [`Token`] vector, which lets you decode function arguments dynamically
     /// without knowing the return type.
-    pub fn decode_input_raw<T: AsRef<[u8]>>(
-        &self,
-        bytes: T,
-    ) -> Result<Vec<Token>, AbiError> {
+    pub fn decode_input_raw<T: AsRef<[u8]>>(&self, bytes: T) -> Result<Vec<Token>, AbiError> {
         let function = self.get_fn_from_input(bytes.as_ref())?;
         decode_function_data_raw(function, bytes, true)
     }
 
     /// Decodes the provided ABI encoded input bytes
-    pub fn decode_input<D: Detokenize, T: AsRef<[u8]>>(
-        &self,
-        bytes: T,
-    ) -> Result<D, AbiError> {
+    pub fn decode_input<D: Detokenize, T: AsRef<[u8]>>(&self, bytes: T) -> Result<D, AbiError> {
         let function = self.get_fn_from_input(bytes.as_ref())?;
         decode_function_data(function, bytes, true)
     }
