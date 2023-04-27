@@ -18,7 +18,7 @@ pub mod util;
 pub mod visitor;
 
 /// A low fidelity representation of the AST.
-pub(crate) mod lowfidelity;
+pub mod lowfidelity;
 pub use lowfidelity::{Ast, Node, NodeType, SourceLocation as LowFidelitySourceLocation};
 
 /// Types for the Yul AST.
