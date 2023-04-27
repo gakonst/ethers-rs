@@ -1779,8 +1779,8 @@ pub struct Creation {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Ewasm {
-    #[serde(default)]
-    pub wast: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wast: Option<String>,
     pub wasm: String,
 }
 
