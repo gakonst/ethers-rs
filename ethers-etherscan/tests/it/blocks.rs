@@ -7,15 +7,9 @@ use crate::*;
 #[serial]
 async fn check_get_block_by_timestamp_before() {
     run_with_client(Chain::Mainnet, |client| async move {
-        let block_no = client
-            .get_block_by_timestamp(
-                1577836800,
-                "before"
-            )
-            .await;
+        let block_no = client.get_block_by_timestamp(1577836800, "before").await;
         assert!(block_no.is_ok());
 
-        // let block_no = block_no.result;
         let block_no = block_no.unwrap().block_number;
         assert_eq!(block_no, "9193265".parse::<BlockNumber>().unwrap());
     })
@@ -26,13 +20,7 @@ async fn check_get_block_by_timestamp_before() {
 #[serial]
 async fn check_get_block_by_timestamp_after() {
     run_with_client(Chain::Mainnet, |client| async move {
-        let block_no = client
-            .get_block_by_timestamp(
-                1577836800,
-                "after"
-            )
-            .await;
-        // assert!(block_no.is_ok());
+        let block_no = client.get_block_by_timestamp(1577836800, "after").await;
 
         let block_no = block_no.unwrap().block_number;
         assert_eq!(block_no, "9193266".parse::<BlockNumber>().unwrap());

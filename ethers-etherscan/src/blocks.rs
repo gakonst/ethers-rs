@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-use std::str::FromStr;
+use crate::{Client, EtherscanError, Response, Result};
 use ethers_core::types::BlockNumber;
 use serde::{Deserialize, Serialize};
-use crate::{Client, EtherscanError, Response, Result};
+use std::collections::HashMap;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct BlockNumberByTimestamp {
@@ -25,7 +24,11 @@ impl Client {
     /// let block_number_after = client.get_block_by_timestamp(1577836800, "after");
     /// # Ok(()) }
     /// ```
-    pub async fn get_block_by_timestamp(&self, timestamp: u64, closest: &str) -> Result<BlockNumberByTimestamp> {
+    pub async fn get_block_by_timestamp(
+        &self,
+        timestamp: u64,
+        closest: &str
+    ) -> Result<BlockNumberByTimestamp> {
         let query = self.create_query(
             "block",
             "getblocknobytime",
@@ -37,7 +40,7 @@ impl Client {
             "0" => Err(EtherscanError::BlockNumberByTimestampFailed),
             "1" => Ok(
                 BlockNumberByTimestamp{
-                    timestamp: timestamp,
+                    timestamp,
                     block_number: response.result.parse::<BlockNumber>().unwrap()
                 }
             ),
