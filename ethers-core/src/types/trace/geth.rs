@@ -90,7 +90,7 @@ impl From<NoopFrame> for GethTraceFrame {
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
-pub enum GethTraceResult {
+enum GethTraceResult {
     ResultKnown { result: GethTraceFrame },
     ResultUnknown { result: Value },
     DefaultKnown(GethTraceFrame),
