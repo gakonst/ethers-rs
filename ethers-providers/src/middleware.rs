@@ -738,6 +738,36 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(MiddlewareError::from_err)
     }
 
+    /// Replays all transactions in a given block (specified by block number) and returns the traces
+    /// configured with passed options
+    /// Ref:
+    /// [Here](https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-debug#debugtraceblockbynumber)
+    async fn debug_trace_block_by_number(
+        &self,
+        block: Option<BlockNumber>,
+        trace_options: GethDebugTracingOptions,
+    ) -> Result<Vec<GethTrace>, Self::Error> {
+        self.inner()
+            .debug_trace_block_by_number(block, trace_options)
+            .await
+            .map_err(MiddlewareError::from_err)
+    }
+
+    /// Replays all transactions in a given block (specified by block hash) and returns the traces
+    /// configured with passed options
+    /// Ref:
+    /// [Here](https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-debug#debugtraceblockbyhash)
+    async fn debug_trace_block_by_hash(
+        &self,
+        block: H256,
+        trace_options: GethDebugTracingOptions,
+    ) -> Result<Vec<GethTrace>, Self::Error> {
+        self.inner()
+            .debug_trace_block_by_hash(block, trace_options)
+            .await
+            .map_err(MiddlewareError::from_err)
+    }
+
     // Parity `trace` support
 
     /// Executes the given call and returns a number of possible traces for it
