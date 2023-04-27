@@ -91,8 +91,8 @@ impl From<NoopFrame> for GethTraceFrame {
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum GethTraceResult {
-    ResultKnown{result: GethTraceFrame},
-    ResultUnknown{result: Value},
+    ResultKnown { result: GethTraceFrame },
+    ResultUnknown { result: Value },
     DefaultKnown(GethTraceFrame),
     DefaultUnknown(Value),
 }
@@ -110,8 +110,8 @@ impl From<GethTraceResult> for GethTrace {
         match value {
             GethTraceResult::DefaultKnown(t) => GethTrace::Known(t),
             GethTraceResult::DefaultUnknown(v) => GethTrace::Unknown(v),
-            GethTraceResult::ResultKnown{result} => GethTrace::Known(result),
-            GethTraceResult::ResultUnknown{result} => GethTrace::Unknown(result),
+            GethTraceResult::ResultKnown { result } => GethTrace::Known(result),
+            GethTraceResult::ResultUnknown { result } => GethTrace::Unknown(result),
         }
     }
 }

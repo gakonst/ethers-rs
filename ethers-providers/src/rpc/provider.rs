@@ -1658,18 +1658,28 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(feature = "celo", ignore)]
     async fn debug_trace_block() {
         let provider = Provider::<Http>::try_from("https://eth.llamarpc.com").unwrap();
 
-        let mut opts = GethDebugTracingOptions::default();
-        opts.disable_storage = Some(false);
-        opts.tracer =
-            Some(GethDebugTracerType::BuiltInTracer(GethDebugBuiltInTracerType::PreStateTracer));
-        opts.tracer_config = Some(GethDebugTracerConfig::BuiltInTracer(
-            GethDebugBuiltInTracerConfig::PreStateTracer(PreStateConfig { diff_mode: Some(true) }),
-        ));
+        let opts = GethDebugTracingOptions {
+            disable_storage: Some(false),
+            tracer: Some(GethDebugTracerType::BuiltInTracer(
+                GethDebugBuiltInTracerType::PreStateTracer,
+            )),
+            tracer_config: Some(GethDebugTracerConfig::BuiltInTracer(
+                GethDebugBuiltInTracerConfig::PreStateTracer(PreStateConfig {
+                    diff_mode: Some(true),
+                }),
+            )),
+            ..Default::default()
+        };
 
-        let latest_block = provider.get_block(BlockNumber::Latest).await.unwrap().unwrap();
+        let latest_block = provider
+            .get_block(BlockNumber::Latest)
+            .await
+            .expect("Failed to fetch latest block.")
+            .expect("Latest block is none.");
 
         // debug_traceBlockByNumber
         let latest_block_num = BlockNumber::Number(latest_block.number.unwrap());
