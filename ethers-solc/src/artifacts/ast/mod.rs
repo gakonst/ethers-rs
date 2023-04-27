@@ -1073,9 +1073,8 @@ ast_node!(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::artifacts::visitor::Visitable;
     use super::{visitor::Visitor, *};
+    use crate::artifacts::visitor::Visitable;
     use std::{fs, path::PathBuf};
 
     #[test]
