@@ -1779,6 +1779,7 @@ pub struct Creation {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Ewasm {
+    #[serde(default)]
     pub wast: String,
     pub wasm: String,
 }
