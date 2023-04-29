@@ -27,7 +27,7 @@ impl Client {
     pub async fn get_block_by_timestamp(
         &self,
         timestamp: u64,
-        closest: &str
+        closest: &str,
     ) -> Result<BlockNumberByTimestamp> {
         let query = self.create_query(
             "block",
@@ -38,12 +38,10 @@ impl Client {
 
         match response.status.as_str() {
             "0" => Err(EtherscanError::BlockNumberByTimestampFailed),
-            "1" => Ok(
-                BlockNumberByTimestamp{
-                    timestamp,
-                    block_number: response.result.parse::<BlockNumber>().unwrap()
-                }
-            ),
+            "1" => Ok(BlockNumberByTimestamp{
+                timestamp,
+                block_number: response.result.parse::<BlockNumber>().unwrap()
+            }),
             err => Err(EtherscanError::BadStatusCode(err.to_string())),
         }
     }
