@@ -59,7 +59,7 @@ rand = { workspace = true, optional = true }
 futures-util = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-home = "0.5.4"
+home.workspace = true
 svm = { package = "svm-rs", version = "0.2", default-features = false, features = [
     "blocking",
 ], optional = true }
