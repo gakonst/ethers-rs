@@ -4,6 +4,7 @@ use crate::{
 };
 use ethers_core::abi::Abi;
 use md5::Digest;
+use once_cell::sync::Lazy;
 use semver::{Version, VersionReq};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -151,7 +152,7 @@ impl CompilerInput {
     /// supported by the provided compiler version.
     #[must_use]
     pub fn normalize_evm_version(mut self, version: &Version) -> Self {
-        if let Some(ref mut evm_version) = self.settings.evm_version {
+        if let Some(evm_version) = &mut self.settings.evm_version {
             self.settings.evm_version = evm_version.normalize_version(version);
         }
         self
@@ -228,7 +229,7 @@ impl StandardJsonCompilerInput {
     /// supported by the provided compiler version.
     #[must_use]
     pub fn normalize_evm_version(mut self, version: &Version) -> Self {
-        if let Some(ref mut evm_version) = self.settings.evm_version {
+        if let Some(evm_version) = &mut self.settings.evm_version {
             self.settings.evm_version = evm_version.normalize_version(version);
         }
         self
@@ -306,28 +307,22 @@ impl Settings {
         self
     }
 
-    /// This will remove/adjust values in the settings that are not compatible with this
-    /// version
+    /// This will remove/adjust values in the settings that are not compatible with this version.
     pub fn sanitize(&mut self, version: &Version) {
-        static PRE_V0_6_0: once_cell::sync::Lazy<VersionReq> =
-            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.6.0").unwrap());
-        static PRE_V0_7_5: once_cell::sync::Lazy<VersionReq> =
-            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.7.5").unwrap());
-        static PRE_V0_8_7: once_cell::sync::Lazy<VersionReq> =
-            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.7").unwrap());
-        static PRE_V0_8_10: once_cell::sync::Lazy<VersionReq> =
-            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.10").unwrap());
-        static PRE_V0_8_18: once_cell::sync::Lazy<VersionReq> =
-            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.18").unwrap());
+        static PRE_V0_6_0: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("<0.6.0").unwrap());
+        static PRE_V0_7_5: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("<0.7.5").unwrap());
+        static PRE_V0_8_7: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("<0.8.7").unwrap());
+        static PRE_V0_8_10: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("<0.8.10").unwrap());
+        static PRE_V0_8_18: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("<0.8.18").unwrap());
 
         if PRE_V0_6_0.matches(version) {
-            if let Some(ref mut meta) = self.metadata {
+            if let Some(meta) = &mut self.metadata {
                 // introduced in <https://docs.soliditylang.org/en/v0.6.0/using-the-compiler.html#compiler-api>
                 // missing in <https://docs.soliditylang.org/en/v0.5.17/using-the-compiler.html#compiler-api>
                 meta.bytecode_hash.take();
             }
             // introduced in <https://docs.soliditylang.org/en/v0.6.0/using-the-compiler.html#compiler-api>
-            let _ = self.debug.take();
+            self.debug.take();
         }
 
         if PRE_V0_7_5.matches(version) {
@@ -343,13 +338,13 @@ impl Settings {
         }
 
         if PRE_V0_8_10.matches(version) {
-            if let Some(ref mut debug) = self.debug {
+            if let Some(debug) = &mut self.debug {
                 // introduced in <https://docs.soliditylang.org/en/v0.8.10/using-the-compiler.html#compiler-api>
                 // <https://github.com/ethereum/solidity/releases/tag/v0.8.10>
                 debug.debug_info.clear();
             }
 
-            if let Some(ref mut model_checker) = self.model_checker {
+            if let Some(model_checker) = &mut self.model_checker {
                 // introduced in <https://github.com/ethereum/solidity/releases/tag/v0.8.10>
                 model_checker.invariants = None;
             }
@@ -357,12 +352,12 @@ impl Settings {
 
         if PRE_V0_8_18.matches(version) {
             // introduced in 0.8.18 <https://github.com/ethereum/solidity/releases/tag/v0.8.18>
-            if let Some(ref mut meta) = self.metadata {
+            if let Some(meta) = &mut self.metadata {
                 meta.cbor_metadata = None;
             }
 
-            if let Some(ref mut model_checker) = self.model_checker {
-                if let Some(ref mut solvers) = model_checker.solvers {
+            if let Some(model_checker) = &mut self.model_checker {
+                if let Some(solvers) = &mut model_checker.solvers {
                     // elf solver introduced in 0.8.18 <https://github.com/ethereum/solidity/releases/tag/v0.8.18>
                     solvers.retain(|solver| *solver != ModelCheckerSolver::Eld);
                 }
@@ -739,6 +734,9 @@ impl YulDetails {
     }
 }
 
+/// EVM versions.
+///
+/// Kept in sync with: <https://github.com/ethereum/solidity/blob/develop/liblangutil/EVMVersion.h>
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum EvmVersion {
     Homestead,
@@ -749,54 +747,110 @@ pub enum EvmVersion {
     Petersburg,
     Istanbul,
     Berlin,
-    #[default]
     London,
+    #[default]
+    Paris,
+    Shanghai,
 }
 
 impl EvmVersion {
-    /// Checks against the given solidity `semver::Version`
-    pub fn normalize_version(self, version: &Version) -> Option<EvmVersion> {
-        // the EVM version flag was only added at 0.4.21
-        // we work our way backwards
-        if version >= &BYZANTIUM_SOLC {
-            // If the Solc is at least at london, it supports all EVM versions
-            Some(if version >= &LONDON_SOLC {
+    /// Normalizes this EVM version by checking against the given Solc [`Version`].
+    pub fn normalize_version(self, version: &Version) -> Option<Self> {
+        // The EVM version flag was only added in 0.4.21; we work our way backwards
+        if *version >= BYZANTIUM_SOLC {
+            // If the Solc is at least at Paris, it supports all EVM versions.
+            // For all other cases, cap at the at-the-time highest possible fork.
+            let normalized = if self >= Self::Shanghai &&
+                // TODO: Replace with the following once Solc 0.8.20 is released:
+                // *version >= SHANGHAI_SOLC
+                SUPPORTS_SHANGHAI.matches(version)
+            {
                 self
-                // For all other cases, cap at the at-the-time highest possible
-                // fork
-            } else if version >= &BERLIN_SOLC && self >= EvmVersion::Berlin {
-                EvmVersion::Berlin
-            } else if version >= &ISTANBUL_SOLC && self >= EvmVersion::Istanbul {
-                EvmVersion::Istanbul
-            } else if version >= &PETERSBURG_SOLC && self >= EvmVersion::Petersburg {
-                EvmVersion::Petersburg
-            } else if version >= &CONSTANTINOPLE_SOLC && self >= EvmVersion::Constantinople {
-                EvmVersion::Constantinople
-            } else if self >= EvmVersion::Byzantium {
-                EvmVersion::Byzantium
+            } else if self >= Self::Paris && *version >= PARIS_SOLC {
+                Self::Paris
+            } else if self >= Self::London && *version >= LONDON_SOLC {
+                Self::London
+            } else if self >= Self::Berlin && *version >= BERLIN_SOLC {
+                Self::Berlin
+            } else if self >= Self::Istanbul && *version >= ISTANBUL_SOLC {
+                Self::Istanbul
+            } else if self >= Self::Petersburg && *version >= PETERSBURG_SOLC {
+                Self::Petersburg
+            } else if self >= Self::Constantinople && *version >= CONSTANTINOPLE_SOLC {
+                Self::Constantinople
+            } else if self >= Self::Byzantium {
+                Self::Byzantium
             } else {
                 self
-            })
+            };
+            Some(normalized)
         } else {
             None
         }
+    }
+
+    /// Returns the EVM version as a string.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Homestead => "homestead",
+            Self::TangerineWhistle => "tangerineWhistle",
+            Self::SpuriousDragon => "spuriousDragon",
+            Self::Byzantium => "byzantium",
+            Self::Constantinople => "constantinople",
+            Self::Petersburg => "petersburg",
+            Self::Istanbul => "istanbul",
+            Self::Berlin => "berlin",
+            Self::London => "london",
+            Self::Paris => "paris",
+            Self::Shanghai => "shanghai",
+        }
+    }
+
+    /// Has the `RETURNDATACOPY` and `RETURNDATASIZE` opcodes.
+    pub fn supports_returndata(&self) -> bool {
+        *self >= Self::Byzantium
+    }
+
+    pub fn has_static_call(&self) -> bool {
+        *self >= Self::Byzantium
+    }
+
+    pub fn has_bitwise_shifting(&self) -> bool {
+        *self >= Self::Constantinople
+    }
+
+    pub fn has_create2(&self) -> bool {
+        *self >= Self::Constantinople
+    }
+
+    pub fn has_ext_code_hash(&self) -> bool {
+        *self >= Self::Constantinople
+    }
+
+    pub fn has_chain_id(&self) -> bool {
+        *self >= Self::Istanbul
+    }
+
+    pub fn has_self_balance(&self) -> bool {
+        *self >= Self::Istanbul
+    }
+
+    pub fn has_base_fee(&self) -> bool {
+        *self >= Self::London
+    }
+
+    pub fn has_prevrandao(&self) -> bool {
+        *self >= Self::Paris
+    }
+
+    pub fn has_push0(&self) -> bool {
+        *self >= Self::Shanghai
     }
 }
 
 impl fmt::Display for EvmVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let string = match self {
-            EvmVersion::Homestead => "homestead",
-            EvmVersion::TangerineWhistle => "tangerineWhistle",
-            EvmVersion::SpuriousDragon => "spuriousDragon",
-            EvmVersion::Constantinople => "constantinople",
-            EvmVersion::Petersburg => "petersburg",
-            EvmVersion::Istanbul => "istanbul",
-            EvmVersion::Berlin => "berlin",
-            EvmVersion::London => "london",
-            EvmVersion::Byzantium => "byzantium",
-        };
-        write!(f, "{string}")
+        f.write_str(self.as_str())
     }
 }
 
@@ -805,15 +859,17 @@ impl FromStr for EvmVersion {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "homestead" => Ok(EvmVersion::Homestead),
-            "tangerineWhistle" => Ok(EvmVersion::TangerineWhistle),
-            "spuriousDragon" => Ok(EvmVersion::SpuriousDragon),
-            "constantinople" => Ok(EvmVersion::Constantinople),
-            "petersburg" => Ok(EvmVersion::Petersburg),
-            "istanbul" => Ok(EvmVersion::Istanbul),
-            "berlin" => Ok(EvmVersion::Berlin),
-            "london" => Ok(EvmVersion::London),
-            "byzantium" => Ok(EvmVersion::Byzantium),
+            "homestead" => Ok(Self::Homestead),
+            "tangerineWhistle" => Ok(Self::TangerineWhistle),
+            "spuriousDragon" => Ok(Self::SpuriousDragon),
+            "byzantium" => Ok(Self::Byzantium),
+            "constantinople" => Ok(Self::Constantinople),
+            "petersburg" => Ok(Self::Petersburg),
+            "istanbul" => Ok(Self::Istanbul),
+            "berlin" => Ok(Self::Berlin),
+            "london" => Ok(Self::London),
+            "paris" => Ok(Self::Paris),
+            "shanghai" => Ok(Self::Shanghai),
             s => Err(format!("Unknown evm version: {s}")),
         }
     }
@@ -2312,7 +2368,7 @@ mod tests {
     #[test]
     fn test_evm_version_normalization() {
         for (solc_version, evm_version, expected) in &[
-            // Ensure before 0.4.21 it always returns None
+            // Everything before 0.4.21 should always return None
             ("0.4.20", EvmVersion::Homestead, None),
             // Byzantium clipping
             ("0.4.21", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
@@ -2337,7 +2393,31 @@ mod tests {
             // London
             ("0.8.7", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
             ("0.8.7", EvmVersion::London, Some(EvmVersion::London)),
-            ("0.8.7", EvmVersion::London, Some(EvmVersion::London)),
+            ("0.8.7", EvmVersion::Paris, Some(EvmVersion::London)),
+            // Paris
+            ("0.8.18", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.8.18", EvmVersion::Paris, Some(EvmVersion::Paris)),
+            ("0.8.18", EvmVersion::Shanghai, Some(EvmVersion::Paris)),
+            // Shanghai
+            ("0.8.20", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.8.20", EvmVersion::Paris, Some(EvmVersion::Paris)),
+            ("0.8.20", EvmVersion::Shanghai, Some(EvmVersion::Shanghai)),
+            // TODO: Remove when 0.8.20 is released
+            (
+                "0.8.20-nightly.2023.4.12+commit.f0c0df2d",
+                EvmVersion::Shanghai,
+                Some(EvmVersion::Paris),
+            ),
+            (
+                "0.8.20-nightly.2023.4.13+commit.5d42bb5e",
+                EvmVersion::Shanghai,
+                Some(EvmVersion::Shanghai),
+            ),
+            (
+                "0.8.20-nightly.2023.4.14+commit.e1a9446f",
+                EvmVersion::Shanghai,
+                Some(EvmVersion::Shanghai),
+            ),
         ] {
             assert_eq!(
                 &evm_version.normalize_version(&Version::from_str(solc_version).unwrap()),
