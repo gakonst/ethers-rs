@@ -3,6 +3,7 @@ use crate::{
     error::{Result, SolcError},
     utils, CompilerInput, CompilerOutput,
 };
+use once_cell::sync::Lazy;
 use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
@@ -44,20 +45,35 @@ pub const BERLIN_SOLC: Version = Version::new(0, 8, 5);
 /// <https://blog.soliditylang.org/2021/08/11/solidity-0.8.7-release-announcement/>
 pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 
+/// Paris support
+/// <https://blog.soliditylang.org/2023/02/01/solidity-0.8.18-release-announcement/>
+pub const PARIS_SOLC: Version = Version::new(0, 8, 18);
+
+/// Shanghai support
+// TODO: Solc blogpost link
+pub const SHANGHAI_SOLC: Version = Version::new(0, 8, 20);
+
+/// This will be removed once 0.8.20 is released.
+///
+/// Shanghai support was added in [ethereum/solidity#14107](https://github.com/ethereum/solidity/pull/14107),
+/// which was released in `nightly.2023.4.13`.
+pub(crate) static SUPPORTS_SHANGHAI: Lazy<VersionReq> =
+    Lazy::new(|| VersionReq::parse(">=0.8.20-nightly.2023.4.13").unwrap());
+
 // `--base-path` was introduced in 0.6.9 <https://github.com/ethereum/solidity/releases/tag/v0.6.9>
-pub static SUPPORTS_BASE_PATH: once_cell::sync::Lazy<VersionReq> =
-    once_cell::sync::Lazy::new(|| VersionReq::parse(">=0.6.9").unwrap());
+pub static SUPPORTS_BASE_PATH: Lazy<VersionReq> =
+    Lazy::new(|| VersionReq::parse(">=0.6.9").unwrap());
 
 // `--include-path` was introduced in 0.8.8 <https://github.com/ethereum/solidity/releases/tag/v0.8.8>
-pub static SUPPORTS_INCLUDE_PATH: once_cell::sync::Lazy<VersionReq> =
-    once_cell::sync::Lazy::new(|| VersionReq::parse(">=0.8.8").unwrap());
+pub static SUPPORTS_INCLUDE_PATH: Lazy<VersionReq> =
+    Lazy::new(|| VersionReq::parse(">=0.8.8").unwrap());
 
 #[cfg(any(test, feature = "tests"))]
 use std::sync::Mutex;
 
 #[cfg(any(test, feature = "tests"))]
 #[allow(unused)]
-static LOCK: once_cell::sync::Lazy<Mutex<()>> = once_cell::sync::Lazy::new(|| Mutex::new(()));
+static LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 /// take the lock in tests, we use this to enforce that
 /// a test does not run while a compiler version is being installed
