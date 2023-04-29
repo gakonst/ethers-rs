@@ -46,7 +46,7 @@ pub const BERLIN_SOLC: Version = Version::new(0, 8, 5);
 pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 
 /// Paris support
-/// https://blog.soliditylang.org/2023/02/01/solidity-0.8.18-release-announcement/
+/// <https://blog.soliditylang.org/2023/02/01/solidity-0.8.18-release-announcement/>
 pub const PARIS_SOLC: Version = Version::new(0, 8, 18);
 
 /// Shanghai support
