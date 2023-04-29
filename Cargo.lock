@@ -1210,8 +1210,6 @@ dependencies = [
  "ethers-providers",
  "ethers-signers",
  "ethers-solc",
- "serde",
- "tokio",
 ]
 
 [[package]]
