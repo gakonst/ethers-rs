@@ -35,6 +35,8 @@ celo = [
     "legacy",
 ]
 
+optimism = ["ethers-core/optimism"]
+
 legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
 
 # individual features per sub-crate
