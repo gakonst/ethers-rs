@@ -19,7 +19,7 @@ use async_trait::async_trait;
 use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
 use serde::{de::DeserializeOwned, Serialize};
-use serde_json::value::RawValue;
+use serde_json::value::{to_raw_value, RawValue};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::Authorization;
@@ -85,9 +85,7 @@ impl JsonRpcClient for WsClient {
         T: Serialize + Send + Sync,
         R: DeserializeOwned,
     {
-        let params = serde_json::to_string(&params)?;
-        let params = RawValue::from_string(params)?;
-
+        let params = to_raw_value(&params)?;
         let res = self.make_request(method, params).await?;
 
         Ok(res)
