@@ -66,12 +66,18 @@ pub struct Transaction {
     pub s: U256,
 
     ///////////////// Optimism-specific transaction fields //////////////
+    /// The source-hash that uniquely identifies the origin of the deposit
+    #[cfg(feature = "optimism")]
     #[serde(skip_serializing_if = "Option::is_none", rename = "sourceHash")]
     pub source_hash: Option<H256>,
 
+    /// The ETH value to mint on L2
+    #[cfg(feature = "optimism")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mint: Option<U256>,
 
+    /// True if the transaction does not interact with the L2 block gas pool
+    #[cfg(feature = "optimism")]
     #[serde(skip_serializing_if = "Option::is_none", rename = "isSystemTx")]
     pub is_system_tx: Option<bool>,
 
@@ -189,6 +195,7 @@ impl Transaction {
                 rlp.append(&self.s);
             }
             // Optimism Deposited Transaction
+            #[cfg(feature = "optimism")]
             Some(x) if x == U64::from(0x7E) => {
                 rlp.append(&self.source_hash.expect("sourceHash is required for deposited tx"));
                 rlp.append(&self.from);
@@ -623,9 +630,6 @@ mod tests {
                 16,
             )
             .unwrap(),
-            source_hash: None,
-            mint: None,
-            is_system_tx: None,
             other: Default::default(),
         };
         println!("0x{}", hex::encode(&tx.rlp()));
@@ -670,9 +674,6 @@ mod tests {
                 16,
             )
             .unwrap(),
-            source_hash: None,
-            mint: None,
-            is_system_tx: None,
             other: Default::default(),
         };
         println!("0x{}", hex::encode(&tx.rlp()));
@@ -708,9 +709,6 @@ mod tests {
             access_list: None,
             max_fee_per_gas: None,
             max_priority_fee_per_gas: None,
-            source_hash: None,
-            mint: None,
-            is_system_tx: None,
             other: Default::default()
         };
         assert_eq!(
@@ -757,9 +755,6 @@ mod tests {
             max_priority_fee_per_gas: Some(1500000000.into()),
             max_fee_per_gas: Some(1500000009.into()),
             chain_id: Some(5.into()),
-            source_hash: None,
-            mint: None,
-            is_system_tx: None,
             other: Default::default(),
         };
         assert_eq!(
@@ -807,9 +802,6 @@ mod tests {
             max_priority_fee_per_gas: Some(1500000000.into()),
             max_fee_per_gas: Some(1500000009.into()),
             chain_id: Some(5.into()),
-            source_hash: None,
-            mint: None,
-            is_system_tx: None,
             other: Default::default(),
         };
 
@@ -873,9 +865,6 @@ mod tests {
             access_list: None,
             max_fee_per_gas: None,
             max_priority_fee_per_gas: None,
-            source_hash: None,
-            mint: None,
-            is_system_tx: None,
             other: Default::default()
         };
 
@@ -911,9 +900,6 @@ mod tests {
             access_list: None,
             max_fee_per_gas: None,
             max_priority_fee_per_gas: None,
-            source_hash: None,
-            mint: None,
-            is_system_tx: None,
             other: Default::default()
         };
 
@@ -980,9 +966,6 @@ mod tests {
             max_priority_fee_per_gas: Some(1500000000.into()),
             max_fee_per_gas: Some(1500000009.into()),
             chain_id: Some(5.into()),
-            source_hash: None,
-            mint: None,
-            is_system_tx: None,
             other: Default::default(),
         };
 
@@ -1182,6 +1165,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "optimism")]
     fn test_rlp_encode_deposited_tx() {
         let deposited_tx = Transaction {
             hash: H256::from_str("0x7fd17d4a368fccdba4291ab121e48c96329b7dc3d027a373643fb23c20a19a3f").unwrap(),

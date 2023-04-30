@@ -70,6 +70,7 @@ rand.workspace = true
 celo = ["legacy"] # celo support extends the transaction format with extra fields
 legacy = []
 macros = ["syn", "cargo_metadata", "once_cell"]
+optimism = []
 
 # Deprecated
 eip712 = []
