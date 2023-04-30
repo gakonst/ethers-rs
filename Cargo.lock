@@ -1230,6 +1230,7 @@ dependencies = [
  "ethers-contract-derive",
  "ethers-core",
  "ethers-providers",
+ "ethers-signers",
  "ethers-solc",
  "futures-util",
  "hex",
