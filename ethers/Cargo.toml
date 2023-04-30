@@ -84,10 +84,3 @@ ethers-providers.workspace = true
 ethers-signers.workspace = true
 
 ethers-solc = { workspace = true, optional = true }
-
-[dev-dependencies]
-serde.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-ethers-contract.workspace = true
-ethers-providers = { workspace = true, features = ["rustls"] } # allow https connections
-ethers-solc = { workspace = true, features = ["svm-solc"] }
