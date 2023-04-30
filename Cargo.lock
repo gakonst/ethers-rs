@@ -1413,7 +1413,6 @@ dependencies = [
  "coins-ledger",
  "elliptic-curve",
  "eth-keystore",
- "ethers-contract-derive",
  "ethers-core",
  "futures-executor",
  "futures-util",
