@@ -239,6 +239,7 @@ impl Transaction {
                 encoded.extend_from_slice(rlp_bytes.as_ref());
                 encoded.into()
             }
+            #[cfg(feature = "optimism")]
             Some(x) if x == U64::from(0x7E) => {
                 encoded.extend_from_slice(&[0x7E]);
                 encoded.extend_from_slice(rlp_bytes.as_ref());
