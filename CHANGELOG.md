@@ -51,6 +51,7 @@ Please do not manually edit this file.
 
 ### Other
 
+- Disable cyclical dep
 - Fix `wast` field is missing ([#2380](https://github.com/gakonst/ethers-rs/issues/2380))
 - Add nameless decode to BaseContract ([#2355](https://github.com/gakonst/ethers-rs/issues/2355))
 - Clippy return statements ([#2379](https://github.com/gakonst/ethers-rs/issues/2379))
