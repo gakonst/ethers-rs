@@ -291,8 +291,8 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
-            EmeraldTestnet | Boba | BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm | PolygonZkEvmTestnet |
-            Metis => return None,
+            EmeraldTestnet | Boba | BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm |
+            PolygonZkEvmTestnet | Metis => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -506,10 +506,11 @@ impl Chain {
 
             ZkSync => {
                 ("https://zksync2-mainnet-explorer.zksync.io/", "https://explorer.zksync.io/")
-            },
-            ZkSyncTestnet => {
-                ("https://zksync2-testnet-explorer.zksync.dev/", "https://goerli.explorer.zksync.io/")
             }
+            ZkSyncTestnet => (
+                "https://zksync2-testnet-explorer.zksync.dev/",
+                "https://goerli.explorer.zksync.io/",
+            ),
 
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
