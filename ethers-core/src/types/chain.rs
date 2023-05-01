@@ -156,6 +156,9 @@ pub enum Chain {
     #[strum(to_string = "zksync")]
     #[serde(alias = "zksync")]
     ZkSync = 324,
+    #[strum(to_string = "zksync-testnet")]
+    #[serde(alias = "zksync_testnet")]
+    ZkSyncTestnet = 280,
 }
 
 // === impl Chain ===
@@ -288,7 +291,7 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
-            EmeraldTestnet | Boba | BaseGoerli | ZkSync | PolygonZkEvm | PolygonZkEvmTestnet |
+            EmeraldTestnet | Boba | BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm | PolygonZkEvmTestnet |
             Metis => return None,
         };
 
@@ -330,6 +333,7 @@ impl Chain {
             CeloBaklava |
             Boba |
             ZkSync |
+            ZkSyncTestnet |
             BaseGoerli |
             PolygonZkEvm |
             PolygonZkEvmTestnet => true,
@@ -502,6 +506,9 @@ impl Chain {
 
             ZkSync => {
                 ("https://zksync2-mainnet-explorer.zksync.io/", "https://explorer.zksync.io/")
+            },
+            ZkSyncTestnet => {
+                ("https://zksync2-testnet-explorer.zksync.dev/", "https://goerli.explorer.zksync.io/")
             }
 
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
@@ -581,6 +588,7 @@ impl Chain {
             AnvilHardhat |
             Dev |
             ZkSync |
+            ZkSyncTestnet |
             FilecoinMainnet |
             FilecoinHyperspaceTestnet => return None,
         };
