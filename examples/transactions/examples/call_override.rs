@@ -1,13 +1,10 @@
 use ethers::{
     contract::abigen,
     core::{
-        types::{Address, TransactionRequest, H256},
+        types::{spoof, Address, TransactionRequest, H256},
         utils::{parse_ether, Geth},
     },
-    providers::{
-        call_raw::{self, RawCall},
-        Http, Provider,
-    },
+    providers::{call_raw::RawCall, Http, Provider},
 };
 use eyre::Result;
 use std::{
@@ -42,7 +39,7 @@ async fn main() -> Result<()> {
     // Override the sender's balance for the call
     let pay_amt = parse_ether(1u64)?;
     let tx = TransactionRequest::pay(target, pay_amt).from(from);
-    let state = call_raw::balance(from, pay_amt * 2);
+    let state = spoof::balance(from, pay_amt * 2);
 
     // The call succeeds as if the sender had sufficient balance
     client.call_raw(&tx.into()).state(&state).await.expect("balance override");
@@ -57,7 +54,7 @@ async fn main() -> Result<()> {
 
     // Override the target account's code, simulating a call to Greeter.greet()
     // as if the Greeter contract was deployed at the target address
-    let state = call_raw::code(target, runtime_bytecode.clone());
+    let state = spoof::code(target, runtime_bytecode.clone());
     let res = greeter.greet().call_raw().state(&state).await?;
 
     // greet() returns the empty string, because the target account's storage is empty
@@ -69,7 +66,7 @@ async fn main() -> Result<()> {
     let greet_val = encode_string_for_storage(greeting);
 
     // Override the target account's code and storage
-    let mut state = call_raw::state();
+    let mut state = spoof::state();
     state.account(target).code(runtime_bytecode.clone()).store(greet_slot, greet_val);
     let res = greeter.greet().call_raw().state(&state).await?;
 

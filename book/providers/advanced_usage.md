@@ -75,7 +75,7 @@ Let's look at how to use the state override set. In short, the state override se
 ```rust
 use ethers::{
     providers::{
-        call_raw::{spoof::State, RawCall},
+        call_raw::RawCall,
         Http, Provider,
     },
     types::{TransactionRequest, H160, U256, U64},

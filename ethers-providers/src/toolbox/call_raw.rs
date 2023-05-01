@@ -2,22 +2,17 @@
 
 use crate::{utils::PinBoxFut, JsonRpcClient, Provider, ProviderError};
 use ethers_core::{
-    types::{
-        transaction::eip2718::TypedTransaction, Address, BlockId, BlockNumber, Bytes, H256, U256,
-        U64,
-    },
+    types::{spoof, transaction::eip2718::TypedTransaction, BlockId, BlockNumber, Bytes},
     utils,
 };
 use pin_project::pin_project;
-use serde::{ser::SerializeTuple, Deserialize, Serialize};
+use serde::{ser::SerializeTuple, Serialize};
 use std::{
     fmt,
     future::Future,
     pin::Pin,
     task::{Context, Poll},
 };
-
-pub use spoof::{balance, code, nonce, state, storage};
 
 /// Provides methods for overriding parameters to the `eth_call` rpc method
 pub trait RawCall<'a> {
@@ -230,272 +225,15 @@ where
     }
 }
 
-/// Provides types and methods for constructing an `eth_call`
-/// [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set)
-pub mod spoof {
-    use super::*;
-    use std::collections::HashMap;
-
-    /// The state elements to override for a particular account.
-    #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-    pub struct Account {
-        /// Account nonce
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub nonce: Option<U64>,
-        /// Account balance
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub balance: Option<U256>,
-        /// Account code
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub code: Option<Bytes>,
-        /// Account storage
-        #[serde(flatten, skip_serializing_if = "Option::is_none")]
-        pub storage: Option<Storage>,
-    }
-
-    impl Account {
-        /// Override the account nonce
-        pub fn nonce(&mut self, nonce: U64) -> &mut Self {
-            self.nonce = Some(nonce);
-            self
-        }
-        /// Override the account balance
-        pub fn balance(&mut self, bal: U256) -> &mut Self {
-            self.balance = Some(bal);
-            self
-        }
-        /// Override the code at the account
-        pub fn code(&mut self, code: Bytes) -> &mut Self {
-            self.code = Some(code);
-            self
-        }
-        /// Override the value of the account storage at the given storage `key`
-        pub fn store(&mut self, key: H256, val: H256) -> &mut Self {
-            self.storage.get_or_insert_with(Default::default).insert(key, val);
-            self
-        }
-    }
-
-    /// Wraps a map from storage slot to the overriden value.
-    ///
-    /// Storage overrides can either replace the existing state of an account or they can be treated
-    /// as a diff on the existing state.
-    #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-    pub enum Storage {
-        /// State Diff
-        #[serde(rename = "stateDiff")]
-        Diff(HashMap<H256, H256>),
-        /// State override
-        #[serde(rename = "state")]
-        Replace(HashMap<H256, H256>),
-    }
-
-    /// The default storage override is a diff on the existing state of the account.
-    impl Default for Storage {
-        fn default() -> Self {
-            Self::Diff(Default::default())
-        }
-    }
-    impl std::ops::Deref for Storage {
-        type Target = HashMap<H256, H256>;
-        fn deref(&self) -> &Self::Target {
-            match self {
-                Self::Diff(map) => map,
-                Self::Replace(map) => map,
-            }
-        }
-    }
-    impl std::ops::DerefMut for Storage {
-        fn deref_mut(&mut self) -> &mut Self::Target {
-            match self {
-                Self::Diff(map) => map,
-                Self::Replace(map) => map,
-            }
-        }
-    }
-
-    /// A wrapper type that holds a complete state override set.
-    #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(transparent)]
-    pub struct State(#[serde(skip_serializing_if = "HashMap::is_empty")] HashMap<Address, Account>);
-
-    impl State {
-        /// Returns a mutable reference to the [`Account`] in the map.
-        pub fn account(&mut self, adr: Address) -> &mut Account {
-            self.0.entry(adr).or_default()
-        }
-    }
-
-    /// Returns an empty state override set.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use ethers_core::{
-    /// #     types::{Address, TransactionRequest, H256},
-    /// #     utils::{parse_ether, Geth},
-    /// # };
-    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{spoof, RawCall}};
-    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// let geth = Geth::new().spawn();
-    /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
-    ///
-    /// let adr1: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
-    /// let adr2: Address = "0x295a70b2de5e3953354a6a8344e616ed314d7251".parse()?;
-    /// let key = H256::from_low_u64_be(1);
-    /// let val = H256::from_low_u64_be(17);
-    ///
-    /// let tx = TransactionRequest::default().to(adr2).from(adr1).into();
-    ///
-    /// // override the storage at `adr2`
-    /// let mut state = spoof::state();
-    /// state.account(adr2).store(key, val);
-    ///
-    /// // override the nonce at `adr1`
-    /// state.account(adr1).nonce(2.into());
-    ///
-    /// provider.call_raw(&tx).state(&state).await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn state() -> State {
-        Default::default()
-    }
-
-    /// Returns a state override set with a single element setting the balance of the address.
-    ///
-    /// # Example
-    /// ```no_run
-    /// # use ethers_core::{
-    /// #     types::{Address, TransactionRequest, H256},
-    /// #     utils::{parse_ether, Geth},
-    /// # };
-    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
-    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// let geth = Geth::new().spawn();
-    /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
-    ///
-    /// let adr1: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
-    /// let adr2: Address = "0x295a70b2de5e3953354a6a8344e616ed314d7251".parse()?;
-    /// let pay_amt = parse_ether(1u64)?;
-    ///
-    /// // Not enough ether to pay for the transaction
-    /// let tx = TransactionRequest::pay(adr2, pay_amt).from(adr1).into();
-    ///
-    /// // override the sender's balance for the call
-    /// let state = spoof::balance(adr1, pay_amt * 2);
-    /// provider.call_raw(&tx).state(&state).await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn balance(adr: Address, bal: U256) -> State {
-        let mut state = State::default();
-        state.account(adr).balance(bal);
-        state
-    }
-
-    /// Returns a state override set with a single element setting the nonce of the address.
-    ///
-    /// # Example
-    /// ```no_run
-    /// # use ethers_core::{
-    /// #     types::{Address, TransactionRequest, H256},
-    /// #     utils::{parse_ether, Geth},
-    /// # };
-    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
-    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// let geth = Geth::new().spawn();
-    /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
-    ///
-    /// let adr: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
-    /// let pay_amt = parse_ether(1u64)?;
-    ///
-    /// let tx = TransactionRequest::default().from(adr).into();
-    ///
-    /// // override the sender's nonce for the call
-    /// let state = spoof::nonce(adr, 72.into());
-    /// provider.call_raw(&tx).state(&state).await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn nonce(adr: Address, nonce: U64) -> State {
-        let mut state = State::default();
-        state.account(adr).nonce(nonce);
-        state
-    }
-
-    /// Returns a state override set with a single element setting the code at the address.
-    ///
-    /// # Example
-    /// ```no_run
-    /// # use ethers_core::{
-    /// #     types::{Address, TransactionRequest, H256},
-    /// #     utils::{parse_ether, Geth},
-    /// # };
-    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
-    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// let geth = Geth::new().spawn();
-    /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
-    ///
-    /// let adr: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
-    /// let pay_amt = parse_ether(1u64)?;
-    ///
-    /// let tx = TransactionRequest::default().to(adr).into();
-    ///
-    /// // override the code at the target address
-    /// let state = spoof::code(adr, "0x00".parse()?);
-    /// provider.call_raw(&tx).state(&state).await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn code(adr: Address, code: Bytes) -> State {
-        let mut state = State::default();
-        state.account(adr).code(code);
-        state
-    }
-
-    /// Returns a state override set with a single element setting the storage at the given address
-    /// and key.
-    ///
-    /// # Example
-    ///
-    /// ```no_run
-    /// # use ethers_core::{
-    /// #     types::{Address, TransactionRequest, H256},
-    /// #     utils::{parse_ether, Geth},
-    /// # };
-    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
-    /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-    /// let geth = Geth::new().spawn();
-    /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
-    ///
-    /// let adr: Address = "0x6fC21092DA55B392b045eD78F4732bff3C580e2c".parse()?;
-    /// let key = H256::from_low_u64_be(1);
-    /// let val = H256::from_low_u64_be(17);
-    ///
-    /// let tx = TransactionRequest::default().to(adr).into();
-    ///
-    /// // override the storage slot `key` at `adr`
-    /// let state = spoof::storage(adr, key, val);
-    /// provider.call_raw(&tx).state(&state).await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn storage(adr: Address, key: H256, val: H256) -> State {
-        let mut state = State::default();
-        state.account(adr).store(key, val);
-        state
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{Http, Provider};
     use ethers_core::{
-        types::TransactionRequest,
+        types::{Address, TransactionRequest, H256, U256},
         utils::{get_contract_address, keccak256, parse_ether, Geth},
     };
+    use serde::Deserialize;
     use std::convert::TryFrom;
 
     // Deserializes eth_call parameters as owned data for testing serialization

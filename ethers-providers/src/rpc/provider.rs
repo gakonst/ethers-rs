@@ -205,20 +205,21 @@ impl<P: JsonRpcClient> Provider<P> {
     /// Analogous to [`Middleware::call`], but returns a [`CallBuilder`] that can either be
     /// `.await`d or used to override the parameters sent to `eth_call`.
     ///
-    /// See the [`call_raw::spoof`] for functions to construct state override parameters.
+    /// See the [`ethers_core::types::spoof`] for functions to construct state override
+    /// parameters.
     ///
     /// Note: this method _does not_ send a transaction from your account
     ///
-    /// [`call_raw::spoof`]: crate::call_raw::spoof
+    /// [`ethers_core::types::spoof`]: ethers_core::types::spoof
     ///
     /// # Example
     ///
     /// ```no_run
     /// # use ethers_core::{
-    /// #     types::{Address, TransactionRequest, H256},
+    /// #     types::{Address, TransactionRequest, H256, spoof},
     /// #     utils::{parse_ether, Geth},
     /// # };
-    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::{RawCall, spoof}};
+    /// # use ethers_providers::{Provider, Http, Middleware, call_raw::RawCall};
     /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
     /// let geth = Geth::new().spawn();
     /// let provider = Provider::<Http>::try_from(geth.endpoint()).unwrap();
