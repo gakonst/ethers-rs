@@ -7,7 +7,7 @@ pub use self::{
     call::{CallConfig, CallFrame, CallLogFrame},
     four_byte::FourByteFrame,
     noop::NoopFrame,
-    pre_state::{PreStateConfig, PreStateFrame},
+    pre_state::{AccountState, DiffMode, PreStateConfig, PreStateFrame, PreStateMode},
 };
 use crate::types::{serde_helpers::deserialize_stringified_numeric, Bytes, H256, U256};
 use serde::{Deserialize, Serialize};
