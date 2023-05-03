@@ -17,6 +17,11 @@ pub mod gas_oracle;
 pub mod nonce_manager;
 pub use nonce_manager::NonceManagerMiddleware;
 
+/// The [CCIP Read](crate::CCIPReadMiddleware) is used to locally calculate nonces instead
+/// of using eth_getTransactionCount
+pub mod ccip_read;
+pub use ccip_read::CCIPReadMiddleware;
+
 /// The [Transformer](crate::transformer::TransformerMiddleware) is used to intercept transactions
 /// and transform them to be sent via various supported transformers, e.g.,
 /// [DSProxy](crate::transformer::DsProxy)
