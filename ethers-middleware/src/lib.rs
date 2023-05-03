@@ -17,8 +17,8 @@ pub mod gas_oracle;
 pub mod nonce_manager;
 pub use nonce_manager::NonceManagerMiddleware;
 
-/// The [CCIP Read](crate::CCIPReadMiddleware) is used to locally calculate nonces instead
-/// of using eth_getTransactionCount
+/// The [CCIP Read](crate::CCIPReadMiddleware) is used to catch CCIP Read revert errors, perform
+/// corresponding offchain lookups, and make specified callbacks.
 pub mod ccip_read;
 pub use ccip_read::CCIPReadMiddleware;
 
