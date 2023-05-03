@@ -47,20 +47,30 @@ impl OffchainLookup {
     }
 
     async fn fetch(&self) -> Option<CCIPReadResult> {
+        // 6. Construct a request URL by replacing sender with the lowercase 0x-prefixed hexadecimal formatted sender parameter, and replacing data with the the 0x-prefixed hexadecimal formatted callData parameter. The client may choose which URLs to try in which order, but SHOULD prioritise URLs earlier in the list over those later in the list.
         let mut urls = self.urls.iter().map(|url| self.templatize(url));
-
         // TODO: try all urls
         let url = urls.next().unwrap();
+
+        // 7. Make an HTTP GET request to the request URL.
         let response = reqwest::get(&url).await;
 
         match response {
             Ok(response) => {
-                let result = response.json::<CCIPReadResult>().await;
-                match result {
-                    Ok(result) => Some(result),
-                    Err(e) => {
-                        eprintln!("Error parsing response: {:?}", e);
-                        return None
+                match response.status().as_u16() {
+                    // 8. If the response code from step (5) is in the range 400-499, return an error to the caller and stop.
+                    400..=499 => todo!(),
+                    // 9. If the response code from step (5) is in the range 500-599, go back to step (5) and pick a different URL, or stop if there are no further URLs to try.
+                    500..=599 => todo!(),
+                    _ => {
+                        let result = response.json::<CCIPReadResult>().await;
+                        match result {
+                            Ok(result) => Some(result),
+                            Err(e) => {
+                                eprintln!("Error parsing response: {:?}", e);
+                                return None
+                            }
+                        }
                     }
                 }
             }
@@ -109,23 +119,6 @@ impl<M: Middleware> MiddlewareError for CCIPReadError<M> {
     }
 }
 
-///     Client Lookup Protocol
-/// A client that supports CCIP read MUST make contract calls using the following process:
-
-/// 4. Otherwise, decode the sender, urls, callData, callbackFunction and extraData arguments from
-/// the OffchainLookup error. 5. If the sender field does not match the address of the contract that
-/// was called, return an error to the caller and stop. 6. Construct a request URL by replacing
-/// sender with the lowercase 0x-prefixed hexadecimal formatted sender parameter, and replacing data
-/// with the the 0x-prefixed hexadecimal formatted callData parameter. The client may choose which
-/// URLs to try in which order, but SHOULD prioritise URLs earlier in the list over those later in
-/// the list. 7. Make an HTTP GET request to the request URL.
-/// 8. If the response code from step (5) is in the range 400-499, return an error to the caller and
-/// stop. 9. If the response code from step (5) is in the range 500-599, go back to step (5) and
-/// pick a different URL, or stop if there are no further URLs to try. 10. Otherwise, replace data
-/// with an ABI-encoded call to the contract function specified by the 4-byte selector
-/// callbackFunction, supplying the data returned from step (7) and extraData from step (4), and
-/// return to step (1).
-
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl<M> Middleware for CCIPReadMiddleware<M>
@@ -145,16 +138,32 @@ where
         tx: &TypedTransaction,
         block: Option<BlockId>,
     ) -> Result<Bytes, Self::Error> {
+        // 1. Set data to the call data to supply to the contract, and to to the address of the contract to call.
         let call_result = self.inner.call(tx, block).await;
 
         match call_result {
+
+            // 2. Call the contract at address to function normally, supplying data as the input data. If the function returns a successful result, return it to the caller and stop.
             Ok(bytes) => Ok(bytes),
+
             Err(e) => {
                 match e.as_error_response().and_then(|e| OffchainLookup::from_rpc_response(e)) {
+
+                    // 3. If the function returns an error other than OffchainLookup, return it to the caller in the usual fashion.
                     None => return Err(CCIPReadError::MiddlewareError(e)),
+
+                    // 4. Otherwise, decode the sender, urls, callData, callbackFunction and extraData arguments from the OffchainLookup error.
                     Some(lookup) => {
+
+                        // 5. If the sender field does not match the address of the contract that was called, return an error to the caller and stop.
+                        if &lookup.sender != tx.to().unwrap().as_address().unwrap() {
+                            return Err(CCIPReadError::MiddlewareError(e))
+                        }
+
+                        // see fetch for steps 6 - 9
                         let lookup_result = lookup.fetch().await;
                         match lookup_result {
+                            // 10. Otherwise, replace data with an ABI-encoded call to the contract function specified by the 4-byte selector callbackFunction, supplying the data returned from step (7) and extraData from step (4), and return to step (1).
                             Some(lookup_result) => {
                                 let mut new_tx = tx.clone();
                                 new_tx.set_data(lookup.encode_callback_data(lookup_result));
