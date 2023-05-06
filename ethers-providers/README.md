@@ -15,7 +15,7 @@ Please ensure that you have the `ws` feature enabled if you wish to use WebSocke
 
 ```toml
 [dependencies]
-ethers-providers = { version = "1.0.2", features = ["ws"] }
+ethers-providers = { version = "2.0", features = ["ws"] }
 ```
 
 ## Interprocess Communication (IPC)
@@ -25,7 +25,7 @@ Please ensure that you have the `ipc` feature enabled if you wish to use IPC:
 
 ```toml
 [dependencies]
-ethers-providers = { version = "1.0.2", features = ["ipc"] }
+ethers-providers = { version = "2.0", features = ["ipc"] }
 ```
 
 ## Ethereum Name Service
