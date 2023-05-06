@@ -15,14 +15,11 @@ To set up a new project with ethers-rs, you will need to install the Rust progra
 
     ```toml
     [dependencies]
-    ethers = "1.0.0"
-
-    # Most of ethers-rs features rely upon an async Rust runtime.
-    # Since Rust doesn't provide an async runtime itself, you can
-    # include the excellent tokio library
-    tokio = { version = "1.23.0", features = ["macros"] }
+    ethers = "2.0"
+    # Ethers' async features rely upon the Tokio async runtime.
+    tokio = { version = "1", features = ["macros"] }
     # Flexible concrete Error Reporting type built on std::error::Error with customizable Reports
-    eyre = "0.6.8"
+    eyre = "0.6"
     ```
 
     If you want to make experiments and/or play around with early ethers-rs features link our GitHub repo in the `Cargo.toml`.
@@ -37,7 +34,7 @@ To set up a new project with ethers-rs, you will need to install the Rust progra
 
     # You can specify a tag or commit hash with the "rev" attribute
     [dependencies]
-    ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "1.0.2" }
+    ethers = { git = "https://github.com/gakonst/ethers-rs", rev = "84dda78" }
     ```
 
     > **Note:** using a Git repository as a dependency is generally not recommended
@@ -51,22 +48,23 @@ To set up a new project with ethers-rs, you will need to install the Rust progra
 Ethers-rs enables interactions with Ethereum nodes through different "transport" types, or communication protocols.
 The following transport types are currently supported by ethers.rs:
 
-- **HTTP(S):** The HTTP(S) transport is used to communicate with Ethereum nodes over the HTTP or HTTPS protocols. This is the most common way to interact with Ethereum nodes. If you are looking to connect to a HTTPS endpoint, then you need to enable the `rustls` or `openssl` features:
+-   **HTTP(S):** The HTTP(S) transport is used to communicate with Ethereum nodes over the HTTP or HTTPS protocols. This is the most common way to interact with Ethereum nodes. If you are looking to connect to a HTTPS endpoint, then you need to enable the `rustls` or `openssl` features:
 
     ```toml
     [dependencies]
-    ethers = { version = "1.0.0", features = ["rustls"] }
+    ethers = { version = "2.0", features = ["rustls"] }
     ```
 
-- **WebSocket:** The WebSocket transport is used to communicate with Ethereum nodes over the WebSocket protocol, which is a widely-supported standard for establishing a bi-directional communication channel between a client and a server. This can be used for a variety of purposes, including receiving real-time updates from an Ethereum node, or submitting transactions to the Ethereum network. Websockets support is turned on via the feature-flag ws:
+-   **WebSocket:** The WebSocket transport is used to communicate with Ethereum nodes over the WebSocket protocol, which is a widely-supported standard for establishing a bi-directional communication channel between a client and a server. This can be used for a variety of purposes, including receiving real-time updates from an Ethereum node, or submitting transactions to the Ethereum network. Websockets support is turned on via the feature-flag ws:
 
     ```toml
     [dependencies]
-    ethers = { version = "1.0.0", features = ["ws"] }
+    ethers = { version = "2.0", features = ["ws"] }
     ```
 
-- **IPC (Interprocess Communication):** The IPC transport is used to communicate with a local Ethereum node using the IPC protocol, which is a way for processes to communicate with each other on a single computer. This is commonly used in Ethereum development to allow applications to communicate with a local Ethereum node, such as geth or parity. IPC support is turned on via the feature-flag `ipc`:
+-   **IPC (Interprocess Communication):** The IPC transport is used to communicate with a local Ethereum node using the IPC protocol, which is a way for processes to communicate with each other on a single computer. This is commonly used in Ethereum development to allow applications to communicate with a local Ethereum node, such as geth or parity. IPC support is turned on via the feature-flag `ipc`:
+
     ```toml
     [dependencies]
-    ethers = { version = "1.0.0", features = ["ipc"] }
+    ethers = { version = "2.0", features = ["ipc"] }
     ```
