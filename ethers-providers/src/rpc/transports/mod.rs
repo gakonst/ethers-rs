@@ -30,4 +30,4 @@ pub mod legacy_ws;
 pub use legacy_ws::{ClientError as WsClientError, Ws};
 
 mod mock;
-pub use mock::{MockError, MockProvider};
+pub use mock::{MockError, MockProvider, MockResponse};
