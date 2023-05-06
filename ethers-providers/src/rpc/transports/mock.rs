@@ -160,7 +160,7 @@ impl From<MockError> for ProviderError {
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
-    use crate::{Middleware, JsonRpcError};
+    use crate::{JsonRpcError, Middleware};
     use ethers_core::types::U64;
 
     #[tokio::test]
