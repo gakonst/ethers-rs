@@ -7,7 +7,7 @@ use crate::JsonRpcError;
 use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
 use futures_util::{select_biased, StreamExt};
-use serde_json::value::RawValue;
+use serde_json::value::{to_raw_value, RawValue};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{
@@ -126,7 +126,7 @@ impl SubscriptionManager {
             tracing::debug!(id, server_id = %server_id.0, "Registering new sub alias");
             self.add_alias(server_id.0, id);
             let result = U256::from(id);
-            RawValue::from_string(format!("\"0x{result:x}\"")).unwrap()
+            to_raw_value(&format!("0x{result:x}")).expect("valid json")
         } else {
             result
         }

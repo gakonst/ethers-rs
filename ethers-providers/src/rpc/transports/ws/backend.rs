@@ -103,13 +103,8 @@ impl WsBackend {
         match item {
             Ok(item) => match item {
                 Message::Text(t) => self.handle_text(t).await,
-                Message::Ping(data) => {
-                    if self.server.send(Message::Pong(data)).await.is_err() {
-                        return Err(WsClientError::UnexpectedClose)
-                    }
-                    Ok(())
-                }
-
+                // https://github.com/snapview/tungstenite-rs/blob/42b8797e8b7f39efb7d9322dc8af3e9089db4f7d/src/protocol/mod.rs#L172-L175
+                Message::Ping(_) => Ok(()),
                 Message::Pong(_) => Ok(()),
                 Message::Frame(_) => Ok(()),
 
