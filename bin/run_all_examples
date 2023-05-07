@@ -18,25 +18,27 @@ example_crates=$(cargo metadata --format-version 1 |
                  jq -r 'map(select(startswith("examples")) |
                  sub("\\s.*$";"")) | .[]')
 
+# First build all examples, then run them individually
 for crate in $example_crates; do 
+    echo "building $crate"
+    cargo build -p "$crate" --examples
+done
+
+for crate in $example_crates; do
     # Remove "examples-" prefix from crate name (e.g. examples-contracts => contracts)
     cratedir="${crate#examples-}"
     srcdir="examples/$cratedir/examples"
     # Retrieve all example files in crate:
     # Transform the absolute path into the filename (e.g. some-path/deploy_anvil.rs => deploy_anvil)
-    example_files=$(find $srcdir -type f -name '*.rs' -exec basename {} \; | sed 's/\.[^.]*$//')
+    example_files=$(find "$srcdir" -type f -name '*.rs' -exec basename {} \; | sed 's/\.[^.]*$//')
 
     for file in $example_files; do
-        # Build the example
-        echo "Building example: $crate:$file"
-        cargo build -p $crate --example $file
-
         # Run the example
         if [[ "${ignored[*]}" =~ $(basename "$crate:$file") ]]; then
             echo "skipping: $crate:$file"
             continue
         fi
         echo "running $crate:$file"
-        cargo run -p $crate --example $file
+        cargo run -p "$crate" --example "$file"
     done
 done
