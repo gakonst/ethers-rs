@@ -68,17 +68,17 @@ pub struct Transaction {
     ///////////////// Optimism-specific transaction fields //////////////
     /// The source-hash that uniquely identifies the origin of the deposit
     #[cfg(feature = "optimism")]
-    #[serde(skip_serializing_if = "Option::is_none", rename = "sourceHash")]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "sourceHash")]
     pub source_hash: Option<H256>,
 
     /// The ETH value to mint on L2
     #[cfg(feature = "optimism")]
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mint: Option<U256>,
 
     /// True if the transaction does not interact with the L2 block gas pool
     #[cfg(feature = "optimism")]
-    #[serde(skip_serializing_if = "Option::is_none", rename = "isSystemTx")]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "isSystemTx")]
     pub is_system_tx: Option<bool>,
 
     /////////////////  Celo-specific transaction fields /////////////////
