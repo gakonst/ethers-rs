@@ -153,6 +153,8 @@ pub enum Chain {
 
     BaseGoerli = 84531,
 
+    LineaTestnet = 59140,
+
     #[strum(to_string = "zksync")]
     #[serde(alias = "zksync")]
     ZkSync = 324,
@@ -288,6 +290,7 @@ impl Chain {
             Celo | CeloAlfajores | CeloBaklava => 5_000,
             FilecoinHyperspaceTestnet | FilecoinMainnet => 30_000,
             ScrollAlphaTestnet => 3_000,
+            LineaTestnet => 59140,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
@@ -334,6 +337,7 @@ impl Chain {
             Boba |
             ZkSync |
             ZkSyncTestnet |
+            LineaTestnet |
             BaseGoerli |
             PolygonZkEvm |
             PolygonZkEvmTestnet => true,
@@ -511,6 +515,9 @@ impl Chain {
                 "https://zksync2-testnet-explorer.zksync.dev/",
                 "https://goerli.explorer.zksync.io/",
             ),
+            LineaTestnet => {
+                ("https://explorer.goerli.linea.build/api", "https://explorer.goerli.linea.build/")
+            }
 
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
@@ -591,6 +598,7 @@ impl Chain {
             ZkSync |
             ZkSyncTestnet |
             FilecoinMainnet |
+            LineaTestnet |
             FilecoinHyperspaceTestnet => return None,
         };
 
