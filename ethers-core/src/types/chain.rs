@@ -320,10 +320,7 @@ impl Chain {
             FantomTestnet |
             BinanceSmartChain |
             BinanceSmartChainTestnet |
-            Arbitrum |
             ArbitrumTestnet |
-            ArbitrumGoerli |
-            ArbitrumNova |
             Rsk |
             Oasis |
             Emerald |
@@ -346,6 +343,9 @@ impl Chain {
             PolygonMumbai |
             Avalanche |
             AvalancheFuji |
+            Arbitrum |
+            ArbitrumGoerli |
+            ArbitrumNova |
             FilecoinMainnet |
             FilecoinHyperspaceTestnet => false,
 
