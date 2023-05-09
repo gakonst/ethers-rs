@@ -196,6 +196,8 @@ pub struct RequestManager {
     backend: BackendDriver,
     // The URL and optional auth info for the connection
     conn: ConnectionDetails,
+    // An Option wrapping a tungstenite WebsocketConfig. If None, the default config is used.
+    config: Option<WebSocketConfig>,
     // Instructions from the user-facing providers
     instructions: mpsc::UnboundedReceiver<Instruction>,
 }
@@ -228,6 +230,7 @@ impl RequestManager {
                 reqs: Default::default(),
                 backend,
                 conn,
+                config: None,
                 instructions: instructions_rx,
             },
             WsClient { instructions: instructions_tx, channel_map },
@@ -238,7 +241,7 @@ impl RequestManager {
         conn: ConnectionDetails,
         config: WebSocketConfig,
     ) -> Result<(Self, WsClient), WsClientError> {
-        Self::connect_with_reconnects_and_config(conn, DEFAULT_RECONNECTS, config).await
+        Self::connect_with_config_and_reconnects(conn, config, DEFAULT_RECONNECTS).await
     }
 
     pub async fn connect_with_config_and_reconnects(
@@ -261,6 +264,7 @@ impl RequestManager {
                 reqs: Default::default(),
                 backend,
                 conn,
+                config: Some(config),
                 instructions: instructions_rx,
             },
             WsClient { instructions: instructions_tx, channel_map },
@@ -275,7 +279,11 @@ impl RequestManager {
 
         tracing::info!(remaining = self.reconnects, url = self.conn.url, "Reconnecting to backend");
         // create the new backend
-        let (s, mut backend) = WsBackend::connect(self.conn.clone()).await?;
+        let (s, mut backend) = if let Some(config) = self.config {
+            WsBackend::connect_with_config(self.conn.clone(), config).await?
+        } else {
+            WsBackend::connect(self.conn.clone()).await?
+        };
 
         // spawn the new backend
         s.spawn();
