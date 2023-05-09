@@ -290,12 +290,11 @@ impl Chain {
             Celo | CeloAlfajores | CeloBaklava => 5_000,
             FilecoinHyperspaceTestnet | FilecoinMainnet => 30_000,
             ScrollAlphaTestnet => 3_000,
-            LineaTestnet => 59140,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
             EmeraldTestnet | Boba | BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm |
-            PolygonZkEvmTestnet | Metis => return None,
+            PolygonZkEvmTestnet | Metis | LineaTestnet => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -337,7 +336,6 @@ impl Chain {
             Boba |
             ZkSync |
             ZkSyncTestnet |
-            LineaTestnet |
             BaseGoerli |
             PolygonZkEvm |
             PolygonZkEvmTestnet => true,
@@ -351,6 +349,7 @@ impl Chain {
             Avalanche |
             AvalancheFuji |
             FilecoinMainnet |
+            LineaTestnet |
             FilecoinHyperspaceTestnet => false,
 
             // Unknown / not applicable, default to false for backwards compatibility
