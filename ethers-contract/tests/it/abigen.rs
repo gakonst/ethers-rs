@@ -667,7 +667,7 @@ fn can_generate_seaport_1_0() {
     assert_eq!(hex::encode(FulfillAdvancedOrderCall::selector()), "e7acab24");
 
     assert_codec::<SeaportErrors>();
-    let err = SeaportErrors::BadContractSignature(BadContractSignature::default());
+    let err = SeaportErrors::BadContractSignature(BadContractSignature);
 
     let encoded = err.clone().encode();
     assert_eq!(err, SeaportErrors::decode(encoded.clone()).unwrap());
