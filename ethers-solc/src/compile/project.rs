@@ -506,7 +506,7 @@ fn compile_sequential(
         if filtered_sources.is_empty() {
             // nothing to compile
             trace!("skip solc {} {} for empty sources set", solc.as_ref().display(), version);
-            continue;
+            continue
         }
         trace!(
             "compiling {} sources with solc \"{}\" {:?}",
@@ -538,7 +538,7 @@ fn compile_sequential(
                     version,
                     input.language
                 );
-                continue;
+                continue
             }
             let input = input
                 .settings(opt_settings.clone())
@@ -591,7 +591,7 @@ fn compile_parallel(
         if filtered_sources.is_empty() {
             // nothing to compile
             trace!("skip solc {} {} for empty sources set", solc.as_ref().display(), version);
-            continue;
+            continue
         }
 
         let dirty_files: Vec<PathBuf> = filtered_sources.dirty_files().cloned().collect();
@@ -617,7 +617,7 @@ fn compile_parallel(
                     version,
                     input.language
                 );
-                continue;
+                continue
             }
 
             let job = input

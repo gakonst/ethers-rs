@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
                 eprint!(": {e}");
             }
             eprintln!();
-            return Ok(());
+            return Ok(())
         }
         Ok(true) => {}
     }

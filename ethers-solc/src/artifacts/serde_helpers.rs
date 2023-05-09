@@ -63,7 +63,7 @@ pub mod json_string_opt {
     {
         if let Some(s) = Option::<String>::deserialize(deserializer)? {
             if s.is_empty() {
-                return Ok(None);
+                return Ok(None)
             }
             let value = serde_json::Value::String(s);
             serde_json::from_value(value).map_err(de::Error::custom).map(Some)
@@ -100,10 +100,10 @@ pub mod empty_json_object_opt {
     {
         let json = serde_json::Value::deserialize(deserializer)?;
         if json.is_null() {
-            return Ok(None);
+            return Ok(None)
         }
         if json.as_object().map(|obj| obj.is_empty()).unwrap_or_default() {
-            return Ok(None);
+            return Ok(None)
         }
         serde_json::from_value(json).map_err(de::Error::custom).map(Some)
     }

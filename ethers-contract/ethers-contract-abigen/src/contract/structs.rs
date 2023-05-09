@@ -254,7 +254,7 @@ impl InternalStructs {
 
                 if is_event {
                     // no outputs in an event
-                    continue;
+                    continue
                 }
 
                 let mut output_structs = Vec::new();
@@ -424,7 +424,7 @@ fn resolve_struct_tuples(all_structs: &HashMap<String, SolStruct>) -> HashMap<St
     let mut sequential_retries = 0;
     'outer: while let Some((id, ty)) = structs.pop_front() {
         if sequential_retries > structs.len() {
-            break;
+            break
         }
         if let Some(tuple) = ty.as_tuple() {
             params.insert(id.to_string(), tuple);
@@ -454,7 +454,7 @@ fn resolve_struct_tuples(all_structs: &HashMap<String, SolStruct>) -> HashMap<St
                             // struct field needs to be resolved first
                             structs.push_back((id, ty));
                             sequential_retries += 1;
-                            continue 'outer;
+                            continue 'outer
                         }
                     }
                     _ => {
@@ -477,7 +477,7 @@ fn insert_structs(structs: &mut HashMap<String, SolStruct>, tuple: &Component) {
     if let Some(internal_ty) = tuple.internal_type.as_ref() {
         let ident = struct_type_identifier(internal_ty);
         if structs.contains_key(ident) {
-            return;
+            return
         }
         if let Some(fields) = tuple
             .components

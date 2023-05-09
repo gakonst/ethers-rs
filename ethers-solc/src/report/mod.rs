@@ -220,7 +220,7 @@ pub(crate) fn unresolved_imports(imports: &[(&Path, &Path)], remappings: &[Remap
 
 fn get_global() -> Option<&'static Report> {
     if GLOBAL_REPORTER_STATE.load(Ordering::SeqCst) != SET {
-        return None;
+        return None
     }
     unsafe {
         // This is safe given the invariant that setting the global reporter
@@ -240,7 +240,7 @@ where
     if SCOPED_COUNT.load(Ordering::Acquire) == 0 {
         // fast path if no scoped reporter has been set; use the global
         // default.
-        return if let Some(glob) = get_global() { f(glob) } else { f(&Report::none()) };
+        return if let Some(glob) = get_global() { f(glob) } else { f(&Report::none()) }
     }
 
     get_default_scoped(f)
@@ -391,7 +391,7 @@ impl Reporter for BasicStdoutReporter {
 
     fn on_unresolved_imports(&self, imports: &[(&Path, &Path)], remappings: &[Remapping]) {
         if imports.is_empty() {
-            return;
+            return
         }
         println!("{}", format_unresolved_imports(imports, remappings))
     }

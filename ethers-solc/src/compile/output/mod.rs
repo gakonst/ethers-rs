@@ -282,7 +282,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         let contract_path = path.as_ref();
         let contract_name = contract.as_ref();
         if let artifact @ Some(_) = self.compiled_artifacts.find(contract_path, contract_name) {
-            return artifact;
+            return artifact
         }
         self.cached_artifacts.find(contract_path, contract_name)
     }
@@ -291,7 +291,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     pub fn find_first(&self, contract_name: impl AsRef<str>) -> Option<&T::Artifact> {
         let contract_name = contract_name.as_ref();
         if let artifact @ Some(_) = self.compiled_artifacts.find_first(contract_name) {
-            return artifact;
+            return artifact
         }
         self.cached_artifacts.find_first(contract_name)
     }
@@ -316,7 +316,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         let contract_path = path.as_ref();
         let contract_name = contract.as_ref();
         if let artifact @ Some(_) = self.compiled_artifacts.remove(contract_path, contract_name) {
-            return artifact;
+            return artifact
         }
         self.cached_artifacts.remove(contract_path, contract_name)
     }
@@ -336,7 +336,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     pub fn remove_first(&mut self, contract_name: impl AsRef<str>) -> Option<T::Artifact> {
         let contract_name = contract_name.as_ref();
         if let artifact @ Some(_) = self.compiled_artifacts.remove_first(contract_name) {
-            return artifact;
+            return artifact
         }
         self.cached_artifacts.remove_first(contract_name)
     }
@@ -439,9 +439,9 @@ impl AggregatedCompilerOutput {
         self.errors.iter().any(|err| {
             if compiler_severity_filter.ge(&err.severity) {
                 if compiler_severity_filter.is_warning() {
-                    return self.has_warning(ignored_error_codes);
+                    return self.has_warning(ignored_error_codes)
                 }
-                return true;
+                return true
             }
             false
         })
@@ -510,7 +510,7 @@ impl AggregatedCompilerOutput {
     /// file name
     pub fn write_build_infos(&self, build_info_dir: impl AsRef<Path>) -> Result<(), SolcIoError> {
         if self.build_infos.is_empty() {
-            return Ok(());
+            return Ok(())
         }
         let build_info_dir = build_info_dir.as_ref();
         std::fs::create_dir_all(build_info_dir)
@@ -741,7 +741,7 @@ impl<'a> OutputDiagnostics<'a> {
     /// Returns true if the contract is a expected to be a test
     fn is_test<T: AsRef<str>>(&self, contract_path: T) -> bool {
         if contract_path.as_ref().ends_with(".t.sol") {
-            return true;
+            return true
         }
 
         self.compiler_output.find_first(&contract_path).map_or(false, |contract| {

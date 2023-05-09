@@ -326,20 +326,20 @@ impl Client {
                 return match src {
                     Some(src) => Ok(src),
                     None => Err(EtherscanError::ContractCodeNotVerified(address)),
-                };
+                }
             }
         }
 
         let query = self.create_query("contract", "getabi", HashMap::from([("address", address)]));
         let resp: Response<String> = self.get_json(&query).await?;
         if resp.result.starts_with("Max rate limit reached") {
-            return Err(EtherscanError::RateLimitExceeded);
+            return Err(EtherscanError::RateLimitExceeded)
         }
         if resp.result.starts_with("Contract source code not verified") {
             if let Some(ref cache) = self.cache {
                 cache.set_abi(address, None);
             }
-            return Err(EtherscanError::ContractCodeNotVerified(address));
+            return Err(EtherscanError::ContractCodeNotVerified(address))
         }
         let abi = serde_json::from_str(&resp.result)?;
 
@@ -370,7 +370,7 @@ impl Client {
                 return match src {
                     Some(src) => Ok(src),
                     None => Err(EtherscanError::ContractCodeNotVerified(address)),
-                };
+                }
             }
         }
 
@@ -383,7 +383,7 @@ impl Client {
             if let Some(ref cache) = self.cache {
                 cache.set_source(address, None);
             }
-            return Err(EtherscanError::ContractCodeNotVerified(address));
+            return Err(EtherscanError::ContractCodeNotVerified(address))
         }
 
         let response: Response<ContractMetadata> = self.sanitize_response(response)?;

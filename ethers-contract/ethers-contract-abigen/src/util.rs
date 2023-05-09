@@ -152,7 +152,7 @@ fn take_while(s: &str, mut predicate: impl FnMut(char) -> bool) -> (&str, &str) 
         if predicate(c) {
             index += c.len_utf8();
         } else {
-            break;
+            break
         }
     }
     s.split_at(index)

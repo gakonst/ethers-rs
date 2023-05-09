@@ -144,22 +144,19 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
                     match key {
                         "jsonrpc" => {
                             if jsonrpc {
-                                return Err(de::Error::duplicate_field("jsonrpc"));
+                                return Err(de::Error::duplicate_field("jsonrpc"))
                             }
 
                             let value = map.next_value()?;
                             if value != "2.0" {
-                                return Err(de::Error::invalid_value(
-                                    Unexpected::Str(value),
-                                    &"2.0",
-                                ));
+                                return Err(de::Error::invalid_value(Unexpected::Str(value), &"2.0"))
                             }
 
                             jsonrpc = true;
                         }
                         "id" => {
                             if id.is_some() {
-                                return Err(de::Error::duplicate_field("id"));
+                                return Err(de::Error::duplicate_field("id"))
                             }
 
                             let value: u64 = map.next_value()?;
@@ -167,7 +164,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
                         }
                         "result" => {
                             if result.is_some() {
-                                return Err(de::Error::duplicate_field("result"));
+                                return Err(de::Error::duplicate_field("result"))
                             }
 
                             let value: &RawValue = map.next_value()?;
@@ -175,7 +172,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
                         }
                         "error" => {
                             if error.is_some() {
-                                return Err(de::Error::duplicate_field("error"));
+                                return Err(de::Error::duplicate_field("error"))
                             }
 
                             let value: JsonRpcError = map.next_value()?;
@@ -183,7 +180,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
                         }
                         "method" => {
                             if method.is_some() {
-                                return Err(de::Error::duplicate_field("method"));
+                                return Err(de::Error::duplicate_field("method"))
                             }
 
                             let value: &str = map.next_value()?;
@@ -191,7 +188,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
                         }
                         "params" => {
                             if params.is_some() {
-                                return Err(de::Error::duplicate_field("params"));
+                                return Err(de::Error::duplicate_field("params"))
                             }
 
                             let value: Params = map.next_value()?;
@@ -208,7 +205,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
 
                 // jsonrpc version must be present in all responses
                 if !jsonrpc {
-                    return Err(de::Error::missing_field("jsonrpc"));
+                    return Err(de::Error::missing_field("jsonrpc"))
                 }
 
                 match (id, result, error, method, params) {

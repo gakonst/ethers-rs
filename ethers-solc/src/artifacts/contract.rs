@@ -236,7 +236,7 @@ impl TryFrom<ContractBytecode> for ContractBytecodeSome {
 
     fn try_from(value: ContractBytecode) -> Result<Self, Self::Error> {
         if value.abi.is_none() || value.bytecode.is_none() || value.deployed_bytecode.is_none() {
-            return Err(value);
+            return Err(value)
         }
         Ok(value.unwrap())
     }
@@ -258,7 +258,7 @@ impl TryFrom<CompactContract> for CompactContractSome {
 
     fn try_from(value: CompactContract) -> Result<Self, Self::Error> {
         if value.abi.is_none() || value.bin.is_none() || value.bin_runtime.is_none() {
-            return Err(value);
+            return Err(value)
         }
         Ok(value.unwrap())
     }
@@ -448,7 +448,7 @@ impl<'a> TryFrom<CompactContractRef<'a>> for CompactContractRefSome<'a> {
 
     fn try_from(value: CompactContractRef<'a>) -> Result<Self, Self::Error> {
         if value.abi.is_none() || value.bin.is_none() || value.bin_runtime.is_none() {
-            return Err(value);
+            return Err(value)
         }
         Ok(value.unwrap())
     }

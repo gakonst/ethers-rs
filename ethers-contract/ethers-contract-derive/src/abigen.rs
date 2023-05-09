@@ -94,7 +94,7 @@ impl Parse for ContractArgs {
         if input.parse::<Token![,]>().is_ok() {
             loop {
                 if input.is_empty() || input.peek(Token![;]) {
-                    break;
+                    break
                 }
                 parameters.push_value(input.parse()?);
                 if let Ok(comma) = input.parse() {
@@ -128,10 +128,10 @@ impl Parse for Parameter {
                 let mut aliases = HashSet::new();
                 for method in parsed {
                     if !signatures.insert(method.signature.clone()) {
-                        return Err(Error::new(method.span(), "duplicate method signature"));
+                        return Err(Error::new(method.span(), "duplicate method signature"))
                     }
                     if !aliases.insert(method.alias.clone()) {
-                        return Err(Error::new(method.alias.span(), "duplicate method alias"));
+                        return Err(Error::new(method.alias.span(), "duplicate method alias"))
                     }
                     methods.push(method.into_inner());
                 }

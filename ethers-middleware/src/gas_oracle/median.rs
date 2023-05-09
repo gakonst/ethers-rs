@@ -50,7 +50,7 @@ impl Median {
             );
         let values = values.collect::<Vec<_>>();
         if values.is_empty() {
-            return Err(GasOracleError::NoValues);
+            return Err(GasOracleError::NoValues)
         }
         Ok(values)
     }
@@ -100,7 +100,7 @@ where
 {
     assert!((0.0..=1.0).contains(&fractile));
     if values.is_empty() {
-        return None;
+        return None
     }
     let weight_rank = fractile * values.iter().map(|(weight, _)| *weight).sum::<f32>();
     values.sort_unstable_by(|a, b| key(&a.1).cmp(key(&b.1)));
@@ -108,7 +108,7 @@ where
     for (weight, value) in values.iter() {
         cumulative_weight += *weight;
         if cumulative_weight >= weight_rank {
-            return Some(value);
+            return Some(value)
         }
     }
     // By the last element, cumulative_weight == weight_rank and we should have

@@ -351,7 +351,7 @@ impl Shared {
             let read = reader.read_buf(&mut buf).await?;
             if read == 0 {
                 // eof, socket was closed
-                return Err(IpcError::ServerExit);
+                return Err(IpcError::ServerExit)
             }
 
             // parse the received bytes into 0-n jsonrpc messages
@@ -427,7 +427,7 @@ impl Shared {
             Some(tx) => tx,
             None => {
                 tracing::warn!(%id, "no pending request exists for the response ID");
-                return;
+                return
             }
         };
 
@@ -448,7 +448,7 @@ impl Shared {
                     id = ?params.subscription,
                     "no subscription exists for the notification ID"
                 );
-                return;
+                return
             }
         };
 

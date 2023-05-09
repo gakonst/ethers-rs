@@ -63,7 +63,7 @@ impl FromStr for ContractInfo {
         let path = iter.next().map(str::to_string);
 
         if name.ends_with(".sol") || name.contains('/') {
-            return Err(err());
+            return Err(err())
         }
 
         Ok(Self { path, name })

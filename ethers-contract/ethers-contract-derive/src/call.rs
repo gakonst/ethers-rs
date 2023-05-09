@@ -30,7 +30,7 @@ pub(crate) fn derive_eth_call_impl(input: DeriveInput) -> Result<TokenStream, Er
         }
     } else {
         // try to determine the abi by using its fields at runtime
-        return derive_trait_impls_with_abi_type(&input, &function_call_name, None);
+        return derive_trait_impls_with_abi_type(&input, &function_call_name, None)
     };
     function.name = function_call_name.clone();
 

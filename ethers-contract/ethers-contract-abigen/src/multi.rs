@@ -628,7 +628,7 @@ impl MultiBindingsInner {
                 .join("Cargo.toml");
 
         if !cargo_toml.exists() {
-            return Ok(DEFAULT_ETHERS_DEP.to_string());
+            return Ok(DEFAULT_ETHERS_DEP.to_string())
         }
 
         let data = fs::read_to_string(cargo_toml)?;

@@ -89,18 +89,18 @@ fn expand_event_input(
 ) -> Result<TokenStream> {
     let kind = &input.kind;
     match (kind, input.indexed) {
-        (ParamType::Array(_), true)
-        | (ParamType::FixedArray(_, _), true)
-        | (ParamType::Tuple(_), true)
-        | (ParamType::Bytes, true)
-        | (ParamType::String, true) => {
+        (ParamType::Array(_), true) |
+        (ParamType::FixedArray(_, _), true) |
+        (ParamType::Tuple(_), true) |
+        (ParamType::Bytes, true) |
+        (ParamType::String, true) => {
             let ethers_core = ethers_core_crate();
             Ok(quote!(#ethers_core::types::H256))
         }
 
-        (ParamType::Array(_), false)
-        | (ParamType::FixedArray(_, _), false)
-        | (ParamType::Tuple(_), false) => {
+        (ParamType::Array(_), false) |
+        (ParamType::FixedArray(_, _), false) |
+        (ParamType::Tuple(_), false) => {
             match internal_structs.get_event_input_struct_type(name, index) {
                 Some(ty) => {
                     let ty = util::ident(ty);

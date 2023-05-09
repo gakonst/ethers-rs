@@ -670,7 +670,7 @@ pub trait ArtifactOutput {
             let out_path = artifacts_folder.join(&candidate);
             if !already_taken.contains(&out_path) {
                 trace!("found alternative output file={:?} for {:?}", out_path, contract_file);
-                return out_path;
+                return out_path
             }
             current_parent = current_parent.and_then(|f| f.parent());
         }
@@ -700,7 +700,7 @@ pub trait ArtifactOutput {
                 .collect();
             if !already_taken.contains(&candidate) {
                 trace!("found alternative output file={:?} for {:?}", candidate, contract_file);
-                return candidate;
+                return candidate
             }
 
             num += 1;
@@ -841,8 +841,8 @@ pub trait ArtifactOutput {
                     // we keep the top most conflicting file unchanged
                     let is_top_most =
                         contracts.iter().enumerate().filter(|(i, _)| *i != idx).all(|(_, c)| {
-                            Path::new(file).components().count()
-                                < Path::new(c.file).components().count()
+                            Path::new(file).components().count() <
+                                Path::new(c.file).components().count()
                         });
                     if !is_top_most {
                         // we resolve the conflicting by finding a new unique, alternative path
@@ -886,10 +886,10 @@ pub trait ArtifactOutput {
                     // source units
                     // there's also no need to create a standalone artifact for source files that
                     // don't contain an ast
-                    if source.source_file.contains_contract_definition()
-                        || source.source_file.ast.is_none()
+                    if source.source_file.contains_contract_definition() ||
+                        source.source_file.ast.is_none()
                     {
-                        continue;
+                        continue
                     }
 
                     // we use file and file stem

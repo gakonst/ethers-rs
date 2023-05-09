@@ -376,8 +376,8 @@ impl Graph {
                         add_node(&mut unresolved, &mut index, &mut resolved_imports, import)
                             .map_err(|err| {
                                 match err {
-                                    err @ SolcError::ResolveCaseSensitiveFileName { .. }
-                                    | err @ SolcError::Resolve(_) => {
+                                    err @ SolcError::ResolveCaseSensitiveFileName { .. } |
+                                    err @ SolcError::Resolve(_) => {
                                         // make the error more helpful by providing additional
                                         // context
                                         SolcError::FailedResolveImport(
@@ -466,7 +466,7 @@ impl Graph {
                 // keep track of processed dependencies, if the dep was already in the set we have
                 // processed it already
                 if !processed_sources.insert(dep) {
-                    continue;
+                    continue
                 }
 
                 // library import
@@ -547,7 +547,7 @@ impl Graph {
             }
             if candidates.is_empty() {
                 // nothing to filter anymore
-                return;
+                return
             }
         }
     }
@@ -668,7 +668,7 @@ impl Graph {
             mut sets: Vec<&HashSet<&'a crate::SolcVersion>>,
         ) -> Vec<&'a crate::SolcVersion> {
             if sets.is_empty() {
-                return Vec::new();
+                return Vec::new()
             }
 
             let mut result = sets.pop().cloned().expect("not empty; qed.");
@@ -706,7 +706,7 @@ impl Graph {
                 "resolved solc version compatible with all sources  \"{}\"",
                 exact_version
             );
-            return HashMap::from([(exact_version, all_nodes)]);
+            return HashMap::from([(exact_version, all_nodes)])
         }
 
         // no version satisfies all nodes
@@ -799,7 +799,7 @@ impl VersionedSources {
                 if self.offline {
                     return Err(SolcError::msg(format!(
                         "missing solc \"{version}\" installation in offline mode"
-                    )));
+                    )))
                 } else {
                     // install missing solc
                     Solc::blocking_install(version.as_ref())?
@@ -922,7 +922,7 @@ impl Node {
                     Err(SourceVersionError::NoMatchingVersionOffline(req))
                 } else {
                     Err(SourceVersionError::NoMatchingVersion(req))
-                };
+                }
             }
 
             Ok(())

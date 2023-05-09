@@ -39,7 +39,7 @@ pub(crate) fn derive_eth_error_impl(input: DeriveInput) -> Result<TokenStream, E
         }
     } else {
         // try to determine the abi by using its fields at runtime
-        return derive_trait_impls_with_abi_type(&input, &error_name, None);
+        return derive_trait_impls_with_abi_type(&input, &error_name, None)
     };
     error.name = error_name.clone();
 

@@ -144,7 +144,7 @@ impl Context {
     ) -> Result<Option<TokenStream>> {
         // no point in having structs when there is no data returned
         if function.outputs.is_empty() {
-            return Ok(None);
+            return Ok(None)
         }
 
         let name = &function.name;
@@ -192,7 +192,7 @@ impl Context {
 
         if struct_defs.len() <= 1 {
             // no need for an enum
-            return Ok(struct_def_tokens);
+            return Ok(struct_def_tokens)
         }
 
         let mut derives = self.expand_extra_derives();
@@ -390,7 +390,7 @@ impl Context {
         for functions in all_functions.values() {
             if functions.iter().filter(|f| !aliases.contains_key(&f.abi_signature())).count() <= 1 {
                 // no overloads, hence no conflicts
-                continue;
+                continue
             }
 
             let num_functions = functions.len();
@@ -427,7 +427,7 @@ impl Context {
                     if a.iter()
                         .all(|d| b.iter().any(|o| o.name.to_snake_case() == d.name.to_snake_case()))
                     {
-                        return true;
+                        return true
                     }
                 }
                 false
@@ -493,14 +493,14 @@ impl Context {
                                 struct_name: util::safe_ident(&first_fun.name),
                             };
                             aliases.insert(first_fun.abi_signature(), first_fun_alias);
-                            continue;
+                            continue
                         }
                     }
                     1 => {
                         // single additional input params
-                        if diff[0].name.is_empty()
-                            || num_functions > NAME_ALIASING_OVERLOADED_FUNCTIONS_CAP
-                            || name_conflicts(*idx, &diffs)
+                        if diff[0].name.is_empty() ||
+                            num_functions > NAME_ALIASING_OVERLOADED_FUNCTIONS_CAP ||
+                            name_conflicts(*idx, &diffs)
                         {
                             needs_alias_for_first_fun_using_idx = true;
                             format!("{}{idx}", overloaded_fun.name.to_snake_case())
@@ -513,9 +513,9 @@ impl Context {
                         }
                     }
                     _ => {
-                        if diff.iter().any(|d| d.name.is_empty())
-                            || num_functions > NAME_ALIASING_OVERLOADED_FUNCTIONS_CAP
-                            || name_conflicts(*idx, &diffs)
+                        if diff.iter().any(|d| d.name.is_empty()) ||
+                            num_functions > NAME_ALIASING_OVERLOADED_FUNCTIONS_CAP ||
+                            name_conflicts(*idx, &diffs)
                         {
                             needs_alias_for_first_fun_using_idx = true;
                             format!("{}{idx}", overloaded_fun.name.to_snake_case())

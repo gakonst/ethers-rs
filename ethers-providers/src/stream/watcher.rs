@@ -105,7 +105,7 @@ where
                 // for new logs
                 FilterWatcherState::NextItem(iter) => {
                     if let item @ Some(_) = iter.next() {
-                        return Poll::Ready(item);
+                        return Poll::Ready(item)
                     }
                     FilterWatcherState::WaitForInterval
                 }

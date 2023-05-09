@@ -265,7 +265,7 @@ impl<M: Middleware> Multicall<M> {
                     .map_err(ContractError::from_middleware_error)?
                     .as_u64();
                 if !constants::MULTICALL_SUPPORTED_CHAIN_IDS.contains(&chain_id) {
-                    return Err(error::MulticallError::InvalidChainId(chain_id));
+                    return Err(error::MulticallError::InvalidChainId(chain_id))
                 }
                 constants::MULTICALL_ADDRESS
             }
@@ -309,7 +309,7 @@ impl<M: Middleware> Multicall<M> {
             (_, Some(chain_id)) => {
                 let chain_id = chain_id.into();
                 if !constants::MULTICALL_SUPPORTED_CHAIN_IDS.contains(&chain_id) {
-                    return Err(error::MulticallError::InvalidChainId(chain_id));
+                    return Err(error::MulticallError::InvalidChainId(chain_id))
                 }
                 constants::MULTICALL_ADDRESS
             }
@@ -388,7 +388,7 @@ impl<M: Middleware> Multicall<M> {
             TypedTransaction::Eip1559(tx) => (tx.to, tx.data, tx.value),
         };
         if data.is_none() && !call.function.outputs.is_empty() {
-            return self;
+            return self
         }
         if let Some(NameOrAddress::Address(target)) = to {
             let call = Call {
@@ -718,7 +718,7 @@ impl<M: Middleware> Multicall<M> {
                 // still do so because of other calls that are in the same multicall
                 // aggregate.
                 if !success && !call.allow_failure {
-                    return Err(error::MulticallError::IllegalRevert);
+                    return Err(error::MulticallError::IllegalRevert)
                 }
 
                 Err(return_data)

@@ -88,7 +88,7 @@ impl TrezorEthereum {
         let req = semver::VersionReq::parse(min_version)?;
         // Enforce firmware version is greater than "min_version"
         if !req.matches(&version) {
-            return Err(TrezorError::UnsupportedFirmwareVersion(min_version.to_string()));
+            return Err(TrezorError::UnsupportedFirmwareVersion(min_version.to_string()))
         }
 
         Ok(())

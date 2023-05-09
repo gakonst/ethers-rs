@@ -104,7 +104,7 @@ impl JsonRpcClient for Provider {
                     err: serde::de::Error::custom("unexpected notification over HTTP transport"),
                     text: String::from_utf8_lossy(&body).to_string(),
                 };
-                return Err(err);
+                return Err(err)
             }
             Err(err) => {
                 return Err(ClientError::SerdeJson {

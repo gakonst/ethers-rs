@@ -79,13 +79,13 @@ impl<'input> TokenStream<'input> {
         loop {
             if let Some((_, ch)) = self.chars.peek().cloned() {
                 if !ch.is_ascii_digit() {
-                    break;
+                    break
                 }
                 self.chars.next();
                 end += 1;
             } else {
                 end = self.input.len();
-                break;
+                break
             }
         }
         Some(Ok((Token::Number(&self.input[start..end]), start)))
@@ -201,13 +201,13 @@ struct SourceElementBuilder {
 
 impl fmt::Display for SourceElementBuilder {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.offset.is_none()
-            && self.length.is_none()
-            && self.index.is_none()
-            && self.jump.is_none()
-            && self.modifier_depth.is_none()
+        if self.offset.is_none() &&
+            self.length.is_none() &&
+            self.index.is_none() &&
+            self.jump.is_none() &&
+            self.modifier_depth.is_none()
         {
-            return Ok(());
+            return Ok(())
         }
 
         if let Some(s) = self.offset {
@@ -217,12 +217,12 @@ impl fmt::Display for SourceElementBuilder {
                 s.fmt(f)?;
             }
         }
-        if self.length.is_none()
-            && self.index.is_none()
-            && self.jump.is_none()
-            && self.modifier_depth.is_none()
+        if self.length.is_none() &&
+            self.index.is_none() &&
+            self.jump.is_none() &&
+            self.modifier_depth.is_none()
         {
-            return Ok(());
+            return Ok(())
         }
         f.write_char(':')?;
 
@@ -234,7 +234,7 @@ impl fmt::Display for SourceElementBuilder {
             }
         }
         if self.index.is_none() && self.jump.is_none() && self.modifier_depth.is_none() {
-            return Ok(());
+            return Ok(())
         }
         f.write_char(':')?;
 
@@ -243,7 +243,7 @@ impl fmt::Display for SourceElementBuilder {
             s.fmt(f)?;
         }
         if self.jump.is_none() && self.modifier_depth.is_none() {
-            return Ok(());
+            return Ok(())
         }
         f.write_char(':')?;
 
@@ -251,7 +251,7 @@ impl fmt::Display for SourceElementBuilder {
             s.fmt(f)?;
         }
         if self.modifier_depth.is_none() {
-            return Ok(());
+            return Ok(())
         }
         f.write_char(':')?;
 
@@ -291,7 +291,7 @@ impl SourceElementBuilder {
 
     fn set_jmp(&mut self, jmp: Jump, i: usize) -> Option<SyntaxError> {
         if self.jump.is_some() {
-            return Some(SyntaxError::new(format!("Jump already set: {i}")));
+            return Some(SyntaxError::new(format!("Jump already set: {i}")))
         }
         self.jump = Some(jmp);
         None
@@ -299,7 +299,7 @@ impl SourceElementBuilder {
 
     fn set_offset(&mut self, offset: usize, i: usize) -> Option<SyntaxError> {
         if self.offset.is_some() {
-            return Some(SyntaxError::new(format!("Offset already set: {i}")));
+            return Some(SyntaxError::new(format!("Offset already set: {i}")))
         }
         self.offset = Some(offset);
         None
@@ -307,7 +307,7 @@ impl SourceElementBuilder {
 
     fn set_length(&mut self, length: usize, i: usize) -> Option<SyntaxError> {
         if self.length.is_some() {
-            return Some(SyntaxError::new(format!("Length already set: {i}")));
+            return Some(SyntaxError::new(format!("Length already set: {i}")))
         }
         self.length = Some(length);
         None
@@ -315,7 +315,7 @@ impl SourceElementBuilder {
 
     fn set_index(&mut self, index: Option<u32>, i: usize) -> Option<SyntaxError> {
         if self.index.is_some() {
-            return Some(SyntaxError::new(format!("Index already set: {i}")));
+            return Some(SyntaxError::new(format!("Index already set: {i}")))
         }
         self.index = Some(index);
         None
@@ -323,7 +323,7 @@ impl SourceElementBuilder {
 
     fn set_modifier(&mut self, modifier_depth: usize, i: usize) -> Option<SyntaxError> {
         if self.modifier_depth.is_some() {
-            return Some(SyntaxError::new(format!("Modifier depth already set: {i}")));
+            return Some(SyntaxError::new(format!("Modifier depth already set: {i}")))
         }
         self.modifier_depth = Some(modifier_depth);
         None
@@ -376,7 +376,7 @@ macro_rules! parse_number {
 macro_rules! bail_opt {
     ($opt:stmt) => {
         if let Some(err) = { $opt } {
-            return Some(Err(err));
+            return Some(Err(err))
         }
     };
 }
@@ -435,10 +435,10 @@ impl<'input> Iterator for Parser<'input> {
                 Some(Err(err)) => return Some(Err(err)),
                 None => {
                     if self.done {
-                        return None;
+                        return None
                     }
                     self.done = true;
-                    break;
+                    break
                 }
             }
         }

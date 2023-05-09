@@ -271,7 +271,7 @@ impl<T: ArtifactOutput> Project<T> {
         #[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
         if self.auto_detect {
             tracing::trace!("using solc auto detection to compile sources");
-            return self.svm_compile(sources);
+            return self.svm_compile(sources)
         }
 
         self.compile_with_version(&self.solc, sources)
@@ -348,7 +348,7 @@ impl<T: ArtifactOutput> Project<T> {
 
         #[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
         if self.auto_detect {
-            return project::ProjectCompiler::with_sources(self, sources)?.compile();
+            return project::ProjectCompiler::with_sources(self, sources)?.compile()
         }
 
         let solc = self.configure_solc(self.solc.clone());
@@ -397,7 +397,7 @@ impl<T: ArtifactOutput> Project<T> {
         if self.auto_detect {
             return project::ProjectCompiler::with_sources(self, sources)?
                 .with_sparse_output(filter)
-                .compile();
+                .compile()
         }
 
         project::ProjectCompiler::with_sources_and_solc(self, sources, self.solc.clone())?

@@ -43,7 +43,7 @@ where
     ) -> Result<U256, NonceManagerError<M>> {
         if self.initialized.load(Ordering::SeqCst) {
             // return current nonce
-            return Ok(self.nonce.load(Ordering::SeqCst).into());
+            return Ok(self.nonce.load(Ordering::SeqCst).into())
         }
 
         let _guard = self.init_guard.lock().await;
@@ -51,7 +51,7 @@ where
         // do this again in case multiple tasks enter this codepath
         if self.initialized.load(Ordering::SeqCst) {
             // return current nonce
-            return Ok(self.nonce.load(Ordering::SeqCst).into());
+            return Ok(self.nonce.load(Ordering::SeqCst).into())
         }
 
         // initialize the nonce the first time the manager is called
