@@ -79,7 +79,9 @@ impl Tokenizable for Uint8 {
         match token {
             Token::Int(data) | Token::Uint(data) => {
                 if data > U256::from(u8::MAX) {
-                    return Err(InvalidOutputType("Integer overflow when casting to u8".to_string()))
+                    return Err(InvalidOutputType(
+                        "Integer overflow when casting to u8".to_string(),
+                    ));
                 }
                 Ok(Uint8(data.low_u32() as u8))
             }

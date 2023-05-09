@@ -83,10 +83,10 @@ impl FromStr for Remapping {
             .split_once('=')
             .ok_or_else(|| RemappingError::InvalidRemapping(remapping.to_string()))?;
         if name.trim().is_empty() {
-            return Err(RemappingError::EmptyRemappingKey(remapping.to_string()))
+            return Err(RemappingError::EmptyRemappingKey(remapping.to_string()));
         }
         if path.trim().is_empty() {
-            return Err(RemappingError::EmptyRemappingValue(remapping.to_string()))
+            return Err(RemappingError::EmptyRemappingValue(remapping.to_string()));
         }
         Ok(Remapping { name: name.to_string(), path: path.to_string() })
     }
@@ -179,9 +179,9 @@ impl Remapping {
         fn insert_prioritized(mappings: &mut HashMap<String, PathBuf>, key: String, path: PathBuf) {
             match mappings.entry(key) {
                 Entry::Occupied(mut e) => {
-                    if e.get().components().count() > path.components().count() ||
-                        (path.ends_with(DAPPTOOLS_CONTRACTS_DIR) &&
-                            !e.get().ends_with(DAPPTOOLS_CONTRACTS_DIR))
+                    if e.get().components().count() > path.components().count()
+                        || (path.ends_with(DAPPTOOLS_CONTRACTS_DIR)
+                            && !e.get().ends_with(DAPPTOOLS_CONTRACTS_DIR))
                     {
                         e.insert(path);
                     }
@@ -353,7 +353,7 @@ impl RelativeRemappingPathBuf {
     /// path has a root.
     pub fn relative(&self) -> PathBuf {
         if self.original().has_root() {
-            return self.original().into()
+            return self.original().into();
         }
         self.parent
             .as_ref()
@@ -506,11 +506,11 @@ impl Candidate {
 
             // if the window start and the source dir are the same directory we can end early if
             // we wrongfully detect something like: `<dep>/src/lib/`
-            if current_level > 0 &&
-                source_dir == window_start &&
-                (is_source_dir(&source_dir) || is_lib_dir(&source_dir))
+            if current_level > 0
+                && source_dir == window_start
+                && (is_source_dir(&source_dir) || is_lib_dir(&source_dir))
             {
-                return
+                return;
             }
             candidates.push(Candidate { window_start, source_dir, window_level: current_level });
         }
@@ -588,9 +588,9 @@ fn find_remapping_candidates(
         let entry: walkdir::DirEntry = entry;
 
         // found a solidity file directly the current dir
-        if !is_candidate &&
-            entry.file_type().is_file() &&
-            entry.path().extension() == Some("sol".as_ref())
+        if !is_candidate
+            && entry.file_type().is_file()
+            && entry.path().extension() == Some("sol".as_ref())
         {
             is_candidate = true;
         } else if entry.file_type().is_dir() {
@@ -605,11 +605,11 @@ fn find_remapping_candidates(
             if entry.path_is_symlink() {
                 if let Ok(target) = utils::canonicalize(entry.path()) {
                     // the symlink points to a parent dir of the current window
-                    if open.components().count() > target.components().count() &&
-                        utils::common_ancestor(open, &target).is_some()
+                    if open.components().count() > target.components().count()
+                        && utils::common_ancestor(open, &target).is_some()
                     {
                         // short-circuiting
-                        return Vec::new()
+                        return Vec::new();
                     }
                 }
             }
@@ -649,12 +649,12 @@ fn find_remapping_candidates(
     // need to find the actual next window in the event `open` is a lib dir
     let window_start = next_nested_window(open, current_dir);
     // finally, we need to merge, adjust candidates from the same level and opening window
-    if is_candidate ||
-        candidates
+    if is_candidate
+        || candidates
             .iter()
             .filter(|c| c.window_level == current_level && c.window_start == window_start)
-            .count() >
-            1
+            .count()
+            > 1
     {
         Candidate::merge_on_same_level(
             &mut candidates,
@@ -672,8 +672,8 @@ fn find_remapping_candidates(
             let distance = dir_distance(&candidate.window_start, &candidate.source_dir);
             if distance > 1 && candidate.source_dir_ends_with_js_source() {
                 candidate.source_dir = window_start;
-            } else if !is_source_dir(&candidate.source_dir) &&
-                candidate.source_dir != candidate.window_start
+            } else if !is_source_dir(&candidate.source_dir)
+                && candidate.source_dir != candidate.window_start
             {
                 candidate.source_dir = last_nested_source_dir(open, &candidate.source_dir);
             }
@@ -686,7 +686,7 @@ fn find_remapping_candidates(
 /// `dir_distance("root/a", "root/a/b/c") == 2`
 fn dir_distance(root: &Path, current: &Path) -> usize {
     if root == current {
-        return 0
+        return 0;
     }
     if let Ok(rem) = current.strip_prefix(root) {
         rem.components().count()
@@ -700,14 +700,14 @@ fn dir_distance(root: &Path, current: &Path) -> usize {
 /// window opener is found
 fn next_nested_window(root: &Path, current: &Path) -> PathBuf {
     if !is_lib_dir(root) || root == current {
-        return root.to_path_buf()
+        return root.to_path_buf();
     }
     if let Ok(rem) = current.strip_prefix(root) {
         let mut p = root.to_path_buf();
         for c in rem.components() {
             let next = p.join(c);
             if !is_lib_dir(&next) || !next.ends_with(JS_CONTRACTS_DIR) {
-                return next
+                return next;
             }
             p = next
         }
@@ -718,15 +718,15 @@ fn next_nested_window(root: &Path, current: &Path) -> PathBuf {
 /// Finds the last valid source directory in the window (root -> dir)
 fn last_nested_source_dir(root: &Path, dir: &Path) -> PathBuf {
     if is_source_dir(dir) {
-        return dir.to_path_buf()
+        return dir.to_path_buf();
     }
     let mut p = dir;
     while let Some(parent) = p.parent() {
         if parent == root {
-            return root.to_path_buf()
+            return root.to_path_buf();
         }
         if is_source_dir(parent) {
-            return parent.to_path_buf()
+            return parent.to_path_buf();
         }
         p = parent;
     }

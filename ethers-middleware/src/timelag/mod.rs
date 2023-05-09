@@ -244,12 +244,12 @@ where
             .map_err(ethers_providers::MiddlewareError::from_err)?;
 
         if receipt.is_none() {
-            return Ok(None)
+            return Ok(None);
         }
 
         let receipt = receipt.expect("checked is_none");
         if receipt.block_number.is_none() {
-            return Ok(Some(receipt))
+            return Ok(Some(receipt));
         }
 
         let number = receipt.block_number.expect("checked is_none");

@@ -194,7 +194,7 @@ impl Ganache {
             let mut line = String::new();
             reader.read_line(&mut line).expect("Failed to read line from ganache process");
             if line.contains("Listening on") {
-                break
+                break;
             }
 
             if line.starts_with("Private Keys") {

@@ -198,7 +198,7 @@ impl StructFieldType {
                                         Box::new(StructFieldType::Type(ty)),
                                         size,
                                     )))
-                                }
+                                };
                             }
                             Some(c) => {
                                 if c.is_numeric() {
@@ -270,7 +270,7 @@ impl SolStruct {
                             .map(parse_struct_field)
                             .collect::<Result<Vec<_>, _>>()?
                     };
-                    return Ok(SolStruct { name, fields })
+                    return Ok(SolStruct { name, fields });
                 }
                 Some(' ') | Some('\t') => continue,
                 Some(c) => {
@@ -303,7 +303,7 @@ impl SolStruct {
             if let FieldType::Elementary(ref param) = field.ty {
                 params.push(param.clone())
             } else {
-                return None
+                return None;
             }
         }
         Some(ParamType::Tuple(params))
@@ -341,7 +341,7 @@ fn parse_struct_field(s: &str) -> Result<FieldDeclaration> {
 fn parse_field_type(s: &str) -> Result<FieldType> {
     let mut input = s.trim_start();
     if input.starts_with("mapping") {
-        return Ok(FieldType::Mapping(Box::new(parse_mapping(input)?)))
+        return Ok(FieldType::Mapping(Box::new(parse_mapping(input)?)));
     }
     if input.ends_with(" payable") {
         // special case for `address payable`

@@ -34,7 +34,7 @@ impl Decodable for NameOrAddress {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         // An address (H160) is 20 bytes, so let's only accept 20 byte rlp string encodings.
         if !rlp.is_data() {
-            return Err(rlp::DecoderError::RlpExpectedToBeData)
+            return Err(rlp::DecoderError::RlpExpectedToBeData);
         }
 
         // the data needs to be 20 bytes long

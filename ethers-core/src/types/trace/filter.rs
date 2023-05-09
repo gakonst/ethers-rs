@@ -376,7 +376,7 @@ impl Decodable for TraceError {
 impl open_fastrlp::Decodable for TraceError {
     fn decode(buf: &mut &[u8]) -> Result<Self, DecodeError> {
         if buf.is_empty() {
-            return Err(DecodeError::InputTooShort)
+            return Err(DecodeError::InputTooShort);
         }
         let val = buf[0];
         let val = Self::from_u8(val).map_err(|_| DecodeError::Custom("Invalid error code"))?;

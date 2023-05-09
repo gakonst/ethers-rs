@@ -69,7 +69,6 @@ impl fmt::Display for Signature {
     }
 }
 
-#[cfg(feature = "eip712")]
 impl Signature {
     /// Recovers the ethereum address which was used to sign a given EIP712
     /// typed data payload.
@@ -95,7 +94,7 @@ impl Signature {
         let address = address.into();
         let recovered = self.recover(message)?;
         if recovered != address {
-            return Err(SignatureError::VerificationError(address, recovered))
+            return Err(SignatureError::VerificationError(address, recovered));
         }
 
         Ok(())
@@ -201,7 +200,7 @@ impl<'a> TryFrom<&'a [u8]> for Signature {
     /// and the final byte is the `v` value in 'Electrum' notation.
     fn try_from(bytes: &'a [u8]) -> Result<Self, Self::Error> {
         if bytes.len() != 65 {
-            return Err(SignatureError::InvalidLength(bytes.len()))
+            return Err(SignatureError::InvalidLength(bytes.len()));
         }
 
         let v = bytes[64];

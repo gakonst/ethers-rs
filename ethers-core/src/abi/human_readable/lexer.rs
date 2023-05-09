@@ -182,12 +182,12 @@ impl<'input> HumanReadableLexer<'input> {
                         if let Some((i, ch)) = self.chars.peek() {
                             if !UnicodeXID::is_xid_continue(*ch) && *ch != '$' {
                                 end = *i;
-                                break
+                                break;
                             }
                             self.chars.next();
                         } else {
                             end = self.input.len();
-                            break
+                            break;
                         }
                     }
                     let id = &self.input[start..end];
@@ -196,7 +196,7 @@ impl<'input> HumanReadableLexer<'input> {
                         Some(Ok((start, w, end)))
                     } else {
                         Some(Ok((start, Token::Identifier(id), end)))
-                    }
+                    };
                 }
                 Some((start, ch)) if ch.is_ascii_digit() => {
                     let mut end = start + 1;
@@ -220,7 +220,7 @@ impl<'input> HumanReadableLexer<'input> {
 
                             while let Some((i, ch)) = self.chars.peek() {
                                 if !ch.is_ascii_hexdigit() && *ch != '_' {
-                                    break
+                                    break;
                                 }
                                 end = *i;
                                 self.chars.next();
@@ -230,23 +230,23 @@ impl<'input> HumanReadableLexer<'input> {
                                 start,
                                 Token::HexNumber(&self.input[start..=end]),
                                 end + 1,
-                            )))
+                            )));
                         }
                     }
 
                     loop {
                         if let Some((i, ch)) = self.chars.peek().cloned() {
                             if !ch.is_ascii_digit() {
-                                break
+                                break;
                             }
                             self.chars.next();
                             end = i + 1;
                         } else {
                             end = self.input.len();
-                            break
+                            break;
                         }
                     }
-                    return Some(Ok((start, Token::Number(&self.input[start..end]), end + 1)))
+                    return Some(Ok((start, Token::Number(&self.input[start..end]), end + 1)));
                 }
                 Some((i, '(')) => return Some(Ok((i, Token::OpenParenthesis, i + 1))),
                 Some((i, ')')) => return Some(Ok((i, Token::CloseParenthesis, i + 1))),
@@ -262,11 +262,11 @@ impl<'input> HumanReadableLexer<'input> {
                         if let Some((i, ch)) = self.chars.next() {
                             end = i;
                             if ch.is_whitespace() {
-                                break
+                                break;
                             }
                         } else {
                             end = self.input.len();
-                            break
+                            break;
                         }
                     }
 
@@ -274,7 +274,7 @@ impl<'input> HumanReadableLexer<'input> {
                         start,
                         end,
                         self.input[start..end].to_owned(),
-                    )))
+                    )));
                 }
                 None => return None,
             }
@@ -527,7 +527,7 @@ impl<'input> HumanReadableParser<'input> {
         let mut params = Vec::new();
 
         if self.peek_next(token) {
-            return Ok(params)
+            return Ok(params);
         }
 
         loop {
@@ -581,7 +581,7 @@ impl<'input> HumanReadableParser<'input> {
                 Token::Identifier(id) => {
                     name = id;
                     self.next();
-                    break
+                    break;
                 }
                 _ => break,
             };
@@ -594,7 +594,7 @@ impl<'input> HumanReadableParser<'input> {
         let mut params = Vec::new();
 
         if self.peek_next(Token::CloseParenthesis) {
-            return Ok(params)
+            return Ok(params);
         }
         loop {
             params.push(self.take_param()?);

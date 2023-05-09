@@ -17,10 +17,10 @@ pub fn u256_from_f64_saturating(mut f: f64) -> U256 {
         panic!("NaN is not a valid value for U256");
     }
     if f < 0.5 {
-        return U256::zero()
+        return U256::zero();
     }
     if f >= 1.157_920_892_373_162e77_f64 {
-        return U256::max_value()
+        return U256::max_value();
     }
     // All non-normal cases should have been handled above
     assert!(f.is_normal());

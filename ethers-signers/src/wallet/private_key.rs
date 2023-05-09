@@ -101,9 +101,9 @@ impl Wallet<SigningKey> {
 
 impl PartialEq for Wallet<SigningKey> {
     fn eq(&self, other: &Self) -> bool {
-        self.signer.to_bytes().eq(&other.signer.to_bytes()) &&
-            self.address == other.address &&
-            self.chain_id == other.chain_id
+        self.signer.to_bytes().eq(&other.signer.to_bytes())
+            && self.address == other.address
+            && self.chain_id == other.chain_id
     }
 }
 
@@ -134,7 +134,7 @@ impl FromStr for Wallet<SigningKey> {
         let src = hex::decode(src)?;
 
         if src.len() != 32 {
-            return Err(WalletError::HexError(hex::FromHexError::InvalidStringLength))
+            return Err(WalletError::HexError(hex::FromHexError::InvalidStringLength));
         }
 
         let sk = SigningKey::from_bytes(src.as_slice().into())?;

@@ -301,7 +301,6 @@ mod tests {
     use crate::types::U256;
 
     #[test]
-    #[cfg(feature = "eip712")]
     fn test_deserialize_string_chain_id() {
         use crate::types::transaction::eip712::EIP712Domain;
 

@@ -399,7 +399,7 @@ pub fn encode_data(
             } else if types.contains_key(&field.r#type) {
                 tokens.push(Token::Uint(U256::zero()));
             } else {
-                return Err(Eip712Error::Message(format!("No data found for: `{}`", field.name)))
+                return Err(Eip712Error::Message(format!("No data found for: `{}`", field.name)));
             }
         }
     }
@@ -471,7 +471,7 @@ fn find_type_dependencies<'a>(
     found: &mut HashSet<&'a str>,
 ) {
     if found.contains(primary_type) {
-        return
+        return;
     }
     if let Some(fields) = types.get(primary_type) {
         found.insert(primary_type);

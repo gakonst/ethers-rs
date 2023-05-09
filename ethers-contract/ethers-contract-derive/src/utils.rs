@@ -77,11 +77,11 @@ pub fn parse_param_type(s: &str) -> Option<ParamType> {
 pub fn topic_param_type_quote(kind: &ParamType) -> TokenStream {
     let ethers_core = ethers_core_crate();
     match kind {
-        ParamType::String |
-        ParamType::Bytes |
-        ParamType::Array(_) |
-        ParamType::FixedArray(_, _) |
-        ParamType::Tuple(_) => quote! {#ethers_core::abi::ParamType::FixedBytes(32)},
+        ParamType::String
+        | ParamType::Bytes
+        | ParamType::Array(_)
+        | ParamType::FixedArray(_, _)
+        | ParamType::Tuple(_) => quote! {#ethers_core::abi::ParamType::FixedBytes(32)},
         ty => param_type_quote(ty),
     }
 }
@@ -144,7 +144,7 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
                         return match (ty, len) {
                             (ParamType::Uint(8), 32) => Ok(ParamType::FixedBytes(32)),
                             (ty, len) => Ok(ParamType::FixedArray(Box::new(ty), len)),
-                        }
+                        };
                     }
                 }
             }
@@ -159,7 +159,7 @@ pub fn find_parameter_type(ty: &Type) -> Result<ParamType, Error> {
                     debug_assert!(matches!(args.args.len(), 1 | 2));
                     let ty = args.args.iter().next().unwrap();
                     if let GenericArgument::Type(ref ty) = ty {
-                        return find_parameter_type(ty).map(|kind| ParamType::Array(Box::new(kind)))
+                        return find_parameter_type(ty).map(|kind| ParamType::Array(Box::new(kind)));
                     }
                 }
             }

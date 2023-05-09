@@ -111,7 +111,7 @@ fn print_node(
     writeln!(out, "{}{star}", graph.display_node(node_index))?;
 
     if !new_node || in_cycle {
-        return Ok(())
+        return Ok(());
     }
     write_stack.push(node_index);
 
@@ -145,7 +145,7 @@ fn print_imports(
 ) -> io::Result<()> {
     let imports = graph.imported_nodes(node_index);
     if imports.is_empty() {
-        return Ok(())
+        return Ok(());
     }
 
     let mut iter = imports.iter().peekable();

@@ -446,7 +446,7 @@ pub fn parse_checksummed(addr: &str, chain_id: Option<u8>) -> Result<Address, Co
 pub fn format_bytes32_string(text: &str) -> Result<[u8; 32], ConversionError> {
     let str_bytes: &[u8] = text.as_bytes();
     if str_bytes.len() > 32 {
-        return Err(ConversionError::TextTooLong)
+        return Err(ConversionError::TextTooLong);
     }
 
     let mut bytes32: [u8; 32] = [0u8; 32];
@@ -492,7 +492,7 @@ where
     D: Deserializer<'de>,
 {
     if bytes.0.len() > 32 {
-        return Err(serde::de::Error::custom("input too long to be a H256"))
+        return Err(serde::de::Error::custom("input too long to be a H256"));
     }
 
     // left pad with zeros to 32 bytes
@@ -530,10 +530,10 @@ fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {
     let mut rewards: Vec<U256> =
         rewards.iter().map(|r| r[0]).filter(|r| *r > U256::zero()).collect();
     if rewards.is_empty() {
-        return U256::zero()
+        return U256::zero();
     }
     if rewards.len() == 1 {
-        return rewards[0]
+        return rewards[0];
     }
     // Sort the rewards as we will eventually take the median.
     rewards.sort();
@@ -560,8 +560,8 @@ fn estimate_priority_fee(rewards: Vec<Vec<U256>>) -> U256 {
 
     // If we encountered a big change in fees at a certain position, then consider only
     // the values >= it.
-    let values = if *max_change >= EIP1559_FEE_ESTIMATION_THRESHOLD_MAX_CHANGE.into() &&
-        (max_change_index >= (rewards.len() / 2))
+    let values = if *max_change >= EIP1559_FEE_ESTIMATION_THRESHOLD_MAX_CHANGE.into()
+        && (max_change_index >= (rewards.len() / 2))
     {
         rewards[max_change_index..].to_vec()
     } else {

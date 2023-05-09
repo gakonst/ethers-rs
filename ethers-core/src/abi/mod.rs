@@ -97,7 +97,7 @@ pub trait ErrorExt: sealed::Sealed {
 impl ErrorExt for ethabi::AbiError {
     fn abi_signature(&self) -> String {
         if self.inputs.is_empty() {
-            return format!("{}()", self.name)
+            return format!("{}()", self.name);
         }
         let inputs = self.inputs.iter().map(|p| p.kind.to_string()).collect::<Vec<_>>().join(",");
         format!("{}({inputs})", self.name)
@@ -123,11 +123,11 @@ pub trait AbiType {
 pub fn minimum_size(ty: &ParamType) -> usize {
     match ty {
         // 1 word
-        ParamType::Uint(_) |
-        ParamType::Int(_) |
-        ParamType::Bool |
-        ParamType::Address |
-        ParamType::FixedBytes(_) => 32,
+        ParamType::Uint(_)
+        | ParamType::Int(_)
+        | ParamType::Bool
+        | ParamType::Address
+        | ParamType::FixedBytes(_) => 32,
         // min 2 words (offset, length)
         ParamType::Bytes | ParamType::String | ParamType::Array(_) => 64,
         // sum of all elements

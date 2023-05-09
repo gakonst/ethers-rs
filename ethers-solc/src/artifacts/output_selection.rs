@@ -482,11 +482,11 @@ impl FromStr for DeployedBytecodeOutputSelection {
             "evm.deployedBytecode.functionDebugData" => {
                 Ok(DeployedBytecodeOutputSelection::FunctionDebugData)
             }
-            "deployed-code" |
-            "deployed-bin" |
-            "runtime-code" |
-            "runtime-bin" |
-            "evm.deployedBytecode.object" => Ok(DeployedBytecodeOutputSelection::Object),
+            "deployed-code"
+            | "deployed-bin"
+            | "runtime-code"
+            | "runtime-bin"
+            | "evm.deployedBytecode.object" => Ok(DeployedBytecodeOutputSelection::Object),
             "evm.deployedBytecode.opcodes" => Ok(DeployedBytecodeOutputSelection::Opcodes),
             "evm.deployedBytecode.sourceMap" => Ok(DeployedBytecodeOutputSelection::SourceMap),
             "evm.deployedBytecode.linkReferences" => {

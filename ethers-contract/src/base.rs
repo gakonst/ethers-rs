@@ -267,7 +267,7 @@ pub fn decode_function_data_raw<T: AsRef<[u8]>>(
     let bytes = bytes.as_ref();
     Ok(if is_input {
         if bytes.len() < 4 || bytes[..4] != function.selector() {
-            return Err(AbiError::WrongSelector)
+            return Err(AbiError::WrongSelector);
         }
         function.decode_input(&bytes[4..])?
     } else {

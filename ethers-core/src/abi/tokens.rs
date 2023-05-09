@@ -189,7 +189,7 @@ impl Tokenizable for H256 {
         match token {
             Token::FixedBytes(mut s) => {
                 if s.len() != 32 {
-                    return Err(InvalidOutputType(format!("Expected `H256`, got {s:?}")))
+                    return Err(InvalidOutputType(format!("Expected `H256`, got {s:?}")));
                 }
                 let mut data = [0; 32];
                 for (idx, val) in s.drain(..).enumerate() {
@@ -337,7 +337,7 @@ impl<const N: usize> Tokenizable for [u8; N] {
                         "Expected `FixedBytes({})`, got FixedBytes({})",
                         N,
                         bytes.len()
-                    )))
+                    )));
                 }
 
                 let mut arr = [0; N];
@@ -362,7 +362,7 @@ impl<T: TokenizableItem + Clone, const N: usize> Tokenizable for [T; N] {
                         "Expected `FixedArray({})`, got FixedArray({})",
                         N,
                         tokens.len()
-                    )))
+                    )));
                 }
 
                 let mut arr = ArrayVec::<T, N>::new();

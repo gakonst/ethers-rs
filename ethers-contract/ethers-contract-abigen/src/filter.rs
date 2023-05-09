@@ -131,7 +131,7 @@ macro_rules! impl_filter {
             pub fn is_match(&self, name: impl AsRef<str>) -> bool {
                 let name = name.as_ref();
                 if self.exact.contains(name) {
-                    return true
+                    return true;
                 }
                 self.patterns.iter().any(|re| re.is_match(name))
             }

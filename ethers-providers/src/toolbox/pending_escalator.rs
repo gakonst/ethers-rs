@@ -193,7 +193,7 @@ where
                         let fut = this.provider.send_raw_transaction(next_to_broadcast);
                         *this.state = BroadcastingNew(fut);
                         cx.waker().wake_by_ref();
-                        return Poll::Pending
+                        return Poll::Pending;
                     }
                 }
                 check_all_receipts!(cx, this);

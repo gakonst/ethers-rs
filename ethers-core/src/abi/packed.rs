@@ -91,7 +91,7 @@ fn check(token: &Token) -> Result<(), EncodePackedError> {
         Array(vec) | FixedArray(vec) => {
             for t in vec.iter() {
                 if t.is_dynamic() || matches!(t, Array(_)) {
-                    return Err(EncodePackedError::InvalidToken(token.clone()))
+                    return Err(EncodePackedError::InvalidToken(token.clone()));
                 }
                 check(t)?;
             }

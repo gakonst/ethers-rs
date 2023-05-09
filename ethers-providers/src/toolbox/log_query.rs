@@ -136,7 +136,7 @@ where
                         // no more pages to load, and everything is consumed
                         // can safely assume this will always be set in this state
                         if from_block > self.last_block.unwrap() {
-                            return Poll::Ready(None)
+                            return Poll::Ready(None);
                         }
                         // load next page
                         self.from_block = Some(to_block + 1);

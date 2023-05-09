@@ -144,7 +144,7 @@ impl AbiParser {
                             tuple.push(ty.as_param(ParamType::Tuple(param)))
                         } else {
                             resolved = false;
-                            break
+                            break;
                         }
                     }
                     FieldType::Mapping(_) => {
@@ -227,7 +227,7 @@ impl AbiParser {
                     };
 
                     let event = Event { name, inputs, anonymous };
-                    return Ok(event)
+                    return Ok(event);
                 }
                 Some(' ') | Some('\t') => continue,
                 Some(c) => {
@@ -526,7 +526,7 @@ pub(crate) fn parse_identifier(input: &mut &str) -> Result<String> {
         }
     }
     if name.is_empty() {
-        return Err(ParseError::ParseError(super::Error::InvalidName(input.to_string())))
+        return Err(ParseError::ParseError(super::Error::InvalidName(input.to_string())));
     }
     *input = chars.as_str();
     Ok(name)

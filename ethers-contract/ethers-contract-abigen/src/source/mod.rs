@@ -107,7 +107,7 @@ impl Source {
         if let Ok(canonicalized) = dunce::canonicalize(&resolved) {
             resolved = canonicalized;
         } else {
-            return Err(eyre::eyre!("File does not exist: {}", resolved.display()))
+            return Err(eyre::eyre!("File does not exist: {}", resolved.display()));
         }
 
         Ok(Source::Local(resolved))

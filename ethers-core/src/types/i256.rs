@@ -226,7 +226,7 @@ impl I256 {
 
         // NOTE: Do the hex conversion here as `U256` implementation can panic.
         if value.len() > 64 {
-            return Err(ParseI256Error::IntegerOverflow)
+            return Err(ParseI256Error::IntegerOverflow);
         }
 
         let mut abs = U256::zero();
@@ -506,8 +506,8 @@ impl I256 {
         //   the result.
         let overflow = matches!(
             (self.sign(), rhs.sign(), result.sign()),
-            (Sign::Positive, Sign::Positive, Sign::Negative) |
-                (Sign::Negative, Sign::Negative, Sign::Positive)
+            (Sign::Positive, Sign::Positive, Sign::Negative)
+                | (Sign::Negative, Sign::Negative, Sign::Positive)
         );
 
         (result, overflow)
@@ -565,8 +565,8 @@ impl I256 {
         //   the result.
         let overflow = matches!(
             (self.sign(), rhs.sign(), result.sign()),
-            (Sign::Positive, Sign::Negative, Sign::Negative) |
-                (Sign::Negative, Sign::Positive, Sign::Positive)
+            (Sign::Positive, Sign::Negative, Sign::Negative)
+                | (Sign::Negative, Sign::Positive, Sign::Positive)
         );
 
         (result, overflow)

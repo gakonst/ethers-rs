@@ -88,7 +88,7 @@ impl WsBackend {
                 trace!(%item, "Deserialized message");
                 let res = self.handler.unbounded_send(item);
                 if res.is_err() {
-                    return Err(WsClientError::DeadChannel)
+                    return Err(WsClientError::DeadChannel);
                 }
             }
             Err(e) => {
