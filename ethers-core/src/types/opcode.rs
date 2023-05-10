@@ -139,9 +139,9 @@ pub enum Opcode {
     /// Opcode 0x43 - Get the block’s number
     NUMBER,
     /// Opcode 0x44 - Get the block’s difficulty
+    #[serde(alias = "PREVRANDAO", alias = "RANDOM")]
+    #[strum(to_string = "DIFFICULTY", serialize = "PREVRANDAO", serialize = "RANDOM")]
     DIFFICULTY,
-    //RANDOM,      // 0x44 // Same as DIFFICULTY
-    //PREVRANDAO,  // 0x44 // Same as DIFFICULTY
     /// Opcode 0x45 - Get the block’s gas limit
     GASLIMIT,
     /// Opcode 0x46 - Get the chain ID
@@ -183,7 +183,7 @@ pub enum Opcode {
 
     // 0x5C - 0x5E are invalid
 
-    // 0x60 range - pushes.
+    // 0x5F range - pushes.
     /// Opcode 0x5F - Place the constant value 0 on stack
     PUSH0 = 0x5f,
     /// Opcode 0x60 - Place 1 byte item on stack
