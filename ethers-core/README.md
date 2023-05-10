@@ -10,6 +10,10 @@ other utilities for interacting with the Ethereum ecosystem
 
 For more information, please refer to the [book](https://gakonst.com/ethers-rs).
 
+## Feature flags
+
+-   `eip712`: Does nothing.
+
 ## ABI
 
 This crate re-exports the [`ethabi`](https://docs.rs/ethabi) crate's functions
