@@ -50,15 +50,8 @@ pub const LONDON_SOLC: Version = Version::new(0, 8, 7);
 pub const PARIS_SOLC: Version = Version::new(0, 8, 18);
 
 /// Shanghai support
-// TODO: Solc blogpost link
+/// <https://blog.soliditylang.org/2023/05/10/solidity-0.8.20-release-announcement/>
 pub const SHANGHAI_SOLC: Version = Version::new(0, 8, 20);
-
-/// This will be removed once 0.8.20 is released.
-///
-/// Shanghai support was added in [ethereum/solidity#14107](https://github.com/ethereum/solidity/pull/14107),
-/// which was released in `nightly.2023.4.13`.
-pub(crate) static SUPPORTS_SHANGHAI: Lazy<VersionReq> =
-    Lazy::new(|| VersionReq::parse(">=0.8.20-nightly.2023.4.13").unwrap());
 
 // `--base-path` was introduced in 0.6.9 <https://github.com/ethereum/solidity/releases/tag/v0.6.9>
 pub static SUPPORTS_BASE_PATH: Lazy<VersionReq> =
