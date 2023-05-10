@@ -21,6 +21,9 @@ const PRICE_FEED_3: &str = "0xebf67ab8cff336d3f609127e8bbf8bd6dd93cd81";
 /// by address.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
     let client = get_client().await;
     let client = Arc::new(client);
 
