@@ -4,8 +4,7 @@ use crate::{
 };
 use ethers_core::abi::Abi;
 use md5::Digest;
-use once_cell::sync::Lazy;
-use semver::{Version, VersionReq};
+use semver::Version;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{BTreeMap, HashSet},
@@ -309,35 +308,33 @@ impl Settings {
 
     /// This will remove/adjust values in the settings that are not compatible with this version.
     pub fn sanitize(&mut self, version: &Version) {
-        static PRE_V0_6_0: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("<0.6.0").unwrap());
-        static PRE_V0_7_5: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("<0.7.5").unwrap());
-        static PRE_V0_8_7: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("<0.8.7").unwrap());
-        static PRE_V0_8_10: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("<0.8.10").unwrap());
-        static PRE_V0_8_18: Lazy<VersionReq> = Lazy::new(|| VersionReq::parse("<0.8.18").unwrap());
-
-        if PRE_V0_6_0.matches(version) {
+        const V0_6_0: Version = Version::new(0, 6, 0);
+        if *version < V0_6_0 {
             if let Some(meta) = &mut self.metadata {
                 // introduced in <https://docs.soliditylang.org/en/v0.6.0/using-the-compiler.html#compiler-api>
                 // missing in <https://docs.soliditylang.org/en/v0.5.17/using-the-compiler.html#compiler-api>
-                meta.bytecode_hash.take();
+                meta.bytecode_hash = None;
             }
             // introduced in <https://docs.soliditylang.org/en/v0.6.0/using-the-compiler.html#compiler-api>
-            self.debug.take();
+            self.debug = None;
         }
 
-        if PRE_V0_7_5.matches(version) {
+        const V0_7_5: Version = Version::new(0, 7, 5);
+        if *version < V0_7_5 {
             // introduced in 0.7.5 <https://github.com/ethereum/solidity/releases/tag/v0.7.5>
-            self.via_ir.take();
+            self.via_ir = None;
         }
 
-        if PRE_V0_8_7.matches(version) {
+        const V0_8_7: Version = Version::new(0, 8, 7);
+        if *version < V0_8_7 {
             // lower the disable version from 0.8.10 to 0.8.7, due to `divModNoSlacks`,
             // `showUnproved` and `solvers` are implemented
             // introduced in <https://github.com/ethereum/solidity/releases/tag/v0.8.7>
             self.model_checker = None;
         }
 
-        if PRE_V0_8_10.matches(version) {
+        const V0_8_10: Version = Version::new(0, 8, 10);
+        if *version < V0_8_10 {
             if let Some(debug) = &mut self.debug {
                 // introduced in <https://docs.soliditylang.org/en/v0.8.10/using-the-compiler.html#compiler-api>
                 // <https://github.com/ethereum/solidity/releases/tag/v0.8.10>
@@ -350,7 +347,8 @@ impl Settings {
             }
         }
 
-        if PRE_V0_8_18.matches(version) {
+        const V0_8_18: Version = Version::new(0, 8, 18);
+        if *version < V0_8_18 {
             // introduced in 0.8.18 <https://github.com/ethereum/solidity/releases/tag/v0.8.18>
             if let Some(meta) = &mut self.metadata {
                 meta.cbor_metadata = None;
@@ -361,6 +359,14 @@ impl Settings {
                     // elf solver introduced in 0.8.18 <https://github.com/ethereum/solidity/releases/tag/v0.8.18>
                     solvers.retain(|solver| *solver != ModelCheckerSolver::Eld);
                 }
+            }
+        }
+
+        if *version < SHANGHAI_SOLC {
+            // introduced in 0.8.20 <https://github.com/ethereum/solidity/releases/tag/v0.8.20>
+            if let Some(model_checker) = &mut self.model_checker {
+                model_checker.show_proved_safe = None;
+                model_checker.show_unsupported = None;
             }
         }
     }
@@ -758,9 +764,9 @@ impl EvmVersion {
     pub fn normalize_version(self, version: &Version) -> Option<Self> {
         // The EVM version flag was only added in 0.4.21; we work our way backwards
         if *version >= BYZANTIUM_SOLC {
-            // If the Solc is at least at Shanghai, it supports all EVM versions.
+            // If the Solc version is at least at Shanghai, it supports all EVM versions.
             // For all other cases, cap at the at-the-time highest possible fork.
-            let normalized = if self >= Self::Shanghai {
+            let normalized = if *version >= SHANGHAI_SOLC {
                 self
             } else if self >= Self::Paris && *version >= PARIS_SOLC {
                 Self::Paris
@@ -1120,7 +1126,8 @@ pub struct MetadataSource {
 }
 
 /// Model checker settings for solc
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ModelCheckerSettings {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub contracts: BTreeMap<String, Vec<String>>,
@@ -1136,12 +1143,16 @@ pub struct ModelCheckerSettings {
     pub targets: Option<Vec<ModelCheckerTarget>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub invariants: Option<Vec<ModelCheckerInvariant>>,
-    #[serde(rename = "showUnproved", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub show_unproved: Option<bool>,
-    #[serde(rename = "divModWithSlacks", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub div_mod_with_slacks: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub solvers: Option<Vec<ModelCheckerSolver>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_unsupported: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_proved_safe: Option<bool>,
 }
 
 /// Which model checker engine to run.
@@ -2400,9 +2411,11 @@ mod tests {
             ("0.8.20", EvmVersion::Paris, Some(EvmVersion::Paris)),
             ("0.8.20", EvmVersion::Shanghai, Some(EvmVersion::Shanghai)),
         ] {
+            let version = Version::from_str(solc_version).unwrap();
             assert_eq!(
-                &evm_version.normalize_version(&Version::from_str(solc_version).unwrap()),
-                expected
+                &evm_version.normalize_version(&version),
+                expected,
+                "({version}, {evm_version:?})"
             )
         }
     }
@@ -2445,8 +2458,7 @@ mod tests {
         let i = input.clone().sanitized(&version);
         assert_eq!(i.settings.metadata.unwrap().cbor_metadata, Some(true));
 
-        let version: Version = "0.8.0".parse().unwrap();
-        let i = input.sanitized(&version);
+        let i = input.sanitized(&Version::new(0, 8, 0));
         assert!(i.settings.metadata.unwrap().cbor_metadata.is_none());
     }
 

@@ -178,6 +178,10 @@ ast_node!(
         scope: usize,
         #[serde(default)]
         used_errors: Vec<usize>,
+        #[serde(default)]
+        used_events: Vec<usize>,
+        #[serde(default)]
+        internal_function_ids: BTreeMap<usize, usize>,
     }
 );
 

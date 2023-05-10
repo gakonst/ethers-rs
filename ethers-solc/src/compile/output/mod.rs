@@ -188,24 +188,37 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         self.compiler_output
     }
 
-    /// Whether this type has a compiler output
+    /// Returns whether this type has a compiler output.
     pub fn has_compiled_contracts(&self) -> bool {
         self.compiler_output.is_empty()
     }
 
-    /// Whether this type does not contain compiled contracts
+    /// Returns whether this type does not contain compiled contracts.
     pub fn is_unchanged(&self) -> bool {
         self.compiler_output.is_unchanged()
     }
 
-    /// Whether there were errors
+    /// Returns whether any errors were emitted by the compiler.
     pub fn has_compiler_errors(&self) -> bool {
         self.compiler_output.has_error(&self.ignored_error_codes, &self.compiler_severity_filter)
     }
 
-    /// Whether there were warnings
+    /// Returns whether any warnings were emitted by the compiler.
     pub fn has_compiler_warnings(&self) -> bool {
         self.compiler_output.has_warning(&self.ignored_error_codes)
+    }
+
+    /// Panics if any errors were emitted by the compiler.
+    #[track_caller]
+    pub fn succeeded(self) -> Self {
+        self.assert_success();
+        self
+    }
+
+    /// Panics if any errors were emitted by the compiler.
+    #[track_caller]
+    pub fn assert_success(&self) {
+        assert!(!self.has_compiler_errors(), "\n{self}\n");
     }
 
     /// Returns the set of `Artifacts` that were cached and got reused during
