@@ -181,10 +181,11 @@ pub enum Opcode {
     /// Opcode 0x5B - Mark a valid destination for jumps
     JUMPDEST,
 
-    // 0x5C - 0x5F are invalid
+    // 0x5C - 0x5E are invalid
 
     // 0x60 range - pushes.
-    // PUSH0,    // 0x5F (https://eips.ethereum.org/EIPS/eip-3855)
+    /// Opcode 0x5F - Place the constant value 0 on stack
+    PUSH0 = 0x5f,
     /// Opcode 0x60 - Place 1 byte item on stack
     PUSH1 = 0x60,
     /// Opcode 0x61 - Place 2 byte item on stack
@@ -384,7 +385,8 @@ mod tests {
     use serde::de::{value::StrDeserializer, IntoDeserializer};
     use std::collections::HashSet;
 
-    // Taken from: https://github.com/bluealloy/revm/blob/main/crates/interpreter/src/instructions/opcode.rs#L181
+    // Taken from REVM:
+    // https://github.com/bluealloy/revm/blob/f8ff6b330dce126ab9359ab8dde02ba1d09b9306/crates/interpreter/src/instructions/opcode.rs#L184
     const OPCODE_JUMPMAP: [Option<&'static str>; 256] = [
         /* 0x00 */ Some("STOP"),
         /* 0x01 */ Some("ADD"),
@@ -481,8 +483,7 @@ mod tests {
         /* 0x5c */ None,
         /* 0x5d */ None,
         /* 0x5e */ None,
-        // /* 0x5f */ Some("PUSH0"),
-        /* 0x5f */ None,
+        /* 0x5f */ Some("PUSH0"),
         /* 0x60 */ Some("PUSH1"),
         /* 0x61 */ Some("PUSH2"),
         /* 0x62 */ Some("PUSH3"),
