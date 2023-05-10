@@ -846,9 +846,7 @@ mod tests {
             (">=0.5.0", "0.8.20"),
             // range
             (">=0.4.0 <0.5.0", "0.4.26"),
-        ]
-        .iter()
-        {
+        ] {
             let source = source(pragma);
             let res = Solc::detect_version(&source).unwrap();
             assert_eq!(res, Version::from_str(expected).unwrap());

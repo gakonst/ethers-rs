@@ -180,7 +180,7 @@ ast_node!(
         used_errors: Vec<usize>,
         #[serde(default)]
         used_events: Vec<usize>,
-        #[serde(default)]
+        #[serde(default, rename = "internalFunctionIDs")]
         internal_function_ids: BTreeMap<usize, usize>,
     }
 );
