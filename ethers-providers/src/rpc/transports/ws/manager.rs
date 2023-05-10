@@ -1,7 +1,9 @@
+#[cfg(not(target_arch = "wasm32"))]
+use super::WebSocketConfig;
 use super::{
     backend::{BackendDriver, WsBackend},
     ActiveSub, ConnectionDetails, InFlight, Instruction, Notification, PubSubItem, Response, SubId,
-    WebSocketConfig, WsClient, WsClientError,
+    WsClient, WsClientError,
 };
 use crate::JsonRpcError;
 use ethers_core::types::U256;
@@ -196,6 +198,7 @@ pub struct RequestManager {
     backend: BackendDriver,
     // The URL and optional auth info for the connection
     conn: ConnectionDetails,
+    #[cfg(not(target_arch = "wasm32"))]
     // An Option wrapping a tungstenite WebsocketConfig. If None, the default config is used.
     config: Option<WebSocketConfig>,
     // Instructions from the user-facing providers
@@ -211,6 +214,33 @@ impl RequestManager {
         Self::connect_with_reconnects(conn, DEFAULT_RECONNECTS).await
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub async fn connect_with_reconnects(
+        conn: ConnectionDetails,
+        reconnects: usize,
+    ) -> Result<(Self, WsClient), WsClientError> {
+        let (ws, backend) = WsBackend::connect(conn.clone()).await?;
+
+        let (instructions_tx, instructions_rx) = mpsc::unbounded();
+        let channel_map: SharedChannelMap = Default::default();
+
+        ws.spawn();
+
+        Ok((
+            Self {
+                id: Default::default(),
+                reconnects,
+                subs: SubscriptionManager::new(channel_map.clone()),
+                reqs: Default::default(),
+                backend,
+                conn,
+                instructions: instructions_rx,
+            },
+            WsClient { instructions: instructions_tx, channel_map },
+        ))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn connect_with_reconnects(
         conn: ConnectionDetails,
         reconnects: usize,
@@ -237,6 +267,7 @@ impl RequestManager {
         ))
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn connect_with_config(
         conn: ConnectionDetails,
         config: WebSocketConfig,
@@ -244,6 +275,7 @@ impl RequestManager {
         Self::connect_with_config_and_reconnects(conn, config, DEFAULT_RECONNECTS).await
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn connect_with_config_and_reconnects(
         conn: ConnectionDetails,
         config: WebSocketConfig,
@@ -271,6 +303,60 @@ impl RequestManager {
         ))
     }
 
+    #[cfg(target_arch = "wasm32")]
+    async fn reconnect(&mut self) -> Result<(), WsClientError> {
+        if self.reconnects == 0 {
+            return Err(WsClientError::TooManyReconnects)
+        }
+        self.reconnects -= 1;
+
+        tracing::info!(remaining = self.reconnects, url = self.conn.url, "Reconnecting to backend");
+        // create the new backend
+        let (s, mut backend) = WsBackend::connect(self.conn.clone()).await?;
+
+        // spawn the new backend
+        s.spawn();
+
+        // swap out the backend
+        std::mem::swap(&mut self.backend, &mut backend);
+
+        // rename for clarity
+        let mut old_backend = backend;
+
+        // Drain anything in the backend
+        tracing::debug!("Draining old backend to_handle channel");
+        while let Some(to_handle) = old_backend.to_handle.next().await {
+            self.handle(to_handle);
+        }
+
+        // issue a shutdown command (even though it's likely gone)
+        old_backend.shutdown();
+
+        tracing::debug!(count = self.subs.count(), "Re-starting active subscriptions");
+
+        // reissue subscriptionps
+        for (id, sub) in self.subs.to_reissue() {
+            self.backend
+                .dispatcher
+                .unbounded_send(sub.serialize_raw(*id)?)
+                .map_err(|_| WsClientError::DeadChannel)?;
+        }
+
+        tracing::debug!(count = self.reqs.len(), "Re-issuing pending requests");
+        // reissue requests. We filter these to prevent in-flight requests for
+        // subscriptions to be re-issued twice (once in above loop, once in this loop).
+        for (id, req) in self.reqs.iter().filter(|(id, _)| !self.subs.has(**id)) {
+            self.backend
+                .dispatcher
+                .unbounded_send(req.serialize_raw(*id)?)
+                .map_err(|_| WsClientError::DeadChannel)?;
+        }
+        tracing::info!(subs = self.subs.count(), reqs = self.reqs.len(), "Re-connection complete");
+
+        Ok(())
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     async fn reconnect(&mut self) -> Result<(), WsClientError> {
         if self.reconnects == 0 {
             return Err(WsClientError::TooManyReconnects)

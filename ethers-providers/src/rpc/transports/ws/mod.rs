@@ -50,6 +50,7 @@ impl WsClient {
         Ok(this)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// Establishes a new websocket connection. This method allows specifying a custom websocket
     /// configuration, see the [tungstenite docs](https://docs.rs/tungstenite/latest/tungstenite/protocol/struct.WebSocketConfig.html) for all avaible options.
     pub async fn connect_with_config(
@@ -61,6 +62,7 @@ impl WsClient {
         Ok(this)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// Establishes a new websocket connection with auto-reconnects. This method allows specifying a
     /// custom websocket configuration, see the [tungstenite docs](https://docs.rs/tungstenite/latest/tungstenite/protocol/struct.WebSocketConfig.html) for all avaible options.
     pub async fn connect_with_config_and_reconnects(
