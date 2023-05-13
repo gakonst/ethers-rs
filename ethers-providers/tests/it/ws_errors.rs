@@ -1,4 +1,4 @@
-use ethers_core::types::Filter;
+use ethers_core::{types::Filter, utils::Anvil};
 use ethers_providers::{Middleware, Provider, StreamExt};
 use futures_util::SinkExt;
 use std::time::Duration;
@@ -63,4 +63,27 @@ async fn graceful_disconnect_on_ws_errors() {
     let mut stream = provider.subscribe_logs(&filter).await.unwrap();
 
     assert!(stream.next().await.is_none());
+}
+
+#[tokio::test]
+async fn resubscribe_on_ws_reconnect() {
+    let anvil = Anvil::new().block_time(1u64).spawn();
+    let port = anvil.port();
+    let provider = Provider::connect_with_reconnects(anvil.ws_endpoint(), 1).await.unwrap();
+
+    // Attempt to ensure a different server-side subscription id after reconnect by making
+    // the subscription we care about be the second one after initial startup, but the first
+    // (and only) one after reconnection.
+    let ignored_sub = provider.subscribe_blocks().await.unwrap();
+    let mut blocks = provider.subscribe_blocks().await.unwrap();
+    ignored_sub.unsubscribe().await.expect("unsubscribe failed");
+
+    blocks.next().await.expect("no block notice before reconnect");
+
+    // Kill & restart using the same port so we end up with the same endpoint url:
+    drop(anvil);
+    let _anvil = Anvil::new().port(port).block_time(1u64).spawn();
+
+    // Wait for the next block on existing subscription. Will fail w/o resubscription:
+    blocks.next().await.expect("no block notice after reconnect");
 }
