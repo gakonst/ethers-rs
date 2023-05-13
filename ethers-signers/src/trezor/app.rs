@@ -125,12 +125,12 @@ impl TrezorEthereum {
 
         Self::check_version(format!(
             "{}.{}.{}",
-            features.get_major_version(),
-            features.get_minor_version(),
-            features.get_patch_version()
+            features.major_version(),
+            features.minor_version(),
+            features.patch_version()
         ))?;
 
-        self.save_session(features.get_session_id().to_vec())?;
+        self.save_session(features.session_id().to_vec())?;
 
         Ok(())
     }
