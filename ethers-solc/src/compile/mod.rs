@@ -850,7 +850,7 @@ mod tests {
             // update this test whenever there's a new sol
             // version. that's ok! good reminder to check the
             // patch notes.
-            (">=0.5.0", "0.8.19"),
+            (">=0.5.0", "0.8.20"),
             // range
             (">=0.4.0 <0.5.0", "0.4.26"),
         ]

@@ -1141,6 +1141,8 @@ pub struct ModelCheckerSettings {
     pub invariants: Option<Vec<ModelCheckerInvariant>>,
     #[serde(rename = "showUnproved", skip_serializing_if = "Option::is_none")]
     pub show_unproved: Option<bool>,
+    #[serde(rename = "showUnsupported", skip_serializing_if = "Option::is_none")]
+    pub show_unsupported: Option<bool>,
     #[serde(rename = "divModWithSlacks", skip_serializing_if = "Option::is_none")]
     pub div_mod_with_slacks: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
