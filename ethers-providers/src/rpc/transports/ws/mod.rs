@@ -50,6 +50,36 @@ impl WsClient {
         Ok(this)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    /// Establishes a new websocket connection. This method allows specifying a custom websocket
+    /// configuration, see the [tungstenite docs](https://docs.rs/tungstenite/latest/tungstenite/protocol/struct.WebSocketConfig.html) for all avaible options.
+    pub async fn connect_with_config(
+        conn: impl Into<ConnectionDetails>,
+        config: impl Into<WebSocketConfig>,
+    ) -> Result<Self, WsClientError> {
+        let (man, this) = RequestManager::connect_with_config(conn.into(), config.into()).await?;
+        man.spawn();
+        Ok(this)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    /// Establishes a new websocket connection with auto-reconnects. This method allows specifying a
+    /// custom websocket configuration, see the [tungstenite docs](https://docs.rs/tungstenite/latest/tungstenite/protocol/struct.WebSocketConfig.html) for all avaible options.
+    pub async fn connect_with_config_and_reconnects(
+        conn: impl Into<ConnectionDetails>,
+        config: impl Into<WebSocketConfig>,
+        reconnects: usize,
+    ) -> Result<Self, WsClientError> {
+        let (man, this) = RequestManager::connect_with_config_and_reconnects(
+            conn.into(),
+            config.into(),
+            reconnects,
+        )
+        .await?;
+        man.spawn();
+        Ok(this)
+    }
+
     #[tracing::instrument(skip(self, params), err)]
     async fn make_request<R>(&self, method: &str, params: Box<RawValue>) -> Result<R, WsClientError>
     where

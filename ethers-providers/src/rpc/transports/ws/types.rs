@@ -257,10 +257,11 @@ mod aliases {
 #[cfg(not(target_arch = "wasm32"))]
 mod aliases {
     pub use tokio_tungstenite::{
-        connect_async,
+        connect_async, connect_async_with_config,
         tungstenite::{self, protocol::CloseFrame},
     };
     use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+    pub type WebSocketConfig = tungstenite::protocol::WebSocketConfig;
     pub type Message = tungstenite::protocol::Message;
     pub type WsError = tungstenite::Error;
     pub type WsStreamItem = Result<Message, WsError>;
