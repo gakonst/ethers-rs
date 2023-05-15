@@ -84,17 +84,15 @@ pub(crate) fn take_solc_installer_lock() -> std::sync::MutexGuard<'static, ()> {
 /// we should download.
 /// The boolean value marks whether there was an error accessing the release list
 #[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
-pub static RELEASES: once_cell::sync::Lazy<(svm::Releases, Vec<Version>, bool)> =
-    once_cell::sync::Lazy::new(|| {
-        match serde_json::from_str::<svm::Releases>(svm_builds::RELEASE_LIST_JSON) {
-            Ok(releases) => {
-                let sorted_versions = releases.clone().into_versions();
-                (releases, sorted_versions, true)
-            }
-            Err(err) => {
-                tracing::error!("{:?}", err);
-                (svm::Releases::default(), Vec::new(), false)
-            }
+pub static RELEASES: Lazy<(svm::Releases, Vec<Version>, bool)> =
+    Lazy::new(|| match serde_json::from_str::<svm::Releases>(svm_builds::RELEASE_LIST_JSON) {
+        Ok(releases) => {
+            let sorted_versions = releases.clone().into_versions();
+            (releases, sorted_versions, true)
+        }
+        Err(err) => {
+            tracing::error!("{:?}", err);
+            Default::default()
         }
     });
 
@@ -232,23 +230,23 @@ impl Solc {
     /// contains
     #[cfg(not(target_arch = "wasm32"))]
     pub fn svm_global_version() -> Option<Version> {
-        let version =
-            std::fs::read_to_string(Self::svm_home().map(|p| p.join(".global_version"))?).ok()?;
+        let home = Self::svm_home()?;
+        let version = std::fs::read_to_string(home.join(".global_version")).ok()?;
         Version::parse(&version).ok()
     }
 
     /// Returns the list of all solc instances installed at `SVM_HOME`
     #[cfg(not(target_arch = "wasm32"))]
     pub fn installed_versions() -> Vec<SolcVersion> {
-        if let Some(home) = Self::svm_home() {
-            utils::installed_versions(home)
-                .unwrap_or_default()
-                .into_iter()
-                .map(SolcVersion::Installed)
-                .collect()
-        } else {
-            Vec::new()
-        }
+        Self::svm_home()
+            .map(|home| {
+                utils::installed_versions(home)
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(SolcVersion::Installed)
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 
     /// Returns the list of all versions that are available to download and marking those which are
