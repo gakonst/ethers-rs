@@ -56,8 +56,8 @@ getrandom.workspace = true
 
 [features]
 online = ["reqwest", "ethers-etherscan", "url", "tokio"]
-openssl = ["online", "reqwest/native-tls", "ethers-etherscan/openssl"]
-rustls = ["online", "reqwest/rustls-tls", "ethers-etherscan/rustls"]
+rustls = ["reqwest?/rustls-tls", "ethers-etherscan?/rustls"]
+openssl = ["reqwest?/native-tls", "ethers-etherscan?/openssl"]
 
 [dev-dependencies]
 tempfile.workspace = true

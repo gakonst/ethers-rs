@@ -50,8 +50,8 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 [features]
 default = ["abigen"]
 
-abigen-offline = ["ethers-contract-abigen", "ethers-contract-derive"]
-abigen = ["abigen-offline", "ethers-contract-abigen/online"]
+abigen = ["ethers-contract-abigen", "ethers-contract-derive"]
+abigen-online = ["abigen", "ethers-contract-abigen/online"]
 
 celo = ["legacy", "ethers-core/celo", "ethers-providers/celo"]
 legacy = []
@@ -60,4 +60,5 @@ rustls = ["ethers-contract-abigen/rustls"]
 openssl = ["ethers-contract-abigen/openssl"]
 
 # Deprecated
+abigen-offline = ["abigen"]
 eip712 = []
