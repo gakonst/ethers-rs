@@ -1,12 +1,11 @@
 use ethers_contract::{Contract, ContractFactory, EthEvent};
 use ethers_core::{
-    abi::Abi,
+    abi::{Abi, JsonAbi},
     types::{Address, Bytes},
     utils::AnvilInstance,
 };
 use ethers_providers::{Http, Middleware, Provider};
-use ethers_solc::Solc;
-use std::{convert::TryFrom, sync::Arc, time::Duration};
+use std::{convert::TryFrom, fs, sync::Arc, time::Duration};
 
 // Note: The `EthEvent` derive macro implements the necessary conversion between `Tokens` and
 // the struct
@@ -21,14 +20,17 @@ pub struct ValueChanged {
     pub new_value: String,
 }
 
-/// compiles the given contract and returns the ABI and Bytecode
+/// Gets the contract ABI and bytecode from a JSON file
 #[track_caller]
-pub fn compile_contract(name: &str, filename: &str) -> (Abi, Bytes) {
+pub fn get_contract(filename: &str) -> (Abi, Bytes) {
     let path = format!("./tests/solidity-contracts/{filename}");
-    let compiled = Solc::default().compile_source(&path).unwrap();
-    let contract = compiled.get(&path, name).expect("could not find contract");
-    let (abi, bin, _) = contract.into_parts_or_default();
-    (abi, bin)
+    let contents = fs::read_to_string(path).unwrap();
+    let obj: JsonAbi = serde_json::from_str(&contents).unwrap();
+    let JsonAbi::Object(obj) = obj else { panic!() };
+    (
+        serde_json::from_str(&serde_json::to_string(&obj.abi).unwrap()).unwrap(),
+        obj.bytecode.unwrap(),
+    )
 }
 
 /// connects the private key to http://localhost:8545

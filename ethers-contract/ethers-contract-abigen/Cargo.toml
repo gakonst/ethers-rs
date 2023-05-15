@@ -61,4 +61,3 @@ openssl = ["reqwest?/native-tls", "ethers-etherscan?/openssl"]
 
 [dev-dependencies]
 tempfile.workspace = true
-ethers-solc = { workspace = true, features = ["project-util", "svm-solc"] }
