@@ -837,13 +837,11 @@ mod tests {
             ("0.4.14", "0.4.14"),
             // The latest patch is 0.4.26
             ("^0.4.14", "0.4.26"),
-            // latest version above 0.5.0 -> we have to
-            // update this test whenever there's a new sol
-            // version. that's ok! good reminder to check the
-            // patch notes.
-            (">=0.5.0", "0.8.20"),
             // range
             (">=0.4.0 <0.5.0", "0.4.26"),
+            // latest - this has to be updated every time a new version is released.
+            // Requires the SVM version list to be updated as well.
+            (">=0.5.0", "0.8.20"),
         ] {
             let source = source(pragma);
             let res = Solc::detect_version(&source).unwrap();
