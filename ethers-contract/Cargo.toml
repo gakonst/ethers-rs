@@ -59,6 +59,6 @@ legacy = []
 rustls = ["ethers-contract-abigen/rustls"]
 openssl = ["ethers-contract-abigen/openssl"]
 
-# Deprecated, enabled by default
-abigen-offline = []
+# Deprecated
+abigen-offline = ["abigen"]
 eip712 = []
