@@ -748,8 +748,8 @@ pub enum EvmVersion {
     Istanbul,
     Berlin,
     London,
-    #[default] // TODO: Move to Shanghai once Solc 0.8.20 is released
     Paris,
+    #[default] 
     Shanghai,
 }
 
@@ -761,8 +761,7 @@ impl EvmVersion {
             // If the Solc is at least at Shanghai, it supports all EVM versions.
             // For all other cases, cap at the at-the-time highest possible fork.
             let normalized = if self >= Self::Shanghai &&
-                // TODO: Remove once Solc 0.8.20 is released
-                SUPPORTS_SHANGHAI.matches(version)
+                *version >= SHANGHAI_SOLC
             {
                 self
             } else if self >= Self::Paris && *version >= PARIS_SOLC {
@@ -2402,22 +2401,6 @@ mod tests {
             ("0.8.20", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
             ("0.8.20", EvmVersion::Paris, Some(EvmVersion::Paris)),
             ("0.8.20", EvmVersion::Shanghai, Some(EvmVersion::Shanghai)),
-            // TODO: Remove once Solc 0.8.20 is released
-            (
-                "0.8.20-nightly.2023.4.12+commit.f0c0df2d",
-                EvmVersion::Shanghai,
-                Some(EvmVersion::Paris),
-            ),
-            (
-                "0.8.20-nightly.2023.4.13+commit.5d42bb5e",
-                EvmVersion::Shanghai,
-                Some(EvmVersion::Shanghai),
-            ),
-            (
-                "0.8.20-nightly.2023.4.14+commit.e1a9446f",
-                EvmVersion::Shanghai,
-                Some(EvmVersion::Shanghai),
-            ),
         ] {
             assert_eq!(
                 &evm_version.normalize_version(&Version::from_str(solc_version).unwrap()),
