@@ -749,7 +749,7 @@ pub enum EvmVersion {
     Berlin,
     London,
     Paris,
-    #[default] 
+    #[default]
     Shanghai,
 }
 
@@ -760,9 +760,7 @@ impl EvmVersion {
         if *version >= BYZANTIUM_SOLC {
             // If the Solc is at least at Shanghai, it supports all EVM versions.
             // For all other cases, cap at the at-the-time highest possible fork.
-            let normalized = if self >= Self::Shanghai &&
-                *version >= SHANGHAI_SOLC
-            {
+            let normalized = if self >= Self::Shanghai && *version >= SHANGHAI_SOLC {
                 self
             } else if self >= Self::Paris && *version >= PARIS_SOLC {
                 Self::Paris
