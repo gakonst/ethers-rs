@@ -480,7 +480,10 @@ impl Solc {
         hasher.update(content);
         let checksum_calc = &hasher.finalize()[..];
 
-        let checksum_found = &RELEASES.0.get_checksum(&version).ok_or_else(|| SolcError::ChecksumNotFound { version: version.clone() } )?;
+        let checksum_found = &RELEASES
+            .0
+            .get_checksum(&version)
+            .ok_or_else(|| SolcError::ChecksumNotFound { version: version.clone() })?;
 
         if checksum_calc == checksum_found {
             Ok(())
