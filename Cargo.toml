@@ -79,7 +79,7 @@ ethers-contract-derive = { version = "2.0.4", path = "ethers-contract/ethers-con
 
 # async / async utils
 tokio = "1.28"
-tokio-tungstenite = { version = "0.18.0", default-features = false }
+tokio-tungstenite = { version = "0.19", default-features = false }
 futures = { version = "0.3.28", default-features = false, features = ["std"] }
 futures-core = "0.3.28"
 futures-util = "0.3.28"

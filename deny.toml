@@ -77,6 +77,11 @@ name = "webpki"
 expression = "LicenseRef-webpki"
 license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
 
+[[licenses.clarify]]
+name = "rustls-webpki"
+expression = "LicenseRef-webpki"
+license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
+
 # This section is considered when running `cargo deny check sources`.
 # More documentation about the 'sources' section can be found here:
 # https://embarkstudios.github.io/cargo-deny/checks/sources/cfg.html

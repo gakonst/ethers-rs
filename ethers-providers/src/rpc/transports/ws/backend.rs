@@ -73,8 +73,9 @@ impl WsBackend {
     pub async fn connect_with_config(
         details: ConnectionDetails,
         config: WebSocketConfig,
+        disable_nagle: bool,
     ) -> Result<(Self, BackendDriver), WsClientError> {
-        let ws = connect_async_with_config(details, Some(config)).await?.0.fuse();
+        let ws = connect_async_with_config(details, Some(config), disable_nagle).await?.0.fuse();
         Ok(Self::new(ws))
     }
 
