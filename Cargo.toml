@@ -87,8 +87,8 @@ futures-executor = "0.3.28"
 futures-channel = "0.3.28"
 futures-locks = { version = "0.7.1", default-features = false }
 futures-timer = { version = "3.0.2", default-features = false, features = ["wasm-bindgen"] }
-pin-project = "1.0"
-reqwest = { version = "0.11.17", default-features = false }
+pin-project = "1.1"
+reqwest = { version = "0.11.18", default-features = false }
 url = { version = "2.3", default-features = false }
 
 # crypto
@@ -97,7 +97,7 @@ generic-array = { version = "0.14.7", default-features = false }
 k256 = { version = "0.13.1", default-features = false, features = ["ecdsa", "std"] }
 sha2 = { version = "0.10.6", default-features = false }
 tiny-keccak = { version = "2.0.2", default-features = false }
-spki = { version = "0.7.1", default-features = false }
+spki = { version = "0.7.2", default-features = false }
 
 # serde
 serde = "1.0"
@@ -108,7 +108,7 @@ proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "2.0", features = ["extra-traits"] }
 async-trait = "0.1.68"
-auto_impl = "1.0"
+auto_impl = "1.1"
 
 # misc
 bytes = "1.4"

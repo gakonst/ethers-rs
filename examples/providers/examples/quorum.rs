@@ -30,7 +30,7 @@ async fn main() -> Result<()> {
 
     let provider = Provider::quorum(quorum).interval(Duration::from_millis(10u64));
 
-    dbg!(provider.get_accounts().await?);
+    let _ = provider.get_accounts().await?;
 
     Ok(())
 }

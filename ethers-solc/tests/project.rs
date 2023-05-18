@@ -41,9 +41,7 @@ fn can_get_versioned_linkrefs() {
         .unwrap();
 
     let project = Project::builder().paths(paths).ephemeral().no_artifacts().build().unwrap();
-
-    let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    project.compile().unwrap().assert_success();
 }
 
 #[test]
@@ -57,7 +55,7 @@ fn can_compile_hardhat_sample() {
     let compiled = project.compile().unwrap();
     assert!(compiled.find_first("Greeter").is_some());
     assert!(compiled.find_first("console").is_some());
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     // nothing to compile
     let compiled = project.compile().unwrap();
@@ -81,7 +79,7 @@ fn can_compile_dapp_sample() {
 
     let compiled = project.compile().unwrap();
     assert!(compiled.find_first("Dapp").is_some());
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     // nothing to compile
     let compiled = project.compile().unwrap();
@@ -109,7 +107,7 @@ fn can_compile_yul_sample() {
     let compiled = project.compile().unwrap();
     assert!(compiled.find_first("Dapp").is_some());
     assert!(compiled.find_first("SimpleStore").is_some());
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     // nothing to compile
     let compiled = project.compile().unwrap();
@@ -197,7 +195,7 @@ fn can_compile_dapp_detect_changes_in_libs() {
     let compiled = project.compile().unwrap();
     assert!(compiled.find_first("Foo").is_some());
     assert!(compiled.find_first("Bar").is_some());
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     // nothing to compile
     let compiled = project.compile().unwrap();
@@ -268,7 +266,7 @@ fn can_compile_dapp_detect_changes_in_sources() {
     assert_eq!(graph.imported_nodes(1).to_vec(), vec![0]);
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(compiled.find_first("DssSpellTest").is_some());
     assert!(compiled.find_first("DssSpellTestBase").is_some());
 
@@ -341,7 +339,7 @@ contract B { }
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let info_dir = project.project().build_info_path();
     assert!(info_dir.exists());
@@ -378,7 +376,7 @@ fn can_compile_dapp_sample_with_cache() {
     let project = Project::builder().paths(paths).build().unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.find_first("Dapp").is_some());
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     // cache is used when nothing to compile
     let compiled = project.compile().unwrap();
@@ -1021,7 +1019,7 @@ fn can_compile_single_files() {
         .unwrap();
 
     let compiled = tmp.project().compile_file(f.clone()).unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(compiled.find_first("Foo").is_some());
 
     let bar = tmp
@@ -1036,7 +1034,7 @@ fn can_compile_single_files() {
         .unwrap();
 
     let compiled = tmp.project().compile_files(vec![f, bar]).unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(compiled.find_first("Foo").is_some());
     assert!(compiled.find_first("Bar").is_some());
 }
@@ -1064,7 +1062,7 @@ contract LinkTest {
     .unwrap();
 
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let contract = compiled.find_first("LinkTest").unwrap();
     let bytecode = &contract.bytecode.as_ref().unwrap().object;
@@ -1109,7 +1107,7 @@ library MyLib {
         .unwrap();
 
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     assert!(compiled.find_first("MyLib").is_some());
     let contract = compiled.find_first("LinkTest").unwrap();
@@ -1124,7 +1122,7 @@ library MyLib {
     .into();
 
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     assert!(compiled.find_first("MyLib").is_some());
     let contract = compiled.find_first("LinkTest").unwrap();
@@ -1136,7 +1134,7 @@ library MyLib {
     tmp.project_mut().solc_config.settings.libraries = libs.with_applied_remappings(tmp.paths());
 
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     assert!(compiled.find_first("MyLib").is_some());
     let contract = compiled.find_first("LinkTest").unwrap();
@@ -1181,7 +1179,7 @@ library MyLib {
     .unwrap();
 
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     assert!(compiled.find_first("MyLib").is_some());
     let contract = compiled.find_first("LinkTest").unwrap();
@@ -1193,7 +1191,7 @@ library MyLib {
     tmp.project_mut().solc_config.settings.libraries = libs.with_applied_remappings(tmp.paths());
 
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     assert!(compiled.find_first("MyLib").is_some());
     let contract = compiled.find_first("LinkTest").unwrap();
@@ -1243,7 +1241,7 @@ fn can_recompile_with_changes() {
     .unwrap();
 
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(compiled.find_first("A").is_some());
     assert!(compiled.find_first("B").is_some());
 
@@ -1255,7 +1253,7 @@ fn can_recompile_with_changes() {
     // modify A.sol
     tmp.add_source("A", format!("{content}\n")).unwrap();
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(!compiled.is_unchanged());
     assert!(compiled.find_first("A").is_some());
     assert!(compiled.find_first("B").is_some());
@@ -1292,7 +1290,7 @@ fn can_recompile_with_lowercase_names() {
     .unwrap();
 
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(compiled.find_first("DeployProxy").is_some());
     assert!(compiled.find_first("UpgradeProxy").is_some());
     assert!(compiled.find_first("ProxyAdmin").is_some());
@@ -1310,7 +1308,7 @@ fn can_recompile_with_lowercase_names() {
     // modify upgradeProxy.sol
     tmp.add_source("upgradeProxy.sol", format!("{upgrade}\n")).unwrap();
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(!compiled.is_unchanged());
     assert!(compiled.find_first("DeployProxy").is_some());
     assert!(compiled.find_first("UpgradeProxy").is_some());
@@ -1351,7 +1349,7 @@ fn can_recompile_unchanged_with_empty_files() {
     tmp.add_source("C", c).unwrap();
 
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(compiled.find_first("A").is_some());
     assert!(compiled.find_first("C").is_some());
 
@@ -1363,7 +1361,7 @@ fn can_recompile_unchanged_with_empty_files() {
     // modify C.sol
     tmp.add_source("C", format!("{c}\n")).unwrap();
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(!compiled.is_unchanged());
     assert!(compiled.find_first("A").is_some());
     assert!(compiled.find_first("C").is_some());
@@ -1400,7 +1398,7 @@ contract Contract {
     .unwrap();
 
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(compiled.find_first("Contract").is_some());
     assert!(compiled.find_first("top_level").is_some());
     let mut artifacts = tmp.artifacts_snapshot().unwrap();
@@ -1499,7 +1497,7 @@ fn can_detect_contract_def_source_files() {
         .unwrap();
 
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let mut sources = compiled.output().sources;
     let myfunc = sources.remove_by_path(myfunc.to_string_lossy()).unwrap();
@@ -1553,7 +1551,7 @@ fn can_compile_sparse_with_link_references() {
         .unwrap();
 
     let mut compiled = tmp.compile_sparse(TestFileFilter::default()).unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let mut output = compiled.clone().output();
 
@@ -1598,7 +1596,7 @@ fn can_sanitize_bytecode_hash() {
     .unwrap();
 
     let compiled = tmp.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(compiled.find_first("A").is_some());
 }
 
@@ -1628,19 +1626,14 @@ fn can_compile_model_checker_sample() {
 
     let mut project = TempProject::<ConfigurableArtifacts>::new(paths).unwrap();
     project.project_mut().solc_config.settings.model_checker = Some(ModelCheckerSettings {
-        contracts: BTreeMap::new(),
         engine: Some(CHC),
-        targets: None,
         timeout: Some(10000),
-        show_unproved: None,
-        div_mod_with_slacks: None,
-        solvers: None,
-        invariants: None,
+        ..Default::default()
     });
     let compiled = project.compile().unwrap();
 
     assert!(compiled.find_first("Assert").is_some());
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(compiled.has_compiler_warnings());
 }
 
@@ -1661,7 +1654,7 @@ fn test_compiler_severity_filter() {
         .unwrap();
     let compiled = project.compile().unwrap();
     assert!(compiled.has_compiler_warnings());
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let project = Project::builder()
         .no_artifacts()
@@ -1704,7 +1697,7 @@ fn test_compiler_severity_filter_and_ignored_error_codes() {
         .unwrap();
     let compiled = project.compile().unwrap();
     assert!(!compiled.has_compiler_warnings());
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let project = Project::builder()
         .no_artifacts()
@@ -1716,7 +1709,7 @@ fn test_compiler_severity_filter_and_ignored_error_codes() {
         .unwrap();
     let compiled = project.compile().unwrap();
     assert!(!compiled.has_compiler_warnings());
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 }
 
 fn remove_solc_if_exists(version: &Version) {
@@ -1745,7 +1738,7 @@ contract Contract {{ }}
     remove_solc_if_exists(&version);
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1786,14 +1779,14 @@ fn can_purge_obsolete_artifacts() {
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(!compiled.is_unchanged());
     assert_eq!(compiled.into_artifacts().count(), 1);
 
     project.set_solc("0.8.13");
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(!compiled.is_unchanged());
     assert_eq!(compiled.into_artifacts().count(), 1);
 }
@@ -1831,7 +1824,7 @@ fn can_parse_notice() {
     project.add_source("Contract", contract.replace("$VERSION", "=0.5.17")).unwrap();
 
     let mut compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(!compiled.is_unchanged());
     assert!(compiled.find_first("Contract").is_some());
     let userdoc = compiled.remove_first("Contract").unwrap().userdoc;
@@ -1855,7 +1848,7 @@ fn can_parse_notice() {
     project.add_source("Contract", contract.replace("$VERSION", "^0.8.10")).unwrap();
 
     let mut compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(!compiled.is_unchanged());
     assert!(compiled.find_first("Contract").is_some());
     let userdoc = compiled.remove_first("Contract").unwrap().userdoc;
@@ -1925,7 +1918,7 @@ contract NotERC20 is INotERC20 {
     project.add_source("Contract", contract).unwrap();
 
     let mut compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(!compiled.is_unchanged());
 
     assert!(compiled.find_first("INotERC20").is_some());
@@ -2102,7 +2095,7 @@ contract D { }
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let cache = SolFilesCache::read(project.cache_path()).unwrap();
 
@@ -2158,7 +2151,7 @@ contract C { }
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     fs::remove_file(c).unwrap();
     let compiled = project.compile().unwrap();
@@ -2192,7 +2185,7 @@ fn can_handle_conflicting_files() {
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let artifacts = compiled.artifacts().count();
     assert_eq!(artifacts, 2);
@@ -2261,7 +2254,7 @@ fn can_handle_conflicting_files_recompile() {
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let artifacts = compiled.artifacts().count();
     assert_eq!(artifacts, 2);
@@ -2305,7 +2298,7 @@ fn can_handle_conflicting_files_recompile() {
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let mut recompiled_artifacts =
         project.artifacts_snapshot().unwrap().artifacts.into_stripped_file_prefixes(project.root());
@@ -2358,7 +2351,7 @@ fn can_handle_conflicting_files_case_sensitive_recompile() {
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let artifacts = compiled.artifacts().count();
     assert_eq!(artifacts, 2);
@@ -2402,7 +2395,7 @@ fn can_handle_conflicting_files_case_sensitive_recompile() {
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let mut recompiled_artifacts =
         project.artifacts_snapshot().unwrap().artifacts.into_stripped_file_prefixes(project.root());
@@ -2428,7 +2421,7 @@ fn can_checkout_repo() {
     let project = TempProject::checkout("transmissions11/solmate").unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     let _artifacts = project.artifacts_snapshot().unwrap();
 }
 
@@ -2465,7 +2458,7 @@ fn can_detect_config_changes() {
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
 
     let cache = SolFilesCache::read(&project.paths().cache).unwrap();
     assert_eq!(cache.files.len(), 2);
@@ -2477,7 +2470,7 @@ fn can_detect_config_changes() {
     project.project_mut().solc_config.settings.optimizer.enabled = Some(true);
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(!compiled.is_unchanged());
 }
 
@@ -2501,7 +2494,7 @@ fn can_add_basic_contract_and_library() {
     assert!(graph.files().contains_key(&lib));
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(compiled.find_first("Foo").is_some());
     assert!(compiled.find_first("Bar").is_some());
 }
@@ -2553,7 +2546,7 @@ fn can_handle_nested_absolute_imports() {
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(compiled.find_first("Greeter").is_some());
     assert!(compiled.find_first("Config").is_some());
     assert!(compiled.find_first("IConfig").is_some());
@@ -2609,6 +2602,6 @@ contract ContractTest {
         .unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(compiled.find_first("Contract").is_some());
 }
