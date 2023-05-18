@@ -905,7 +905,7 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().subscribe_blocks().await.map_err(MiddlewareError::from_err)
     }
 
-    /// Subscribe to a stream of pending transactions.
+    /// Subscribe to a stream of pending transaction hashes.
     ///
     /// This function is only available on pubsub clients, such as Websockets
     /// or IPC. For a polling alternative available over HTTP, use
@@ -918,6 +918,21 @@ pub trait Middleware: Sync + Send + Debug {
         <Self as Middleware>::Provider: PubsubClient,
     {
         self.inner().subscribe_pending_txs().await.map_err(MiddlewareError::from_err)
+    }
+
+    /// Subscribe to a stream of pending transaction bodies.
+    ///
+    /// This function is only available on pubsub clients, such as Websockets
+    /// or IPC. For a polling alternative available over HTTP, use
+    /// [`Middleware::watch_pending_transactions`]. However, be aware that
+    /// polling increases RPC usage drastically.
+    async fn subscribe_full_pending_txs(
+        &self,
+    ) -> Result<SubscriptionStream<'_, Self::Provider, Transaction>, Self::Error>
+    where
+        <Self as Middleware>::Provider: PubsubClient,
+    {
+        self.inner().subscribe_full_pending_txs().await.map_err(MiddlewareError::from_err)
     }
 
     /// Subscribe to a stream of event logs matchin the provided [`Filter`].

@@ -380,6 +380,15 @@ where
         Err(TimeLagError::Unsupported)
     }
 
+    async fn subscribe_full_pending_txs(
+        &self,
+    ) -> Result<ethers_providers::SubscriptionStream<'_, Self::Provider, Transaction>, Self::Error>
+    where
+        Self::Provider: ethers_providers::PubsubClient,
+    {
+        Err(TimeLagError::Unsupported)
+    }
+
     async fn subscribe_logs<'a>(
         &'a self,
         _filter: &ethers_core::types::Filter,
