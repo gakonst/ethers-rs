@@ -316,7 +316,7 @@ impl RequestManager {
     #[cfg(not(target_arch = "wasm32"))]
     async fn reconnect_backend(&mut self) -> Result<(WsBackend, BackendDriver), WsClientError> {
         if let Some(config) = self.config {
-            WsBackend::connect_with_config(self.conn.clone(), config).await
+            WsBackend::connect_with_config(self.conn.clone(), config, false).await
         } else {
             WsBackend::connect(self.conn.clone()).await
         }
