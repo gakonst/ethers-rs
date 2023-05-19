@@ -19,7 +19,7 @@ use async_trait::async_trait;
 use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
 use serde::{de::DeserializeOwned, Serialize};
-use serde_json::value::RawValue;
+use serde_json::value::{to_raw_value, RawValue};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::Authorization;
@@ -46,6 +46,36 @@ impl WsClient {
         reconnects: usize,
     ) -> Result<Self, WsClientError> {
         let (man, this) = RequestManager::connect_with_reconnects(conn.into(), reconnects).await?;
+        man.spawn();
+        Ok(this)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    /// Establishes a new websocket connection. This method allows specifying a custom websocket
+    /// configuration, see the [tungstenite docs](https://docs.rs/tungstenite/latest/tungstenite/protocol/struct.WebSocketConfig.html) for all avaible options.
+    pub async fn connect_with_config(
+        conn: impl Into<ConnectionDetails>,
+        config: impl Into<WebSocketConfig>,
+    ) -> Result<Self, WsClientError> {
+        let (man, this) = RequestManager::connect_with_config(conn.into(), config.into()).await?;
+        man.spawn();
+        Ok(this)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    /// Establishes a new websocket connection with auto-reconnects. This method allows specifying a
+    /// custom websocket configuration, see the [tungstenite docs](https://docs.rs/tungstenite/latest/tungstenite/protocol/struct.WebSocketConfig.html) for all avaible options.
+    pub async fn connect_with_config_and_reconnects(
+        conn: impl Into<ConnectionDetails>,
+        config: impl Into<WebSocketConfig>,
+        reconnects: usize,
+    ) -> Result<Self, WsClientError> {
+        let (man, this) = RequestManager::connect_with_config_and_reconnects(
+            conn.into(),
+            config.into(),
+            reconnects,
+        )
+        .await?;
         man.spawn();
         Ok(this)
     }
@@ -85,9 +115,7 @@ impl JsonRpcClient for WsClient {
         T: Serialize + Send + Sync,
         R: DeserializeOwned,
     {
-        let params = serde_json::to_string(&params)?;
-        let params = RawValue::from_string(params)?;
-
+        let params = to_raw_value(&params)?;
         let res = self.make_request(method, params).await?;
 
         Ok(res)

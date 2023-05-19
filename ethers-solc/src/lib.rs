@@ -966,29 +966,24 @@ impl<T: ArtifactOutput> ArtifactOutput for Project<T> {
 #[cfg(test)]
 #[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
 mod tests {
+    use super::*;
     use crate::remappings::Remapping;
 
     #[test]
     fn test_build_all_versions() {
-        use super::*;
-
         let paths = ProjectPathsConfig::builder()
             .root("./test-data/test-contract-versions")
             .sources("./test-data/test-contract-versions")
             .build()
             .unwrap();
         let project = Project::builder().paths(paths).no_artifacts().ephemeral().build().unwrap();
-        let compiled = project.compile().unwrap();
-        assert!(!compiled.has_compiler_errors());
-        let contracts = compiled.output().contracts;
+        let contracts = project.compile().unwrap().succeeded().output().contracts;
         // Contracts A to F
         assert_eq!(contracts.contracts().count(), 5);
     }
 
     #[test]
     fn test_build_many_libs() {
-        use super::*;
-
         let root = utils::canonicalize("./test-data/test-contract-libs").unwrap();
 
         let paths = ProjectPathsConfig::builder()
@@ -1010,16 +1005,12 @@ mod tests {
             .no_artifacts()
             .build()
             .unwrap();
-        let compiled = project.compile().unwrap();
-        assert!(!compiled.has_compiler_errors());
-        let contracts = compiled.output().contracts;
+        let contracts = project.compile().unwrap().succeeded().output().contracts;
         assert_eq!(contracts.contracts().count(), 3);
     }
 
     #[test]
     fn test_build_remappings() {
-        use super::*;
-
         let root = utils::canonicalize("./test-data/test-contract-remappings").unwrap();
         let paths = ProjectPathsConfig::builder()
             .root(&root)
@@ -1029,9 +1020,7 @@ mod tests {
             .build()
             .unwrap();
         let project = Project::builder().no_artifacts().paths(paths).ephemeral().build().unwrap();
-        let compiled = project.compile().unwrap();
-        assert!(!compiled.has_compiler_errors());
-        let contracts = compiled.output().contracts;
+        let contracts = project.compile().unwrap().succeeded().output().contracts;
         assert_eq!(contracts.contracts().count(), 2);
     }
 }

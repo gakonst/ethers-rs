@@ -320,25 +320,21 @@ where
 /// # Example
 ///
 /// ```no_run
-/// use ethers_solc::Solc;
 /// use ethers_contract::ContractFactory;
+/// use ethers_core::types::Bytes;
 /// use ethers_providers::{Provider, Http};
-/// use std::convert::TryFrom;
 ///
 /// # async fn foo() -> Result<(), Box<dyn std::error::Error>> {
-/// // first we'll compile the contract (you can alternatively compile it yourself
-/// // and pass the ABI/Bytecode
-/// let compiled = Solc::default().compile_source("./tests/contract.sol").unwrap();
-/// let contract = compiled
-///     .get("./tests/contract.sol", "SimpleStorage")
-///     .expect("could not find contract");
+/// // get the contract ABI and bytecode
+/// let abi = Default::default();
+/// let bytecode = Bytes::from_static(b"...");
 ///
 /// // connect to the network
 /// let client = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 /// let client = std::sync::Arc::new(client);
 ///
 /// // create a factory which will be used to deploy instances of the contract
-/// let factory = ContractFactory::new(contract.abi.unwrap().clone(), contract.bytecode().unwrap().clone(), client);
+/// let factory = ContractFactory::new(abi, bytecode, client);
 ///
 /// // The deployer created by the `deploy` call exposes a builder which gets consumed
 /// // by the async `send` call

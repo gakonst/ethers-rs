@@ -1,6 +1,6 @@
-use crate::{
-    types::{Address, Bytes, NameOrAddress, H256, U256},
-    utils::from_int_or_hex,
+use crate::types::{
+    serde_helpers::{deserialize_stringified_numeric, deserialize_stringified_numeric_opt},
+    Address, Bytes, NameOrAddress, H256, U256,
 };
 use serde::{Deserialize, Serialize};
 
@@ -12,11 +12,15 @@ pub struct CallFrame {
     pub from: Address,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub to: Option<NameOrAddress>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        deserialize_with = "deserialize_stringified_numeric_opt",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub value: Option<U256>,
-    #[serde(default, deserialize_with = "from_int_or_hex")]
+    #[serde(default, deserialize_with = "deserialize_stringified_numeric")]
     pub gas: U256,
-    #[serde(default, deserialize_with = "from_int_or_hex", rename = "gasUsed")]
+    #[serde(default, deserialize_with = "deserialize_stringified_numeric", rename = "gasUsed")]
     pub gas_used: U256,
     pub input: Bytes,
     #[serde(default, skip_serializing_if = "Option::is_none")]

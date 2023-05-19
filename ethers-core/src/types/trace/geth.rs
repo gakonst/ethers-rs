@@ -7,12 +7,9 @@ pub use self::{
     call::{CallConfig, CallFrame, CallLogFrame},
     four_byte::FourByteFrame,
     noop::NoopFrame,
-    pre_state::{PreStateConfig, PreStateFrame},
+    pre_state::{AccountState, DiffMode, PreStateConfig, PreStateFrame, PreStateMode},
 };
-use crate::{
-    types::{Bytes, H256, U256},
-    utils::from_int_or_hex,
-};
+use crate::types::{serde_helpers::deserialize_stringified_numeric, Bytes, H256, U256};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -21,7 +18,7 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DefaultFrame {
     pub failed: bool,
-    #[serde(deserialize_with = "from_int_or_hex")]
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub gas: U256,
     #[serde(rename = "returnValue")]
     pub return_value: Bytes,
@@ -93,9 +90,30 @@ impl From<NoopFrame> for GethTraceFrame {
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
+enum GethTraceResult {
+    ResultKnown { result: GethTraceFrame },
+    ResultUnknown { result: Value },
+    DefaultKnown(GethTraceFrame),
+    DefaultUnknown(Value),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[serde(from = "GethTraceResult")]
+#[serde(untagged)]
 pub enum GethTrace {
     Known(GethTraceFrame),
     Unknown(Value),
+}
+
+impl From<GethTraceResult> for GethTrace {
+    fn from(value: GethTraceResult) -> Self {
+        match value {
+            GethTraceResult::DefaultKnown(t) => GethTrace::Known(t),
+            GethTraceResult::DefaultUnknown(v) => GethTrace::Unknown(v),
+            GethTraceResult::ResultKnown { result } => GethTrace::Known(result),
+            GethTraceResult::ResultUnknown { result } => GethTrace::Unknown(result),
+        }
+    }
 }
 
 impl From<GethTraceFrame> for GethTrace {

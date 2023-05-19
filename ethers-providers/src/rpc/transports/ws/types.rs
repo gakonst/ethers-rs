@@ -3,7 +3,7 @@ use std::fmt;
 use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
 use serde::{de, Deserialize};
-use serde_json::value::RawValue;
+use serde_json::value::{to_raw_value, RawValue};
 
 use crate::{common::Request, JsonRpcError};
 
@@ -15,8 +15,7 @@ pub struct SubId(pub U256);
 
 impl SubId {
     pub(super) fn serialize_raw(&self) -> Result<Box<RawValue>, serde_json::Error> {
-        let s = serde_json::to_string(&self)?;
-        RawValue::from_string(s)
+        to_raw_value(&self)
     }
 }
 
@@ -213,8 +212,7 @@ impl InFlight {
     }
 
     pub(super) fn serialize_raw(&self, id: u64) -> Result<Box<RawValue>, serde_json::Error> {
-        let s = serde_json::to_string(&self.to_request(id))?;
-        RawValue::from_string(s)
+        to_raw_value(&self.to_request(id))
     }
 }
 
@@ -231,8 +229,7 @@ impl ActiveSub {
     }
 
     pub(super) fn serialize_raw(&self, id: u64) -> Result<Box<RawValue>, serde_json::Error> {
-        let s = serde_json::to_string(&self.to_request(id))?;
-        RawValue::from_string(s)
+        to_raw_value(&self.to_request(id))
     }
 }
 
@@ -260,10 +257,11 @@ mod aliases {
 #[cfg(not(target_arch = "wasm32"))]
 mod aliases {
     pub use tokio_tungstenite::{
-        connect_async,
+        connect_async, connect_async_with_config,
         tungstenite::{self, protocol::CloseFrame},
     };
     use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
+    pub type WebSocketConfig = tungstenite::protocol::WebSocketConfig;
     pub type Message = tungstenite::protocol::Message;
     pub type WsError = tungstenite::Error;
     pub type WsStreamItem = Result<Message, WsError>;

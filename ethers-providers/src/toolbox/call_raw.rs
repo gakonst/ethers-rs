@@ -91,12 +91,12 @@ impl<'a, P> CallBuilder<'a, P> {
 impl<'a, P> RawCall<'a> for CallBuilder<'a, P> {
     /// Sets the block number to execute against
     fn block(self, id: BlockId) -> Self {
-        self.map_input(|mut call| call.input.block = Some(id))
+        self.map_input(|call| call.input.block = Some(id))
     }
     /// Sets the [state override set](https://geth.ethereum.org/docs/rpc/ns-eth#3-object---state-override-set).
     /// Note that not all client implementations will support this as a parameter.
     fn state(self, state: &'a spoof::State) -> Self {
-        self.map_input(|mut call| call.input.state = Some(state))
+        self.map_input(|call| call.input.state = Some(state))
     }
 }
 

@@ -1,7 +1,7 @@
 use enr::{k256::ecdsa::SigningKey, Enr};
 use ethers_core::{
-    types::{H256, U256},
-    utils::{from_int_or_hex, ChainConfig},
+    types::{serde_helpers::deserialize_stringified_numeric, H256, U256},
+    utils::ChainConfig,
 };
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
@@ -71,7 +71,7 @@ pub struct EthProtocolInfo {
     pub network: u64,
 
     /// The total difficulty of the host's blockchain.
-    #[serde(deserialize_with = "from_int_or_hex")]
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub difficulty: U256,
 
     /// The Keccak hash of the host's genesis block.
@@ -131,7 +131,7 @@ pub struct EthInfo {
     pub version: u64,
 
     /// The total difficulty of the peer's blockchain.
-    #[serde(deserialize_with = "from_int_or_hex")]
+    #[serde(deserialize_with = "deserialize_stringified_numeric")]
     pub difficulty: U256,
 
     /// The hash of the peer's best known block.

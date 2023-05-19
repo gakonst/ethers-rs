@@ -293,28 +293,10 @@ impl LedgerEthereum {
 mod tests {
     use super::*;
     use crate::Signer;
-    use ethers_contract_derive::{Eip712, EthAbiType};
     use ethers_core::types::{
         transaction::eip712::Eip712, Address, TransactionRequest, I256, U256,
     };
     use std::str::FromStr;
-
-    #[derive(Debug, Clone, Eip712, EthAbiType)]
-    #[eip712(
-        name = "Eip712Test",
-        version = "1",
-        chain_id = 1,
-        verifying_contract = "0x0000000000000000000000000000000000000001",
-        salt = "eip712-test-75F0CCte"
-    )]
-    struct FooBar {
-        foo: I256,
-        bar: U256,
-        fizz: Vec<u8>,
-        buzz: [u8; 32],
-        far: String,
-        out: Address,
-    }
 
     #[tokio::test]
     #[ignore]
@@ -368,24 +350,5 @@ mod tests {
         let sig = ledger.sign_message(message).await.unwrap();
         let addr = ledger.get_address().await.unwrap();
         sig.verify(message, addr).unwrap();
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_sign_eip712_struct() {
-        let ledger = LedgerEthereum::new(DerivationType::LedgerLive(0), 1u64).await.unwrap();
-
-        let foo_bar = FooBar {
-            foo: I256::from(10),
-            bar: U256::from(20),
-            fizz: b"fizz".to_vec(),
-            buzz: keccak256("buzz"),
-            far: String::from("space"),
-            out: Address::from([0; 20]),
-        };
-
-        let sig = ledger.sign_typed_struct(&foo_bar).await.expect("failed to sign typed data");
-        let foo_bar_hash = foo_bar.encode_eip712().unwrap();
-        sig.verify(foo_bar_hash, ledger.address).unwrap();
     }
 }

@@ -19,6 +19,8 @@ pub enum SolcError {
     VersionNotFound,
     #[error("Checksum mismatch for {file}: expected {expected} found {detected} for {version}")]
     ChecksumMismatch { version: Version, expected: String, detected: String, file: PathBuf },
+    #[error("Checksum not found for {version}")]
+    ChecksumNotFound { version: Version },
     #[error(transparent)]
     SemverError(#[from] semver::Error),
     /// Deserialization error

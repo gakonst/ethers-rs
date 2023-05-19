@@ -4,17 +4,18 @@ use crate::{
 };
 use ethers_core::abi::Abi;
 use md5::Digest;
-use semver::{Version, VersionReq};
+use semver::Version;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::{BTreeMap, HashSet},
     fmt, fs,
+    ops::Range,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
 };
 use tracing::warn;
-use yansi::Paint;
+use yansi::{Color, Paint, Style};
 
 pub mod ast;
 pub use ast::*;
@@ -150,7 +151,7 @@ impl CompilerInput {
     /// supported by the provided compiler version.
     #[must_use]
     pub fn normalize_evm_version(mut self, version: &Version) -> Self {
-        if let Some(ref mut evm_version) = self.settings.evm_version {
+        if let Some(evm_version) = &mut self.settings.evm_version {
             self.settings.evm_version = evm_version.normalize_version(version);
         }
         self
@@ -227,7 +228,7 @@ impl StandardJsonCompilerInput {
     /// supported by the provided compiler version.
     #[must_use]
     pub fn normalize_evm_version(mut self, version: &Version) -> Self {
-        if let Some(ref mut evm_version) = self.settings.evm_version {
+        if let Some(evm_version) = &mut self.settings.evm_version {
             self.settings.evm_version = evm_version.normalize_version(version);
         }
         self
@@ -305,66 +306,67 @@ impl Settings {
         self
     }
 
-    /// This will remove/adjust values in the settings that are not compatible with this
-    /// version
+    /// This will remove/adjust values in the settings that are not compatible with this version.
     pub fn sanitize(&mut self, version: &Version) {
-        static PRE_V0_6_0: once_cell::sync::Lazy<VersionReq> =
-            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.6.0").unwrap());
-        static PRE_V0_7_5: once_cell::sync::Lazy<VersionReq> =
-            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.7.5").unwrap());
-        static PRE_V0_8_7: once_cell::sync::Lazy<VersionReq> =
-            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.7").unwrap());
-        static PRE_V0_8_10: once_cell::sync::Lazy<VersionReq> =
-            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.10").unwrap());
-        static PRE_V0_8_18: once_cell::sync::Lazy<VersionReq> =
-            once_cell::sync::Lazy::new(|| VersionReq::parse("<0.8.18").unwrap());
-
-        if PRE_V0_6_0.matches(version) {
-            if let Some(ref mut meta) = self.metadata {
+        const V0_6_0: Version = Version::new(0, 6, 0);
+        if *version < V0_6_0 {
+            if let Some(meta) = &mut self.metadata {
                 // introduced in <https://docs.soliditylang.org/en/v0.6.0/using-the-compiler.html#compiler-api>
                 // missing in <https://docs.soliditylang.org/en/v0.5.17/using-the-compiler.html#compiler-api>
-                meta.bytecode_hash.take();
+                meta.bytecode_hash = None;
             }
             // introduced in <https://docs.soliditylang.org/en/v0.6.0/using-the-compiler.html#compiler-api>
-            let _ = self.debug.take();
+            self.debug = None;
         }
 
-        if PRE_V0_7_5.matches(version) {
+        const V0_7_5: Version = Version::new(0, 7, 5);
+        if *version < V0_7_5 {
             // introduced in 0.7.5 <https://github.com/ethereum/solidity/releases/tag/v0.7.5>
-            self.via_ir.take();
+            self.via_ir = None;
         }
 
-        if PRE_V0_8_7.matches(version) {
+        const V0_8_7: Version = Version::new(0, 8, 7);
+        if *version < V0_8_7 {
             // lower the disable version from 0.8.10 to 0.8.7, due to `divModNoSlacks`,
             // `showUnproved` and `solvers` are implemented
             // introduced in <https://github.com/ethereum/solidity/releases/tag/v0.8.7>
             self.model_checker = None;
         }
 
-        if PRE_V0_8_10.matches(version) {
-            if let Some(ref mut debug) = self.debug {
+        const V0_8_10: Version = Version::new(0, 8, 10);
+        if *version < V0_8_10 {
+            if let Some(debug) = &mut self.debug {
                 // introduced in <https://docs.soliditylang.org/en/v0.8.10/using-the-compiler.html#compiler-api>
                 // <https://github.com/ethereum/solidity/releases/tag/v0.8.10>
                 debug.debug_info.clear();
             }
 
-            if let Some(ref mut model_checker) = self.model_checker {
+            if let Some(model_checker) = &mut self.model_checker {
                 // introduced in <https://github.com/ethereum/solidity/releases/tag/v0.8.10>
                 model_checker.invariants = None;
             }
         }
 
-        if PRE_V0_8_18.matches(version) {
+        const V0_8_18: Version = Version::new(0, 8, 18);
+        if *version < V0_8_18 {
             // introduced in 0.8.18 <https://github.com/ethereum/solidity/releases/tag/v0.8.18>
-            if let Some(ref mut meta) = self.metadata {
+            if let Some(meta) = &mut self.metadata {
                 meta.cbor_metadata = None;
             }
 
-            if let Some(ref mut model_checker) = self.model_checker {
-                if let Some(ref mut solvers) = model_checker.solvers {
+            if let Some(model_checker) = &mut self.model_checker {
+                if let Some(solvers) = &mut model_checker.solvers {
                     // elf solver introduced in 0.8.18 <https://github.com/ethereum/solidity/releases/tag/v0.8.18>
                     solvers.retain(|solver| *solver != ModelCheckerSolver::Eld);
                 }
+            }
+        }
+
+        if *version < SHANGHAI_SOLC {
+            // introduced in 0.8.20 <https://github.com/ethereum/solidity/releases/tag/v0.8.20>
+            if let Some(model_checker) = &mut self.model_checker {
+                model_checker.show_proved_safe = None;
+                model_checker.show_unsupported = None;
             }
         }
     }
@@ -738,6 +740,9 @@ impl YulDetails {
     }
 }
 
+/// EVM versions.
+///
+/// Kept in sync with: <https://github.com/ethereum/solidity/blob/develop/liblangutil/EVMVersion.h>
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum EvmVersion {
     Homestead,
@@ -748,52 +753,106 @@ pub enum EvmVersion {
     Petersburg,
     Istanbul,
     Berlin,
-    #[default]
     London,
+    Paris,
+    #[default]
+    Shanghai,
 }
 
 impl EvmVersion {
-    /// Checks against the given solidity `semver::Version`
-    pub fn normalize_version(self, version: &Version) -> Option<EvmVersion> {
-        // the EVM version flag was only added at 0.4.21
-        // we work our way backwards
-        if version >= &CONSTANTINOPLE_SOLC {
-            // If the Solc is at least at london, it supports all EVM versions
-            Some(if version >= &LONDON_SOLC {
+    /// Normalizes this EVM version by checking against the given Solc [`Version`].
+    pub fn normalize_version(self, version: &Version) -> Option<Self> {
+        // The EVM version flag was only added in 0.4.21; we work our way backwards
+        if *version >= BYZANTIUM_SOLC {
+            // If the Solc version is at least at Shanghai, it supports all EVM versions.
+            // For all other cases, cap at the at-the-time highest possible fork.
+            let normalized = if *version >= SHANGHAI_SOLC {
                 self
-                // For all other cases, cap at the at-the-time highest possible
-                // fork
-            } else if version >= &BERLIN_SOLC && self >= EvmVersion::Berlin {
-                EvmVersion::Berlin
-            } else if version >= &ISTANBUL_SOLC && self >= EvmVersion::Istanbul {
-                EvmVersion::Istanbul
-            } else if version >= &PETERSBURG_SOLC && self >= EvmVersion::Petersburg {
-                EvmVersion::Petersburg
-            } else if self >= EvmVersion::Constantinople {
-                EvmVersion::Constantinople
+            } else if self >= Self::Paris && *version >= PARIS_SOLC {
+                Self::Paris
+            } else if self >= Self::London && *version >= LONDON_SOLC {
+                Self::London
+            } else if self >= Self::Berlin && *version >= BERLIN_SOLC {
+                Self::Berlin
+            } else if self >= Self::Istanbul && *version >= ISTANBUL_SOLC {
+                Self::Istanbul
+            } else if self >= Self::Petersburg && *version >= PETERSBURG_SOLC {
+                Self::Petersburg
+            } else if self >= Self::Constantinople && *version >= CONSTANTINOPLE_SOLC {
+                Self::Constantinople
+            } else if self >= Self::Byzantium {
+                Self::Byzantium
             } else {
                 self
-            })
+            };
+            Some(normalized)
         } else {
             None
         }
+    }
+
+    /// Returns the EVM version as a string.
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Homestead => "homestead",
+            Self::TangerineWhistle => "tangerineWhistle",
+            Self::SpuriousDragon => "spuriousDragon",
+            Self::Byzantium => "byzantium",
+            Self::Constantinople => "constantinople",
+            Self::Petersburg => "petersburg",
+            Self::Istanbul => "istanbul",
+            Self::Berlin => "berlin",
+            Self::London => "london",
+            Self::Paris => "paris",
+            Self::Shanghai => "shanghai",
+        }
+    }
+
+    /// Has the `RETURNDATACOPY` and `RETURNDATASIZE` opcodes.
+    pub fn supports_returndata(&self) -> bool {
+        *self >= Self::Byzantium
+    }
+
+    pub fn has_static_call(&self) -> bool {
+        *self >= Self::Byzantium
+    }
+
+    pub fn has_bitwise_shifting(&self) -> bool {
+        *self >= Self::Constantinople
+    }
+
+    pub fn has_create2(&self) -> bool {
+        *self >= Self::Constantinople
+    }
+
+    pub fn has_ext_code_hash(&self) -> bool {
+        *self >= Self::Constantinople
+    }
+
+    pub fn has_chain_id(&self) -> bool {
+        *self >= Self::Istanbul
+    }
+
+    pub fn has_self_balance(&self) -> bool {
+        *self >= Self::Istanbul
+    }
+
+    pub fn has_base_fee(&self) -> bool {
+        *self >= Self::London
+    }
+
+    pub fn has_prevrandao(&self) -> bool {
+        *self >= Self::Paris
+    }
+
+    pub fn has_push0(&self) -> bool {
+        *self >= Self::Shanghai
     }
 }
 
 impl fmt::Display for EvmVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let string = match self {
-            EvmVersion::Homestead => "homestead",
-            EvmVersion::TangerineWhistle => "tangerineWhistle",
-            EvmVersion::SpuriousDragon => "spuriousDragon",
-            EvmVersion::Constantinople => "constantinople",
-            EvmVersion::Petersburg => "petersburg",
-            EvmVersion::Istanbul => "istanbul",
-            EvmVersion::Berlin => "berlin",
-            EvmVersion::London => "london",
-            EvmVersion::Byzantium => "byzantium",
-        };
-        write!(f, "{string}")
+        f.write_str(self.as_str())
     }
 }
 
@@ -802,15 +861,17 @@ impl FromStr for EvmVersion {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "homestead" => Ok(EvmVersion::Homestead),
-            "tangerineWhistle" => Ok(EvmVersion::TangerineWhistle),
-            "spuriousDragon" => Ok(EvmVersion::SpuriousDragon),
-            "constantinople" => Ok(EvmVersion::Constantinople),
-            "petersburg" => Ok(EvmVersion::Petersburg),
-            "istanbul" => Ok(EvmVersion::Istanbul),
-            "berlin" => Ok(EvmVersion::Berlin),
-            "london" => Ok(EvmVersion::London),
-            "byzantium" => Ok(EvmVersion::Byzantium),
+            "homestead" => Ok(Self::Homestead),
+            "tangerineWhistle" => Ok(Self::TangerineWhistle),
+            "spuriousDragon" => Ok(Self::SpuriousDragon),
+            "byzantium" => Ok(Self::Byzantium),
+            "constantinople" => Ok(Self::Constantinople),
+            "petersburg" => Ok(Self::Petersburg),
+            "istanbul" => Ok(Self::Istanbul),
+            "berlin" => Ok(Self::Berlin),
+            "london" => Ok(Self::London),
+            "paris" => Ok(Self::Paris),
+            "shanghai" => Ok(Self::Shanghai),
             s => Err(format!("Unknown evm version: {s}")),
         }
     }
@@ -1065,7 +1126,8 @@ pub struct MetadataSource {
 }
 
 /// Model checker settings for solc
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ModelCheckerSettings {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub contracts: BTreeMap<String, Vec<String>>,
@@ -1081,12 +1143,16 @@ pub struct ModelCheckerSettings {
     pub targets: Option<Vec<ModelCheckerTarget>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub invariants: Option<Vec<ModelCheckerInvariant>>,
-    #[serde(rename = "showUnproved", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub show_unproved: Option<bool>,
-    #[serde(rename = "divModWithSlacks", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub div_mod_with_slacks: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub solvers: Option<Vec<ModelCheckerSolver>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_unsupported: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub show_proved_safe: Option<bool>,
 }
 
 /// Which model checker engine to run.
@@ -1776,7 +1842,8 @@ pub struct Creation {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct Ewasm {
-    pub wast: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wast: Option<String>,
     pub wasm: String,
 }
 
@@ -1837,31 +1904,211 @@ pub struct Error {
     pub formatted_message: Option<String>,
 }
 
+/// Tries to mimic Solidity's own error formatting.
+///
+/// <https://github.com/ethereum/solidity/blob/a297a687261a1c634551b1dac0e36d4573c19afe/liblangutil/SourceReferenceFormatter.cpp#L105>
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(msg) = &self.formatted_message {
-            match self.severity {
-                Severity::Error => {
-                    if let Some(code) = self.error_code {
-                        Paint::red(format!("error[{code}]: ")).fmt(f)?;
-                    }
-                    Paint::red(msg).fmt(f)
-                }
-                Severity::Warning | Severity::Info => {
-                    if let Some(code) = self.error_code {
-                        Paint::yellow(format!("warning[{code}]: ")).fmt(f)?;
-                    }
-                    Paint::yellow(msg).fmt(f)
-                }
-            }
-        } else {
-            self.severity.fmt(f)?;
-            writeln!(f, ": {}", self.message)
+        if !Paint::is_enabled() {
+            let msg = self.formatted_message.as_ref().unwrap_or(&self.message);
+            self.fmt_severity(f)?;
+            f.write_str(": ")?;
+            return f.write_str(msg)
         }
+
+        // Error (XXXX): Error Message
+        styled(f, self.severity.color().style().bold(), |f| self.fmt_severity(f))?;
+        fmt_msg(f, &self.message)?;
+
+        if let Some(msg) = &self.formatted_message {
+            let mut lines = msg.lines();
+
+            // skip first line, it should be similar to the error message we wrote above
+            lines.next();
+
+            // format the main source location
+            fmt_source_location(f, &mut lines)?;
+
+            // format remaining lines as secondary locations
+            while let Some(line) = lines.next() {
+                f.write_str("\n")?;
+
+                if let Some((note, msg)) = line.split_once(':') {
+                    styled(f, Self::secondary_style(), |f| f.write_str(note))?;
+                    fmt_msg(f, msg)?;
+                } else {
+                    f.write_str(line)?;
+                }
+
+                fmt_source_location(f, &mut lines)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Default)]
+impl Error {
+    /// The style of the diagnostic severity.
+    pub fn error_style(&self) -> Style {
+        self.severity.color().style().bold()
+    }
+
+    /// The style of the diagnostic message.
+    pub fn message_style() -> Style {
+        Color::White.style().bold()
+    }
+
+    /// The style of the secondary source location.
+    pub fn secondary_style() -> Style {
+        Color::Cyan.style().bold()
+    }
+
+    /// The style of the source location highlight.
+    pub fn highlight_style() -> Style {
+        Color::Yellow.style()
+    }
+
+    /// The style of the diagnostics.
+    pub fn diag_style() -> Style {
+        Color::Yellow.style().bold()
+    }
+
+    /// The style of the source location frame.
+    pub fn frame_style() -> Style {
+        Color::Blue.style()
+    }
+
+    /// Formats the diagnostic severity:
+    ///
+    /// ```text
+    /// Error (XXXX)
+    /// ```
+    fn fmt_severity(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.severity.as_str())?;
+        if let Some(code) = self.error_code {
+            write!(f, " ({code})")?;
+        }
+        Ok(())
+    }
+}
+
+/// Calls `fun` in between [`Style::fmt_prefix`] and [`Style::fmt_suffix`].
+fn styled<F>(f: &mut fmt::Formatter, style: Style, fun: F) -> fmt::Result
+where
+    F: FnOnce(&mut fmt::Formatter) -> fmt::Result,
+{
+    style.fmt_prefix(f)?;
+    fun(f)?;
+    style.fmt_suffix(f)
+}
+
+/// Formats the diagnostic message.
+fn fmt_msg(f: &mut fmt::Formatter, msg: &str) -> fmt::Result {
+    styled(f, Error::message_style(), |f| {
+        f.write_str(": ")?;
+        f.write_str(msg.trim_start())
+    })
+}
+
+/// Colors a Solidity source location:
+///
+/// ```text
+/// --> /home/user/contract.sol:420:69:
+///     |
+/// 420 |       bad_code()
+///     |                ^
+/// ```
+fn fmt_source_location(f: &mut fmt::Formatter, lines: &mut std::str::Lines) -> fmt::Result {
+    // --> source
+    if let Some(line) = lines.next() {
+        f.write_str("\n")?;
+
+        let arrow = "-->";
+        if let Some((left, loc)) = line.split_once(arrow) {
+            f.write_str(left)?;
+            styled(f, Error::frame_style(), |f| f.write_str(arrow))?;
+            f.write_str(loc)?;
+        } else {
+            f.write_str(line)?;
+        }
+    }
+
+    // get the next 3 lines
+    // FIXME: Somehow do this without allocating
+    let next_3 = lines.take(3).collect::<Vec<_>>();
+    let [line1, line2, line3] = next_3[..] else {
+        for line in next_3 {
+            f.write_str("\n")?;
+            f.write_str(line)?;
+        }
+        return Ok(())
+    };
+
+    // line 1, just a frame
+    fmt_framed_location(f, line1, None)?;
+
+    // line 2, frame and code; highlight the text based on line 3's carets
+    let hl_start = line3.find('^');
+    let highlight = hl_start.map(|start| {
+        let end = if line3.contains("^ (") {
+            // highlight the entire line because of "spans across multiple lines" diagnostic
+            line2.len()
+        } else if let Some(carets) = line3[start..].find(|c: char| c != '^') {
+            // highlight the text that the carets point to
+            start + carets
+        } else {
+            // the carets span the entire third line
+            line3.len()
+        }
+        // bound in case carets span longer than the code they point to
+        .min(line2.len());
+        (start.min(end)..end, Error::highlight_style())
+    });
+    fmt_framed_location(f, line2, highlight)?;
+
+    // line 3, frame and maybe highlight, this time till the end unconditionally
+    let highlight = hl_start.map(|i| (i..line3.len(), Error::diag_style()));
+    fmt_framed_location(f, line3, highlight)
+}
+
+/// Colors a single Solidity framed source location line. Part of [`fmt_source_location`].
+fn fmt_framed_location(
+    f: &mut fmt::Formatter,
+    line: &str,
+    highlight: Option<(Range<usize>, Style)>,
+) -> fmt::Result {
+    f.write_str("\n")?;
+
+    if let Some((space_or_line_number, rest)) = line.split_once('|') {
+        // if the potential frame is not just whitespace or numbers, don't color it
+        if !space_or_line_number.chars().all(|c| c.is_whitespace() || c.is_numeric()) {
+            return f.write_str(line)
+        }
+
+        styled(f, Error::frame_style(), |f| {
+            f.write_str(space_or_line_number)?;
+            f.write_str("|")
+        })?;
+
+        if let Some((range, style)) = highlight {
+            let Range { start, end } = range;
+            let rest_start = line.len() - rest.len();
+            f.write_str(&line[rest_start..start])?;
+            styled(f, style, |f| f.write_str(&line[range]))?;
+            f.write_str(&line[end..])
+        } else {
+            f.write_str(rest)
+        }
+    } else {
+        f.write_str(line)
+    }
+}
+
+#[derive(
+    Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
+#[serde(rename_all = "lowercase")]
 pub enum Severity {
     #[default]
     Error,
@@ -1871,25 +2118,7 @@ pub enum Severity {
 
 impl fmt::Display for Severity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Severity::Error => Paint::red("Error").fmt(f),
-            Severity::Warning => Paint::yellow("Warning").fmt(f),
-            Severity::Info => f.write_str("Info"),
-        }
-    }
-}
-
-impl Severity {
-    pub fn is_error(&self) -> bool {
-        matches!(self, Severity::Error)
-    }
-
-    pub fn is_warning(&self) -> bool {
-        matches!(self, Severity::Warning)
-    }
-
-    pub fn is_info(&self) -> bool {
-        matches!(self, Severity::Info)
+        f.write_str(self.as_str())
     }
 }
 
@@ -1898,50 +2127,46 @@ impl FromStr for Severity {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "error" => Ok(Severity::Error),
-            "warning" => Ok(Severity::Warning),
-            "info" => Ok(Severity::Info),
+            "Error" | "error" => Ok(Self::Error),
+            "Warning" | "warning" => Ok(Self::Warning),
+            "Info" | "info" => Ok(Self::Info),
             s => Err(format!("Invalid severity: {s}")),
         }
     }
 }
 
-impl Serialize for Severity {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
+impl Severity {
+    /// Returns `true` if the severity is `Error`.
+    pub const fn is_error(&self) -> bool {
+        matches!(self, Self::Error)
+    }
+
+    /// Returns `true` if the severity is `Warning`.
+    pub const fn is_warning(&self) -> bool {
+        matches!(self, Self::Warning)
+    }
+
+    /// Returns `true` if the severity is `Info`.
+    pub const fn is_info(&self) -> bool {
+        matches!(self, Self::Info)
+    }
+
+    /// Returns the string representation of the severity.
+    pub const fn as_str(&self) -> &'static str {
         match self {
-            Severity::Error => serializer.serialize_str("error"),
-            Severity::Warning => serializer.serialize_str("warning"),
-            Severity::Info => serializer.serialize_str("info"),
+            Self::Error => "Error",
+            Self::Warning => "Warning",
+            Self::Info => "Info",
         }
     }
-}
 
-impl<'de> Deserialize<'de> for Severity {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct SeverityVisitor;
-
-        impl<'de> Visitor<'de> for SeverityVisitor {
-            type Value = Severity;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(formatter, "severity string")
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                value.parse().map_err(serde::de::Error::custom)
-            }
+    /// Returns the color to format the severity with.
+    pub const fn color(&self) -> Color {
+        match self {
+            Self::Error => Color::Red,
+            Self::Warning => Color::Yellow,
+            Self::Info => Color::White,
         }
-
-        deserializer.deserialize_str(SeverityVisitor)
     }
 }
 
@@ -2151,12 +2376,16 @@ mod tests {
     #[test]
     fn test_evm_version_normalization() {
         for (solc_version, evm_version, expected) in &[
-            // Ensure 0.4.21 it always returns None
+            // Everything before 0.4.21 should always return None
             ("0.4.20", EvmVersion::Homestead, None),
-            // Constantinople clipping
+            // Byzantium clipping
             ("0.4.21", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
-            ("0.4.21", EvmVersion::Constantinople, Some(EvmVersion::Constantinople)),
-            ("0.4.21", EvmVersion::London, Some(EvmVersion::Constantinople)),
+            ("0.4.21", EvmVersion::Constantinople, Some(EvmVersion::Byzantium)),
+            ("0.4.21", EvmVersion::London, Some(EvmVersion::Byzantium)),
+            // Constantinople bug fix
+            ("0.4.22", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.4.22", EvmVersion::Constantinople, Some(EvmVersion::Constantinople)),
+            ("0.4.22", EvmVersion::London, Some(EvmVersion::Constantinople)),
             // Petersburg
             ("0.5.5", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
             ("0.5.5", EvmVersion::Petersburg, Some(EvmVersion::Petersburg)),
@@ -2172,11 +2401,21 @@ mod tests {
             // London
             ("0.8.7", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
             ("0.8.7", EvmVersion::London, Some(EvmVersion::London)),
-            ("0.8.7", EvmVersion::London, Some(EvmVersion::London)),
+            ("0.8.7", EvmVersion::Paris, Some(EvmVersion::London)),
+            // Paris
+            ("0.8.18", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.8.18", EvmVersion::Paris, Some(EvmVersion::Paris)),
+            ("0.8.18", EvmVersion::Shanghai, Some(EvmVersion::Paris)),
+            // Shanghai
+            ("0.8.20", EvmVersion::Homestead, Some(EvmVersion::Homestead)),
+            ("0.8.20", EvmVersion::Paris, Some(EvmVersion::Paris)),
+            ("0.8.20", EvmVersion::Shanghai, Some(EvmVersion::Shanghai)),
         ] {
+            let version = Version::from_str(solc_version).unwrap();
             assert_eq!(
-                &evm_version.normalize_version(&Version::from_str(solc_version).unwrap()),
-                expected
+                &evm_version.normalize_version(&version),
+                expected,
+                "({version}, {evm_version:?})"
             )
         }
     }
@@ -2219,8 +2458,7 @@ mod tests {
         let i = input.clone().sanitized(&version);
         assert_eq!(i.settings.metadata.unwrap().cbor_metadata, Some(true));
 
-        let version: Version = "0.8.0".parse().unwrap();
-        let i = input.sanitized(&version);
+        let i = input.sanitized(&Version::new(0, 8, 0));
         assert!(i.settings.metadata.unwrap().cbor_metadata.is_none());
     }
 

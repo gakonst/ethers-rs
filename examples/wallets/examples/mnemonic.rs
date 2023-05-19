@@ -18,7 +18,7 @@ fn main() -> Result<()> {
         .password(password)
         .build()?;
 
-    dbg!(&wallet);
+    eprintln!("Wallet: {wallet:?}");
 
     // Generate a random wallet (24 word phrase) at custom derivation path
     let mut rng = rand::thread_rng();
@@ -30,7 +30,7 @@ fn main() -> Result<()> {
         // .write_to(path)
         .build_random(&mut rng)?;
 
-    dbg!(&wallet);
+    eprintln!("Random wallet: {wallet:?}");
 
     Ok(())
 }

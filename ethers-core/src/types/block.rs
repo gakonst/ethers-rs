@@ -1,5 +1,7 @@
 // Modified from <https://github.com/tomusdrw/rust-web3/blob/master/src/types/block.rs>
 
+#[cfg(not(feature = "celo"))]
+use crate::types::Withdrawal;
 use crate::types::{Address, Bloom, Bytes, Transaction, TxHash, H256, U256, U64};
 use chrono::{DateTime, TimeZone, Utc};
 use serde::{
@@ -84,6 +86,14 @@ pub struct Block<TX> {
     /// Base fee per unit of gas (if past London)
     #[serde(rename = "baseFeePerGas")]
     pub base_fee_per_gas: Option<U256>,
+    /// Withdrawals root hash (if past Shanghai)
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "withdrawalsRoot")]
+    #[cfg(not(feature = "celo"))]
+    pub withdrawals_root: Option<H256>,
+    /// Withdrawals (if past Shanghai)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg(not(feature = "celo"))]
+    pub withdrawals: Option<Vec<Withdrawal>>,
 
     #[cfg(feature = "celo")]
     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
@@ -218,6 +228,8 @@ impl Block<TxHash> {
                 mix_hash,
                 nonce,
                 base_fee_per_gas,
+                withdrawals_root,
+                withdrawals,
                 other,
                 ..
             } = self;
@@ -243,6 +255,8 @@ impl Block<TxHash> {
                 mix_hash,
                 nonce,
                 base_fee_per_gas,
+                withdrawals_root,
+                withdrawals,
                 transactions,
                 other,
             }
@@ -322,6 +336,8 @@ impl From<Block<Transaction>> for Block<TxHash> {
                 mix_hash,
                 nonce,
                 base_fee_per_gas,
+                withdrawals_root,
+                withdrawals,
                 other,
             } = full;
             Block {
@@ -346,6 +362,8 @@ impl From<Block<Transaction>> for Block<TxHash> {
                 mix_hash,
                 nonce,
                 base_fee_per_gas,
+                withdrawals_root,
+                withdrawals,
                 transactions: transactions.iter().map(|tx| tx.hash).collect(),
                 other,
             }

@@ -1,3 +1,5 @@
+#[cfg(not(target_arch = "wasm32"))]
+use super::WebSocketConfig;
 use super::{
     backend::{BackendDriver, WsBackend},
     ActiveSub, ConnectionDetails, InFlight, Instruction, Notification, PubSubItem, Response, SubId,
@@ -7,7 +9,7 @@ use crate::JsonRpcError;
 use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
 use futures_util::{select_biased, StreamExt};
-use serde_json::value::RawValue;
+use serde_json::value::{to_raw_value, RawValue};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{
@@ -126,7 +128,7 @@ impl SubscriptionManager {
             tracing::debug!(id, server_id = %server_id.0, "Registering new sub alias");
             self.add_alias(server_id.0, id);
             let result = U256::from(id);
-            RawValue::from_string(format!("\"0x{result:x}\"")).unwrap()
+            to_raw_value(&format!("0x{result:x}")).expect("valid json")
         } else {
             result
         }
@@ -196,6 +198,9 @@ pub struct RequestManager {
     backend: BackendDriver,
     // The URL and optional auth info for the connection
     conn: ConnectionDetails,
+    #[cfg(not(target_arch = "wasm32"))]
+    // An Option wrapping a tungstenite WebsocketConfig. If None, the default config is used.
+    config: Option<WebSocketConfig>,
     // Instructions from the user-facing providers
     instructions: mpsc::UnboundedReceiver<Instruction>,
 }
@@ -209,16 +214,30 @@ impl RequestManager {
         Self::connect_with_reconnects(conn, DEFAULT_RECONNECTS).await
     }
 
+    async fn connect_internal(
+        conn: ConnectionDetails,
+    ) -> Result<
+        (
+            BackendDriver,
+            (mpsc::UnboundedSender<Instruction>, mpsc::UnboundedReceiver<Instruction>),
+            SharedChannelMap,
+        ),
+        WsClientError,
+    > {
+        let (ws, backend) = WsBackend::connect(conn).await?;
+
+        ws.spawn();
+
+        Ok((backend, mpsc::unbounded(), Default::default()))
+    }
+
+    #[cfg(target_arch = "wasm32")]
     pub async fn connect_with_reconnects(
         conn: ConnectionDetails,
         reconnects: usize,
     ) -> Result<(Self, WsClient), WsClientError> {
-        let (ws, backend) = WsBackend::connect(conn.clone()).await?;
-
-        let (instructions_tx, instructions_rx) = mpsc::unbounded();
-        let channel_map: SharedChannelMap = Default::default();
-
-        ws.spawn();
+        let (backend, (instructions_tx, instructions_rx), channel_map) =
+            Self::connect_internal(conn.clone()).await?;
 
         Ok((
             Self {
@@ -234,6 +253,75 @@ impl RequestManager {
         ))
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn connect_with_reconnects(
+        conn: ConnectionDetails,
+        reconnects: usize,
+    ) -> Result<(Self, WsClient), WsClientError> {
+        let (backend, (instructions_tx, instructions_rx), channel_map) =
+            Self::connect_internal(conn.clone()).await?;
+
+        Ok((
+            Self {
+                id: Default::default(),
+                reconnects,
+                subs: SubscriptionManager::new(channel_map.clone()),
+                reqs: Default::default(),
+                backend,
+                conn,
+                config: None,
+                instructions: instructions_rx,
+            },
+            WsClient { instructions: instructions_tx, channel_map },
+        ))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn connect_with_config(
+        conn: ConnectionDetails,
+        config: WebSocketConfig,
+    ) -> Result<(Self, WsClient), WsClientError> {
+        Self::connect_with_config_and_reconnects(conn, config, DEFAULT_RECONNECTS).await
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn connect_with_config_and_reconnects(
+        conn: ConnectionDetails,
+        config: WebSocketConfig,
+        reconnects: usize,
+    ) -> Result<(Self, WsClient), WsClientError> {
+        let (backend, (instructions_tx, instructions_rx), channel_map) =
+            Self::connect_internal(conn.clone()).await?;
+
+        Ok((
+            Self {
+                id: Default::default(),
+                reconnects,
+                subs: SubscriptionManager::new(channel_map.clone()),
+                reqs: Default::default(),
+                backend,
+                conn,
+                config: Some(config),
+                instructions: instructions_rx,
+            },
+            WsClient { instructions: instructions_tx, channel_map },
+        ))
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    async fn reconnect_backend(&mut self) -> Result<(WsBackend, BackendDriver), WsClientError> {
+        WsBackend::connect(self.conn.clone()).await
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    async fn reconnect_backend(&mut self) -> Result<(WsBackend, BackendDriver), WsClientError> {
+        if let Some(config) = self.config {
+            WsBackend::connect_with_config(self.conn.clone(), config, false).await
+        } else {
+            WsBackend::connect(self.conn.clone()).await
+        }
+    }
+
     async fn reconnect(&mut self) -> Result<(), WsClientError> {
         if self.reconnects == 0 {
             return Err(WsClientError::TooManyReconnects)
@@ -242,7 +330,7 @@ impl RequestManager {
 
         tracing::info!(remaining = self.reconnects, url = self.conn.url, "Reconnecting to backend");
         // create the new backend
-        let (s, mut backend) = WsBackend::connect(self.conn.clone()).await?;
+        let (s, mut backend) = self.reconnect_backend().await?;
 
         // spawn the new backend
         s.spawn();

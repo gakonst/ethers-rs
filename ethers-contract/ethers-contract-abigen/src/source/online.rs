@@ -196,7 +196,7 @@ mod tests {
             let tests2 = tests2.collect::<Result<Vec<_>>>().unwrap();
 
             for slice in tests2.windows(2) {
-                let (a, b) = (&slice[0], &slice[1]);
+                let [a, b] = slice else { unreachable!() };
                 if a != b {
                     panic!("Expected: {expected:?}; Got: {a:?} | {b:?}");
                 }

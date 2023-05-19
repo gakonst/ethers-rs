@@ -1,7 +1,7 @@
 pragma solidity >=0.4.24;
 
+// note that this file is not synced with SimpleStorage.json
 contract SimpleStorage {
-
     event ValueChanged(address indexed author, address indexed oldAuthor, string oldValue, string newValue);
 
     address public lastSender;

@@ -4,26 +4,30 @@ use crate::utils;
 use ethers_core::{abi::ParamType, macros::ethers_core_crate};
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{parse::Error, spanned::Spanned, Data, DeriveInput, Fields, Index};
+use syn::{parse::Error, spanned::Spanned, Data, DeriveInput, Index};
 
 /// Derive `fmt::Display` for the given type
 pub(crate) fn derive_eth_display_impl(input: DeriveInput) -> Result<TokenStream, Error> {
     let fields = match input.data {
-        Data::Struct(ref data) => match data.fields {
-            Fields::Named(ref fields) => fields.named.iter().collect(),
-            Fields::Unnamed(ref fields) => fields.unnamed.iter().collect(),
-            Fields::Unit => vec![],
-        },
-        Data::Enum(_) => {
-            return Err(Error::new(input.span(), "Enum types are not supported by EthDisplay"))
+        Data::Struct(data) => data.fields.into_iter(),
+        Data::Enum(e) => {
+            return Err(Error::new(e.enum_token.span(), "Enums are not supported by EthDisplay"))
         }
-        Data::Union(_) => {
-            return Err(Error::new(input.span(), "Union types are not supported by EthDisplay"))
+        Data::Union(u) => {
+            return Err(Error::new(u.union_token.span(), "Unions are not supported by EthDisplay"))
         }
     };
 
     let mut expressions = TokenStream::new();
-    for (i, field) in fields.iter().enumerate() {
+    for (i, field) in fields.enumerate() {
+        // comma separator
+        if i > 0 {
+            let tokens = quote! {
+                ::core::fmt::Write::write_str(f, ", ")?;
+            };
+            expressions.extend(tokens);
+        }
+
         let ident = field.ident.as_ref().map(|id| quote!(#id)).unwrap_or_else(|| {
             let idx = Index::from(i);
             quote!(#idx)
@@ -35,14 +39,6 @@ pub(crate) fn derive_eth_display_impl(input: DeriveInput) -> Result<TokenStream,
         } else {
             // could not detect the parameter type and rely on using debug fmt
             fmt_debug_tokens(&ident, &mut expressions);
-        }
-
-        // comma separator
-        if i < fields.len() - 1 {
-            let tokens = quote! {
-                ::core::fmt::Write::write_str(f, ", ")?;
-            };
-            expressions.extend(tokens);
         }
     }
 

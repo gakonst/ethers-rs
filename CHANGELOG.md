@@ -10,15 +10,67 @@ which is configured [here](./cliff.toml).
 
 Please do not manually edit this file.
 
-## [Unreleased]
+## [2.0.4] - 2023-04-30
+
+### Bug Fixes
+
+- Specify sum type in abigen to avoid ambiguity ([#2383](https://github.com/gakonst/ethers-rs/issues/2383))
+- Add back `ethers-solc` feature for `ethers` ([#2376](https://github.com/gakonst/ethers-rs/issues/2376))
+- Ethers_providers::is_local_endpoint with rust matching pattern on URL::parse ([#2351](https://github.com/gakonst/ethers-rs/issues/2351))
+- Correctly handle Trezor One support ([#2350](https://github.com/gakonst/ethers-rs/issues/2350))
+- Fix bug 2370 ([#2371](https://github.com/gakonst/ethers-rs/issues/2371))
+- Don't panic if hex str too short ([#2363](https://github.com/gakonst/ethers-rs/issues/2363))
+- Fix decimal string IntOrHex parsing ([#2359](https://github.com/gakonst/ethers-rs/issues/2359))
+- SolStruct derives edge case ([#2335](https://github.com/gakonst/ethers-rs/issues/2335))
+
+### Depedencies
+
+- Remove unused dev dependencies on ethers ([#2386](https://github.com/gakonst/ethers-rs/issues/2386))
+- Bump all dependencies ([#2388](https://github.com/gakonst/ethers-rs/issues/2388))
+- Bump coins-bip39 to 0.8.6 ([#2342](https://github.com/gakonst/ethers-rs/issues/2342))
+
+### Documentation
+
+- Update docs and examples on derive macros ([#2375](https://github.com/gakonst/ethers-rs/issues/2375))
+- Fix git-cliff tag filtering ([#2343](https://github.com/gakonst/ethers-rs/issues/2343))
+
+### Features
+
+- Add support for Paris and Shanghai EVM versions ([#2385](https://github.com/gakonst/ethers-rs/issues/2385))
+- Add geth debug_traceBlock methods ([#2366](https://github.com/gakonst/ethers-rs/issues/2366))
+- Add fn parse_checksummed ([#2372](https://github.com/gakonst/ethers-rs/issues/2372))
+- Add metis support ([#2365](https://github.com/gakonst/ethers-rs/issues/2365))
+- Color when formatting Error and OutputDiagnostics ([#2368](https://github.com/gakonst/ethers-rs/issues/2368))
+- Add zksync ([#2302](https://github.com/gakonst/ethers-rs/issues/2302))
+- Add raw_salt attribute ([#2331](https://github.com/gakonst/ethers-rs/issues/2331))
 
 ### Miscellaneous Tasks
 
+- Add viem to wasm section on readme ([#2345](https://github.com/gakonst/ethers-rs/issues/2345))
 - Fix clippy lints
 
 ### Other
 
+- Disable cyclical dep
+- Fix `wast` field is missing ([#2380](https://github.com/gakonst/ethers-rs/issues/2380))
+- Add nameless decode to BaseContract ([#2355](https://github.com/gakonst/ethers-rs/issues/2355))
+- Clippy return statements ([#2379](https://github.com/gakonst/ethers-rs/issues/2379))
+- Jepsen/mdbook ([#2297](https://github.com/gakonst/ethers-rs/issues/2297))
+- Couple clippies ([#2378](https://github.com/gakonst/ethers-rs/issues/2378))
+- Polygon zkevm support ([#2367](https://github.com/gakonst/ethers-rs/issues/2367))
+-  fix(core): add from_x_or_hex to remaining genesis fields  ([#2360](https://github.com/gakonst/ethers-rs/issues/2360))
 - Revert "temp: disable cyclical dep"
+
+### Styling
+
+- Feat/add withdrawals root ([#2348](https://github.com/gakonst/ethers-rs/issues/2348))
+
+### Testing
+
+- Remove eip712 tests for ethers-signers ([#2387](https://github.com/gakonst/ethers-rs/issues/2387))
+- Add deserialize test ([#2354](https://github.com/gakonst/ethers-rs/issues/2354))
+- Ignore windows remapping tests ([#2361](https://github.com/gakonst/ethers-rs/issues/2361))
+- Fix tests and dev features ([#2293](https://github.com/gakonst/ethers-rs/issues/2293))
 
 ## [2.0.3] - 2023-04-12
 

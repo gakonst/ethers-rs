@@ -89,6 +89,8 @@ pub enum Chain {
 
     ScrollAlphaTestnet = 534353,
 
+    Metis = 1088,
+
     #[strum(to_string = "xdai", serialize = "gnosis", serialize = "gnosis-chain")]
     #[serde(alias = "xdai", alias = "gnosis", alias = "gnosis_chain")]
     XDai = 100,
@@ -97,6 +99,12 @@ pub enum Chain {
     #[strum(to_string = "mumbai", serialize = "polygon-mumbai")]
     #[serde(alias = "mumbai")]
     PolygonMumbai = 80001,
+    #[strum(serialize = "polygon-zkevm", serialize = "zkevm")]
+    #[serde(alias = "zkevm", alias = "polygon_zkevm")]
+    PolygonZkEvm = 1101,
+    #[strum(serialize = "polygon-zkevm-testnet", serialize = "zkevm-testnet")]
+    #[serde(alias = "zkevm_testnet", alias = "polygon_zkevm_testnet")]
+    PolygonZkEvmTestnet = 1442,
 
     Fantom = 250,
     FantomTestnet = 4002,
@@ -145,9 +153,14 @@ pub enum Chain {
 
     BaseGoerli = 84531,
 
+    LineaTestnet = 59140,
+
     #[strum(to_string = "zksync")]
     #[serde(alias = "zksync")]
     ZkSync = 324,
+    #[strum(to_string = "zksync-testnet")]
+    #[serde(alias = "zksync_testnet")]
+    ZkSyncTestnet = 280,
 }
 
 // === impl Chain ===
@@ -280,7 +293,8 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
-            EmeraldTestnet | Boba | BaseGoerli | ZkSync => return None,
+            EmeraldTestnet | Boba | BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm |
+            PolygonZkEvmTestnet | Metis | LineaTestnet => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -308,10 +322,7 @@ impl Chain {
             FantomTestnet |
             BinanceSmartChain |
             BinanceSmartChainTestnet |
-            Arbitrum |
             ArbitrumTestnet |
-            ArbitrumGoerli |
-            ArbitrumNova |
             Rsk |
             Oasis |
             Emerald |
@@ -321,7 +332,10 @@ impl Chain {
             CeloBaklava |
             Boba |
             ZkSync |
-            BaseGoerli => true,
+            ZkSyncTestnet |
+            BaseGoerli |
+            PolygonZkEvm |
+            PolygonZkEvmTestnet => true,
 
             // Known EIP-1559 chains
             Mainnet |
@@ -331,14 +345,18 @@ impl Chain {
             PolygonMumbai |
             Avalanche |
             AvalancheFuji |
+            Arbitrum |
+            ArbitrumGoerli |
+            ArbitrumNova |
             FilecoinMainnet |
+            LineaTestnet |
             FilecoinHyperspaceTestnet => false,
 
             // Unknown / not applicable, default to false for backwards compatibility
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
             Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
             EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet |
-            ScrollAlphaTestnet => false,
+            ScrollAlphaTestnet | Metis => false,
         }
     }
 
@@ -376,6 +394,14 @@ impl Chain {
             PolygonMumbai => {
                 ("https://api-testnet.polygonscan.com/api", "https://mumbai.polygonscan.com")
             }
+
+            PolygonZkEvm => {
+                ("https://api-zkevm.polygonscan.com/api", "https://zkevm.polygonscan.com")
+            }
+            PolygonZkEvmTestnet => (
+                "https://api-testnet-zkevm.polygonscan.com/api",
+                "https://testnet-zkevm.polygonscan.com",
+            ),
 
             Avalanche => ("https://api.snowtrace.io/api", "https://snowtrace.io"),
             AvalancheFuji => {
@@ -425,6 +451,10 @@ impl Chain {
 
             ScrollAlphaTestnet => {
                 ("https://blockscout.scroll.io/api", "https://blockscout.scroll.io/")
+            }
+
+            Metis => {
+                ("https://andromeda-explorer.metis.io/api", "https://andromeda-explorer.metis.io/")
             }
 
             Chiado => {
@@ -480,6 +510,13 @@ impl Chain {
             ZkSync => {
                 ("https://zksync2-mainnet-explorer.zksync.io/", "https://explorer.zksync.io/")
             }
+            ZkSyncTestnet => (
+                "https://zksync2-testnet-explorer.zksync.dev/",
+                "https://goerli.explorer.zksync.io/",
+            ),
+            LineaTestnet => {
+                ("https://explorer.goerli.linea.build/api", "https://explorer.goerli.linea.build/")
+            }
 
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
@@ -531,7 +568,7 @@ impl Chain {
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
-            Polygon | PolygonMumbai => "POLYGONSCAN_API_KEY",
+            Polygon | PolygonMumbai | PolygonZkEvm | PolygonZkEvmTestnet => "POLYGONSCAN_API_KEY",
 
             Fantom | FantomTestnet => "FTMSCAN_API_KEY",
 
@@ -544,6 +581,7 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             XDai |
             ScrollAlphaTestnet |
+            Metis |
             Chiado |
             Sepolia |
             Rsk |
@@ -557,7 +595,9 @@ impl Chain {
             AnvilHardhat |
             Dev |
             ZkSync |
+            ZkSyncTestnet |
             FilecoinMainnet |
+            LineaTestnet |
             FilecoinHyperspaceTestnet => return None,
         };
 
@@ -628,6 +668,8 @@ mod tests {
             (BinanceSmartChainTestnet, &["bsc-testnet", "binance-smart-chain-testnet"]),
             (XDai, &["xdai", "gnosis", "gnosis-chain"]),
             (PolygonMumbai, &["mumbai"]),
+            (PolygonZkEvm, &["zkevm", "polygon-zkevm"]),
+            (PolygonZkEvmTestnet, &["zkevm-testnet", "polygon-zkevm-testnet"]),
             (AnvilHardhat, &["anvil", "hardhat"]),
             (AvalancheFuji, &["fuji"]),
             (ZkSync, &["zksync"]),
