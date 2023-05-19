@@ -197,7 +197,7 @@ impl Transaction {
             // Optimism Deposited Transaction
             #[cfg(feature = "optimism")]
             Some(x) if x == U64::from(0x7E) => {
-                rlp.append(&self.source_hash.expect("sourceHash is required for deposited tx"));
+                rlp_opt(&mut rlp, &self.source_hash);
                 rlp.append(&self.from);
                 rlp_opt(&mut rlp, &self.to);
                 rlp_opt(&mut rlp, &self.mint);
