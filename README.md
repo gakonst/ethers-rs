@@ -64,7 +64,7 @@ Optimism is supported via the `optimism` feature flag:
 
 ```toml
 [dependencies]
-ethers = { version = "1.0.2", features = ["optimism"] }
+ethers = { version = "2.0", features = ["optimism"] }
 ```
 
 Optimism has a new transaction type: [Deposited Transactions](https://github.com/ethereum-optimism/optimism/blob/develop/specs/deposits.md#the-deposited-transaction-type)
