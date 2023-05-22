@@ -24,8 +24,13 @@ pub struct VerifyContract {
     /// applicable when codeformat=solidity-single-file
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runs: Option<String>,
-    /// NOTE: there is a typo in the etherscan API `constructorArguements`
-    #[serde(rename = "constructorArguements", skip_serializing_if = "Option::is_none")]
+    /// NOTE: the alias with a typo is due to an old typo in the etherscan API
+    /// `constructorArguements`, but blockscout requires that it's spelled correctly.
+    #[serde(
+        rename = "constructorArguments",
+        alias = "constructorArguements",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub constructor_arguments: Option<String>,
     /// applicable when codeformat=solidity-single-file
     #[serde(rename = "evmversion", skip_serializing_if = "Option::is_none")]
