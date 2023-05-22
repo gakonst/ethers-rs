@@ -333,7 +333,15 @@ impl Client {
         let query = self.create_query("contract", "getabi", HashMap::from([("address", address)]));
         let resp: Response<Option<String>> = self.get_json(&query).await?;
 
-        let result = resp.result.unwrap_or("".to_string());
+        let result = match resp.result {
+            Some(result) => result,
+            None => {
+                return Err(EtherscanError::EmptyResult {
+                    message: resp.message,
+                    status: resp.status,
+                })
+            }
+        };
 
         if result.starts_with("Max rate limit reached") {
             return Err(EtherscanError::RateLimitExceeded)
