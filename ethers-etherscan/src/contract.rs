@@ -9,6 +9,7 @@ use ethers_core::{
 };
 use semver::Version;
 use serde::{Deserialize, Serialize};
+use tracing::trace;
 use std::{collections::HashMap, path::Path};
 
 #[cfg(feature = "ethers-solc")]
@@ -331,17 +332,21 @@ impl Client {
         }
 
         let query = self.create_query("contract", "getabi", HashMap::from([("address", address)]));
-        let resp: Response<String> = self.get_json(&query).await?;
-        if resp.result.starts_with("Max rate limit reached") {
+        let resp: Response<Option<String>> = self.get_json(&query).await?;
+
+        let result = resp.result.unwrap_or("".to_string());
+
+        if result.starts_with("Max rate limit reached") {
             return Err(EtherscanError::RateLimitExceeded)
         }
-        if resp.result.starts_with("Contract source code not verified") {
+
+        if result.starts_with("Contract source code not verified") || resp.message.starts_with("Contract source code not verified") {
             if let Some(ref cache) = self.cache {
                 cache.set_abi(address, None);
             }
             return Err(EtherscanError::ContractCodeNotVerified(address))
         }
-        let abi = serde_json::from_str(&resp.result)?;
+        let abi = serde_json::from_str(&result)?;
 
         if let Some(ref cache) = self.cache {
             cache.set_abi(address, Some(&abi));
