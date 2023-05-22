@@ -10,7 +10,6 @@ use ethers_core::{
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
-use tracing::trace;
 
 #[cfg(feature = "ethers-solc")]
 use ethers_solc::{artifacts::Settings, EvmVersion, Project, ProjectBuilder, SolcConfig};
