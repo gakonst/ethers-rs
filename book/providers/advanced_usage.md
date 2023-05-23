@@ -8,7 +8,7 @@ Lets take a quick look at how to use the `CallBuilder`.
 
 ```rust
 use ethers::{
-    providers::{ Http, Provider},
+    providers::{Http, Provider},
     types::{TransactionRequest, H160},
     utils::parse_ether,
 };
@@ -98,7 +98,7 @@ async fn main() -> eyre::Result<()> {
         .value(val)
         .into();
 
-    let mut state = State::default();
+    let mut state = spoof::State::default();
 
     // Set the account balance to max u256
     state.account(from_adr).balance(U256::MAX);

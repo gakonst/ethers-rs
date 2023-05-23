@@ -2,7 +2,7 @@
 
 use crate::{utils::PinBoxFut, JsonRpcClient, Provider, ProviderError};
 use ethers_core::{
-    types::{spoof, transaction::eip2718::TypedTransaction, BlockId, BlockNumber, Bytes},
+    types::{transaction::eip2718::TypedTransaction, BlockId, BlockNumber, Bytes},
     utils,
 };
 use pin_project::pin_project;
@@ -13,6 +13,8 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
+
+pub use ethers_core::types::spoof;
 
 /// Provides methods for overriding parameters to the `eth_call` rpc method
 pub trait RawCall<'a> {
