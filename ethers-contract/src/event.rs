@@ -177,7 +177,6 @@ where
     ///  while let Some(Ok(approval)) = event_stream.next().await {
     ///      let Approval{token_owner,spender,tokens} = approval;
     /// }
-    ///
     /// # }
     /// ```
     pub async fn stream(

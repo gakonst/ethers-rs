@@ -69,6 +69,16 @@ impl WsBackend {
         Ok(Self::new(ws))
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn connect_with_config(
+        details: ConnectionDetails,
+        config: WebSocketConfig,
+        disable_nagle: bool,
+    ) -> Result<(Self, BackendDriver), WsClientError> {
+        let ws = connect_async_with_config(details, Some(config), disable_nagle).await?.0.fuse();
+        Ok(Self::new(ws))
+    }
+
     pub fn new(server: InternalStream) -> (Self, BackendDriver) {
         let (handler, to_handle) = mpsc::unbounded();
         let (dispatcher, to_dispatch) = mpsc::unbounded();
@@ -103,13 +113,8 @@ impl WsBackend {
         match item {
             Ok(item) => match item {
                 Message::Text(t) => self.handle_text(t).await,
-                Message::Ping(data) => {
-                    if self.server.send(Message::Pong(data)).await.is_err() {
-                        return Err(WsClientError::UnexpectedClose)
-                    }
-                    Ok(())
-                }
-
+                // https://github.com/snapview/tungstenite-rs/blob/42b8797e8b7f39efb7d9322dc8af3e9089db4f7d/src/protocol/mod.rs#L172-L175
+                Message::Ping(_) => Ok(()),
                 Message::Pong(_) => Ok(()),
                 Message::Frame(_) => Ok(()),
 

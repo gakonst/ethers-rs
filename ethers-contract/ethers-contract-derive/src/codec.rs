@@ -15,7 +15,7 @@ pub fn derive_codec_impl(input: &DeriveInput) -> proc_macro2::TokenStream {
                 fn _decode(bytes: &[u8]) -> ::core::result::Result<#name, #ethers_core::abi::AbiError> {
                     let #ethers_core::abi::ParamType::Tuple(params) =
                         <#name as #ethers_core::abi::AbiType>::param_type() else { unreachable!() };
-                    let min_len = params.iter().map(#ethers_core::abi::minimum_size).sum();
+                    let min_len: usize = params.iter().map(#ethers_core::abi::minimum_size).sum();
                     if bytes.len() < min_len {
                         Err(#ethers_core::abi::AbiError::DecodingError(#ethers_core::abi::ethabi::Error::InvalidData))
                     } else {

@@ -13,6 +13,7 @@ use crate::{
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{HttpRateLimitRetryPolicy, RetryClient};
+use std::net::Ipv4Addr;
 
 #[cfg(feature = "celo")]
 pub use crate::CeloMiddleware;
@@ -40,7 +41,7 @@ use std::{
 };
 use tracing::trace;
 use tracing_futures::Instrument;
-use url::{ParseError, Url};
+use url::{Host, ParseError, Url};
 
 /// Node Clients
 #[derive(Copy, Clone)]
@@ -908,6 +909,26 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("debug_traceCall", [req, block, trace_options]).await
     }
 
+    async fn debug_trace_block_by_number(
+        &self,
+        block: Option<BlockNumber>,
+        trace_options: GethDebugTracingOptions,
+    ) -> Result<Vec<GethTrace>, ProviderError> {
+        let block = utils::serialize(&block.unwrap_or(BlockNumber::Latest));
+        let trace_options = utils::serialize(&trace_options);
+        self.request("debug_traceBlockByNumber", [block, trace_options]).await
+    }
+
+    async fn debug_trace_block_by_hash(
+        &self,
+        block: H256,
+        trace_options: GethDebugTracingOptions,
+    ) -> Result<Vec<GethTrace>, ProviderError> {
+        let block = utils::serialize(&block);
+        let trace_options = utils::serialize(&trace_options);
+        self.request("debug_traceBlockByHash", [block, trace_options]).await
+    }
+
     async fn trace_call<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         req: T,
@@ -1443,11 +1464,30 @@ impl ProviderExt for Provider<HttpProvider> {
 /// ```
 /// use ethers_providers::is_local_endpoint;
 /// assert!(is_local_endpoint("http://localhost:8545"));
+/// assert!(is_local_endpoint("http://169.254.0.0:8545"));
 /// assert!(is_local_endpoint("http://127.0.0.1:8545"));
+/// assert!(!is_local_endpoint("http://206.71.50.230:8545"));
+/// assert!(!is_local_endpoint("http://[2001:0db8:85a3:0000:0000:8a2e:0370:7334]"));
+/// assert!(is_local_endpoint("http://[::1]"));
+/// assert!(!is_local_endpoint("havenofearlucishere"));
 /// ```
 #[inline]
-pub fn is_local_endpoint(url: &str) -> bool {
-    url.contains("127.0.0.1") || url.contains("localhost")
+pub fn is_local_endpoint(endpoint: &str) -> bool {
+    if let Ok(url) = Url::parse(endpoint) {
+        if let Some(host) = url.host() {
+            match host {
+                Host::Domain(domain) => return domain.contains("localhost"),
+                Host::Ipv4(ipv4) => {
+                    return ipv4 == Ipv4Addr::LOCALHOST ||
+                        ipv4.is_link_local() ||
+                        ipv4.is_loopback() ||
+                        ipv4.is_private()
+                }
+                Host::Ipv6(ipv6) => return ipv6.is_loopback(),
+            }
+        }
+    }
+    false
 }
 
 #[cfg(test)]
@@ -1457,7 +1497,9 @@ mod tests {
     use crate::Http;
     use ethers_core::{
         types::{
-            transaction::eip2930::AccessList, Eip1559TransactionRequest, TransactionRequest, H256,
+            transaction::eip2930::AccessList, Eip1559TransactionRequest,
+            GethDebugBuiltInTracerConfig, GethDebugBuiltInTracerType, GethDebugTracerConfig,
+            GethDebugTracerType, PreStateConfig, TransactionRequest, H256,
         },
         utils::{Anvil, Genesis, Geth, GethInstance},
     };
@@ -1637,15 +1679,58 @@ mod tests {
 
     #[tokio::test]
     #[cfg_attr(feature = "celo", ignore)]
+    async fn debug_trace_block() {
+        let provider = Provider::<Http>::try_from("https://eth.llamarpc.com").unwrap();
+
+        let opts = GethDebugTracingOptions {
+            disable_storage: Some(false),
+            tracer: Some(GethDebugTracerType::BuiltInTracer(
+                GethDebugBuiltInTracerType::PreStateTracer,
+            )),
+            tracer_config: Some(GethDebugTracerConfig::BuiltInTracer(
+                GethDebugBuiltInTracerConfig::PreStateTracer(PreStateConfig {
+                    diff_mode: Some(true),
+                }),
+            )),
+            ..Default::default()
+        };
+
+        let latest_block = provider
+            .get_block(BlockNumber::Latest)
+            .await
+            .expect("Failed to fetch latest block.")
+            .expect("Latest block is none.");
+
+        // debug_traceBlockByNumber
+        let latest_block_num = BlockNumber::Number(latest_block.number.unwrap());
+        let traces_by_num = provider
+            .debug_trace_block_by_number(Some(latest_block_num), opts.clone())
+            .await
+            .unwrap();
+        for trace in &traces_by_num {
+            assert!(matches!(trace, GethTrace::Known(..)));
+        }
+
+        // debug_traceBlockByHash
+        let latest_block_hash = latest_block.hash.unwrap();
+        let traces_by_hash =
+            provider.debug_trace_block_by_hash(latest_block_hash, opts).await.unwrap();
+        for trace in &traces_by_hash {
+            assert!(matches!(trace, GethTrace::Known(..)));
+        }
+
+        assert_eq!(traces_by_num, traces_by_hash);
+    }
+
+    #[tokio::test]
+    #[cfg_attr(feature = "celo", ignore)]
     async fn fee_history() {
         let provider = Provider::<Http>::try_from(
             "https://goerli.infura.io/v3/fd8b88b56aa84f6da87b60f5441d6778",
         )
         .unwrap();
 
-        let history =
-            provider.fee_history(10u64, BlockNumber::Latest, &[10.0, 40.0]).await.unwrap();
-        dbg!(&history);
+        provider.fee_history(10u64, BlockNumber::Latest, &[10.0, 40.0]).await.unwrap();
     }
 
     #[tokio::test]
@@ -1656,7 +1741,7 @@ mod tests {
 
         // TODO: Implement ErigonInstance, so it'd be possible to test this.
         let provider = Provider::new(crate::Ws::connect("ws://127.0.0.1:8545").await.unwrap());
-        let traces = provider
+        provider
             .trace_call_many(
                 vec![
                     (
@@ -1686,7 +1771,6 @@ mod tests {
             )
             .await
             .unwrap();
-        dbg!(traces);
     }
 
     #[tokio::test]

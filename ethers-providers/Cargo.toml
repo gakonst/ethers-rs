@@ -51,7 +51,7 @@ futures-channel = { workspace = true, optional = true }
 pin-project.workspace = true
 
 # peer-related admin namespace
-enr = { version = "0.8.0", default-features = false, features = ["k256", "serde"] }
+enr = { version = "0.8.1", default-features = false, features = ["k256", "serde"] }
 
 # tracing
 tracing = { workspace = true, features = ["attributes"] }
@@ -85,10 +85,10 @@ ws = ["tokio-tungstenite", "futures-channel"]
 legacy-ws = ["ws"]
 ipc = ["tokio/io-util", "futures-channel", "winapi"]
 
-openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
 # we use the webpki roots so we can build static binaries w/o any root cert dependencies
 # on the host
 rustls = ["tokio-tungstenite/rustls-tls-webpki-roots", "reqwest/rustls-tls"]
+openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
 dev-rpc = []
 
 [dev-dependencies]

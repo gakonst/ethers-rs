@@ -31,7 +31,7 @@ ethers-core = { workspace = true, features = ["macros"] }
 proc-macro2.workspace = true
 quote.workspace = true
 syn = { workspace = true, features = ["full"] }
-prettyplease = "0.2.4"
+prettyplease = "0.2.5"
 
 Inflector.workspace = true
 serde.workspace = true
@@ -56,9 +56,8 @@ getrandom.workspace = true
 
 [features]
 online = ["reqwest", "ethers-etherscan", "url", "tokio"]
-openssl = ["online", "reqwest/native-tls", "ethers-etherscan/openssl"]
-rustls = ["online", "reqwest/rustls-tls", "ethers-etherscan/rustls"]
+rustls = ["reqwest?/rustls-tls", "ethers-etherscan?/rustls"]
+openssl = ["reqwest?/native-tls", "ethers-etherscan?/openssl"]
 
 [dev-dependencies]
 tempfile.workspace = true
-ethers-solc = { workspace = true, features = ["project-util", "svm-solc"] }

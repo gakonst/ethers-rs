@@ -12,7 +12,7 @@ For more information, please refer to the [book](https://gakonst.com/ethers-rs).
 
 ## Feature flags
 
--   `eip712`: Provides the `Eip712` trait and derive procedural macro for EIP-712 encoding of typed data.
+-   `eip712`: Does nothing.
 
 ## ABI
 

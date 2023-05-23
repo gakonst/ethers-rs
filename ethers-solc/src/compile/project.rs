@@ -361,7 +361,7 @@ impl<'a, T: ArtifactOutput> ArtifactsState<'a, T> {
         let ArtifactsState { output, cache, compiled_artifacts } = self;
         let project = cache.project();
         let ignored_error_codes = project.ignored_error_codes.clone();
-        let compiler_severity_filter = project.compiler_severity_filter.clone();
+        let compiler_severity_filter = project.compiler_severity_filter;
         let has_error = output.has_error(&ignored_error_codes, &compiler_severity_filter);
         let skip_write_to_disk = project.no_artifacts || has_error;
         trace!(has_error, project.no_artifacts, skip_write_to_disk, cache_path=?project.cache_path(),"prepare writing cache file");
@@ -716,7 +716,7 @@ mod tests {
         let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
 
         let compiled = project.compile().unwrap();
-        assert!(!compiled.has_compiler_errors());
+        compiled.assert_success();
 
         let inner = project.project();
         let compiler = ProjectCompiler::new(inner).unwrap();
@@ -761,7 +761,7 @@ mod tests {
         )
         .unwrap();
         let compiled = tmp.compile().unwrap();
-        assert!(!compiled.has_compiler_errors());
+        compiled.assert_success();
 
         tmp.artifacts_snapshot().unwrap().assert_artifacts_essentials_present();
 

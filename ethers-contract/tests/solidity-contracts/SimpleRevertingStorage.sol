@@ -1,5 +1,6 @@
 pragma solidity >=0.8.4;
 
+// note that this file is not synced with SimpleRevertingStorage.json
 contract SimpleRevertingStorage {
     event ValueChanged(
         address indexed author,

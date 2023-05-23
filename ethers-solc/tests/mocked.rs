@@ -121,7 +121,7 @@ fn can_compile_skeleton() {
     // DEFAULT_VERSION).unwrap();
 
     let compiled = project.compile().unwrap();
-    assert!(!compiled.has_compiler_errors());
+    compiled.assert_success();
     assert!(!compiled.is_unchanged());
     for id in gen.used_file_ids() {
         gen.modify_file(id, project.paths(), DEFAULT_VERSION).unwrap();

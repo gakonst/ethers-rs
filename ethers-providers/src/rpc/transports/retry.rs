@@ -561,7 +561,7 @@ mod tests {
         let err: JsonRpcError = serde_json::from_str(s).unwrap();
         let err = ClientError::JsonRpcError(err);
 
-        let should_retry = HttpRateLimitRetryPolicy::default().should_retry(&err);
+        let should_retry = HttpRateLimitRetryPolicy.should_retry(&err);
         assert!(should_retry);
     }
 
@@ -574,7 +574,7 @@ mod tests {
             text: s.to_string(),
         };
 
-        let should_retry = HttpRateLimitRetryPolicy::default().should_retry(&err);
+        let should_retry = HttpRateLimitRetryPolicy.should_retry(&err);
         assert!(should_retry);
     }
 }

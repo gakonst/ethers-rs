@@ -1,6 +1,6 @@
 //! Some convenient serde helpers
 
-use crate::types::{BlockNumber, U256};
+use crate::types::{BlockNumber, U256, U64};
 use serde::{Deserialize, Deserializer};
 use std::{
     convert::{TryFrom, TryInto},
@@ -44,7 +44,7 @@ impl FromStr for Numeric {
 pub enum StringifiedNumeric {
     String(String),
     U256(U256),
-    Num(u64),
+    Num(serde_json::Number),
 }
 
 impl TryFrom<StringifiedNumeric> for U256 {
@@ -53,7 +53,9 @@ impl TryFrom<StringifiedNumeric> for U256 {
     fn try_from(value: StringifiedNumeric) -> Result<Self, Self::Error> {
         match value {
             StringifiedNumeric::U256(n) => Ok(n),
-            StringifiedNumeric::Num(n) => Ok(U256::from(n)),
+            StringifiedNumeric::Num(n) => {
+                Ok(U256::from_dec_str(&n.to_string()).map_err(|err| err.to_string())?)
+            }
             StringifiedNumeric::String(s) => {
                 if let Ok(val) = s.parse::<u128>() {
                     Ok(val.into())
@@ -64,6 +66,18 @@ impl TryFrom<StringifiedNumeric> for U256 {
                 }
             }
         }
+    }
+}
+
+impl TryFrom<StringifiedNumeric> for U64 {
+    type Error = String;
+
+    fn try_from(value: StringifiedNumeric) -> Result<Self, Self::Error> {
+        let value = U256::try_from(value)?;
+        let mut be_bytes = [0u8; 32];
+        value.to_big_endian(&mut be_bytes);
+        U64::try_from(&be_bytes[value.leading_zeros() as usize / 8..])
+            .map_err(|err| err.to_string())
     }
 }
 
@@ -89,6 +103,32 @@ where
 {
     if let Some(num) = Option::<StringifiedNumeric>::deserialize(deserializer)? {
         num.try_into().map(Some).map_err(serde::de::Error::custom)
+    } else {
+        Ok(None)
+    }
+}
+
+/// Supports parsing ethereum-types U64
+///
+/// See <https://github.com/gakonst/ethers-rs/issues/1507>
+pub fn deserialize_stringified_eth_u64<'de, D>(deserializer: D) -> Result<U64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let num = StringifiedNumeric::deserialize(deserializer)?;
+    num.try_into().map_err(serde::de::Error::custom)
+}
+
+/// Supports parsing ethereum-types `Option<U64>`
+///
+/// See <https://github.com/gakonst/ethers-rs/issues/1507>
+pub fn deserialize_stringified_eth_u64_opt<'de, D>(deserializer: D) -> Result<Option<U64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    if let Some(num) = Option::<StringifiedNumeric>::deserialize(deserializer)? {
+        let num: U64 = num.try_into().map_err(serde::de::Error::custom)?;
+        Ok(Some(num))
     } else {
         Ok(None)
     }
@@ -257,9 +297,10 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::types::U256;
 
     #[test]
-    #[cfg(feature = "eip712")]
     fn test_deserialize_string_chain_id() {
         use crate::types::transaction::eip712::EIP712Domain;
 
@@ -274,5 +315,39 @@ mod tests {
 
         let domain: EIP712Domain = serde_json::from_value(val).unwrap();
         assert_eq!(domain.chain_id, Some(137u64.into()));
+    }
+
+    // <https://github.com/gakonst/ethers-rs/issues/2353>
+    #[test]
+    fn deserialize_stringified() {
+        #[derive(Debug, Deserialize, Eq, PartialEq)]
+        struct TestValues {
+            #[serde(deserialize_with = "deserialize_stringified_numeric")]
+            value_1: U256,
+            #[serde(deserialize_with = "deserialize_stringified_numeric")]
+            value_2: U256,
+            #[serde(deserialize_with = "deserialize_stringified_numeric")]
+            value_3: U256,
+            #[serde(deserialize_with = "deserialize_stringified_numeric")]
+            value_4: U256,
+        }
+
+        let data = r#"
+        {
+            "value_1": "750000000000000000",
+            "value_2": "21000000000000000",
+            "value_3": "0",
+            "value_4": "1"
+        }
+    "#;
+
+        let deserialized: TestValues = serde_json::from_str(data).unwrap();
+        let expected = TestValues {
+            value_1: U256::from(750_000_000_000_000_000u64),
+            value_2: U256::from(21_000_000_000_000_000u64),
+            value_3: U256::from(0u64),
+            value_4: U256::from(1u64),
+        };
+        assert_eq!(deserialized, expected);
     }
 }

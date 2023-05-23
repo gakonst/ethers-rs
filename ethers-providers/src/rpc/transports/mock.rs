@@ -18,11 +18,22 @@ enum MockParams {
     Zst,
 }
 
+/// Helper response type for `MockProvider`, allowing custom JSON-RPC errors to be provided.
+/// `Value` for successful responses, `Error` for JSON-RPC errors.
+#[derive(Clone, Debug)]
+pub enum MockResponse {
+    /// Successful response with a `serde_json::Value`.
+    Value(Value),
+
+    /// Error response with a `JsonRpcError`.
+    Error(super::JsonRpcError),
+}
+
 #[derive(Clone, Debug)]
 /// Mock transport used in test environments.
 pub struct MockProvider {
     requests: Arc<Mutex<VecDeque<(String, MockParams)>>>,
-    responses: Arc<Mutex<VecDeque<Value>>>,
+    responses: Arc<Mutex<VecDeque<MockResponse>>>,
 }
 
 impl Default for MockProvider {
@@ -51,9 +62,13 @@ impl JsonRpcClient for MockProvider {
         self.requests.lock().unwrap().push_back((method.to_owned(), params));
         let mut data = self.responses.lock().unwrap();
         let element = data.pop_back().ok_or(MockError::EmptyResponses)?;
-        let res: R = serde_json::from_value(element)?;
-
-        Ok(res)
+        match element {
+            MockResponse::Value(value) => {
+                let res: R = serde_json::from_value(value)?;
+                Ok(res)
+            }
+            MockResponse::Error(error) => Err(MockError::JsonRpcError(error)),
+        }
     }
 }
 
@@ -89,8 +104,13 @@ impl MockProvider {
     /// Pushes the data to the responses
     pub fn push<T: Serialize + Send + Sync, K: Borrow<T>>(&self, data: K) -> Result<(), MockError> {
         let value = serde_json::to_value(data.borrow())?;
-        self.responses.lock().unwrap().push_back(value);
+        self.responses.lock().unwrap().push_back(MockResponse::Value(value));
         Ok(())
+    }
+
+    /// Pushes the data or error to the responses
+    pub fn push_response(&self, response: MockResponse) {
+        self.responses.lock().unwrap().push_back(response);
     }
 }
 
@@ -108,11 +128,18 @@ pub enum MockError {
     /// Empty responses array
     #[error("empty responses array, please push some responses")]
     EmptyResponses,
+
+    /// Custom JsonRpcError
+    #[error("JSON-RPC error: {0}")]
+    JsonRpcError(super::JsonRpcError),
 }
 
 impl crate::RpcError for MockError {
     fn as_error_response(&self) -> Option<&super::JsonRpcError> {
-        None
+        match self {
+            MockError::JsonRpcError(e) => Some(e),
+            _ => None,
+        }
     }
 
     fn as_serde_error(&self) -> Option<&serde_json::Error> {
@@ -133,7 +160,7 @@ impl From<MockError> for ProviderError {
 #[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
-    use crate::Middleware;
+    use crate::{JsonRpcError, Middleware};
     use ethers_core::types::U64;
 
     #[tokio::test]
@@ -154,6 +181,27 @@ mod tests {
             MockError::EmptyResponses => {}
             _ => panic!("expected empty responses"),
         };
+    }
+
+    #[tokio::test]
+    async fn pushes_error_response() {
+        let mock = MockProvider::new();
+        let error = JsonRpcError {
+            code: 3,
+            data: Some(serde_json::from_str(r#""0x556f1830...""#).unwrap()),
+            message: "execution reverted".to_string(),
+        };
+        mock.push_response(MockResponse::Error(error.clone()));
+
+        let result: Result<U64, MockError> = mock.request("eth_blockNumber", ()).await;
+        match result {
+            Err(MockError::JsonRpcError(e)) => {
+                assert_eq!(e.code, error.code);
+                assert_eq!(e.message, error.message);
+                assert_eq!(e.data, error.data);
+            }
+            _ => panic!("Expected JsonRpcError"),
+        }
     }
 
     #[tokio::test]
