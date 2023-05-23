@@ -1,7 +1,5 @@
 use super::rlp_opt;
-use crate::types::{
-    Bytes, Eip1559TransactionRequest, Signature, Transaction, TransactionRequest, H256, U256,
-};
+use crate::types::{Bytes, Signature, Transaction, TransactionRequest, H256, U256};
 use rlp::{Decodable, RlpStream};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -110,6 +108,7 @@ impl Decodable for OptimismDepositedTransactionRequest {
     }
 }
 
+/// Get an OptimismDeposited transaction request from a Transaction
 impl From<&Transaction> for OptimismDepositedTransactionRequest {
     fn from(tx: &Transaction) -> OptimismDepositedTransactionRequest {
         OptimismDepositedTransactionRequest {
