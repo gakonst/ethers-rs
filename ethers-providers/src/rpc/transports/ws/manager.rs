@@ -351,25 +351,29 @@ impl RequestManager {
         old_backend.shutdown();
 
         tracing::debug!(count = self.subs.count(), "Re-starting active subscriptions");
+        let req_cnt = self.reqs.len();
 
-        // reissue subscriptionps
+        // reissue subscriptions
         for (id, sub) in self.subs.to_reissue() {
-            self.backend
-                .dispatcher
-                .unbounded_send(sub.serialize_raw(*id)?)
-                .map_err(|_| WsClientError::DeadChannel)?;
+            let (tx, _rx) = oneshot::channel();
+            let in_flight = InFlight {
+                method: "eth_subscribe".to_string(),
+                params: sub.params.clone(),
+                channel: tx,
+            };
+            // Need an entry in reqs to ensure response with new server sub ID is processed
+            self.reqs.insert(*id, in_flight);
         }
 
-        tracing::debug!(count = self.reqs.len(), "Re-issuing pending requests");
-        // reissue requests. We filter these to prevent in-flight requests for
-        // subscriptions to be re-issued twice (once in above loop, once in this loop).
-        for (id, req) in self.reqs.iter().filter(|(id, _)| !self.subs.has(**id)) {
+        tracing::debug!(count = req_cnt, "Re-issuing pending requests");
+        // reissue requests, including the re-subscription requests we just added above
+        for (id, req) in self.reqs.iter() {
             self.backend
                 .dispatcher
                 .unbounded_send(req.serialize_raw(*id)?)
                 .map_err(|_| WsClientError::DeadChannel)?;
         }
-        tracing::info!(subs = self.subs.count(), reqs = self.reqs.len(), "Re-connection complete");
+        tracing::info!(subs = self.subs.count(), reqs = req_cnt, "Re-connection complete");
 
         Ok(())
     }
