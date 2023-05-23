@@ -11,7 +11,7 @@ edition.workspace = true
 [dev-dependencies]
 ethers = { workspace = true, features = ["abigen", "ipc", "rustls", "ws"] }
 
-tokio = { workspace = true, features = ["macros"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 async-trait.workspace = true
 reqwest.workspace = true
 url.workspace = true
