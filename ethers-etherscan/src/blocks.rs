@@ -9,7 +9,6 @@ pub struct BlockNumberByTimestamp {
     pub block_number: BlockNumber,
 }
 
-
 impl Client {
     /// Returns either (1) the oldest block since a particular timestamp occurred or (2) the newest
     /// block that occurred prior to that timestamp
@@ -38,9 +37,9 @@ impl Client {
 
         match response.status.as_str() {
             "0" => Err(EtherscanError::BlockNumberByTimestampFailed),
-            "1" => Ok(BlockNumberByTimestamp{
+            "1" => Ok(BlockNumberByTimestamp {
                 timestamp,
-                block_number: response.result.parse::<BlockNumber>().unwrap()
+                block_number: response.result.parse::<BlockNumber>().unwrap(),
             }),
             err => Err(EtherscanError::BadStatusCode(err.to_string())),
         }

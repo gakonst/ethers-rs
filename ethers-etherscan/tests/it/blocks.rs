@@ -1,7 +1,6 @@
+use crate::*;
 use ethers_core::types::BlockNumber;
 use serial_test::serial;
-
-use crate::*;
 
 #[tokio::test]
 #[serial]
