@@ -94,7 +94,7 @@ impl OptimismDepositedTransactionRequest {
         rlp: &rlp::Rlp,
     ) -> Result<(Self, Signature), OptimismDepositedRequestError> {
         let mut offset = 0;
-        let mut txn = Self::decode_base_rlp(rlp, &mut offset)?;
+        let txn = Self::decode_base_rlp(rlp, &mut offset)?;
         let sig = Signature { r: 0.into(), s: 0.into(), v: 0 };
 
         Ok((txn, sig))
