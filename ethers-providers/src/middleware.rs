@@ -926,6 +926,8 @@ pub trait Middleware: Sync + Send + Debug {
     /// or IPC. For a polling alternative available over HTTP, use
     /// [`Middleware::watch_pending_transactions`]. However, be aware that
     /// polling increases RPC usage drastically.
+    ///
+    /// Note: This endpoint is compatible only with Geth client version 1.11.0 or later.
     async fn subscribe_full_pending_txs(
         &self,
     ) -> Result<SubscriptionStream<'_, Self::Provider, Transaction>, Self::Error>
