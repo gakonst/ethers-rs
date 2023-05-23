@@ -69,6 +69,16 @@ impl WsBackend {
         Ok(Self::new(ws))
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn connect_with_config(
+        details: ConnectionDetails,
+        config: WebSocketConfig,
+        disable_nagle: bool,
+    ) -> Result<(Self, BackendDriver), WsClientError> {
+        let ws = connect_async_with_config(details, Some(config), disable_nagle).await?.0.fuse();
+        Ok(Self::new(ws))
+    }
+
     pub fn new(server: InternalStream) -> (Self, BackendDriver) {
         let (handler, to_handle) = mpsc::unbounded();
         let (dispatcher, to_dispatch) = mpsc::unbounded();

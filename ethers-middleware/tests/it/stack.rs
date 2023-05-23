@@ -82,10 +82,8 @@ async fn can_stack_middlewares() {
         let pending = provider.send_transaction(tx.clone(), None).await.unwrap();
         let hash = *pending;
         let gas_price = provider.get_transaction(hash).await.unwrap().unwrap().gas_price;
-        dbg!(gas_price);
         pending_txs.push(pending);
     }
 
-    let receipts = futures_util::future::join_all(pending_txs);
-    dbg!(receipts.await);
+    let _receipts = futures_util::future::join_all(pending_txs).await;
 }
