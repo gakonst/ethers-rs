@@ -1,6 +1,7 @@
 pragma solidity >=0.6.0;
 pragma experimental ABIEncoderV2;
 
+// note that this file is not synced with Abiencoderv2Test.json
 contract AbiencoderV2Test {
     struct Person {
         string name;

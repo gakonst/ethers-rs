@@ -107,7 +107,13 @@ impl Source {
         if let Ok(canonicalized) = dunce::canonicalize(&resolved) {
             resolved = canonicalized;
         } else {
-            return Err(eyre::eyre!("File does not exist: {}", resolved.display()))
+            let path = resolved.display().to_string();
+            let err = if path.contains(':') {
+                eyre::eyre!("File does not exist: {path}\nYou may need to enable the `online` feature to parse this source.")
+            } else {
+                eyre::eyre!("File does not exist: {path}")
+            };
+            return Err(err)
         }
 
         Ok(Source::Local(resolved))

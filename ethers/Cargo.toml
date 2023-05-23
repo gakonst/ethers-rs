@@ -26,53 +26,56 @@ all-features = true
 [features]
 default = ["abigen", "rustls"]
 
+# workspace-wide features
+legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
 celo = [
+    "ethers-contract/celo",
     "ethers-core/celo",
+    "ethers-middleware/celo",
     "ethers-providers/celo",
     "ethers-signers/celo",
-    "ethers-contract/celo",
-    "ethers-middleware/celo",
     "legacy",
 ]
 
-legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
+rustls = [
+    "ethers-contract/rustls",
+    "ethers-etherscan/rustls",
+    "ethers-middleware/rustls",
+    "ethers-providers/rustls",
+    "ethers-solc?/rustls",
+]
+openssl = [
+    "ethers-contract/openssl",
+    "ethers-etherscan/openssl",
+    "ethers-middleware/openssl",
+    "ethers-providers/openssl",
+    "ethers-solc?/openssl",
+]
 
-# individual features per sub-crate
-## providers
+# ethers-providers
 ws = ["ethers-providers/ws"]
 legacy-ws = ["ethers-providers/legacy-ws"]
 ipc = ["ethers-providers/ipc"]
-rustls = [
-    "ethers-middleware/rustls",
-    "ethers-providers/rustls",
-    "ethers-etherscan/rustls",
-    "ethers-contract/rustls",
-    "ethers-solc/rustls",
-]
-openssl = [
-    "ethers-middleware/openssl",
-    "ethers-providers/openssl",
-    "ethers-etherscan/openssl",
-    "ethers-contract/openssl",
-    "ethers-solc/openssl",
-]
 dev-rpc = ["ethers-providers/dev-rpc"]
-## signers
+
+# ethers-signers
 ledger = ["ethers-signers/ledger"]
 trezor = ["ethers-signers/trezor"]
 yubi = ["ethers-signers/yubi"]
-## contracts
+
+# ethers-contracts
 abigen = ["ethers-contract/abigen"]
-### abigen without reqwest
-abigen-offline = ["ethers-contract/abigen-offline"]
-## solc
+abigen-online = ["ethers-contract/abigen-online"]
+
+# ethers-solc
 ethers-solc = ["dep:ethers-solc", "ethers-etherscan/ethers-solc"]
 solc-full = ["ethers-solc?/full"]
 solc-tests = ["ethers-solc?/tests"]
 
 # Deprecated
-solc-sha2-asm = []
+abigen-offline = ["abigen"]
 eip712 = []
+solc-sha2-asm = []
 
 [dependencies]
 ethers-addressbook.workspace = true

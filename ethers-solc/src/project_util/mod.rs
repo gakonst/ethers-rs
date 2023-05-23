@@ -324,7 +324,7 @@ contract {} {{}}
     /// Compiles the project and asserts that the output does not contain errors
     pub fn assert_no_errors(&self) -> &Self {
         let compiled = self.compile().unwrap();
-        assert!(!compiled.has_compiler_errors());
+        compiled.assert_success();
         self
     }
 

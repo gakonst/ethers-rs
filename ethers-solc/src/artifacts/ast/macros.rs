@@ -6,7 +6,7 @@ macro_rules! ast_node {
             $(
                 $(#[$field_meta:meta])*
                 $field:ident: $ty:ty
-            ),* $(,)*
+            ),* $(,)?
         }
     ) => {
         $(#[$struct_meta])*

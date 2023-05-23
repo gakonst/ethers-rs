@@ -1,18 +1,14 @@
 use crate::common::*;
 use ethers_contract::{
-    abigen, ContractFactory, ContractInstance, Eip712, EthAbiType, EthEvent, LogMeta, Multicall,
-    MulticallError, MulticallVersion,
+    abigen, ContractFactory, ContractInstance, EthEvent, LogMeta, Multicall, MulticallError,
+    MulticallVersion,
 };
 use ethers_core::{
     abi::{encode, AbiEncode, Token, Tokenizable},
-    types::{
-        transaction::eip712::*, Address, BlockId, Bytes, Filter, ValueOrArray, H160, H256, I256,
-        U256,
-    },
+    types::{Address, BlockId, Bytes, Filter, ValueOrArray, H160, H256, U256},
     utils::{keccak256, Anvil},
 };
 use ethers_providers::{Http, Middleware, MiddlewareError, Provider, StreamExt, Ws};
-use ethers_signers::{LocalWallet, Signer};
 use std::{sync::Arc, time::Duration};
 
 #[derive(Debug)]
@@ -61,7 +57,7 @@ impl<M: Middleware> Middleware for NonClone<M> {
 // It exists to ensure that trait bounds on contract internal behave as
 // expected. It should not be run
 fn _it_compiles() {
-    let (abi, _bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+    let (abi, _bytecode) = get_contract("SimpleStorage.json");
 
     // launch anvil
     let anvil = Anvil::new().spawn();
@@ -99,7 +95,7 @@ fn _it_compiles() {
 
 #[tokio::test]
 async fn deploy_and_call_contract() {
-    let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+    let (abi, bytecode) = get_contract("SimpleStorage.json");
 
     // launch anvil
     let anvil = Anvil::new().spawn();
@@ -172,7 +168,7 @@ async fn deploy_and_call_contract() {
 #[tokio::test]
 #[cfg(feature = "abigen")]
 async fn get_past_events() {
-    let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+    let (abi, bytecode) = get_contract("SimpleStorage.json");
     let anvil = Anvil::new().spawn();
     let client = connect(&anvil, 0);
     let address = client.get_accounts().await.unwrap()[0];
@@ -211,7 +207,7 @@ async fn get_past_events() {
 #[tokio::test]
 #[cfg(feature = "abigen")]
 async fn get_events_with_meta() {
-    let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+    let (abi, bytecode) = get_contract("SimpleStorage.json");
     let anvil = Anvil::new().spawn();
     let client = connect(&anvil, 0);
     let address = anvil.addresses()[0];
@@ -243,7 +239,7 @@ async fn get_events_with_meta() {
 
 #[tokio::test]
 async fn call_past_state() {
-    let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+    let (abi, bytecode) = get_contract("SimpleStorage.json");
     let anvil = Anvil::new().spawn();
     let client = connect(&anvil, 0);
     let contract = deploy(client.clone(), abi, bytecode).await;
@@ -297,7 +293,7 @@ async fn call_past_state() {
 #[ignore]
 async fn call_past_hash_test() {
     // geth --dev --http --http.api eth,web3
-    let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+    let (abi, bytecode) = get_contract("SimpleStorage.json");
     let provider = Provider::<Http>::try_from("http://localhost:8545").unwrap();
     let deployer = provider.get_accounts().await.unwrap()[0];
 
@@ -331,7 +327,7 @@ async fn call_past_hash_test() {
 
 #[tokio::test]
 async fn watch_events() {
-    let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+    let (abi, bytecode) = get_contract("SimpleStorage.json");
     let anvil = Anvil::new().spawn();
     let client = connect(&anvil, 0);
     let contract = deploy(client.clone(), abi.clone(), bytecode).await;
@@ -374,7 +370,7 @@ async fn watch_events() {
 
 #[tokio::test]
 async fn watch_subscription_events_multiple_addresses() {
-    let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+    let (abi, bytecode) = get_contract("SimpleStorage.json");
     let anvil = Anvil::new().spawn();
     let client = connect(&anvil, 0);
     let contract_1 = deploy(client.clone(), abi.clone(), bytecode.clone()).await;
@@ -418,7 +414,7 @@ async fn build_event_of_type() {
 
 #[tokio::test]
 async fn signer_on_node() {
-    let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+    let (abi, bytecode) = get_contract("SimpleStorage.json");
     // spawn anvil
     let anvil = Anvil::new().spawn();
 
@@ -450,14 +446,13 @@ async fn signer_on_node() {
 #[tokio::test]
 async fn multicall_aggregate() {
     // get ABI and bytecode for the Multicall contract
-    let (multicall_abi, multicall_bytecode) = compile_contract("Multicall3", "Multicall.sol");
+    let (multicall_abi, multicall_bytecode) = get_contract("Multicall.json");
 
     // get ABI and bytecode for the NotSoSimpleStorage contract
-    let (not_so_simple_abi, not_so_simple_bytecode) =
-        compile_contract("NotSoSimpleStorage", "NotSoSimpleStorage.sol");
+    let (not_so_simple_abi, not_so_simple_bytecode) = get_contract("NotSoSimpleStorage.json");
 
     // get ABI and bytecode for the SimpleStorage contract
-    let (abi, bytecode) = compile_contract("SimpleStorage", "SimpleStorage.sol");
+    let (abi, bytecode) = get_contract("SimpleStorage.json");
 
     // launch anvil
     let anvil = Anvil::new().spawn();
@@ -638,8 +633,7 @@ async fn multicall_aggregate() {
 
     // deploy contract with reverting methods
     let reverting_contract = {
-        let (abi, bytecode) =
-            compile_contract("SimpleRevertingStorage", "SimpleRevertingStorage.sol");
+        let (abi, bytecode) = get_contract("SimpleRevertingStorage.json");
         let f = ContractFactory::new(abi, bytecode, client.clone());
         f.deploy("This contract can revert".to_string()).unwrap().send().await.unwrap()
     };
@@ -782,130 +776,4 @@ async fn multicall_aggregate() {
     let bytes = err.as_revert().unwrap();
     assert_eq!(bytes[..4], keccak256("CustomErrorWithData(string)")[..4]);
     assert_eq!(bytes[4..], encode(&[Token::String("Data".to_string())]));
-}
-
-#[tokio::test]
-async fn test_derive_eip712() {
-    // Generate Contract ABI Bindings
-    mod contract {
-        ethers_contract::abigen!(
-            DeriveEip712Test,
-            "./ethers-contract/tests/solidity-contracts/DeriveEip712Test.json",
-            derives(serde::Deserialize, serde::Serialize)
-        );
-    }
-
-    // Create derived structs
-
-    #[derive(Debug, Clone, Eip712, EthAbiType)]
-    #[eip712(
-        name = "Eip712Test",
-        version = "1",
-        chain_id = 1,
-        verifying_contract = "0x0000000000000000000000000000000000000001",
-        salt = "eip712-test-75F0CCte"
-    )]
-    struct FooBar {
-        foo: I256,
-        bar: U256,
-        fizz: Bytes,
-        buzz: [u8; 32],
-        far: String,
-        out: Address,
-    }
-
-    // launch the network & connect to it
-    let anvil = Anvil::new().spawn();
-    let wallet: LocalWallet = anvil.keys()[0].clone().into();
-    let provider = Provider::try_from(anvil.endpoint())
-        .unwrap()
-        .with_sender(wallet.address())
-        .interval(std::time::Duration::from_millis(10));
-    let client = Arc::new(provider);
-
-    let contract: contract::DeriveEip712Test<_> =
-        contract::DeriveEip712Test::deploy(client.clone(), ()).unwrap().send().await.unwrap();
-
-    let foo_bar = FooBar {
-        foo: I256::from(10u64),
-        bar: U256::from(20u64),
-        fizz: b"fizz".into(),
-        buzz: keccak256("buzz"),
-        far: String::from("space"),
-        out: Address::zero(),
-    };
-
-    let derived_foo_bar = contract::FooBar {
-        foo: foo_bar.foo,
-        bar: foo_bar.bar,
-        fizz: foo_bar.fizz.clone(),
-        buzz: foo_bar.buzz,
-        far: foo_bar.far.clone(),
-        out: foo_bar.out,
-    };
-
-    let sig = wallet.sign_typed_data(&foo_bar).await.expect("failed to sign typed data");
-
-    let mut r = [0; 32];
-    sig.r.to_big_endian(&mut r);
-    let mut s = [0; 32];
-    sig.s.to_big_endian(&mut s);
-    let v = sig.v as u8;
-
-    let domain_separator = contract
-        .domain_separator()
-        .call()
-        .await
-        .expect("failed to retrieve domain_separator from contract");
-    let type_hash =
-        contract.type_hash().call().await.expect("failed to retrieve type_hash from contract");
-    let struct_hash = contract
-        .struct_hash(derived_foo_bar.clone())
-        .call()
-        .await
-        .expect("failed to retrieve struct_hash from contract");
-    let encoded = contract
-        .encode_eip_712(derived_foo_bar.clone())
-        .call()
-        .await
-        .expect("failed to retrieve eip712 encoded hash from contract");
-    let verify = contract
-        .verify_foo_bar(wallet.address(), derived_foo_bar, r, s, v)
-        .call()
-        .await
-        .expect("failed to verify signed typed data eip712 payload");
-
-    assert_eq!(
-        domain_separator,
-        foo_bar
-            .domain()
-            .expect("failed to return domain_separator from Eip712 implemented struct")
-            .separator(),
-        "domain separator does not match contract domain separator!"
-    );
-
-    assert_eq!(
-        type_hash,
-        FooBar::type_hash().expect("failed to return type_hash from Eip712 implemented struct"),
-        "type hash does not match contract struct type hash!"
-    );
-
-    assert_eq!(
-        struct_hash,
-        foo_bar
-            .clone()
-            .struct_hash()
-            .expect("failed to return struct_hash from Eip712 implemented struct"),
-        "struct hash does not match contract struct hash!"
-    );
-
-    assert_eq!(
-        encoded,
-        foo_bar
-            .encode_eip712()
-            .expect("failed to return domain_separator from Eip712 implemented struct"),
-        "Encoded value does not match!"
-    );
-
-    assert!(verify, "typed data signature failed!");
 }

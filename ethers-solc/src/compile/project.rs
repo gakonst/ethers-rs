@@ -716,7 +716,7 @@ mod tests {
         let project = TempProject::<MinimalCombinedArtifacts>::new(paths).unwrap();
 
         let compiled = project.compile().unwrap();
-        assert!(!compiled.has_compiler_errors());
+        compiled.assert_success();
 
         let inner = project.project();
         let compiler = ProjectCompiler::new(inner).unwrap();
@@ -761,7 +761,7 @@ mod tests {
         )
         .unwrap();
         let compiled = tmp.compile().unwrap();
-        assert!(!compiled.has_compiler_errors());
+        compiled.assert_success();
 
         tmp.artifacts_snapshot().unwrap().assert_artifacts_essentials_present();
 

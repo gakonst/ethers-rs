@@ -117,8 +117,8 @@ svm-solc = ["svm", "svm-builds", "sha2"]
 project-util = ["tempfile", "fs_extra", "rand"]
 
 tests = []
-openssl = ["svm?/openssl"]
 rustls = ["svm?/rustls"]
+openssl = ["svm?/openssl"]
 
 # Deprecated
 asm = []

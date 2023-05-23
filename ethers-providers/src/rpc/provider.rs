@@ -1730,9 +1730,7 @@ mod tests {
         )
         .unwrap();
 
-        let history =
-            provider.fee_history(10u64, BlockNumber::Latest, &[10.0, 40.0]).await.unwrap();
-        dbg!(&history);
+        provider.fee_history(10u64, BlockNumber::Latest, &[10.0, 40.0]).await.unwrap();
     }
 
     #[tokio::test]
@@ -1743,7 +1741,7 @@ mod tests {
 
         // TODO: Implement ErigonInstance, so it'd be possible to test this.
         let provider = Provider::new(crate::Ws::connect("ws://127.0.0.1:8545").await.unwrap());
-        let traces = provider
+        provider
             .trace_call_many(
                 vec![
                     (
@@ -1773,7 +1771,6 @@ mod tests {
             )
             .await
             .unwrap();
-        dbg!(traces);
     }
 
     #[tokio::test]

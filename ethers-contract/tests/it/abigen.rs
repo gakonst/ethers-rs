@@ -3,11 +3,10 @@
 use ethers_contract::{abigen, ContractError, EthCall, EthError, EthEvent};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
-    types::{transaction::eip2718::TypedTransaction, Bytes, Eip1559TransactionRequest, U256},
+    types::{Bytes, U256},
     utils::Anvil,
 };
 use ethers_providers::{MockProvider, Provider};
-use ethers_solc::Solc;
 use std::{fmt::Debug, hash::Hash, sync::Arc};
 
 const fn assert_codec<T: AbiDecode + AbiEncode>() {}
@@ -353,62 +352,6 @@ fn can_handle_even_more_overloaded_functions() {
     let _contract_call = ConsoleLogCalls::Log2(call);
 }
 
-#[tokio::test]
-async fn can_handle_underscore_functions() {
-    abigen!(
-        SimpleStorage,
-        r#"[
-            _hashPuzzle() (uint256)
-        ]"#;
-
-        SimpleStorage2,
-        "ethers-contract/tests/solidity-contracts/simplestorage_abi.json",
-    );
-
-    // launch the network & connect to it
-    let anvil = Anvil::new().spawn();
-    let from = anvil.addresses()[0];
-    let provider = Provider::try_from(anvil.endpoint())
-        .unwrap()
-        .with_sender(from)
-        .interval(std::time::Duration::from_millis(10));
-    let client = Arc::new(provider);
-
-    let contract = "SimpleStorage";
-    let path = "./tests/solidity-contracts/SimpleStorage.sol";
-    let compiled = Solc::default().compile_source(path).unwrap();
-    let compiled = compiled.get(path, contract).unwrap();
-    let factory = ethers_contract::ContractFactory::new(
-        compiled.abi.unwrap().clone(),
-        compiled.bytecode().unwrap().clone(),
-        client.clone(),
-    );
-    let addr = factory.deploy("hi".to_string()).unwrap().legacy().send().await.unwrap().address();
-
-    // connect to the contract
-    let contract = SimpleStorage::new(addr, client.clone());
-    let contract2 = SimpleStorage2::new(addr, client.clone());
-
-    let res = contract.hash_puzzle().call().await.unwrap();
-    let res2 = contract2.hash_puzzle().call().await.unwrap();
-    let res3 = contract.method::<_, U256>("_hashPuzzle", ()).unwrap().call().await.unwrap();
-    let res4 = contract2.method::<_, U256>("_hashPuzzle", ()).unwrap().call().await.unwrap();
-
-    // Manual call construction
-    use ethers_providers::Middleware;
-    // TODO: How do we handle underscores for calls here?
-    let data = simple_storage::HashPuzzleCall.encode();
-    let tx = Eip1559TransactionRequest::new().data(data).to(addr);
-    let tx = TypedTransaction::Eip1559(tx);
-    let res5 = client.call(&tx, None).await.unwrap();
-    let res5 = U256::from(res5.as_ref());
-    assert_eq!(res, 100.into());
-    assert_eq!(res, res2);
-    assert_eq!(res, res3);
-    assert_eq!(res, res4);
-    assert_eq!(res, res5);
-}
-
 #[test]
 fn can_handle_unique_underscore_functions() {
     abigen!(
@@ -561,7 +504,8 @@ async fn can_deploy_greeter() {
 
 #[tokio::test]
 async fn can_abiencoderv2_output() {
-    abigen!(AbiEncoderv2Test, "ethers-contract/tests/solidity-contracts/abiencoderv2test_abi.json",);
+    abigen!(AbiEncoderv2Test, "ethers-contract/tests/solidity-contracts/Abiencoderv2Test.json");
+
     let anvil = Anvil::new().spawn();
     let from = anvil.addresses()[0];
     let provider = Provider::try_from(anvil.endpoint())
@@ -570,20 +514,9 @@ async fn can_abiencoderv2_output() {
         .interval(std::time::Duration::from_millis(10));
     let client = Arc::new(provider);
 
-    let contract = "AbiencoderV2Test";
-    let path = "./tests/solidity-contracts/Abiencoderv2Test.sol";
-    let compiled = Solc::default().compile_source(path).unwrap();
-    let compiled = compiled.get(path, contract).unwrap();
-    let factory = ethers_contract::ContractFactory::new(
-        compiled.abi.unwrap().clone(),
-        compiled.bytecode().unwrap().clone(),
-        client.clone(),
-    );
-    let addr = factory.deploy(()).unwrap().legacy().send().await.unwrap().address();
+    let contract = AbiEncoderv2Test::deploy(client, ()).unwrap().legacy().send().await.unwrap();
 
-    let contract = AbiEncoderv2Test::new(addr, client.clone());
     let person = Person { name: "Alice".to_string(), age: 20u64.into() };
-
     let res = contract.default_person().call().await.unwrap();
     assert_eq!(res, person);
 }
