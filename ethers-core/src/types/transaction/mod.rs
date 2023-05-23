@@ -4,6 +4,7 @@ pub mod response;
 pub mod eip1559;
 pub mod eip2718;
 pub mod eip2930;
+pub mod optimism_deposited;
 
 pub mod eip712;
 
