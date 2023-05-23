@@ -10,6 +10,7 @@ use std::{
 };
 
 mod account;
+mod blocks;
 mod contract;
 mod gas;
 mod transaction;
