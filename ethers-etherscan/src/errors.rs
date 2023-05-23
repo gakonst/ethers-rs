@@ -23,7 +23,7 @@ pub enum EtherscanError {
     Serde(#[from] serde_json::Error),
     #[error("Contract source code not verified: {0}")]
     ContractCodeNotVerified(Address),
-    #[error("Response result is unexpectedly empty")]
+    #[error("Response result is unexpectedly empty: status={status}, message={message}")]
     EmptyResult { status: String, message: String },
     #[error("Rate limit exceeded")]
     RateLimitExceeded,
