@@ -1,6 +1,6 @@
 //! Bindings for solc's `ast` output field
 
-use crate::artifacts::serde_helpers;
+use crate::artifacts::{serde_helpers, SourceUnit};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt, fmt::Write, str::FromStr};
 
@@ -22,6 +22,23 @@ pub struct Ast {
     /// Node attributes that were not deserialized.
     #[serde(flatten)]
     pub other: BTreeMap<String, serde_json::Value>,
+}
+
+/// Represents the AST field in the solc output
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TypedAst {
+    pub source_unit: SourceUnit,
+}
+
+impl Ast {
+    pub fn to_typed(self) -> TypedAst {
+        let data = serde_json::to_string_pretty(&self).unwrap();
+        let source_unit = serde_json::from_str(&data).unwrap_or_else(|e| {
+            panic!("Deserialization failed for {} file, error: {}", self.absolute_path, e)
+        });
+
+        TypedAst { source_unit }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

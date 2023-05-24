@@ -18,7 +18,7 @@ pub mod util;
 pub mod visitor;
 
 /// A low fidelity representation of the AST.
-pub(crate) mod lowfidelity;
+pub mod lowfidelity;
 pub use lowfidelity::{Ast, Node, NodeType, SourceLocation as LowFidelitySourceLocation};
 
 /// Types for the Yul AST.
@@ -607,7 +607,7 @@ ast_node!(
 expr_node!(
     /// A tuple expression.
     struct TupleExpression {
-        components: Vec<Expression>,
+        components: Vec<Option<Expression>>,
         is_inline_array: bool,
     }
 );
@@ -944,7 +944,7 @@ ast_node!(
         block: Block,
         error_name: String,
         #[serde(default)]
-        parameters: Vec<ParameterList>,
+        parameters: Option<ParameterList>,
     }
 );
 
@@ -1077,7 +1077,8 @@ ast_node!(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{visitor::Visitor, *};
+    use crate::artifacts::visitor::Visitable;
     use std::{fs, path::PathBuf};
 
     #[test]
@@ -1092,6 +1093,46 @@ mod tests {
                 let deserializer = &mut serde_json::Deserializer::from_str(&input);
                 let result: Result<SourceUnit, _> = serde_path_to_error::deserialize(deserializer);
                 match result {
+                    Err(e) => {
+                        println!("... {path_str} fail: {e}");
+                        panic!();
+                    }
+                    Ok(_) => {
+                        println!("... {path_str} ok");
+                    }
+                }
+            })
+    }
+
+    struct DummyState;
+
+    #[derive(Default)]
+    struct DummyVisitor;
+
+    impl Visitor<DummyState> for DummyVisitor {
+        fn shared_data(&mut self) -> &DummyState {
+            &DummyState {}
+        }
+    }
+
+    // Note: this implies that can_parse_ast works
+    #[test]
+    fn can_visit_ast() {
+        fs::read_dir(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test-data").join("ast"))
+            .unwrap()
+            .for_each(|path| {
+                let path = path.unwrap().path();
+                let path_str = path.to_string_lossy();
+
+                let input = fs::read_to_string(&path).unwrap();
+                let deserializer = &mut serde_json::Deserializer::from_str(&input);
+
+                let mut ast: SourceUnit = serde_path_to_error::deserialize(deserializer)
+                    .expect("Ast deserialization failed");
+
+                let mut visitor = DummyVisitor::default();
+
+                match ast.visit(&mut visitor) {
                     Err(e) => {
                         println!("... {path_str} fail: {e}");
                         panic!();
