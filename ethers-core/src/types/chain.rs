@@ -360,6 +360,13 @@ impl Chain {
         }
     }
 
+    pub const fn is_shanghai(&self) -> bool {
+        match self {
+            Chain::Mainnet | Chain::Goerli | Chain::Sepolia => true,
+            _ => false,
+        }
+    }
+
     /// Returns the chain's blockchain explorer and its API (Etherscan and Etherscan-like) URLs.
     ///
     /// Returns `(API_URL, BASE_URL)`
