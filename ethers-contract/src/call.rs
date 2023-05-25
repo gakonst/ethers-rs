@@ -256,6 +256,12 @@ where
         self.block = Some(block.into());
         self
     }
+
+    /// Sets the `nonce` field in the transaction to the provided value
+    pub fn nonce<T: Into<U256>>(mut self, nonce: T) -> Self {
+        self.tx.set_nonce(nonce);
+        self
+    }
 }
 
 impl<B, M, D> FunctionCall<B, M, D>
