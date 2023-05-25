@@ -360,7 +360,11 @@ impl Chain {
         }
     }
 
-    pub const fn is_shanghai(&self) -> bool {
+    /// Returns whether the chain supports the `PUSH0` opcode or not.
+    ///
+    /// For more information, see EIP-3855:
+    /// https://eips.ethereum.org/EIPS/eip-3855
+    pub const fn supports_push0(&self) -> bool {
         match self {
             Chain::Mainnet | Chain::Goerli | Chain::Sepolia => true,
             _ => false,
