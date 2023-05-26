@@ -161,6 +161,7 @@ impl LedgerEthereum {
                     (ecc_parity % 2 != 1) as u64
                 }
                 TypedTransaction::Legacy(_) => eip155_chain_id + ecc_parity,
+                TypedTransaction::OptimismDeposited(_) => 0,
             };
         }
 

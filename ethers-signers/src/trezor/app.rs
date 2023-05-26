@@ -195,6 +195,10 @@ impl TrezorEthereum {
                 transaction.max_priority_fee_per_gas,
                 transaction.access_list,
             )?,
+            #[cfg(feature = "optimism")]
+            TypedTransaction::OptimismDeposited(tx) => {
+                trezor_client::client::Signature { r: 0.into(), s: 0.into(), v: 0 }
+            }
         };
 
         Ok(Signature { r: signature.r, s: signature.s, v: signature.v })

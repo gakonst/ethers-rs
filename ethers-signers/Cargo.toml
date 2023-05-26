@@ -77,6 +77,7 @@ tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 futures = ["futures-util", "futures-executor"]
 
 celo = ["ethers-core/celo"]
+optimism = ["ethers-core/optimism"]
 
 ledger = ["coins-ledger", "futures", "semver"]
 trezor = ["trezor-client", "futures", "semver", "home"]

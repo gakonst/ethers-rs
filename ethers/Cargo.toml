@@ -37,7 +37,11 @@ celo = [
     "legacy",
 ]
 
-optimism = ["ethers-core/optimism"]
+optimism = [
+    "ethers-core/optimism", 
+    "ethers-providers/optimism",
+    "ethers-signers/optimism"
+]
 
 rustls = [
     "ethers-contract/rustls",
