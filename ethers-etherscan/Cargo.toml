@@ -38,10 +38,6 @@ thiserror.workspace = true
 tracing.workspace = true
 semver.workspace = true
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-# NOTE: this enables wasm compatibility for getrandom indirectly
-getrandom.workspace = true
-
 [dev-dependencies]
 ethers-solc.workspace = true
 
