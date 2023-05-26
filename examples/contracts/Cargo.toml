@@ -15,7 +15,7 @@ legacy = ["ethers/legacy"]
 [dev-dependencies]
 ethers = { workspace = true, features = ["abigen", "rustls", "ws", "ethers-solc"] }
 
-tokio = { workspace = true, features = ["macros"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 serde.workspace = true
 serde_json.workspace = true

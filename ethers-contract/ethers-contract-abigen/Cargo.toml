@@ -50,10 +50,6 @@ reqwest = { workspace = true, features = ["blocking"], optional = true }
 tokio = { workspace = true, optional = true }
 url = { workspace = true, optional = true }
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-# NOTE: this enables wasm compatibility for getrandom indirectly
-getrandom.workspace = true
-
 [features]
 online = ["reqwest", "ethers-etherscan", "url", "tokio"]
 rustls = ["reqwest?/rustls-tls", "ethers-etherscan?/rustls"]

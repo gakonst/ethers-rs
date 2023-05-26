@@ -9,6 +9,8 @@ pub enum EtherscanError {
     ExecutionFailed(String),
     #[error("Balance failed")]
     BalanceFailed,
+    #[error("Block by timestamp failed")]
+    BlockNumberByTimestampFailed,
     #[error("Transaction receipt failed")]
     TransactionReceiptFailed,
     #[error("Gas estimation failed")]
@@ -23,6 +25,8 @@ pub enum EtherscanError {
     Serde(#[from] serde_json::Error),
     #[error("Contract source code not verified: {0}")]
     ContractCodeNotVerified(Address),
+    #[error("Response result is unexpectedly empty: status={status}, message={message}")]
+    EmptyResult { status: String, message: String },
     #[error("Rate limit exceeded")]
     RateLimitExceeded,
     #[error(transparent)]

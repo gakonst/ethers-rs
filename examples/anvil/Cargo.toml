@@ -10,5 +10,5 @@ edition.workspace = true
 
 [dev-dependencies]
 ethers.workspace = true
-tokio = { workspace = true, features = ["macros"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 eyre.workspace = true

@@ -236,6 +236,8 @@ pub enum Authorization {
     Basic(String),
     /// Bearer Auth
     Bearer(String),
+    /// If you need to override the Authorization header value
+    Raw(String),
 }
 
 impl Authorization {
@@ -251,6 +253,11 @@ impl Authorization {
     pub fn bearer(token: impl Into<String>) -> Self {
         Self::Bearer(token.into())
     }
+
+    /// Override the Authorization header with your own string
+    pub fn raw(token: impl Into<String>) -> Self {
+        Self::Raw(token.into())
+    }
 }
 
 impl fmt::Display for Authorization {
@@ -258,6 +265,7 @@ impl fmt::Display for Authorization {
         match self {
             Authorization::Basic(auth_secret) => write!(f, "Basic {auth_secret}"),
             Authorization::Bearer(token) => write!(f, "Bearer {token}"),
+            Authorization::Raw(s) => write!(f, "{s}"),
         }
     }
 }

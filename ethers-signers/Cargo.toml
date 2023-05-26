@@ -57,8 +57,8 @@ coins-ledger = { version = "0.8.3", default-features = false, optional = true }
 semver = { workspace = true, optional = true }
 
 # trezor
-trezor-client = { version = "0.0.7", default-features = false, features = [
-    "f_ethereum",
+trezor-client = { version = "0.1", default-features = false, features = [
+    "ethereum",
 ], optional = true }
 
 # yubi
