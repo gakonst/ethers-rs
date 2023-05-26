@@ -58,6 +58,24 @@ You can get one [here](https://polygonscan.io/apis).
 There is abigen support for Avalanche and the Fuji test network. It is recommended that you set the `SNOWTRACE_API_KEY` environment variable.
 You can get one [here](https://snowtrace.io/apis).
 
+### Optimism support
+
+Optimism is supported via the `optimism` feature flag:
+
+```toml
+[dependencies]
+ethers = { version = "2.0", features = ["optimism"] }
+```
+
+Optimism has a new transaction type: [Deposited Transactions](https://github.com/ethereum-optimism/optimism/blob/develop/specs/deposits.md#the-deposited-transaction-type)
+with type ID `0x7E`, which requires 3 new fields:
+
+-   `sourceHash`: The hash which uniquely identifies the origin of the deposit
+-   `mint`: The ETH value to mint on L2.
+-   `isSystemTx`: True if the tx does not interact with the L2 block gas pool
+
+**Note:** the `optimism` and `celo` features are mutually exclusive.
+
 ### Celo Support
 
 [Celo](https://celo.org) support is turned on via the feature-flag `celo`:
@@ -76,6 +94,8 @@ Celo's transactions differ from Ethereum transactions by including 3 new fields:
 The feature flag enables these additional fields in the transaction request builders and
 in the transactions which are fetched over JSON-RPC.
 
+**Note:** the `optimism` and `celo` features are mutually exclusive.
+
 ## Features
 
 -   [x] Ethereum JSON-RPC Client
@@ -87,6 +107,7 @@ in the transactions which are fetched over JSON-RPC.
 -   [x] Celo support
 -   [x] Polygon support
 -   [x] Avalanche support
+-   [x] Optimism support
 -   [x] Websockets / `eth_subscribe`
 -   [x] Hardware Wallet Support
 -   [x] Parity APIs (`tracing`, `parity_blockWithReceipts`)

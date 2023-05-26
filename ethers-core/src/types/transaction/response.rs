@@ -65,6 +65,22 @@ pub struct Transaction {
     /// ECDSA signature s
     pub s: U256,
 
+    ///////////////// Optimism-specific transaction fields //////////////
+    /// The source-hash that uniquely identifies the origin of the deposit
+    #[cfg(feature = "optimism")]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "sourceHash")]
+    pub source_hash: Option<H256>,
+
+    /// The ETH value to mint on L2
+    #[cfg(feature = "optimism")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mint: Option<U256>,
+
+    /// True if the transaction does not interact with the L2 block gas pool
+    #[cfg(feature = "optimism")]
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "isSystemTx")]
+    pub is_system_tx: Option<bool>,
+
     /////////////////  Celo-specific transaction fields /////////////////
     /// The currency fees are paid in (None for native currency)
     #[cfg(feature = "celo")]
@@ -142,7 +158,7 @@ impl Transaction {
 
         match self.transaction_type {
             // EIP-2930 (0x01)
-            Some(x) if x == U64::from(1) => {
+            Some(x) if x == U64::from(0x1) => {
                 rlp_opt(&mut rlp, &self.chain_id);
                 rlp.append(&self.nonce);
                 rlp_opt(&mut rlp, &self.gas_price);
@@ -158,9 +174,11 @@ impl Transaction {
                 if let Some(chain_id) = self.chain_id {
                     rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
                 }
+                rlp.append(&self.r);
+                rlp.append(&self.s);
             }
             // EIP-1559 (0x02)
-            Some(x) if x == U64::from(2) => {
+            Some(x) if x == U64::from(0x2) => {
                 rlp_opt(&mut rlp, &self.chain_id);
                 rlp.append(&self.nonce);
                 rlp_opt(&mut rlp, &self.max_priority_fee_per_gas);
@@ -173,6 +191,20 @@ impl Transaction {
                 if let Some(chain_id) = self.chain_id {
                     rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
                 }
+                rlp.append(&self.r);
+                rlp.append(&self.s);
+            }
+            // Optimism Deposited Transaction
+            #[cfg(feature = "optimism")]
+            Some(x) if x == U64::from(0x7E) => {
+                rlp_opt(&mut rlp, &self.source_hash);
+                rlp.append(&self.from);
+                rlp_opt(&mut rlp, &self.to);
+                rlp_opt(&mut rlp, &self.mint);
+                rlp.append(&self.value);
+                rlp.append(&self.gas);
+                rlp_opt(&mut rlp, &self.is_system_tx);
+                rlp.append(&self.input.as_ref());
             }
             // Legacy (0x00)
             _ => {
@@ -187,24 +219,29 @@ impl Transaction {
                 rlp.append(&self.value);
                 rlp.append(&self.input.as_ref());
                 rlp.append(&self.v);
+                rlp.append(&self.r);
+                rlp.append(&self.s);
             }
         }
-
-        rlp.append(&self.r);
-        rlp.append(&self.s);
 
         rlp.finalize_unbounded_list();
 
         let rlp_bytes: Bytes = rlp.out().freeze().into();
         let mut encoded = vec![];
         match self.transaction_type {
-            Some(x) if x == U64::from(1) => {
+            Some(x) if x == U64::from(0x1) => {
                 encoded.extend_from_slice(&[0x1]);
                 encoded.extend_from_slice(rlp_bytes.as_ref());
                 encoded.into()
             }
-            Some(x) if x == U64::from(2) => {
+            Some(x) if x == U64::from(0x2) => {
                 encoded.extend_from_slice(&[0x2]);
+                encoded.extend_from_slice(rlp_bytes.as_ref());
+                encoded.into()
+            }
+            #[cfg(feature = "optimism")]
+            Some(x) if x == U64::from(0x7E) => {
+                encoded.extend_from_slice(&[0x7E]);
                 encoded.extend_from_slice(rlp_bytes.as_ref());
                 encoded.into()
             }
@@ -1126,5 +1163,43 @@ mod tests {
             ..Default::default()
         };
         Transaction::decode(&Rlp::new(&tx.rlp())).unwrap();
+    }
+
+    #[test]
+    #[cfg(feature = "optimism")]
+    fn test_rlp_encode_deposited_tx() {
+        let deposited_tx = Transaction {
+            hash: H256::from_str("0x7fd17d4a368fccdba4291ab121e48c96329b7dc3d027a373643fb23c20a19a3f").unwrap(),
+            nonce: U256::from(4391989),
+            block_hash: Some(H256::from_str("0xc2794a16acacd9f7670379ffd12b6968ff98e2a602f57d7d1f880220aa5a4973").unwrap()),
+            block_number: Some(8453214u64.into()),
+            transaction_index: Some(0u64.into()),
+            from: Address::from_str("0xdeaddeaddeaddeaddeaddeaddeaddeaddead0001").unwrap(),
+            to: Some(Address::from_str("0x4200000000000000000000000000000000000015").unwrap()),
+            value: U256::zero(),
+            gas_price: Some(U256::zero()),
+            gas: U256::from(1000000u64),
+            input: Bytes::from(
+                hex::decode("015d8eb90000000000000000000000000000000000000000000000000000000000878c1c00000000000000000000000000000000000000000000000000000000644662bc0000000000000000000000000000000000000000000000000000001ee24fba17b7e19cc10812911dfa8a438e0a81a9933f843aa5b528899b8d9e221b649ae0df00000000000000000000000000000000000000000000000000000000000000060000000000000000000000007431310e026b69bfc676c0013e12a1a11411eec9000000000000000000000000000000000000000000000000000000000000083400000000000000000000000000000000000000000000000000000000000f4240").unwrap()
+            ),
+            v: U64::zero(),
+            r: U256::zero(),
+            s: U256::zero(),
+            source_hash: Some(H256::from_str("0xa8157ccf61bcdfbcb74a84ec1262e62644dd1e7e3614abcbd8db0c99a60049fc").unwrap()),
+            mint: Some(0.into()),
+            is_system_tx: None,
+            transaction_type: Some(U64::from(126)),
+            access_list: None,
+            max_priority_fee_per_gas: None,
+            max_fee_per_gas: None,
+            chain_id: None,
+            other: Default::default()
+        };
+
+        let rlp = deposited_tx.rlp();
+
+        let expected_rlp = Bytes::from(hex::decode("7ef90159a0a8157ccf61bcdfbcb74a84ec1262e62644dd1e7e3614abcbd8db0c99a60049fc94deaddeaddeaddeaddeaddeaddeaddeaddead00019442000000000000000000000000000000000000158080830f424080b90104015d8eb90000000000000000000000000000000000000000000000000000000000878c1c00000000000000000000000000000000000000000000000000000000644662bc0000000000000000000000000000000000000000000000000000001ee24fba17b7e19cc10812911dfa8a438e0a81a9933f843aa5b528899b8d9e221b649ae0df00000000000000000000000000000000000000000000000000000000000000060000000000000000000000007431310e026b69bfc676c0013e12a1a11411eec9000000000000000000000000000000000000000000000000000000000000083400000000000000000000000000000000000000000000000000000000000f4240").unwrap());
+
+        assert_eq!(rlp, expected_rlp);
     }
 }
