@@ -133,6 +133,7 @@ pub struct Transaction {
 
     /// Captures unknown fields such as additional fields used by L2s
     #[cfg(not(feature = "celo"))]
+    #[cfg(not(feature = "optimism"))]
     #[serde(flatten)]
     pub other: crate::types::OtherFields,
 }
