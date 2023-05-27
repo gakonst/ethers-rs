@@ -41,6 +41,7 @@ optimism = [
     "ethers-providers/optimism",
     "ethers-signers/optimism",
     "ethers-middleware/optimism",
+    "ethers-contract/optimism",
 ]
 
 rustls = [
