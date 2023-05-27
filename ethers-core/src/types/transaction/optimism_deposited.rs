@@ -120,19 +120,18 @@ impl From<&Transaction> for OptimismDepositedTransactionRequest {
     }
 }
 
+#[cfg(feature = "optimism")]
+#[cfg(not(feature = "celo"))]
 #[cfg(test)]
 mod test {
-
-    use rlp::Decodable;
 
     use crate::types::{
         transaction::eip2718::TypedTransaction, Address, Bytes, NameOrAddress, Transaction, H256,
         U256, U64,
     };
+    use rlp::Decodable;
     use std::str::FromStr;
 
-    #[cfg(feature = "optimism")]
-    #[cfg(not(feature = "celo"))]
     #[test]
     fn test_rlp_encode_deposited_tx() {
         let deposited_tx = Transaction {
@@ -169,8 +168,6 @@ mod test {
         assert_eq!(rlp, expected_rlp);
     }
 
-    #[cfg(feature = "optimism")]
-    #[cfg(not(feature = "celo"))]
     #[test]
     fn test_rlp_decode_optimism_tx() {
         let encoded = Bytes::from(hex::decode("7ef90159a0a8157ccf61bcdfbcb74a84ec1262e62644dd1e7e3614abcbd8db0c99a60049fc94deaddeaddeaddeaddeaddeaddeaddeaddead00019442000000000000000000000000000000000000158080830f424080b90104015d8eb90000000000000000000000000000000000000000000000000000000000878c1c00000000000000000000000000000000000000000000000000000000644662bc0000000000000000000000000000000000000000000000000000001ee24fba17b7e19cc10812911dfa8a438e0a81a9933f843aa5b528899b8d9e221b649ae0df00000000000000000000000000000000000000000000000000000000000000060000000000000000000000007431310e026b69bfc676c0013e12a1a11411eec9000000000000000000000000000000000000000000000000000000000000083400000000000000000000000000000000000000000000000000000000000f4240").unwrap());
