@@ -141,8 +141,15 @@ construct_format_units_from! {
 /// in ether (instead of wei)
 ///
 /// Divides the input by 1e18
-pub fn format_ether<T: Into<U256>>(amount: T) -> U256 {
-    amount.into() / WEI_IN_ETHER
+/// ```
+/// use ethers_core::{types::U256, utils::format_ether};
+///
+/// let eth = format_ether(1395633240123456000_u128).unwrap();
+/// assert_eq!(eth.parse::<f64>().unwrap(), 1.395633240123456);
+/// ```
+pub fn format_ether<T: Into<ParseUnits>>(amount: T) -> String {
+    // format_units returns Err only if units >= 77. Hense, we can safely unwrap here
+    format_units(amount, "ether").unwrap()
 }
 
 /// Divides the provided amount with 10^{units} provided.
@@ -613,6 +620,64 @@ mod tests {
     #[test]
     fn wei_in_ether() {
         assert_eq!(WEI_IN_ETHER.as_u64(), 1e18 as u64);
+    }
+
+    #[test]
+    fn test_format_ether_unsigned() {
+        let eth = format_ether(WEI_IN_ETHER);
+        assert_eq!(eth.parse::<f64>().unwrap() as u64, 1);
+
+        let eth = format_ether(1395633240123456000_u128);
+        assert_eq!(eth.parse::<f64>().unwrap(), 1.395633240123456);
+
+        let eth = format_ether(U256::from_dec_str("1395633240123456000").unwrap());
+        assert_eq!(eth.parse::<f64>().unwrap(), 1.395633240123456);
+
+        let eth = format_ether(U256::from_dec_str("1395633240123456789").unwrap());
+        assert_eq!(eth, "1.395633240123456789");
+
+        let eth = format_ether(U256::from_dec_str("1005633240123456789").unwrap());
+        assert_eq!(eth, "1.005633240123456789");
+
+        let eth = format_ether(u16::MAX);
+        assert_eq!(eth, "0.000000000000065535");
+
+        // Note: This covers usize on 32 bit systems.
+        let eth = format_ether(u32::MAX);
+        assert_eq!(eth, "0.000000004294967295");
+
+        // Note: This covers usize on 64 bit systems.
+        let eth = format_ether(u64::MAX);
+        assert_eq!(eth, "18.446744073709551615");
+    }
+
+    #[test]
+    fn test_format_ether_signed() {
+        let eth = format_ether(I256::from_dec_str("-1395633240123456000").unwrap());
+        assert_eq!(eth.parse::<f64>().unwrap(), -1.395633240123456);
+
+        let eth = format_ether(I256::from_dec_str("-1395633240123456789").unwrap());
+        assert_eq!(eth, "-1.395633240123456789");
+
+        let eth = format_ether(I256::from_dec_str("1005633240123456789").unwrap());
+        assert_eq!(eth, "1.005633240123456789");
+
+        let eth = format_ether(i8::MIN);
+        assert_eq!(eth, "-0.000000000000000128");
+
+        let eth = format_ether(i8::MAX);
+        assert_eq!(eth, "0.000000000000000127");
+
+        let eth = format_ether(i16::MIN);
+        assert_eq!(eth, "-0.000000000000032768");
+
+        // Note: This covers isize on 32 bit systems.
+        let eth = format_ether(i32::MIN);
+        assert_eq!(eth, "-0.000000002147483648");
+
+        // Note: This covers isize on 64 bit systems.
+        let eth = format_ether(i64::MIN);
+        assert_eq!(eth, "-9.223372036854775808");
     }
 
     #[test]
