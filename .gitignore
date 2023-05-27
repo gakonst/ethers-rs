@@ -1,4 +1,6 @@
 /target
+/Cargo.lock
+
 .vscode
 /.envrc
 .idea
