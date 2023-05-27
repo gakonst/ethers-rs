@@ -22,7 +22,6 @@ exclude = [
 # https://docs.rs/about/metadata
 [workspace.metadata.docs.rs]
 all-features = true
-rustc-args = ["--cfg", "docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 # https://github.com/integer32llc/rust-playground/blob/c6165a36923db5d99313e6056b5b610a2ede5bb0/top-crates/src/lib.rs#L175-L184
@@ -34,6 +33,8 @@ members = [
     "ethers",
     "ethers-addressbook",
     "ethers-contract",
+    "ethers-contract/ethers-contract-abigen",
+    "ethers-contract/ethers-contract-derive",
     "ethers-core",
     "ethers-etherscan",
     "ethers-middleware",
@@ -50,6 +51,8 @@ default-members = [
     "ethers",
     "ethers-addressbook",
     "ethers-contract",
+    "ethers-contract/ethers-contract-abigen",
+    "ethers-contract/ethers-contract-derive",
     "ethers-core",
     "ethers-etherscan",
     "ethers-middleware",

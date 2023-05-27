@@ -132,7 +132,7 @@ pub struct Transaction {
     pub chain_id: Option<U256>,
 
     /// Captures unknown fields such as additional fields used by L2s
-    #[cfg(not(feature = "celo"))]
+    #[cfg(not(any(feature = "celo", feature = "optimism")))]
     #[serde(flatten)]
     pub other: crate::types::OtherFields,
 }
