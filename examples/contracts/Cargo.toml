@@ -8,10 +8,6 @@ license.workspace = true
 rust-version.workspace = true
 edition.workspace = true
 
-[features]
-default = ["legacy"]
-legacy = ["ethers/legacy"]
-
 [dev-dependencies]
 ethers = { workspace = true, features = ["abigen", "rustls", "ws", "ethers-solc"] }
 

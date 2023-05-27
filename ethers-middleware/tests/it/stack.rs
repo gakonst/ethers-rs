@@ -81,7 +81,7 @@ async fn can_stack_middlewares() {
     for _ in 0..10 {
         let pending = provider.send_transaction(tx.clone(), None).await.unwrap();
         let hash = *pending;
-        let gas_price = provider.get_transaction(hash).await.unwrap().unwrap().gas_price;
+        let _ = provider.get_transaction(hash).await.unwrap().unwrap();
         pending_txs.push(pending);
     }
 

@@ -310,9 +310,9 @@ pub mod spoof {
 
     /// Returns an empty state override set.
     ///
-    /// # Example
+    /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore
     /// # use ethers_core::{
     /// #     types::{Address, TransactionRequest, H256, spoof},
     /// #     utils::{parse_ether, Geth},
@@ -346,8 +346,9 @@ pub mod spoof {
 
     /// Returns a state override set with a single element setting the balance of the address.
     ///
-    /// # Example
-    /// ```no_run
+    /// # Examples
+    ///
+    /// ```ignore
     /// # use ethers_core::{
     /// #     types::{Address, TransactionRequest, H256},
     /// #     utils::{parse_ether, Geth},
@@ -378,8 +379,9 @@ pub mod spoof {
 
     /// Returns a state override set with a single element setting the nonce of the address.
     ///
-    /// # Example
-    /// ```no_run
+    /// # Examples
+    ///
+    /// ```ignore
     /// # use ethers_core::{
     /// #     types::{Address, TransactionRequest, H256},
     /// #     utils::{parse_ether, Geth},
@@ -408,8 +410,9 @@ pub mod spoof {
 
     /// Returns a state override set with a single element setting the code at the address.
     ///
-    /// # Example
-    /// ```no_run
+    /// # Examples
+    ///
+    /// ```ignore
     /// # use ethers_core::{
     /// #     types::{Address, TransactionRequest, H256},
     /// #     utils::{parse_ether, Geth},
@@ -439,9 +442,9 @@ pub mod spoof {
     /// Returns a state override set with a single element setting the storage at the given address
     /// and key.
     ///
-    /// # Example
+    /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore
     /// # use ethers_core::{
     /// #     types::{Address, TransactionRequest, H256},
     /// #     utils::{parse_ether, Geth},

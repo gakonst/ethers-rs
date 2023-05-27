@@ -8,14 +8,8 @@ license.workspace = true
 rust-version.workspace = true
 edition.workspace = true
 
-[features]
-default = ["ledger", "trezor", "yubi"]
-ledger = ["ethers/ledger"]
-trezor = ["ethers/trezor"]
-yubi = ["ethers/yubi"]
-
 [dev-dependencies]
-ethers = { workspace = true, features = ["abigen", "ws", "rustls"] }
+ethers = { workspace = true, features = ["abigen", "ws", "rustls", "ledger", "trezor", "yubi"] }
 
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 

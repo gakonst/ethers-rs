@@ -14,10 +14,7 @@ abigen!(
 /// ```bash
 ///  docker run --rm --name moonbeam_development -p 9944:9944 -p 9933:9933 purestake/moonbeam:v0.14.2 --dev --ws-external --rpc-external
 /// ```
-///
-/// Also requires the `legacy` feature to send Legacy transaction instead of an EIP-1559
 #[tokio::main]
-#[cfg(feature = "legacy")]
 async fn main() -> eyre::Result<()> {
     use ethers::prelude::*;
     use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
@@ -71,6 +68,3 @@ async fn main() -> eyre::Result<()> {
 
     Ok(())
 }
-
-#[cfg(not(feature = "legacy"))]
-fn main() {}
