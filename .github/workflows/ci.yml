@@ -17,40 +17,32 @@ env:
 
 jobs:
     test:
-        name: test ${{ matrix.os }} (${{ matrix.flags.name }})
+        name: test ${{ matrix.flags.name }} (${{ matrix.os }})
         runs-on: ${{ matrix.os }}
         strategy:
             fail-fast: false
             matrix:
-                os: ["ubuntu-latest", "macos-latest"]
+                os: ["ubuntu-latest", "macos-latest", "windows-latest"]
                 flags:
                     - name: no default features
-                      flags: --workspace --no-default-features
+                      flags: --no-default-features
                     - name: default features
-                      flags: --workspace
+                      flags: ""
                     - name: all features
-                      flags: --workspace --all-features
+                      flags: --all-features
                 include:
-                    # not workspace because compiling examples fails for no reason in CI
-                    - os: windows-latest
+                    - os: ubuntu-latest
                       flags:
-                          name: no default features
-                          flags: --no-default-features
-                    - os: windows-latest
+                          name: celo feature
+                          flags:
+                              -p ethers-core -p ethers-providers -p ethers-contract --features celo
+                    - os: ubuntu-latest
                       flags:
-                          name: default features
-                          flags: ""
-                    - os: windows-latest
-                      flags:
-                          name: all features
-                          flags: --all-features
+                          name: optimism feature
+                          flags: -p ethers-core --features optimism
         steps:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@stable
-              with:
-                  toolchain:
-                      ${{ matrix.os == 'windows-latest' && 'stable-x86_64-pc-windows-gnu' ||
-                      'stable' }}
             - name: Install Anvil
               uses: foundry-rs/foundry-toolchain@v1
               with:
@@ -68,7 +60,7 @@ jobs:
                   cargo nextest run \
                   ${{ matrix.flags.flags }} \
                   -E "!(deps(ethers-etherscan) & kind(test))" \
-                  --retries 3
+                  --retries 2
 
     etherscan-tests:
         name: etherscan tests
@@ -82,7 +74,7 @@ jobs:
             - uses: actions/checkout@v3
             - uses: dtolnay/rust-toolchain@stable
             - uses: Swatinem/rust-cache@v2
-            # Don't use cargo-nextest since all the tests have to be ran sequentially
+            # Don't use cargo-nextest since all the tests have to be run sequentially
             - name: live tests
               run: cargo test -p ethers-etherscan --test it
 
@@ -98,30 +90,26 @@ jobs:
     #         - name: live tests
     #           run: cargo test -p ethers-tests --all-features
 
-    # TODO: [#2191](https://github.com/gakonst/ethers-rs/issues/2191)
-    # feature-checks:
-    #     name: feature checks
-    #     runs-on: ubuntu-latest
-    #     steps:
-    #         - uses: actions/checkout@v3
-    #         - uses: dtolnay/rust-toolchain@nightly
-    #         - uses: taiki-e/install-action@cargo-hack
-    #         - uses: Swatinem/rust-cache@v2
-    #         - name: cargo hack
-    #           run:
-    #               cargo hack check --all --feature-powerset --depth 2 -Z avoid-dev-deps --keep-going
+    feature-checks:
+        name: feature checks
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: dtolnay/rust-toolchain@stable
+            - uses: taiki-e/install-action@cargo-hack
+            - uses: Swatinem/rust-cache@v2
+            - name: cargo hack
+              run: cargo hack check --feature-powerset --depth 1 --no-dev-deps
 
     clippy:
         name: clippy
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v3
-            - uses: dtolnay/rust-toolchain@nightly
-              with:
-                  components: clippy
+            - uses: dtolnay/rust-toolchain@clippy
             - uses: Swatinem/rust-cache@v2
             - name: clippy
-              run: cargo clippy --workspace --tests --all-features
+              run: cargo clippy --workspace --all-features --all-targets
               env:
                   RUSTFLAGS: "-D warnings"
 
@@ -137,7 +125,6 @@ jobs:
             - name: doc
               run: cargo doc --workspace --all-features --no-deps --document-private-items
               env:
-                  RUSTFLAGS: "--cfg docsrs"
                   RUSTDOCFLAGS: "--cfg docsrs -D warnings"
 
     fmt:

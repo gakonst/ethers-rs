@@ -20,7 +20,6 @@ exclude.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
-rustc-args = ["--cfg", "docsrs"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [package.metadata.playground]
@@ -67,7 +66,7 @@ svm-builds = { package = "svm-rs-builds", version = "0.1", optional = true }
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 [dev-dependencies]
-criterion.workspace = true
+criterion = { workspace = true, features = ["async_tokio"] }
 env_logger = "0.10.0"
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 rand.workspace = true
@@ -99,14 +98,7 @@ default = ["rustls"]
 
 full = ["async", "svm-solc"]
 
-async = [
-    "tokio/process",
-    "tokio/io-util",
-    "tokio/fs",
-    "tokio/time",
-    "futures-util",
-    "criterion/async_tokio",
-]
+async = ["tokio/process", "tokio/io-util", "tokio/fs", "tokio/time", "futures-util"]
 svm-solc = ["svm", "svm-builds", "sha2"]
 
 # Utilities for creating and testing project workspaces

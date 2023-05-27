@@ -1,5 +1,4 @@
 #[tokio::main]
-#[cfg(feature = "ledger")]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use ethers::{prelude::*, utils::parse_ether};
 
@@ -21,6 +20,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _receipt = pending_tx.confirmations(3).await?;
     Ok(())
 }
-
-#[cfg(not(feature = "ledger"))]
-fn main() {}
