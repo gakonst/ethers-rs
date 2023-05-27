@@ -40,7 +40,8 @@ celo = [
 optimism = [
     "ethers-core/optimism", 
     "ethers-providers/optimism",
-    "ethers-signers/optimism"
+    "ethers-signers/optimism",
+    "ethers-middleware/optimism",
 ]
 
 rustls = [
