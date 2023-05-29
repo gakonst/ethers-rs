@@ -169,25 +169,25 @@ where
 }
 
 #[cfg(test)]
-#[cfg(not(target_arch = "wasm32"))]
 mod tests {
     use super::*;
-    use crate::{stream::tx_stream, Http, Ws};
-    use ethers_core::{
-        types::{Transaction, TransactionReceipt, TransactionRequest},
-        utils::Anvil,
-    };
-    use futures_util::{FutureExt, StreamExt};
-    use std::{collections::HashSet, time::Duration};
+    use crate::{stream::tx_stream, Http};
+    use ethers_core::{types::TransactionRequest, utils::Anvil};
+    use std::collections::HashSet;
 
     #[tokio::test]
+    #[cfg(feature = "ws")]
     async fn can_stream_pending_transactions() {
+        use ethers_core::types::{Transaction, TransactionReceipt};
+        use futures_util::{FutureExt, StreamExt};
+        use std::time::Duration;
+
         let num_txs = 5;
         let geth = Anvil::new().block_time(2u64).spawn();
         let provider = Provider::<Http>::try_from(geth.endpoint())
             .unwrap()
             .interval(Duration::from_millis(1000));
-        let ws = Ws::connect(geth.ws_endpoint()).await.unwrap();
+        let ws = crate::Ws::connect(geth.ws_endpoint()).await.unwrap();
         let ws_provider = Provider::new(ws);
 
         let accounts = provider.get_accounts().await.unwrap();

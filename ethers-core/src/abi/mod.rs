@@ -3,7 +3,7 @@
 //! Adapted from [Gnosis' `ethcontract-rs`](https://github.com/gnosis/ethcontract-rs).
 
 use crate::{
-    types::{Bytes, Selector, Uint8, H256, H512, I256, U128, U256, U64},
+    types::{self, Selector, Uint8, H256, H512, I256, U128, U256, U64},
     utils::id,
 };
 pub use ethabi::{self, Contract as Abi, *};
@@ -184,7 +184,7 @@ macro_rules! impl_abi_type {
 }
 
 impl_abi_type!(
-    Bytes => Bytes,
+    types::Bytes => Bytes,
     bytes::Bytes => Bytes,
     Vec<u8> =>  Array(Box::new(ParamType::Uint(8))),
     Address => Address,
@@ -317,9 +317,9 @@ mod tests {
 
     #[test]
     fn abi_type_works() {
-        assert_eq!(ParamType::Bytes, Bytes::param_type());
+        assert_eq!(ParamType::Bytes, types::Bytes::param_type());
         assert_eq!(ParamType::Array(Box::new(ParamType::Uint(8))), Vec::<u8>::param_type());
-        assert_eq!(ParamType::Array(Box::new(ParamType::Bytes)), Vec::<Bytes>::param_type());
+        assert_eq!(ParamType::Array(Box::new(ParamType::Bytes)), Vec::<types::Bytes>::param_type());
         assert_eq!(
             ParamType::Array(Box::new(ParamType::Array(Box::new(ParamType::Uint(8))))),
             Vec::<Vec<u8>>::param_type()
@@ -335,7 +335,7 @@ mod tests {
 
         assert_eq!(
             ParamType::Tuple(vec![ParamType::Bytes, ParamType::Address]),
-            <(Bytes, Address)>::param_type()
+            <(types::Bytes, Address)>::param_type()
         );
 
         assert_eq!(ParamType::FixedBytes(32), <[u8; 32]>::param_type());

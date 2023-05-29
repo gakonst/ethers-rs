@@ -676,7 +676,7 @@ fn compile_parallel(
 }
 
 #[cfg(test)]
-#[cfg(feature = "project-util")]
+#[cfg(all(feature = "project-util", feature = "svm-solc"))]
 mod tests {
     use super::*;
     use crate::{project_util::TempProject, MinimalCombinedArtifacts};
