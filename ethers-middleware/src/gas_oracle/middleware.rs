@@ -93,6 +93,12 @@ where
                     }
                 }
             }
+            #[cfg(feature = "optimism")]
+            TypedTransaction::OptimismDeposited(ref mut inner) => {
+                if inner.tx.gas_price.is_none() {
+                    inner.tx.gas_price = Some(self.get_gas_price().await?);
+                }
+            }
         };
 
         self.inner().fill_transaction(tx, block).await.map_err(METrait::from_err)

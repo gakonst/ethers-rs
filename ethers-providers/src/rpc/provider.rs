@@ -313,6 +313,11 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                         .or(Some(max_priority_fee_per_gas));
                 };
             }
+            #[cfg(feature = "optimism")]
+            TypedTransaction::OptimismDeposited(_) => {
+                let gas_price = maybe(tx.gas_price(), self.get_gas_price()).await?;
+                tx.set_gas_price(gas_price);
+            }
         }
 
         // Set gas to estimated value only if it was not set by the caller,

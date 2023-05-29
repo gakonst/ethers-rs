@@ -135,6 +135,18 @@ impl TrezorTransaction {
                     access_list,
                 })
             }
+            #[cfg(feature = "optimism")]
+            TypedTransaction::OptimismDeposited(_) => Ok(Self {
+                nonce,
+                gas,
+                gas_price,
+                value,
+                to,
+                data,
+                max_fee_per_gas: vec![],
+                max_priority_fee_per_gas: vec![],
+                access_list: vec![],
+            }),
         }
     }
 }

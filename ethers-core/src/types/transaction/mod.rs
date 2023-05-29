@@ -5,6 +5,9 @@ pub mod eip1559;
 pub mod eip2718;
 pub mod eip2930;
 
+#[cfg(feature = "optimism")]
+pub mod optimism_deposited;
+
 pub mod eip712;
 
 pub(crate) const BASE_NUM_TX_FIELDS: usize = 9;
