@@ -356,7 +356,7 @@ where
     }
 }
 
-#[cfg(all(test, not(feature = "celo"), not(target_arch = "wasm32")))]
+#[cfg(all(test, not(feature = "celo")))]
 mod tests {
     use super::*;
     use ethers_core::{

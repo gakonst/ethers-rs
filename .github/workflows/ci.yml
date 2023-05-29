@@ -99,7 +99,7 @@ jobs:
             - uses: taiki-e/install-action@cargo-hack
             - uses: Swatinem/rust-cache@v2
             - name: cargo hack
-              run: cargo hack check --feature-powerset --depth 1 --no-dev-deps
+              run: cargo hack check --feature-powerset --depth 1 --all-targets
 
     clippy:
         name: clippy

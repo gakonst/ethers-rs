@@ -16,7 +16,7 @@ mod provider;
 
 mod txpool;
 
-#[cfg(not(feature = "celo"))]
+#[cfg(all(feature = "ws", not(feature = "legacy-ws"), not(feature = "celo")))]
 mod ws_errors;
 
 /// Spawns Anvil and instantiates an Http provider.

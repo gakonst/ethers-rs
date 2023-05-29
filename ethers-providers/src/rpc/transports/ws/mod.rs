@@ -192,9 +192,9 @@ impl crate::Provider<WsClient> {
         Ok(Self::new(ws))
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     /// Connect to a WS RPC provider with authentication details and a set
     /// number of reconnection attempts
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn connect_with_auth_and_reconnects(
         url: impl AsRef<str>,
         auth: Authorization,

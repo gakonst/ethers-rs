@@ -28,7 +28,7 @@ mod eth_tests {
 
     // Without TLS this would error with "TLS Support not compiled in"
     #[tokio::test]
-    #[cfg(any(feature = "openssl", feature = "rustls"))]
+    #[cfg(all(feature = "ws", any(feature = "openssl", feature = "rustls")))]
     async fn ssl_websocket() {
         let provider = GOERLI.ws().await;
         assert_ne!(provider.get_block_number().await.unwrap(), 0.into());
