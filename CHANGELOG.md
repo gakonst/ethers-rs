@@ -10,6 +10,66 @@ which is configured [here](./cliff.toml).
 
 Please do not manually edit this file.
 
+## [2.0.6] - 2023-05-30
+
+### Bug Fixes
+
+- Remove js feature from getrandom ([#2433](https://github.com/gakonst/ethers-rs/issues/2433))
+- Make verification result an option to handle blockscout's format ([#2426](https://github.com/gakonst/ethers-rs/issues/2426))
+- Examples features ([#2427](https://github.com/gakonst/ethers-rs/issues/2427))
+- Fix re-subscription on websocket reconnect ([#2419](https://github.com/gakonst/ethers-rs/issues/2419))
+- Make typo on verify constructor arguments an alias ([#2425](https://github.com/gakonst/ethers-rs/issues/2425))
+- Error instead of panic when checking if the checksum was found ([#2421](https://github.com/gakonst/ethers-rs/issues/2421))
+- Make Arbitrum, Arbitrum Goerli, Arbitrum Nova EIP1559 comp ([#2410](https://github.com/gakonst/ethers-rs/issues/2410))
+
+### Depedencies
+
+- Bump criterion, solang-parser ([#2447](https://github.com/gakonst/ethers-rs/issues/2447))
+- Bump trezor-client to 0.1.0 ([#2428](https://github.com/gakonst/ethers-rs/issues/2428))
+- Reduce (circular) dev dependencies ([#2415](https://github.com/gakonst/ethers-rs/issues/2415))
+
+### Documentation
+
+- Update README.md and book ethers versions ([#2403](https://github.com/gakonst/ethers-rs/issues/2403))
+
+### Features
+
+- Optimism deposited transactions (2nd part) ([#2434](https://github.com/gakonst/ethers-rs/issues/2434))
+- Added Optimism deposited transaction support ([#2390](https://github.com/gakonst/ethers-rs/issues/2390))
+- Utility to detect Shanghai-enabled chains ([#2431](https://github.com/gakonst/ethers-rs/issues/2431))
+- Move `spoof` module to `ethers_core`, add stateoverrides to `GethDebugTracingCallOptions` ([#2406](https://github.com/gakonst/ethers-rs/issues/2406))
+- Add get_block_by_timestamp to ethers-etherscan ([#2349](https://github.com/gakonst/ethers-rs/issues/2349))
+- Set default EVM version to Shanghai ([#2414](https://github.com/gakonst/ethers-rs/issues/2414))
+- Add methods taking in a tungstenite config ([#2373](https://github.com/gakonst/ethers-rs/issues/2373))
+- Export geth trace pre state types ([#2393](https://github.com/gakonst/ethers-rs/issues/2393))
+- Add ZkSync testnet ([#2391](https://github.com/gakonst/ethers-rs/issues/2391))
+
+### Miscellaneous Tasks
+
+- Update CI and fix clippy ([#2446](https://github.com/gakonst/ethers-rs/issues/2446))
+- Remove Cargo.lock ([#2443](https://github.com/gakonst/ethers-rs/issues/2443))
+- Update tokio-tungstenite ([#2423](https://github.com/gakonst/ethers-rs/issues/2423))
+- Make `abigen` offline by default, fix `ethers-solc` features ([#2416](https://github.com/gakonst/ethers-rs/issues/2416))
+- Update examples script ([#2404](https://github.com/gakonst/ethers-rs/issues/2404))
+- Fix lint
+
+### Other
+
+- Fixed format_ether returning integer ([#2435](https://github.com/gakonst/ethers-rs/issues/2435))
+- Add more feature tests and checks ([#2436](https://github.com/gakonst/ethers-rs/issues/2436))
+- Added nonce helper function ([#2429](https://github.com/gakonst/ethers-rs/issues/2429))
+- Allow for Authorization header override with raw parameter ([#2432](https://github.com/gakonst/ethers-rs/issues/2432))
+- Add subscribe_full_pending_txs() ([#2424](https://github.com/gakonst/ethers-rs/issues/2424))
+- Add ccip-read middleware into readme ([#2402](https://github.com/gakonst/ethers-rs/issues/2402))
+- Added linea testnet ([#2407](https://github.com/gakonst/ethers-rs/issues/2407))
+- Misc ws fixes ([#2389](https://github.com/gakonst/ethers-rs/issues/2389))
+- Revert "temp: disable cyclical dep"
+
+### Styling
+
+- Remove the eip712 feature flag and have it enabled by default ([#2409](https://github.com/gakonst/ethers-rs/issues/2409))
+- Add mock response to test json rpc errors ([#2396](https://github.com/gakonst/ethers-rs/issues/2396))
+
 ## [2.0.4] - 2023-04-30
 
 ### Bug Fixes
