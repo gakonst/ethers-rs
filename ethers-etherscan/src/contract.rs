@@ -336,6 +336,9 @@ impl Client {
         let result = match resp.result {
             Some(result) => result,
             None => {
+                if resp.message.contains("Contract source code not verified") {
+                    return Err(EtherscanError::ContractCodeNotVerified(address))
+                }
                 return Err(EtherscanError::EmptyResult {
                     message: resp.message,
                     status: resp.status,
