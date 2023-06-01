@@ -36,7 +36,7 @@ mod util;
 pub use ethers_core::types::Address;
 
 use contract::{Context, ExpandedContract};
-use eyre::{Context as _, Result};
+use eyre::Result;
 use proc_macro2::{Ident, TokenStream};
 use quote::ToTokens;
 use std::{collections::HashMap, fmt, fs, io, path::Path};
@@ -74,6 +74,11 @@ pub struct Abigen {
     /// Whether to format the generated bindings using [`prettyplease`].
     format: bool,
 
+    /// Whether to emit [cargo build script directives][ref].
+    ///
+    /// [ref]: https://doc.rust-lang.org/cargo/reference/build-scripts.html#outputs-of-the-build-script
+    emit_cargo_directives: bool,
+
     /// Manually specified contract method aliases.
     method_aliases: HashMap<String, String>,
 
@@ -87,6 +92,21 @@ pub struct Abigen {
     derives: Vec<syn::Path>,
 }
 
+impl Default for Abigen {
+    fn default() -> Self {
+        Self {
+            abi_source: Source::default(),
+            contract_name: Ident::new("DefaultContract", proc_macro2::Span::call_site()),
+            format: true,
+            emit_cargo_directives: false,
+            method_aliases: HashMap::new(),
+            derives: Vec::new(),
+            event_aliases: HashMap::new(),
+            error_aliases: HashMap::new(),
+        }
+    }
+}
+
 impl Abigen {
     /// Creates a new builder with the given contract name and ABI source strings.
     ///
@@ -95,44 +115,37 @@ impl Abigen {
     /// If `contract_name` could not be parsed as a valid [Ident], or if `abi_source` could not be
     /// parsed as a valid [Source].
     pub fn new<T: AsRef<str>, S: AsRef<str>>(contract_name: T, abi_source: S) -> Result<Self> {
+        let abi_source: Source = abi_source.as_ref().parse()?;
         Ok(Self {
-            abi_source: abi_source.as_ref().parse()?,
+            emit_cargo_directives: abi_source.is_local() && in_build_script(),
+            abi_source,
             contract_name: syn::parse_str(contract_name.as_ref())?,
-            format: true,
-            method_aliases: Default::default(),
-            derives: Default::default(),
-            event_aliases: Default::default(),
-            error_aliases: Default::default(),
+            ..Default::default()
         })
     }
 
     /// Creates a new builder with the given contract name [Ident] and [ABI source][Source].
     pub fn new_raw(contract_name: Ident, abi_source: Source) -> Self {
         Self {
-            contract_name,
+            emit_cargo_directives: abi_source.is_local() && in_build_script(),
             abi_source,
-            format: true,
-            method_aliases: Default::default(),
-            derives: Default::default(),
-            event_aliases: Default::default(),
-            error_aliases: Default::default(),
+            contract_name,
+            ..Default::default()
         }
     }
 
     /// Attempts to load a new builder from an ABI JSON file at the specific path.
     pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
-        let path = dunce::canonicalize(path).wrap_err("File does not exist")?;
-        // this shouldn't error when the path is canonicalized
-        let file_name = path.file_name().ok_or_else(|| eyre::eyre!("Invalid path"))?;
-        let name = file_name
+        let path = path.as_ref();
+        let path = path
             .to_str()
-            .ok_or_else(|| eyre::eyre!("File name contains invalid UTF-8"))?
-            .split('.') // ignore everything after the first `.`
-            .next()
-            .unwrap(); // file_name is not empty as asserted by .file_name() already
-        let contents = fs::read_to_string(&path).wrap_err("Could not read file")?;
-
-        Self::new(name, contents)
+            .ok_or_else(|| eyre::eyre!("path is not valid UTF-8: {}", path.display()))?;
+        let source = Source::local(path)?;
+        // cannot panic because of errors above
+        let name = source.as_local().unwrap().file_name().unwrap().to_str().unwrap();
+        // name is an absolute path and not empty
+        let name = name.split('.').next().unwrap();
+        Ok(Self::new_raw(syn::parse_str(name)?, source))
     }
 
     /// Manually adds a solidity event alias to specify what the event struct and function name will
@@ -202,12 +215,33 @@ impl Abigen {
         self
     }
 
+    /// Specify whether to print [cargo build script directives][ref] if the source is a path. By
+    /// default, this is true only when executing inside of a build script.
+    ///
+    /// [ref]: https://doc.rust-lang.org/cargo/reference/build-scripts.html#outputs-of-the-build-script
+    pub fn emit_cargo_directives(mut self, emit_cargo_directives: bool) -> Self {
+        self.emit_cargo_directives = emit_cargo_directives;
+        self
+    }
+
     /// Generates the contract bindings.
     pub fn generate(self) -> Result<ContractBindings> {
         let format = self.format;
+        let emit = self.emit_cargo_directives;
+        let path = self.abi_source.as_local().cloned();
         let name = self.contract_name.to_string();
+
         let (expanded, _) = self.expand()?;
-        Ok(ContractBindings { tokens: expanded.into_tokens(), format, name })
+
+        // Don't generate `include` tokens if we're printing cargo directives.
+        let path = if let (true, Some(path)) = (emit, &path) {
+            println!("cargo:rerun-if-changed={}", path.display());
+            None
+        } else {
+            path.as_deref()
+        };
+
+        Ok(ContractBindings { tokens: expanded.into_tokens_with_path(path), format, name })
     }
 
     /// Expands the `Abigen` and returns the [`ExpandedContract`] that holds all tokens and the
@@ -291,7 +325,7 @@ impl ToTokens for ContractBindings {
     }
 
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        tokens.extend(Some(self.tokens.clone()))
+        tokens.extend(std::iter::once(self.tokens.clone()))
     }
 
     fn to_token_stream(&self) -> TokenStream {
@@ -366,6 +400,11 @@ impl ContractBindings {
         name.push_str(".rs");
         name
     }
+}
+
+/// Returns whether the current executable is a cargo build script.
+fn in_build_script() -> bool {
+    std::env::var("TARGET").is_ok()
 }
 
 #[cfg(test)]

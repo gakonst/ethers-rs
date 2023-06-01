@@ -42,6 +42,11 @@ pub struct ExpandedContract {
 impl ExpandedContract {
     /// Merges everything into a single module
     pub fn into_tokens(self) -> TokenStream {
+        self.into_tokens_with_path(None)
+    }
+
+    /// Merges everything into a single module, with an `include_bytes!` to the given path
+    pub fn into_tokens_with_path(self, path: Option<&std::path::Path>) -> TokenStream {
         let ExpandedContract {
             module,
             imports,
@@ -51,6 +56,12 @@ impl ExpandedContract {
             abi_structs,
             errors,
         } = self;
+
+        let include_tokens = path.and_then(|path| path.to_str()).map(|s| {
+            quote! {
+                const _: () = { ::core::include_bytes!(#s); };
+            }
+        });
 
         quote! {
             pub use #module::*;
@@ -67,6 +78,7 @@ impl ExpandedContract {
             )]
             pub mod #module {
                 #imports
+                #include_tokens
                 #contract
                 #errors
                 #events

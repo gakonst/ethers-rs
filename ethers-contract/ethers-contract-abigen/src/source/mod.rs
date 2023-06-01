@@ -36,6 +36,12 @@ pub enum Source {
     Http(url::Url),
 }
 
+impl Default for Source {
+    fn default() -> Self {
+        Self::String("[]".to_string())
+    }
+}
+
 impl FromStr for Source {
     type Err = Error;
 
@@ -117,6 +123,32 @@ impl Source {
         }
 
         Ok(Source::Local(resolved))
+    }
+
+    /// Returns `true` if `self` is `String`.
+    pub fn is_string(&self) -> bool {
+        matches!(self, Self::String(_))
+    }
+
+    /// Returns `self` as `String`.
+    pub fn as_string(&self) -> Option<&String> {
+        match self {
+            Self::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    /// Returns `true` if `self` is `Local`.
+    pub fn is_local(&self) -> bool {
+        matches!(self, Self::Local(_))
+    }
+
+    /// Returns `self` as `Local`.
+    pub fn as_local(&self) -> Option<&PathBuf> {
+        match self {
+            Self::Local(p) => Some(p),
+            _ => None,
+        }
     }
 
     /// Retrieves the source JSON of the artifact this will either read the JSON from the file
