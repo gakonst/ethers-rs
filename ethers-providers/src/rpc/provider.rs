@@ -763,9 +763,8 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("admin_removeTrustedPeer", [enode_url]).await
     }
 
-    async fn start_mining(&self, threads: Option<usize>) -> Result<(), Self::Error> {
-        let threads = utils::serialize(&threads);
-        self.request("miner_start", [threads]).await
+    async fn start_mining(&self) -> Result<(), Self::Error> {
+        self.request("miner_start", ()).await
     }
 
     async fn stop_mining(&self) -> Result<(), Self::Error> {
