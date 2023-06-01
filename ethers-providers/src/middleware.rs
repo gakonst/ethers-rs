@@ -673,12 +673,9 @@ pub trait Middleware: Sync + Send + Debug {
 
     // Miner namespace
 
-    /// Starts the miner with the given number of threads. If threads is nil, the number of workers
-    /// started is equal to the number of logical CPUs that are usable by this process. If mining
-    /// is already running, this method adjust the number of threads allowed to use and updates the
-    /// minimum price required by the transaction pool.
-    async fn start_mining(&self, threads: Option<usize>) -> Result<(), Self::Error> {
-        self.inner().start_mining(threads).await.map_err(MiddlewareError::from_err)
+    /// Starts the miner.
+    async fn start_mining(&self) -> Result<(), Self::Error> {
+        self.inner().start_mining().await.map_err(MiddlewareError::from_err)
     }
 
     /// Stop terminates the miner, both at the consensus engine level as well as at
