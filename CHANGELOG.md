@@ -10,6 +10,17 @@ which is configured [here](./cliff.toml).
 
 Please do not manually edit this file.
 
+## [2.0.7] - 2023-06-02
+
+### Bug Fixes
+
+- Bubble up contract not verifier error properly if using blockscout ([#2453](https://github.com/gakonst/ethers-rs/issues/2453))
+- Remove deprecated mining threads arg ([#2452](https://github.com/gakonst/ethers-rs/issues/2452))
+
+### Features
+
+- Emit cargo build script directives ([#2449](https://github.com/gakonst/ethers-rs/issues/2449))
+
 ## [2.0.6] - 2023-05-30
 
 ### Bug Fixes

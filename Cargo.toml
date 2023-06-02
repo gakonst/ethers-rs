@@ -1,5 +1,5 @@
 [workspace.package]
-version = "2.0.6"
+version = "2.0.7"
 edition = "2021"
 rust-version = "1.65"
 license = "MIT OR Apache-2.0"
@@ -67,18 +67,18 @@ resolver = "2"
 
 [workspace.dependencies]
 # workspace crates
-ethers = { version = "2.0.6", path = "ethers", default-features = false }
-ethers-addressbook = { version = "2.0.6", path = "ethers-addressbook", default-features = false }
-ethers-contract = { version = "2.0.6", path = "ethers-contract", default-features = false }
-ethers-core = { version = "2.0.6", path = "ethers-core", default-features = false }
-ethers-etherscan = { version = "2.0.6", path = "ethers-etherscan", default-features = false }
-ethers-middleware = { version = "2.0.6", path = "ethers-middleware", default-features = false }
-ethers-providers = { version = "2.0.6", path = "ethers-providers", default-features = false }
-ethers-signers = { version = "2.0.6", path = "ethers-signers", default-features = false }
-ethers-solc = { version = "2.0.6", path = "ethers-solc", default-features = false }
+ethers = { version = "2.0.7", path = "ethers", default-features = false }
+ethers-addressbook = { version = "2.0.7", path = "ethers-addressbook", default-features = false }
+ethers-contract = { version = "2.0.7", path = "ethers-contract", default-features = false }
+ethers-core = { version = "2.0.7", path = "ethers-core", default-features = false }
+ethers-etherscan = { version = "2.0.7", path = "ethers-etherscan", default-features = false }
+ethers-middleware = { version = "2.0.7", path = "ethers-middleware", default-features = false }
+ethers-providers = { version = "2.0.7", path = "ethers-providers", default-features = false }
+ethers-signers = { version = "2.0.7", path = "ethers-signers", default-features = false }
+ethers-solc = { version = "2.0.7", path = "ethers-solc", default-features = false }
 
-ethers-contract-abigen = { version = "2.0.6", path = "ethers-contract/ethers-contract-abigen", default-features = false }
-ethers-contract-derive = { version = "2.0.6", path = "ethers-contract/ethers-contract-derive", default-features = false }
+ethers-contract-abigen = { version = "2.0.7", path = "ethers-contract/ethers-contract-abigen", default-features = false }
+ethers-contract-derive = { version = "2.0.7", path = "ethers-contract/ethers-contract-derive", default-features = false }
 
 # async / async utils
 tokio = "1.28"
