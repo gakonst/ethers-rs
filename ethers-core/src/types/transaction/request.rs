@@ -78,6 +78,13 @@ pub struct TransactionRequest {
     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gateway_fee: Option<U256>,
+
+    /////////////////  Quorum-specific transaction fields /////////////////
+    /// Private for recipient
+    #[cfg(feature = "quorum")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "quorum")))]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "privateFor")]
+    pub private_for: Option<Vec<String>>,
 }
 
 impl TransactionRequest {
@@ -146,6 +153,14 @@ impl TransactionRequest {
     #[must_use]
     pub fn chain_id<T: Into<U64>>(mut self, chain_id: T) -> Self {
         self.chain_id = Some(chain_id.into());
+        self
+    }
+
+    /// Sets the `private_for` field in the transaction to the provided value
+    #[cfg(feature = "quorum")]
+    #[must_use]
+    pub fn private_for<T: Into<Vec<String>>>(mut self, private_for: T) -> Self {
+        self.private_for = Some(private_for.into());
         self
     }
 
@@ -310,6 +325,9 @@ impl From<&Transaction> for TransactionRequest {
 
             #[cfg(feature = "celo")]
             gateway_fee: tx.gateway_fee,
+
+            #[cfg(feature = "quorum")]
+            private_for: tx.private_for.clone(),
         }
     }
 }
@@ -350,7 +368,7 @@ impl TransactionRequest {
 }
 
 #[cfg(test)]
-#[cfg(not(any(feature = "celo", feature = "optimism")))]
+#[cfg(not(any(feature = "celo", feature = "optimism", feature = "quorum")))]
 mod tests {
     use super::*;
     use crate::types::{transaction::eip2718::TypedTransaction, Bytes, NameOrAddress, Signature};

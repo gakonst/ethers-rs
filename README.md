@@ -96,6 +96,15 @@ in the transactions which are fetched over JSON-RPC.
 
 **Note:** the `optimism` and `celo` features are mutually exclusive.
 
+### Quorum Support
+
+[Quorum](https://consensys.net/quorum/) support is turned on via the feature-flag `quorum`:
+
+```toml
+[dependencies]
+ethers = { version = "2.0", features = ["quorum"] }
+```
+
 ## Features
 
 -   [x] Ethereum JSON-RPC Client

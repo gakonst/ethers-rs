@@ -89,5 +89,7 @@ rustls = ["tokio-tungstenite/rustls-tls-webpki-roots", "reqwest/rustls-tls"]
 openssl = ["tokio-tungstenite/native-tls", "reqwest/native-tls"]
 dev-rpc = []
 
+quorum = ["ethers-core/quorum"]
+
 [dev-dependencies]
 tracing-test = { version = "0.2.4", features = ["no-env-filter"] }

@@ -135,6 +135,12 @@ pub struct Transaction {
     #[cfg(not(any(feature = "celo", feature = "optimism")))]
     #[serde(flatten)]
     pub other: crate::types::OtherFields,
+
+    /// Private for recipients
+    #[cfg(feature = "quorum")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "quorum")))]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "privateFor")]
+    pub private_for: Option<Vec<String>>,
 }
 
 impl Transaction {

@@ -311,6 +311,25 @@ impl TypedTransaction {
         self
     }
 
+    #[cfg(feature = "quorum")]
+    pub fn private_for(&self) -> Option<&Vec<String>> {
+        match self {
+            Legacy(inner) => inner.private_for.as_ref(),
+            Eip2930(inner) => inner.tx.private_for.as_ref(),
+            Eip1559(inner) => inner.private_for.as_ref(),
+        }
+    }
+
+    #[cfg(feature = "quorum")]
+    pub fn set_private_for(&mut self, private_for: Option<Vec<String>>) -> &mut Self {
+        match self {
+            Legacy(inner) => inner.private_for = private_for,
+            Eip2930(inner) => inner.tx.private_for = private_for,
+            Eip1559(inner) => inner.private_for = private_for,
+        };
+        self
+    }
+
     pub fn rlp_signed(&self, signature: &Signature) -> Bytes {
         let mut encoded = vec![];
         match self {
@@ -387,7 +406,7 @@ impl TypedTransaction {
             // Legacy (0x00)
             // use the original rlp
             let decoded_request = TransactionRequest::decode_signed_rlp(rlp)?;
-            return Ok((Self::Legacy(decoded_request.0), decoded_request.1))
+            return Ok((Self::Legacy(decoded_request.0), decoded_request.1));
         }
 
         let rest = rlp::Rlp::new(
@@ -397,12 +416,12 @@ impl TypedTransaction {
         if first == 0x01 {
             // EIP-2930 (0x01)
             let decoded_request = Eip2930TransactionRequest::decode_signed_rlp(&rest)?;
-            return Ok((Self::Eip2930(decoded_request.0), decoded_request.1))
+            return Ok((Self::Eip2930(decoded_request.0), decoded_request.1));
         }
         if first == 0x02 {
             // EIP-1559 (0x02)
             let decoded_request = Eip1559TransactionRequest::decode_signed_rlp(&rest)?;
-            return Ok((Self::Eip1559(decoded_request.0), decoded_request.1))
+            return Ok((Self::Eip1559(decoded_request.0), decoded_request.1));
         }
         #[cfg(feature = "optimism")]
         if first == 0x7E {
@@ -606,6 +625,9 @@ impl TypedTransaction {
                 #[cfg(feature = "celo")]
                 #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
                 gateway_fee: None,
+                #[cfg(feature = "quorum")]
+                #[cfg_attr(docsrs, doc(cfg(feature = "quorum")))]
+                private_for: None,
             },
             #[cfg(feature = "optimism")]
             OptimismDeposited(tx) => tx.tx,
@@ -645,6 +667,9 @@ impl TypedTransaction {
                     #[cfg(feature = "celo")]
                     #[cfg_attr(docsrs, doc(cfg(feature = "celo")))]
                     gateway_fee: None,
+                    #[cfg(feature = "quorum")]
+                    #[cfg_attr(docsrs, doc(cfg(feature = "quorum")))]
+                    private_for: None,
                 },
                 access_list,
             },

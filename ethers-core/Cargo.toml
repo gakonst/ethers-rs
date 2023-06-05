@@ -66,6 +66,7 @@ celo = ["legacy"] # celo support extends the transaction format with extra field
 legacy = []
 macros = ["syn", "cargo_metadata", "once_cell"]
 optimism = []
+quorum = []
 
 # Deprecated
 eip712 = []

@@ -44,6 +44,13 @@ optimism = [
     "ethers-contract/optimism",
 ]
 
+quorum = [
+    "ethers-contract/quorum",
+    "ethers-core/quorum",
+    "ethers-middleware/quorum",
+    "ethers-providers/quorum",
+]
+
 rustls = [
     "ethers-contract/rustls",
     "ethers-etherscan/rustls",

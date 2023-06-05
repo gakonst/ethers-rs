@@ -107,10 +107,21 @@ impl DsProxy {
 
         // broadcast the tx to deploy a new DsProxy.
         let ds_proxy_factory = DsProxyFactory::new(factory, client);
+
+        #[cfg(not(feature = "quorum"))]
         let tx_receipt = ds_proxy_factory
             .build(owner)
             .legacy()
             .send()
+            .await?
+            .await?
+            .ok_or(ContractError::ContractNotDeployed)?;
+
+        #[cfg(feature = "quorum")]
+        let tx_receipt = ds_proxy_factory
+            .build(owner)
+            .legacy()
+            .send(None)
             .await?
             .await?
             .ok_or(ContractError::ContractNotDeployed)?;
