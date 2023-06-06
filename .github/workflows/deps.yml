@@ -5,13 +5,11 @@ on:
         branches: [master]
     pull_request:
         branches: [master]
-    schedule: [cron: "0 0 * * *"]
-
-concurrency: deps-${{ github.head_ref || github.run_id }}
+    schedule: [cron: "00 00 * * *"]
 
 jobs:
-    deny:
-        name: deny
+    cargo-deny:
+        name: cargo deny check
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v3
