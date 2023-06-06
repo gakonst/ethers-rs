@@ -119,7 +119,7 @@ impl Signature {
     ///
     /// Recovery signature data uses 'Electrum' notation, this means the `v`
     /// value is expected to be either `27` or `28`.
-    pub fn recover_typed_data<T>(&self, payload: T) -> Result<Address, SignatureError>
+    pub fn recover_typed_data<T>(&self, payload: &T) -> Result<Address, SignatureError>
     where
         T: super::transaction::eip712::Eip712,
     {
