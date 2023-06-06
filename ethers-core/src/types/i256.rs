@@ -1673,13 +1673,13 @@ mod tests {
 
                 assert!(matches!(<$signed>::try_from(small_positive), Ok(42)));
                 assert!(matches!(<$signed>::try_from(small_negative), Ok(-42)));
-                assert!(matches!(<$signed>::try_from(large_positive), Err(_)));
-                assert!(matches!(<$signed>::try_from(large_negative), Err(_)));
+                assert!(<$signed>::try_from(large_positive).is_err());
+                assert!(<$signed>::try_from(large_negative).is_err());
 
                 assert!(matches!(<$unsigned>::try_from(small_positive), Ok(42)));
-                assert!(matches!(<$unsigned>::try_from(small_negative), Err(_)));
-                assert!(matches!(<$unsigned>::try_from(large_positive), Err(_)));
-                assert!(matches!(<$unsigned>::try_from(large_negative), Err(_)));
+                assert!(<$unsigned>::try_from(small_negative).is_err());
+                assert!(<$unsigned>::try_from(large_positive).is_err());
+                assert!(<$unsigned>::try_from(large_negative).is_err());
             };
         }
 

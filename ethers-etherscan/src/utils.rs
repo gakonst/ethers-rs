@@ -116,7 +116,7 @@ mod tests {
         assert_eq!(de.source_code.sources().len(), 1);
         assert_eq!(de.source_code.sources().get("Contract").unwrap().content, src);
         #[cfg(feature = "ethers-solc")]
-        assert!(matches!(de.source_code.settings().unwrap(), None));
+        assert!(de.source_code.settings().unwrap().is_none());
 
         // Stringified JSON
         let json = r#"{
@@ -127,7 +127,7 @@ mod tests {
         assert_eq!(de.source_code.sources().len(), 1);
         assert_eq!(de.source_code.sources().get("Contract").unwrap().content, src);
         #[cfg(feature = "ethers-solc")]
-        assert!(matches!(de.source_code.settings().unwrap(), None));
+        assert!(de.source_code.settings().unwrap().is_none());
 
         let json = r#"{"source_code": "source code text"}"#;
         let de: Test = serde_json::from_str(json).unwrap();
