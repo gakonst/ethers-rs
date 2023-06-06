@@ -268,7 +268,10 @@ impl Chain {
     ///     Chain::Mainnet.average_blocktime_hint(),
     ///     Some(Duration::from_millis(12_000)),
     /// );
-    /// assert_eq!(Chain::Optimism.average_blocktime_hint(), None);
+    /// assert_eq!(
+    ///     Chain::Optimism.average_blocktime_hint(),
+    ///     Some(Duration::from_millis(2_000)),
+    /// );
     /// ```
     pub const fn average_blocktime_hint(&self) -> Option<Duration> {
         use Chain::*;
@@ -276,6 +279,7 @@ impl Chain {
         let ms = match self {
             Mainnet => 12_000,
             Arbitrum | ArbitrumTestnet | ArbitrumGoerli | ArbitrumNova => 1_300,
+            Optimism | OptimismGoerli => 2_000,
             Polygon | PolygonMumbai => 2_100,
             Moonbeam | Moonriver => 12_500,
             BinanceSmartChain | BinanceSmartChainTestnet => 3_000,
@@ -292,9 +296,9 @@ impl Chain {
             ScrollAlphaTestnet => 3_000,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
-            MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
-            EmeraldTestnet | Boba | BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm |
-            PolygonZkEvmTestnet | Metis | LineaTestnet => return None,
+            MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba |
+            BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm | PolygonZkEvmTestnet | Metis |
+            LineaTestnet => return None,
         };
 
         Some(Duration::from_millis(ms))
