@@ -545,7 +545,7 @@ mod tests {
         };
         let mut tx = TypedTransaction::Eip1559(eip1559);
 
-        let chain_id = 10u64; // optimism does not support EIP-1559
+        let chain_id = 324u64; // zksync does not support EIP-1559
 
         // Signer middlewares now rely on a working provider which it can query the chain id from,
         // so we make sure Anvil is started with the chain id that the expected tx was signed

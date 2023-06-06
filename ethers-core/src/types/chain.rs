@@ -315,8 +315,6 @@ impl Chain {
 
         match self {
             // Known legacy chains / non EIP-1559 compliant
-            Optimism |
-            OptimismGoerli |
             OptimismKovan |
             Fantom |
             FantomTestnet |
@@ -341,6 +339,8 @@ impl Chain {
             Mainnet |
             Goerli |
             Sepolia |
+            Optimism |
+            OptimismGoerli |
             Polygon |
             PolygonMumbai |
             Avalanche |
