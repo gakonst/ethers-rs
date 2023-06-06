@@ -2,7 +2,6 @@ use crate::{
     base::{encode_function_data, AbiError, BaseContract},
     call::FunctionCall,
     event::{EthEvent, Event},
-    EthLogDecode,
 };
 use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, Tokenize},
@@ -300,7 +299,7 @@ where
     M: Middleware,
 {
     /// Returns an [`Event`](crate::builders::Event) builder with the provided filter.
-    pub fn event_with_filter<D: EthLogDecode>(&self, filter: Filter) -> Event<B, M, D> {
+    pub fn event_with_filter<D>(&self, filter: Filter) -> Event<B, M, D> {
         Event {
             provider: self.client.clone(),
             filter: filter.address(ValueOrArray::Value(self.address)),
@@ -311,11 +310,11 @@ where
 
     /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
     pub fn event<D: EthEvent>(&self) -> Event<B, M, D> {
-        self.event_with_filter(Filter::new().event(&D::abi_signature()))
+        D::new(Filter::new(), self.client.clone())
     }
 
     /// Returns an [`Event`](crate::builders::Event) builder with the provided name.
-    pub fn event_for_name<D: EthLogDecode>(&self, name: &str) -> Result<Event<B, M, D>, Error> {
+    pub fn event_for_name<D>(&self, name: &str) -> Result<Event<B, M, D>, Error> {
         // get the event's full name
         let event = self.base_contract.abi.event(name)?;
         Ok(self.event_with_filter(Filter::new().event(&event.abi_signature())))
