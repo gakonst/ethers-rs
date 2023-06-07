@@ -9,7 +9,7 @@ use syn::{
     braced,
     ext::IdentExt,
     parenthesized,
-    parse::{Error, Parse, ParseStream, Result},
+    parse::{Error, Nothing, Parse, ParseStream, Result},
     punctuated::Punctuated,
     Ident, LitStr, Path, Token,
 };
@@ -167,15 +167,18 @@ impl Parse for Method {
         // function params
         let content;
         parenthesized!(content in input);
-        let params = content.parse_terminated(Ident::parse, Token![,])?;
+        let params = content.parse_terminated(IdentBracket::parse, Token![,])?;
         let last_i = params.len().saturating_sub(1);
 
         signature.push('(');
         for (i, param) in params.into_iter().enumerate() {
-            let s = param.to_string();
+            let mut s = param.ident.to_string();
+            if param.bracket.is_some() {
+                s.push_str("[]");
+            }
             // validate
             ethers_core::abi::ethabi::param_type::Reader::read(&s)
-                .map_err(|e| Error::new(param.span(), e))?;
+                .map_err(|e| Error::new(param.ident.span(), e))?;
             signature.push_str(&s);
             if i < last_i {
                 signature.push(',');
@@ -188,6 +191,23 @@ impl Parse for Method {
         let alias = input.parse()?;
 
         Ok(Method { signature, alias })
+    }
+}
+
+pub struct IdentBracket {
+    pub ident: syn::Ident,
+    pub bracket: Option<(syn::token::Bracket, Nothing)>,
+}
+
+impl Parse for IdentBracket {
+    fn parse(input: ParseStream) -> syn::parse::Result<Self> {
+        let ident = input.parse()?;
+        let bracket = move || -> std::result::Result<_, _> {
+            let content;
+            Ok((syn::bracketed!(content in input), content.parse()?))
+        };
+
+        Ok(IdentBracket { ident, bracket: bracket().ok() })
     }
 }
 
