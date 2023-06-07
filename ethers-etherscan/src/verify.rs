@@ -121,7 +121,7 @@ pub struct VerifyProxyContract {
     /// Proxy contract's address
     pub address: Address,
     /// Implementation contract proxy points to - must be verified before call.
-    #[serde(rename = "expectedimplementation", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "expectedimplementation", skip_serializing_if = "Option::is_none")]
     pub expected_impl: Option<Address>,
 }
 
