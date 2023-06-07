@@ -24,14 +24,19 @@ pub struct VerifyContract {
     /// applicable when codeformat=solidity-single-file
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runs: Option<String>,
-    /// NOTE: the alias with a typo is due to an old typo in the etherscan API
-    /// `constructorArguements`, but blockscout requires that it's spelled correctly.
-    #[serde(
-        rename = "constructorArguments",
-        alias = "constructorArguements",
-        skip_serializing_if = "Option::is_none"
-    )]
+    /// The constructor arguments for the contract, if any.
+    /// NOTE: This is obviously mispelled. The reason for this is that Etherscan has had
+    /// this mispelling on their API for quite a long time, and changing it would break
+    /// verification with arguments.
+    /// For instances (e.g some blockscout instances) that might support the proper field
+    /// and not the mispelling, the private field `blockscout_constructor_arguments` is
+    /// populated with the exact arguments passed to this field as well.
+    #[serde(rename = "constructorArguements", skip_serializing_if = "Option::is_none")]
     pub constructor_arguments: Option<String>,
+    /// Properly spelled constructor arguments. This is needed as some blockscout instances
+    /// can identify the correct spelling instead of the typo version above.
+    #[serde(rename = "constructorArguments", skip_serializing_if = "Option::is_none")]
+    blockscout_constructor_arguments: Option<String>,
     /// applicable when codeformat=solidity-single-file
     #[serde(rename = "evmversion", skip_serializing_if = "Option::is_none")]
     pub evm_version: Option<String>,
@@ -55,6 +60,7 @@ impl VerifyContract {
             optimization_used: None,
             runs: None,
             constructor_arguments: None,
+            blockscout_constructor_arguments: None,
             evm_version: None,
             other: Default::default(),
         }
@@ -104,13 +110,15 @@ impl VerifyContract {
         mut self,
         constructor_arguments: Option<impl Into<String>>,
     ) -> Self {
-        self.constructor_arguments = constructor_arguments.map(|s| {
+        let constructor_args = constructor_arguments.map(|s| {
             s.into()
                 .trim()
                 // TODO is this correct?
                 .trim_start_matches("0x")
                 .to_string()
         });
+        self.constructor_arguments = constructor_args.clone();
+        self.blockscout_constructor_arguments = constructor_args;
         self
     }
 }
