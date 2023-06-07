@@ -25,11 +25,11 @@ pub struct VerifyContract {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runs: Option<String>,
     /// The constructor arguments for the contract, if any.
-    /// NOTE: This is obviously mispelled. The reason for this is that Etherscan has had
-    /// this mispelling on their API for quite a long time, and changing it would break
+    /// NOTE: This is obviously misspelled. The reason for this is that Etherscan has had
+    /// this misspelling on their API for quite a long time, and changing it would break
     /// verification with arguments.
     /// For instances (e.g some blockscout instances) that might support the proper field
-    /// and not the mispelling, the private field `blockscout_constructor_arguments` is
+    /// and not the misspelling, the private field `blockscout_constructor_arguments` is
     /// populated with the exact arguments passed to this field as well.
     #[serde(rename = "constructorArguements", skip_serializing_if = "Option::is_none")]
     pub constructor_arguments: Option<String>,
