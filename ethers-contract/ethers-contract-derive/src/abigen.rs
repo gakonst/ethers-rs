@@ -3,7 +3,7 @@
 
 use crate::spanned::Spanned;
 use ethers_contract_abigen::{multi::MultiExpansion, Abigen};
-use proc_macro2::{TokenStream, TokenTree};
+use proc_macro2::TokenStream;
 use std::collections::HashSet;
 use syn::{
     braced,
@@ -11,7 +11,7 @@ use syn::{
     parenthesized,
     parse::{Error, Parse, ParseStream, Result},
     punctuated::Punctuated,
-    Ident, LitStr, Path, Token,
+    Ident, LitInt, LitStr, Path, Token,
 };
 
 /// A series of `ContractArgs` separated by `;`
@@ -175,8 +175,8 @@ impl Parse for Method {
             let mut s = param.ident.to_string();
             if let Some((_, inside_brackets)) = param.bracket {
                 s.push_str("[");
-                if let Some(TokenTree::Literal(lit)) = inside_brackets.into_iter().next() {
-                    s.push_str(&lit.to_string());
+                if let Some(lit) = inside_brackets {
+                    s.push_str(lit.base10_digits());
                 }
                 s.push_str("]");
             }
@@ -200,7 +200,7 @@ impl Parse for Method {
 
 pub struct IdentBracket {
     pub ident: syn::Ident,
-    pub bracket: Option<(syn::token::Bracket, TokenStream)>,
+    pub bracket: Option<(syn::token::Bracket, Option<LitInt>)>,
 }
 
 impl Parse for IdentBracket {
