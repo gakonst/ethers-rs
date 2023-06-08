@@ -25,16 +25,18 @@ pub struct VerifyContract {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub runs: Option<String>,
     /// The constructor arguments for the contract, if any.
-    /// NOTE: This is obviously misspelled. The reason for this is that Etherscan has had
-    /// this misspelling on their API for quite a long time, and changing it would break
-    /// verification with arguments.
-    /// For instances (e.g some blockscout instances) that might support the proper field
-    /// and not the misspelling, the private field `blockscout_constructor_arguments` is
-    /// populated with the exact arguments passed to this field as well.
+    ///
+    /// NOTE: This is renamed as the misspelled `ethers-etherscan/src/verify.rs`. The reason for
+    /// this is that Etherscan has had this misspelling on their API for quite a long time, and
+    /// changing it would break verification with arguments.
+    ///
+    /// For instances (e.g. blockscout) that might support the proper spelling, the field
+    /// `blockscout_constructor_arguments` is populated with the exact arguments passed to this
+    /// field as well.
     #[serde(rename = "constructorArguements", skip_serializing_if = "Option::is_none")]
     pub constructor_arguments: Option<String>,
     /// Properly spelled constructor arguments. This is needed as some blockscout instances
-    /// can identify the correct spelling instead of the typo version above.
+    /// can identify the correct spelling instead of the misspelled version above.
     #[serde(rename = "constructorArguments", skip_serializing_if = "Option::is_none")]
     pub blockscout_constructor_arguments: Option<String>,
     /// applicable when codeformat=solidity-single-file
