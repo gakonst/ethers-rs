@@ -25,6 +25,7 @@ all-features = true
 [dependencies]
 ethers-providers.workspace = true
 ethers-core.workspace = true
+ethers-signers.workspace = true
 
 serde.workspace = true
 serde_json.workspace = true
