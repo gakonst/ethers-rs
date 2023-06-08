@@ -36,7 +36,7 @@ pub struct VerifyContract {
     /// Properly spelled constructor arguments. This is needed as some blockscout instances
     /// can identify the correct spelling instead of the typo version above.
     #[serde(rename = "constructorArguments", skip_serializing_if = "Option::is_none")]
-    blockscout_constructor_arguments: Option<String>,
+    pub blockscout_constructor_arguments: Option<String>,
     /// applicable when codeformat=solidity-single-file
     #[serde(rename = "evmversion", skip_serializing_if = "Option::is_none")]
     pub evm_version: Option<String>,
