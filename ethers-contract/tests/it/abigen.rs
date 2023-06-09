@@ -3,11 +3,13 @@
 use ethers_contract::{abigen, ContractError, EthCall, EthError, EthEvent};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Address, Tokenizable},
+    rand::thread_rng,
     types::{Bytes, U256},
     utils::Anvil,
 };
 use ethers_providers::{MockProvider, Provider};
-use std::{fmt::Debug, hash::Hash, sync::Arc};
+use ethers_signers::{LocalWallet, Signer};
+use std::{fmt::Debug, hash::Hash, str::FromStr, sync::Arc};
 
 const fn assert_codec<T: AbiDecode + AbiEncode>() {}
 const fn assert_tokenizeable<T: Tokenizable>() {}
@@ -800,4 +802,66 @@ fn can_generate_hardhat_console() {
 
     fn exists<T>() {}
     exists::<HardhatConsoleCalls>();
+}
+
+#[test]
+fn abigen_overloaded_methods() {
+    let alice = LocalWallet::new(&mut thread_rng());
+
+    abigen!(
+        OverloadedFuncs,
+        r"[
+        function myfunc(address,uint256) external returns (bool)
+        function myfunc(address,address) external returns (bool)
+        function myfunc(address,address[]) external returns (bool)
+        function myfunc(address[2],address,address[]) external returns (bool)
+        ]",
+        methods {
+            myfunc(address,uint256) as myfunc1;
+            myfunc(address,address) as myfunc2;
+            myfunc(address,address[]) as myfunc3;
+            myfunc(address[2],address,address[]) as myfunc4;
+        },
+    );
+    let f1 = Myfunc1Call(alice.address(), U256::from(10));
+    let _ = Myfunc2Call(alice.address(), alice.address());
+    let _ = Myfunc3Call(alice.address(), vec![alice.address()]);
+    let f4 = Myfunc4Call(
+        [alice.address(), alice.address()],
+        alice.address(),
+        vec![alice.address(), alice.address(), alice.address(), alice.address()],
+    );
+    assert_eq!(f1.1, U256::from(10));
+    assert_eq!(f4.0, [alice.address(), alice.address()]);
+    assert_eq!(f4.1, alice.address());
+}
+
+#[test]
+fn abigen_overloaded_methods2() {
+    abigen!(OverloadedFuncs, "./tests/solidity-contracts/OverloadedFuncs.json",
+        methods {
+            execute(bytes, bytes[]) as execute_base;
+            execute(bytes, bytes[], uint256) as execute_uin256;
+            execute(bytes, bytes[3], uint256, bytes[]) as execute_fixed_arr;
+        },
+    );
+
+    let b1 = Bytes::from_str("0xabcd").unwrap();
+    let b2 = Bytes::from_str("0x12").unwrap();
+
+    let e1 = ExecuteBaseCall(b1.clone(), vec![b1.clone(), b2.clone()]);
+    let e2 = ExecuteUin256Call(b1.clone(), vec![b1.clone(), b2.clone()], U256::from(123));
+    let e3 = ExecuteFixedArrCall(
+        b1.clone(),
+        [b1.clone(), b2.clone(), b1.clone()],
+        U256::from(50),
+        vec![b1.clone(), b2.clone()],
+    );
+
+    let e1_encoded: Bytes = e1.encode().into();
+
+    assert_eq!(e2.0, b1.clone());
+    assert_eq!(e3.0, b1.clone());
+    assert_eq!(e3.3, vec![b1.clone(), b2.clone()]);
+    assert_eq!(e1_encoded.to_string(), "0x24856bc3000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000002abcd0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000002abcd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011200000000000000000000000000000000000000000000000000000000000000");
 }
