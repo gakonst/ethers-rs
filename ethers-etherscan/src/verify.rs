@@ -125,6 +125,16 @@ impl VerifyContract {
     }
 }
 
+/// Arguments for verifying a proxy contract
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerifyProxyContract {
+    /// Proxy contract's address
+    pub address: Address,
+    /// Implementation contract proxy points to - must be verified before call.
+    #[serde(default, rename = "expectedimplementation", skip_serializing_if = "Option::is_none")]
+    pub expected_impl: Option<Address>,
+}
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CodeFormat {
     #[serde(rename = "solidity-single-file")]
@@ -163,6 +173,29 @@ impl Client {
         let body = self.create_query(
             "contract",
             "checkverifystatus",
+            HashMap::from([("guid", guid.as_ref())]),
+        );
+        self.post_form(&body).await
+    }
+
+    /// Submit Proxy Contract for Verification
+    pub async fn submit_proxy_contract_verification(
+        &self,
+        contract: &VerifyProxyContract,
+    ) -> Result<Response<String>> {
+        let body = self.create_query("contract", "verifyproxycontract", contract);
+        self.post_form(&body).await
+    }
+
+    /// Check Proxy Contract Verification Status with receipt received from
+    /// `[Self::submit_proxy_contract_verification]`
+    pub async fn check_proxy_contract_verification_status(
+        &self,
+        guid: impl AsRef<str>,
+    ) -> Result<Response<String>> {
+        let body = self.create_query(
+            "contract",
+            "checkproxyverification",
             HashMap::from([("guid", guid.as_ref())]),
         );
         self.post_form(&body).await
