@@ -174,11 +174,11 @@ impl Parse for Method {
         for (i, param) in params.into_iter().enumerate() {
             let mut s = param.ident.to_string();
             if let Some((_, inside_brackets)) = param.bracket {
-                s.push_str("[");
+                s.push('[');
                 if let Some(lit) = inside_brackets {
                     s.push_str(lit.base10_digits());
                 }
-                s.push_str("]");
+                s.push(']');
             }
             // validate
             ethers_core::abi::ethabi::param_type::Reader::read(&s)
