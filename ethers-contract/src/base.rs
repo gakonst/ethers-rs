@@ -197,7 +197,11 @@ impl BaseContract {
     }
 
     fn get_fn_from_input(&self, input: &[u8]) -> Result<&Function, AbiError> {
-        let sig: [u8; 4] = input[0..4].try_into().map_err(|_e| AbiError::WrongSelector)?;
+        let sig: [u8; 4] = input
+            .get(0..4)
+            .ok_or(AbiError::WrongSelector)?
+            .try_into()
+            .map_err(|_e| AbiError::WrongSelector)?;
         self.get_from_signature(sig)
     }
 
