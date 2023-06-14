@@ -390,6 +390,18 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().get_transaction(transaction_hash).await.map_err(MiddlewareError::from_err)
     }
 
+    /// Gets the transaction with block and index
+    async fn get_transaction_by_block_and_index<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+        idx: U64,
+    ) -> Result<Option<Transaction>, ProviderError> {
+        self.inner()
+            .get_transaction_by_block_and_index(block_hash_or_number, idx)
+            .await
+            .map_err(MiddlewareError::from_err)
+    }
+
     /// Gets the transaction receipt with `transaction_hash`
     async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
         &self,

@@ -392,6 +392,25 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getTransactionByHash", [hash]).await
     }
 
+    async fn get_transaction_by_block_and_index<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+        idx: U64,
+    ) -> Result<Option<Transaction>, ProviderError> {
+        let blk_id = block_hash_or_number.into();
+        let idx = ethers_core::utils::serialize(&idx);
+        Ok(match blk_id {
+            BlockId::Hash(hash) => {
+                let hash = ethers_core::utils::serialize(&hash);
+                self.request("eth_getTransactionByBlockHashAndIndex", [hash, idx]).await?
+            }
+            BlockId::Number(num) => {
+                let num = ethers_core::utils::serialize(&num);
+                self.request("eth_getTransactionByBlockNumberAndIndex", [num, idx]).await?
+            }
+        })
+    }
+
     async fn get_transaction_receipt<T: Send + Sync + Into<TxHash>>(
         &self,
         transaction_hash: T,
