@@ -1,7 +1,7 @@
-use super::{unused_ports, CliqueConfig, Genesis};
+use super::{CliqueConfig, Genesis};
 use crate::{
     types::{Bytes, H256},
-    utils::secret_key_to_address,
+    utils::{secret_key_to_address, unused_port},
 };
 use k256::ecdsa::SigningKey;
 use std::{
@@ -360,10 +360,7 @@ impl Geth {
         // geth uses stderr for its logs
         cmd.stderr(Stdio::piped());
 
-        let mut unused_ports = unused_ports::<3>().into_iter();
-        let mut unused_port = || unused_ports.next().unwrap();
-
-        let port = self.port.unwrap_or_else(&mut unused_port);
+        let port = self.port.unwrap_or_else(unused_port);
         let port_s = port.to_string();
 
         // Open the HTTP API
