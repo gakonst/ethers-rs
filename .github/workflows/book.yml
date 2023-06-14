@@ -16,6 +16,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v3
         with:
@@ -50,6 +51,7 @@ jobs:
     # Only deploy if a push to master
     if: github.ref_name == 'master' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [build]
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
