@@ -591,24 +591,18 @@ fn base_fee_surged(base_fee_per_gas: U256) -> U256 {
     }
 }
 
-/// A bit of hack to find unused TCP ports.
+/// A bit of hack to find an unused TCP port.
 ///
 /// Does not guarantee that the given port is unused after the function exists, just that it was
 /// unused before the function started (i.e., it does not reserve a port).
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn unused_ports<const N: usize>() -> [u16; N] {
-    use std::net::{SocketAddr, TcpListener};
+pub(crate) fn unused_port() -> u16 {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0")
+        .expect("Failed to create TCP listener to find unused port");
 
-    std::array::from_fn(|_| {
-        let addr = SocketAddr::from(([127, 0, 0, 1], 0));
-        TcpListener::bind(addr).expect("Failed to create TCP listener to find unused port")
-    })
-    .map(|listener| {
-        listener
-            .local_addr()
-            .expect("Failed to read TCP listener local_addr to find unused port")
-            .port()
-    })
+    let local_addr =
+        listener.local_addr().expect("Failed to read TCP listener local_addr to find unused port");
+    local_addr.port()
 }
 
 #[cfg(test)]
