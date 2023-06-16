@@ -96,10 +96,15 @@ impl GasOracle for Polygon {
 
 impl Polygon {
     pub fn new(chain: Chain) -> Result<Self> {
-        Self::with_client(
-            Client::builder().user_agent("Mozilla/5.0 Chrome/114.0.0.0 Safari/537.36").build()?,
-            chain,
-        )
+        #[cfg(not(target_arch = "wasm32"))]
+        static APP_USER_AGENT: &str =
+            concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
+
+        let builder = Client::builder();
+        #[cfg(not(target_arch = "wasm32"))]
+        let builder = builder.user_agent(APP_USER_AGENT);
+
+        Self::with_client(builder.build()?, chain)
     }
 
     pub fn with_client(client: Client, chain: Chain) -> Result<Self> {
