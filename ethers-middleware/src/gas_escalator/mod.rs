@@ -36,8 +36,8 @@ pub trait GasEscalator: Send + Sync + std::fmt::Debug {
     fn get_gas_price(&self, initial_price: U256, time_elapsed: u64) -> U256;
 }
 
-#[derive(Error, Debug)]
 /// Error thrown when the GasEscalator interacts with the blockchain
+#[derive(Debug, Error)]
 pub enum GasEscalatorError<M: Middleware> {
     #[error("{0}")]
     /// Thrown when an internal middleware errors
@@ -63,8 +63,8 @@ impl<M: Middleware> MiddlewareError for GasEscalatorError<M> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
 /// The frequency at which transactions will be bumped
+#[derive(Debug, Clone, Copy)]
 pub enum Frequency {
     /// On a per block basis using the eth_newBlock filter
     PerBlock,
@@ -81,7 +81,6 @@ pub(crate) struct GasEscalatorMiddlewareInternal<M> {
     _background: oneshot::Sender<()>,
 }
 
-#[derive(Debug, Clone)]
 /// A Gas escalator allows bumping transactions' gas price to avoid getting them
 /// stuck in the memory pool.
 ///
@@ -137,6 +136,7 @@ pub(crate) struct GasEscalatorMiddlewareInternal<M> {
 /// let gas_oracle = GasNow::new().category(GasCategory::SafeLow);
 /// let provider = GasOracleMiddleware::new(provider, gas_oracle);
 /// ```
+#[derive(Debug, Clone)]
 pub struct GasEscalatorMiddleware<M> {
     pub(crate) inner: Arc<GasEscalatorMiddlewareInternal<M>>,
 }
@@ -229,6 +229,7 @@ where
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug)]
 pub struct EscalationTask<M, E> {
     inner: M,
@@ -238,6 +239,7 @@ pub struct EscalationTask<M, E> {
     shutdown: oneshot::Receiver<()>,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<M, E> EscalationTask<M, E> {
     pub fn new(
         inner: M,
