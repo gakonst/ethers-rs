@@ -32,6 +32,7 @@ pub use source::Explorer;
 pub use source::Source;
 
 mod util;
+mod verbatim;
 
 pub use ethers_core::types::Address;
 
