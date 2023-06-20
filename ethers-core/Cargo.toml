@@ -45,7 +45,7 @@ bytes = { workspace = true, features = ["serde"] }
 hex.workspace = true
 once_cell = { workspace = true, optional = true }
 unicode-xid = "0.2"
-strum = { version = "0.24", features = ["derive"] }
+strum = { version = "0.25", features = ["derive"] }
 num_enum = "0.6"
 
 # macros feature enabled dependencies
