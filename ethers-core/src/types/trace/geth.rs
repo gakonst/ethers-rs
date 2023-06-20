@@ -212,9 +212,9 @@ pub struct GethDebugTracingCallOptions {
     pub block_overrides: Option<BlockOverrides>,
 }
 
-/// Bindings for additional `debug_traceTransaction` options
+/// Additional BlockOverrides Options
 ///
-/// See <https://geth.ethereum.org/docs/rpc/ns-debug#debug_tracetransaction>
+/// See <https://geth.ethereum.org/docs/rpc/ns-debug#debug_tracecall>
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct BlockOverrides {
