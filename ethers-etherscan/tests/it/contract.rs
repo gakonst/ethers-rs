@@ -92,8 +92,7 @@ async fn can_fetch_contract_source_tree_for_multi_entry_contract() {
 
         assert_eq!(meta.items.len(), 1);
         assert!(matches!(meta.items[0].source_code, SourceCodeMetadata::Metadata { .. }));
-        let source_tree = meta.source_tree();
-        assert_eq!(source_tree.entries.len(), 15);
+        assert_eq!(meta.source_tree().entries.len(), 15);
     })
     .await
 }
@@ -110,6 +109,7 @@ async fn can_fetch_contract_source_tree_for_plain_source_code_mapping() {
 
         assert_eq!(meta.items.len(), 1);
         assert!(matches!(meta.items[0].source_code, SourceCodeMetadata::Sources(_)));
+        assert_eq!(meta.source_tree().entries.len(), 6);
     })
     .await
 }

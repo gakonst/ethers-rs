@@ -36,6 +36,9 @@ impl<T: Into<String>> From<T> for SourceCodeEntry {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum SourceCodeMetadata {
+    /// Contains just mapped source code.
+    // NOTE: this must come before `Metadata`
+    Sources(HashMap<String, SourceCodeEntry>),
     /// Contains metadata and path mapped source code.
     Metadata {
         /// Programming language of the sources.
@@ -48,8 +51,6 @@ pub enum SourceCodeMetadata {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         settings: Option<serde_json::Value>,
     },
-    /// Contains just mapped source code.
-    Sources(HashMap<String, SourceCodeEntry>),
     /// Contains only the source code.
     SourceCode(String),
 }
@@ -59,10 +60,10 @@ impl SourceCodeMetadata {
         match self {
             Self::Metadata { sources, .. } => {
                 sources.values().map(|s| s.content.clone()).collect::<Vec<_>>().join("\n")
-            },
+            }
             Self::Sources(sources) => {
                 sources.values().map(|s| s.content.clone()).collect::<Vec<_>>().join("\n")
-            },
+            }
             Self::SourceCode(s) => s.clone(),
         }
     }
@@ -70,7 +71,7 @@ impl SourceCodeMetadata {
     pub fn language(&self) -> Option<SourceCodeLanguage> {
         match self {
             Self::Metadata { language, .. } => language.clone(),
-            Self::Sources(_)=> None,
+            Self::Sources(_) => None,
             Self::SourceCode(_) => None,
         }
     }
