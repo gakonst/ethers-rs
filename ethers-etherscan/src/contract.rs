@@ -48,6 +48,8 @@ pub enum SourceCodeMetadata {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         settings: Option<serde_json::Value>,
     },
+    /// Contains just mapped source code.
+    Sources(HashMap<String, SourceCodeEntry>),
     /// Contains only the source code.
     SourceCode(String),
 }
@@ -57,7 +59,10 @@ impl SourceCodeMetadata {
         match self {
             Self::Metadata { sources, .. } => {
                 sources.values().map(|s| s.content.clone()).collect::<Vec<_>>().join("\n")
-            }
+            },
+            Self::Sources(sources) => {
+                sources.values().map(|s| s.content.clone()).collect::<Vec<_>>().join("\n")
+            },
             Self::SourceCode(s) => s.clone(),
         }
     }
@@ -65,6 +70,7 @@ impl SourceCodeMetadata {
     pub fn language(&self) -> Option<SourceCodeLanguage> {
         match self {
             Self::Metadata { language, .. } => language.clone(),
+            Self::Sources(_)=> None,
             Self::SourceCode(_) => None,
         }
     }
@@ -72,6 +78,7 @@ impl SourceCodeMetadata {
     pub fn sources(&self) -> HashMap<String, SourceCodeEntry> {
         match self {
             Self::Metadata { sources, .. } => sources.clone(),
+            Self::Sources(sources) => sources.clone(),
             Self::SourceCode(s) => HashMap::from([("Contract".into(), s.into())]),
         }
     }
@@ -89,6 +96,7 @@ impl SourceCodeMetadata {
                 }
                 None => Ok(None),
             },
+            Self::Sources(_) => Ok(None),
             Self::SourceCode(_) => Ok(None),
         }
     }
@@ -97,6 +105,7 @@ impl SourceCodeMetadata {
     pub fn settings(&self) -> Option<&serde_json::Value> {
         match self {
             Self::Metadata { settings, .. } => settings.as_ref(),
+            Self::Sources(_) => None,
             Self::SourceCode(_) => None,
         }
     }
