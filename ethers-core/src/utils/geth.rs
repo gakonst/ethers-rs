@@ -5,8 +5,10 @@ use crate::{
 };
 use k256::ecdsa::SigningKey;
 use std::{
+    borrow::Cow,
     fs::{create_dir, File},
     io::{BufRead, BufReader},
+    net::SocketAddr,
     path::PathBuf,
     process::{Child, ChildStderr, Command, Stdio},
     time::{Duration, Instant},
@@ -253,6 +255,9 @@ impl Geth {
     }
 
     /// Sets the port which will be used when the `geth-cli` instance is launched.
+    ///
+    /// If port is 0 then the OS will choose a random port.
+    /// [GethInstance::port] will return the port that was chosen.
     pub fn port<T: Into<u16>>(mut self, port: T) -> Self {
         self.port = Some(port.into());
         self
@@ -360,7 +365,8 @@ impl Geth {
         // geth uses stderr for its logs
         cmd.stderr(Stdio::piped());
 
-        let port = self.port.unwrap_or_else(unused_port);
+        // If no port provided, let the os chose it for us
+        let mut port = self.port.unwrap_or(0);
         let port_s = port.to_string();
 
         // Open the HTTP API
@@ -472,7 +478,7 @@ impl Geth {
         }
 
         // Dev mode with custom block time
-        let p2p_port = match self.mode {
+        let mut p2p_port = match self.mode {
             GethMode::Dev(DevOptions { block_time }) => {
                 cmd.arg("--dev");
                 if let Some(block_time) = block_time {
@@ -481,7 +487,8 @@ impl Geth {
                 None
             }
             GethMode::NonDev(PrivateNetOptions { p2p_port, discovery }) => {
-                let port = p2p_port.unwrap_or_else(unused_port);
+                // if no port provided, let the os chose it for us
+                let port = p2p_port.unwrap_or(0);
                 cmd.arg("--port").arg(port.to_string());
 
                 // disable discovery if the flag is set
@@ -527,12 +534,33 @@ impl Geth {
                 p2p_started = true;
             }
 
+            if !matches!(self.mode, GethMode::Dev(_)) {
+                // try to find the p2p port, if not in dev mode
+                if line.contains("New local node record") {
+                    if let Some(port) = extract_value("tcp=", &line) {
+                        p2p_port = port.parse::<u16>().ok();
+                    }
+                }
+            }
+
             // geth 1.9.23 uses "server started" while 1.9.18 uses "endpoint opened"
             // the unauthenticated api is used for regular non-engine API requests
             if line.contains("HTTP endpoint opened") ||
                 (line.contains("HTTP server started") && !line.contains("auth=true"))
             {
+                // Extracts the address from the output
+                if let Some(addr) = extract_endpoint(&line) {
+                    // use the actual http port
+                    port = addr.port();
+                }
+
                 http_started = true;
+            }
+
+            // Encountered an error such as Fatal: Error starting protocol stack: listen tcp
+            // 127.0.0.1:8545: bind: address already in use
+            if line.contains("Fatal:") {
+                panic!("{line}");
             }
 
             if p2p_started && http_started {
@@ -554,11 +582,43 @@ impl Geth {
     }
 }
 
+// extracts the value for the given key and line
+fn extract_value<'a>(key: &str, line: &'a str) -> Option<&'a str> {
+    let mut key = Cow::from(key);
+    if !key.ends_with('=') {
+        key = Cow::from(format!("{}=", key));
+    }
+    line.find(key.as_ref()).map(|pos| {
+        let start = pos + key.len();
+        let end = line[start..].find(' ').map(|i| start + i).unwrap_or(line.len());
+        line[start..end].trim()
+    })
+}
+
+// extracts the value for the given key and line
+fn extract_endpoint(line: &str) -> Option<SocketAddr> {
+    let val = extract_value("endpoint=", line)?;
+    val.parse::<SocketAddr>().ok()
+}
+
 // These tests should use a different datadir for each `Geth` spawned
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::path::Path;
+
+    #[test]
+    fn test_extract_address() {
+        let line = "INFO [07-01|13:20:42.774] HTTP server started                      endpoint=127.0.0.1:8545 auth=false prefix= cors= vhosts=localhost";
+        assert_eq!(extract_endpoint(line), Some(SocketAddr::from(([127, 0, 0, 1], 8545))));
+    }
+
+    #[test]
+    fn port_0() {
+        run_with_tempdir(|_| {
+            let _geth = Geth::new().disable_discovery().port(0u16).spawn();
+        });
+    }
 
     /// Allows running tests with a temporary directory, which is cleaned up after the function is
     /// called.
@@ -599,7 +659,7 @@ mod tests {
             // dev mode should not have a p2p port, and dev should be the default
             let geth = Geth::new().data_dir(temp_dir_path).spawn();
             let p2p_port = geth.p2p_port();
-            assert!(p2p_port.is_none());
+            assert!(p2p_port.is_none(), "{p2p_port:?}");
         })
     }
 
