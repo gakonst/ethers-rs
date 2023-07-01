@@ -58,7 +58,7 @@ pub fn deserialize_source_code<'de, D: Deserializer<'de>>(
                 if s.starts_with("{{") && s.ends_with("}}") {
                     s = &s[1..s.len() - 1];
                 }
-                serde_json::from_str(&s).map_err(serde::de::Error::custom)
+                serde_json::from_str(s).map_err(serde::de::Error::custom)
             } else {
                 Ok(SourceCodeMetadata::SourceCode(s))
             }
