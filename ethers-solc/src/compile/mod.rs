@@ -140,7 +140,8 @@ impl fmt::Display for SolcVersion {
 ///
 /// By default the solc path is configured as follows, with descending priority:
 ///   1. `SOLC_PATH` environment variable
-///   2. [svm](https://github.com/roynalnaruto/svm-rs)'s  `global_version` (set via `svm use <version>`), stored at `<svm_home>/.global_version`
+///   2. [svm](https://github.com/roynalnaruto/svm-rs)'s  `global_version` (set via `svm use
+///      <version>`), stored at `<svm_home>/.global_version`
 ///   3. `solc` otherwise
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Solc {
