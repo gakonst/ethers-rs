@@ -33,17 +33,13 @@ pub fn deserialize_address_opt<'de, D: Deserializer<'de>>(
     }
 }
 
-/// Deserializes as JSON:
+/// Deserializes as JSON either:
 ///
-/// Object: `{ "SourceCode": { language: "Solidity", .. }, ..}`
-///
-/// or
-///
-/// Stringified JSON: `{ "SourceCode": "{{\r\n  \"language\": \"Solidity\", ..}}", ..}`
-///
-/// or
-///
-/// Normal source code: `{ "SourceCode": "// SPDX-License-Identifier: ...", .. }`
+/// - Object: `{ "SourceCode": { language: "Solidity", .. }, ..}`
+/// - Stringified JSON object:
+///     - `{ "SourceCode": "{{\r\n  \"language\": \"Solidity\", ..}}", ..}`
+///     - `{ "SourceCode": "{ \"file.sol\": \"...\" }", ... }`
+/// - Normal source code string: `{ "SourceCode": "// SPDX-License-Identifier: ...", .. }`
 pub fn deserialize_source_code<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> std::result::Result<SourceCodeMetadata, D::Error> {
@@ -56,9 +52,13 @@ pub fn deserialize_source_code<'de, D: Deserializer<'de>>(
     let s = SourceCode::deserialize(deserializer)?;
     match s {
         SourceCode::String(s) => {
-            if s.starts_with("{{") && s.ends_with("}}") {
-                let s = &s[1..s.len() - 1];
-                serde_json::from_str(s).map_err(serde::de::Error::custom)
+            if s.starts_with('{') && s.ends_with('}') {
+                let mut s = s.as_str();
+                // skip double braces
+                if s.starts_with("{{") && s.ends_with("}}") {
+                    s = &s[1..s.len() - 1];
+                }
+                serde_json::from_str(&s).map_err(serde::de::Error::custom)
             } else {
                 Ok(SourceCodeMetadata::SourceCode(s))
             }
