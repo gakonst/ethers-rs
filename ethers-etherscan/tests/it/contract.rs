@@ -109,7 +109,7 @@ async fn can_fetch_contract_source_tree_for_plain_source_code_mapping() {
             .unwrap();
 
         assert_eq!(meta.items.len(), 1);
-        assert!(matches!(meta.items[0].source_code, SourceCodeMetadata::Sources { .. }));
+        assert!(matches!(meta.items[0].source_code, SourceCodeMetadata::Sources(_)));
     })
     .await
 }
