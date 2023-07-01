@@ -97,3 +97,19 @@ async fn can_fetch_contract_source_tree_for_multi_entry_contract() {
     })
     .await
 }
+
+/// Query a contract that has a plain source code mapping instead of tagged structures.
+#[tokio::test]
+#[serial]
+async fn can_fetch_contract_source_tree_for_plain_source_code_mapping() {
+    run_with_client(Chain::Mainnet, |client| async move {
+        let meta = client
+            .contract_source_code("0x68b26dcf21180d2a8de5a303f8cc5b14c8d99c4c".parse().unwrap())
+            .await
+            .unwrap();
+
+        assert_eq!(meta.items.len(), 1);
+        assert!(matches!(meta.items[0].source_code, SourceCodeMetadata::Sources { .. }));
+    })
+    .await
+}
