@@ -144,7 +144,7 @@ construct_format_units_from! {
 /// ```
 /// use ethers_core::{types::U256, utils::format_ether};
 ///
-/// let eth = format_ether(1395633240123456000_u128).unwrap();
+/// let eth = format_ether(1395633240123456000_u128);
 /// assert_eq!(eth.parse::<f64>().unwrap(), 1.395633240123456);
 /// ```
 pub fn format_ether<T: Into<ParseUnits>>(amount: T) -> String {
