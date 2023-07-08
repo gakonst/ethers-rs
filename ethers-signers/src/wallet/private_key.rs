@@ -84,6 +84,30 @@ impl Wallet<SigningKey> {
         Ok(Self { signer, address, chain_id: 1 })
     }
 
+    /// Creates a new encrypted JSON with the provided private key and password and stores it in the
+    /// provided directory. Returns a tuple (Wallet, String) of the wallet instance for the
+    /// keystore with its random UUID. Accepts an optional name for the keystore file. If `None`,
+    /// the keystore is stored as the stringified UUID.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn encrypt_keystore<P, R, B, S>(
+        keypath: P,
+        rng: &mut R,
+        pk: B,
+        password: S,
+        name: Option<&str>,
+    ) -> Result<(Self, String), WalletError>
+    where
+        P: AsRef<Path>,
+        R: Rng + CryptoRng,
+        B: AsRef<[u8]>,
+        S: AsRef<[u8]>,
+    {
+        let uuid = eth_keystore::encrypt_key(keypath, rng, &pk, password, name)?;
+        let signer = SigningKey::from_slice(pk.as_ref())?;
+        let address = secret_key_to_address(&signer);
+        Ok((Self { signer, address, chain_id: 1 }, uuid))
+    }
+
     /// Creates a new random keypair seeded with the provided RNG
     pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         let signer = SigningKey::random(rng);
@@ -164,6 +188,7 @@ mod tests {
     use super::*;
     use crate::{LocalWallet, Signer};
     use ethers_core::types::Address;
+    use rand::RngCore;
     use tempfile::tempdir;
 
     #[test]
@@ -183,25 +208,47 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn encrypted_json_keystore() {
-        // create and store a random encrypted JSON keystore in this directory
-        let dir = tempdir().unwrap();
-        let mut rng = rand::thread_rng();
-        let (key, uuid) =
-            Wallet::<SigningKey>::new_keystore(&dir, &mut rng, "randpsswd", None).unwrap();
-
-        // sign a message using the above key
+    async fn test_encrypted_json_keystore(key: Wallet<SigningKey>, uuid: &str, dir: &Path) {
+        // sign a message using the given key
         let message = "Some data";
         let signature = key.sign_message(message).await.unwrap();
 
         // read from the encrypted JSON keystore and decrypt it, while validating that the
         // signatures produced by both the keys should match
-        let path = Path::new(dir.path()).join(uuid);
+        let path = Path::new(dir).join(uuid);
         let key2 = Wallet::<SigningKey>::decrypt_keystore(path.clone(), "randpsswd").unwrap();
+
         let signature2 = key2.sign_message(message).await.unwrap();
         assert_eq!(signature, signature2);
+
         std::fs::remove_file(&path).unwrap();
+    }
+
+    #[tokio::test]
+    async fn encrypted_json_keystore_new() {
+        // create and store an encrypted JSON keystore in this directory
+        let dir = tempdir().unwrap();
+        let mut rng = rand::thread_rng();
+        let (key, uuid) =
+            Wallet::<SigningKey>::new_keystore(&dir, &mut rng, "randpsswd", None).unwrap();
+
+        test_encrypted_json_keystore(key, &uuid, dir.path()).await;
+    }
+
+    #[tokio::test]
+    async fn encrypted_json_keystore_from_pk() {
+        // create and store an encrypted JSON keystore in this directory
+        let dir = tempdir().unwrap();
+        let mut rng = rand::thread_rng();
+        // Construct a 32-byte random private key.
+        let mut private_key = [0u8; 32];
+        rng.fill_bytes(private_key.as_mut_slice());
+
+        let (key, uuid) =
+            Wallet::<SigningKey>::encrypt_keystore(&dir, &mut rng, private_key, "randpsswd", None)
+                .unwrap();
+
+        test_encrypted_json_keystore(key, &uuid, dir.path()).await;
     }
 
     #[tokio::test]
