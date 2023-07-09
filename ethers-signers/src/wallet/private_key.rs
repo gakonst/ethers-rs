@@ -239,7 +239,6 @@ mod tests {
         // create and store an encrypted JSON keystore in this directory
         let dir = tempdir().unwrap();
         let mut rng = rand::thread_rng();
-        // Construct a 32-byte random private key.
         let private_key = "6f142508b4eea641e33cb2a0161221105086a84584c74245ca463a49effea30b";
 
         let (key, uuid) =
