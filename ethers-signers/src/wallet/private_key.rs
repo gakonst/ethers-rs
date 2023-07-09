@@ -188,7 +188,6 @@ mod tests {
     use super::*;
     use crate::{LocalWallet, Signer};
     use ethers_core::types::Address;
-    use rand::RngCore;
     use tempfile::tempdir;
 
     #[test]
@@ -241,8 +240,7 @@ mod tests {
         let dir = tempdir().unwrap();
         let mut rng = rand::thread_rng();
         // Construct a 32-byte random private key.
-        let mut private_key = [0u8; 32];
-        rng.fill_bytes(private_key.as_mut_slice());
+        let private_key = "6f142508b4eea641e33cb2a0161221105086a84584c74245ca463a49effea30b";
 
         let (key, uuid) =
             Wallet::<SigningKey>::encrypt_keystore(&dir, &mut rng, private_key, "randpsswd", None)
