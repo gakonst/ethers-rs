@@ -453,6 +453,34 @@ impl Settings {
         self.set_via_ir(true)
     }
 
+    /// Enable `viaIR` and use the minimum optimization settings
+    ///
+    /// This is useful in the following scenarios:
+    /// - When compiling for test coverage, this can resolve the "stack too deep" error while still
+    ///   giving a relatively accurate source mapping
+    /// - When compiling for test, this can reduce the compilation time
+    pub fn with_via_ir_minimum_optimization(mut self) -> Self {
+        // https://github.com/foundry-rs/foundry/pull/5349
+        // https://github.com/ethereum/solidity/issues/12533#issuecomment-1013073350
+        self.via_ir = Some(true);
+        self.optimizer.details = Some(OptimizerDetails {
+            peephole: Some(false),
+            inliner: Some(false),
+            jumpdest_remover: Some(false),
+            order_literals: Some(false),
+            deduplicate: Some(false),
+            cse: Some(false),
+            constant_optimizer: Some(false),
+            yul: Some(true), // enable yul optimizer
+            yul_details: Some(YulDetails {
+                stack_allocation: Some(true),
+                // with only unused prunner step
+                optimizer_steps: Some("u".to_string()),
+            }),
+        });
+        self
+    }
+
     /// Adds `ast` to output
     #[must_use]
     pub fn with_ast(mut self) -> Self {
