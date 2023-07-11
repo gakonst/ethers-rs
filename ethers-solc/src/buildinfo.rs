@@ -29,7 +29,7 @@ impl BuildInfo {
 }
 
 /// Represents `BuildInfo` object
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RawBuildInfo {
     /// The hash that identifies the BuildInfo
     pub id: String,

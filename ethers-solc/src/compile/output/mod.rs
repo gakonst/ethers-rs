@@ -12,6 +12,7 @@ use crate::{
 };
 use contracts::{VersionedContract, VersionedContracts};
 use semver::Version;
+use serde::{Serialize, Deserialize};
 use std::{collections::BTreeMap, fmt, path::Path};
 use tracing::trace;
 use yansi::Paint;
@@ -424,7 +425,7 @@ impl<T: ArtifactOutput> fmt::Display for ProjectCompileOutput<T> {
 /// The aggregated output of (multiple) compile jobs
 ///
 /// This is effectively a solc version aware `CompilerOutput`
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct AggregatedCompilerOutput {
     /// all errors from all `CompilerOutput`
     pub errors: Vec<Error>,
