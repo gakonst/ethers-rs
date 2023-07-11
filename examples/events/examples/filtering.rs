@@ -19,7 +19,7 @@ const USDT_ADDRESS: &str = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 async fn main() -> Result<()> {
     let provider = Provider::<Http>::try_from(HTTP_URL)?;
     let client = Arc::new(provider);
-    let token_topics = vec![
+    let token_topics = [
         H256::from(USDC_ADDRESS.parse::<H160>()?),
         H256::from(USDT_ADDRESS.parse::<H160>()?),
         H256::from(DAI_ADDRESS.parse::<H160>()?),

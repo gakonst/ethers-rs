@@ -439,8 +439,7 @@ impl ProjectPathsConfig {
                 if cap.name("ignore").is_some() {
                     continue
                 }
-                if let Some(name_match) =
-                    vec!["n1", "n2", "n3"].iter().find_map(|name| cap.name(name))
+                if let Some(name_match) = ["n1", "n2", "n3"].iter().find_map(|name| cap.name(name))
                 {
                     let name_match_range =
                         utils::range_by_offset(&name_match.range(), replace_offset);
