@@ -12,7 +12,7 @@ use crate::{
 };
 use contracts::{VersionedContract, VersionedContracts};
 use semver::Version;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, fmt, path::Path};
 use tracing::trace;
 use yansi::Paint;

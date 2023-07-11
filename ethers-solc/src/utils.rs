@@ -617,13 +617,13 @@ import './../libraries/JBTokens.sol';
 
     #[test]
     fn can_find_import_paths() {
-        let s = r##"//SPDX-License-Identifier: Unlicense
+        let s = r#"//SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 import "hardhat/console.sol";
 import "../contract/Contract.sol";
 import { T } from "../Test.sol";
 import { T } from '../Test2.sol';
-"##;
+"#;
         assert_eq!(
             vec!["hardhat/console.sol", "../contract/Contract.sol", "../Test.sol", "../Test2.sol"],
             find_import_paths(s).map(|m| m.as_str()).collect::<Vec<&str>>()

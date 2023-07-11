@@ -500,7 +500,7 @@ impl CacheEntry {
                     entry.insert(artifacts);
                 }
                 Entry::Occupied(mut entry) => {
-                    entry.get_mut().extend(artifacts.into_iter());
+                    entry.get_mut().extend(artifacts);
                 }
             }
         }
