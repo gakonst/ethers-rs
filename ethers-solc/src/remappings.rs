@@ -283,7 +283,7 @@ impl RelativeRemapping {
     /// Creates a new `RelativeRemapping` starting prefixed with `root`
     pub fn new(remapping: Remapping, root: impl AsRef<Path>) -> Self {
         Self {
-            context: None,
+            context: remapping.context,
             name: remapping.name,
             path: RelativeRemappingPathBuf::with_root(root, remapping.path),
         }
@@ -1167,6 +1167,34 @@ mod tests {
         ];
         expected.sort_unstable();
         pretty_assertions::assert_eq!(remappings, expected);
+    }
+
+    #[test]
+    fn can_resolve_contexts() {
+        let remapping = "context:oz=a/b/c/d";
+        let remapping = Remapping::from_str(remapping).unwrap();
+
+        assert_eq!(
+            remapping,
+            Remapping {
+                context: Some("context".to_string()),
+                name: "oz".to_string(),
+                path: "a/b/c/d".to_string(),
+            }
+        );
+        assert_eq!(remapping.to_string(), "context:oz=a/b/c/d/".to_string());
+    }
+
+    #[test]
+    fn can_resolve_global_contexts() {
+        let remapping = ":oz=a/b/c/d/";
+        let remapping = Remapping::from_str(remapping).unwrap();
+
+        assert_eq!(
+            remapping,
+            Remapping { context: None, name: "oz".to_string(), path: "a/b/c/d/".to_string() }
+        );
+        assert_eq!(remapping.to_string(), "oz=a/b/c/d/".to_string());
     }
 
     #[test]
