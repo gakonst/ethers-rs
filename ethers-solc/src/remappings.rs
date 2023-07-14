@@ -136,7 +136,16 @@ impl fmt::Display for Remapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
         if let Some(context) = self.context.as_ref() {
-            s.push_str(context);
+            #[cfg(target_os = "windows")]
+            {
+                // ensure we have `/` slashes on windows
+                use path_slash::PathExt;
+                s.push_str(&std::path::Path::new(context).to_slash_lossy());
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                s.push_str(context);
+            }
             s.push(':');
         }
         s.push_str(&{
@@ -265,6 +274,9 @@ impl Remapping {
         {
             use path_slash::PathExt;
             self.path = Path::new(&self.path).to_slash_lossy().to_string();
+            if let Some(context) = self.context.as_mut() {
+                *context = Some(Path::new(&self.path).to_slash_lossy().to_string());
+            }
         }
     }
 }
@@ -315,7 +327,16 @@ impl fmt::Display for RelativeRemapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut s = String::new();
         if let Some(context) = self.context.as_ref() {
-            s.push_str(context);
+            #[cfg(target_os = "windows")]
+            {
+                // ensure we have `/` slashes on windows
+                use path_slash::PathExt;
+                s.push_str(&std::path::Path::new(context).to_slash_lossy());
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                s.push_str(context);
+            }
             s.push(':');
         }
         s.push_str(&{
