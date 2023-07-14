@@ -40,7 +40,7 @@ const JS_LIB_DIR: &str = "node_modules";
 ///
 /// For example:
 ///
-/// ```ignore
+/// ```text
 /// solc --bin \
 ///     @openzeppelin/contracts-ethereum-package=/Your/Absolute/Path/To/@openzeppelin/contracts-ethereum-package \
 ///     ./MyContract.sol
