@@ -275,7 +275,7 @@ impl Remapping {
             use path_slash::PathExt;
             self.path = Path::new(&self.path).to_slash_lossy().to_string();
             if let Some(context) = self.context.as_mut() {
-                *context = Path::new(&self.context).to_slash_lossy().to_string();
+                *context = Path::new(&context).to_slash_lossy().to_string();
             }
         }
     }
