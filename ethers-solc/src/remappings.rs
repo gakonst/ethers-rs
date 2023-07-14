@@ -1097,7 +1097,10 @@ mod tests {
         paths.remappings = remappings;
 
         let resolved = paths
-            .resolve_library_import(Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"))
+            .resolve_library_import(
+                tmp_dir.path(),
+                Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"),
+            )
             .unwrap();
         assert!(resolved.exists());
 
@@ -1105,7 +1108,10 @@ mod tests {
         paths.remappings[0].name = "@openzeppelin/".to_string();
 
         let resolved = paths
-            .resolve_library_import(Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"))
+            .resolve_library_import(
+                tmp_dir.path(),
+                Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"),
+            )
             .unwrap();
         assert!(resolved.exists());
     }
