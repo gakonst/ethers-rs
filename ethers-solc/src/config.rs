@@ -330,7 +330,7 @@ impl ProjectPathsConfig {
         // removing the name and adding the remainder to the path of the remapping
         // todo: check if this is sound and improve ergonomics, e.g. should the remappings context
         // be a relativeremappingpath instead
-        let cwd = if let Some(cwd) = cwd.strip_prefix(&self.root).ok() { cwd } else { cwd };
+        let cwd = cwd.strip_prefix(&self.root).unwrap_or(cwd);
         if let Some(path) = self.remappings.iter().find_map(|r| {
             if let Some(ctx) = r.context.as_ref() {
                 if !cwd.starts_with(ctx) {
