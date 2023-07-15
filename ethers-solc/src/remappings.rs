@@ -17,7 +17,7 @@ const JS_LIB_DIR: &str = "node_modules";
 /// So importing directly from GitHub (as an example) is not possible.
 ///
 /// Let's imagine you want to use OpenZeppelin's amazing library of smart contracts,
-/// @openzeppelin/contracts-ethereum-package:
+/// `@openzeppelin/contracts-ethereum-package`:
 ///
 /// ```ignore
 /// pragma solidity 0.5.11;
@@ -30,22 +30,32 @@ const JS_LIB_DIR: &str = "node_modules";
 /// }
 /// ```
 ///
-/// When using solc, you have to specify the following:
+/// When using `solc`, you have to specify the following:
 ///
-/// "prefix" = the path that's used in your smart contract, i.e.
-/// "@openzeppelin/contracts-ethereum-package" "target" = the absolute path of OpenZeppelin's
-/// contracts downloaded on your computer
+/// - A `prefix`: the path that's used in your smart contract, i.e.
+///   `@openzeppelin/contracts-ethereum-package`
+/// - A `target`: the absolute path of the downloaded contracts on your computer
 ///
-/// The format looks like this:
-/// `solc prefix=target ./MyContract.sol`
+/// The format looks like this: `solc prefix=target ./MyContract.sol`
 ///
-/// solc --bin
-/// @openzeppelin/contracts-ethereum-package=/Your/Absolute/Path/To/@openzeppelin/
-/// contracts-ethereum-package ./MyContract.sol
+/// For example:
+///
+/// ```text
+/// solc --bin \
+///     @openzeppelin/contracts-ethereum-package=/Your/Absolute/Path/To/@openzeppelin/contracts-ethereum-package \
+///     ./MyContract.sol
+/// ```
+///
+/// You can also specify a `context` which limits the scope of the remapping to a subset of your
+/// project. This allows you to apply the remapping only to imports located in a specific library or
+/// a specific file. Without a context a remapping is applied to every matching import in all files.
+///
+/// The format is: `solc context:prefix=target ./MyContract.sol`
 ///
 /// [Source](https://ethereum.stackexchange.com/questions/74448/what-are-remappings-and-how-do-they-work-in-solidity)
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct Remapping {
+    pub context: Option<String>,
     pub name: String,
     pub path: String,
 }
@@ -82,13 +92,19 @@ impl FromStr for Remapping {
         let (name, path) = remapping
             .split_once('=')
             .ok_or_else(|| RemappingError::InvalidRemapping(remapping.to_string()))?;
+        let (context, name) = name
+            .split_once(':')
+            .map_or((None, name), |(context, name)| (Some(context.to_string()), name));
         if name.trim().is_empty() {
             return Err(RemappingError::EmptyRemappingKey(remapping.to_string()))
         }
         if path.trim().is_empty() {
             return Err(RemappingError::EmptyRemappingValue(remapping.to_string()))
         }
-        Ok(Remapping { name: name.to_string(), path: path.to_string() })
+        // if the remapping just starts with : (no context name), treat it as global
+        let context =
+            context.and_then(|c| if c.trim().is_empty() { None } else { Some(c.to_string()) });
+        Ok(Remapping { context, name: name.to_string(), path: path.to_string() })
     }
 }
 
@@ -114,7 +130,21 @@ impl<'de> Deserialize<'de> for Remapping {
 // Remappings are printed as `prefix=target`
 impl fmt::Display for Remapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s = {
+        let mut s = String::new();
+        if let Some(context) = self.context.as_ref() {
+            #[cfg(target_os = "windows")]
+            {
+                // ensure we have `/` slashes on windows
+                use path_slash::PathExt;
+                s.push_str(&std::path::Path::new(context).to_slash_lossy());
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                s.push_str(context);
+            }
+            s.push(':');
+        }
+        s.push_str(&{
             #[cfg(target_os = "windows")]
             {
                 // ensure we have `/` slashes on windows
@@ -125,7 +155,7 @@ impl fmt::Display for Remapping {
             {
                 format!("{}={}", self.name, self.path)
             }
-        };
+        });
 
         if !s.ends_with('/') {
             s.push('/');
@@ -226,7 +256,11 @@ impl Remapping {
 
         all_remappings
             .into_iter()
-            .map(|(name, path)| Remapping { name, path: format!("{}/", path.display()) })
+            .map(|(name, path)| Remapping {
+                context: None,
+                name,
+                path: format!("{}/", path.display()),
+            })
             .collect()
     }
 
@@ -236,6 +270,9 @@ impl Remapping {
         {
             use path_slash::PathExt;
             self.path = Path::new(&self.path).to_slash_lossy().to_string();
+            if let Some(context) = self.context.as_mut() {
+                *context = Path::new(&context).to_slash_lossy().to_string();
+            }
         }
     }
 }
@@ -245,6 +282,7 @@ impl Remapping {
 /// See [`RelativeRemappingPathBuf`]
 #[derive(Clone, Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct RelativeRemapping {
+    pub context: Option<String>,
     pub name: String,
     pub path: RelativeRemappingPathBuf,
 }
@@ -253,6 +291,12 @@ impl RelativeRemapping {
     /// Creates a new `RelativeRemapping` starting prefixed with `root`
     pub fn new(remapping: Remapping, root: impl AsRef<Path>) -> Self {
         Self {
+            context: remapping.context.map(|c| {
+                RelativeRemappingPathBuf::with_root(root.as_ref(), c)
+                    .path
+                    .to_string_lossy()
+                    .to_string()
+            }),
             name: remapping.name,
             path: RelativeRemappingPathBuf::with_root(root, remapping.path),
         }
@@ -276,8 +320,22 @@ impl RelativeRemapping {
 // Remappings are printed as `prefix=target`
 impl fmt::Display for RelativeRemapping {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s = {
-            #[cfg(windows)]
+        let mut s = String::new();
+        if let Some(context) = self.context.as_ref() {
+            #[cfg(target_os = "windows")]
+            {
+                // ensure we have `/` slashes on windows
+                use path_slash::PathExt;
+                s.push_str(&std::path::Path::new(context).to_slash_lossy());
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                s.push_str(context);
+            }
+            s.push(':');
+        }
+        s.push_str(&{
+            #[cfg(target_os = "windows")]
             {
                 // ensure we have `/` slashes on windows
                 use path_slash::PathExt;
@@ -287,7 +345,7 @@ impl fmt::Display for RelativeRemapping {
             {
                 format!("{}={}", self.name, self.path.original().display())
             }
-        };
+        });
 
         if !s.ends_with('/') {
             s.push('/');
@@ -298,7 +356,7 @@ impl fmt::Display for RelativeRemapping {
 
 impl From<RelativeRemapping> for Remapping {
     fn from(r: RelativeRemapping) -> Self {
-        let RelativeRemapping { mut name, path } = r;
+        let RelativeRemapping { context, mut name, path } = r;
         let mut path = format!("{}", path.relative().display());
         if !path.ends_with('/') {
             path.push('/');
@@ -306,13 +364,13 @@ impl From<RelativeRemapping> for Remapping {
         if !name.ends_with('/') {
             name.push('/');
         }
-        Remapping { name, path }
+        Remapping { context, name, path }
     }
 }
 
 impl From<Remapping> for RelativeRemapping {
     fn from(r: Remapping) -> Self {
-        Self { name: r.name, path: r.path.into() }
+        Self { context: r.context, name: r.name, path: r.path.into() }
     }
 }
 
@@ -384,7 +442,11 @@ impl<'de> Deserialize<'de> for RelativeRemapping {
     {
         let remapping = String::deserialize(deserializer)?;
         let remapping = Remapping::from_str(&remapping).map_err(serde::de::Error::custom)?;
-        Ok(RelativeRemapping { name: remapping.name, path: remapping.path.into() })
+        Ok(RelativeRemapping {
+            context: remapping.context,
+            name: remapping.name,
+            path: remapping.path.into(),
+        })
     }
 }
 
@@ -832,6 +894,7 @@ mod tests {
         let tmp_dir_path = tmp_dir.path().join("lib");
         let remappings = Remapping::find_many(&tmp_dir_path);
         let expected = vec![Remapping {
+            context: None,
             name: "timeless/".to_string(),
             path: to_str(tmp_dir_path.join("timeless/src")),
         }];
@@ -868,30 +931,37 @@ mod tests {
         remappings.sort_unstable();
         let mut expected = vec![
             Remapping {
+                context: None,
                 name: "ds-auth/".to_string(),
                 path: to_str(tmp_dir_path.join("ds-token/lib/ds-stop/lib/ds-auth/src")),
             },
             Remapping {
+                context: None,
                 name: "ds-math/".to_string(),
                 path: to_str(tmp_dir_path.join("ds-token/lib/ds-math/src")),
             },
             Remapping {
+                context: None,
                 name: "ds-note/".to_string(),
                 path: to_str(tmp_dir_path.join("ds-token/lib/ds-stop/lib/ds-note/src")),
             },
             Remapping {
+                context: None,
                 name: "ds-stop/".to_string(),
                 path: to_str(tmp_dir_path.join("ds-token/lib/ds-stop/src")),
             },
             Remapping {
+                context: None,
                 name: "ds-test/".to_string(),
                 path: to_str(tmp_dir_path.join("ds-token/lib/ds-test/src")),
             },
             Remapping {
+                context: None,
                 name: "ds-token/".to_string(),
                 path: to_str(tmp_dir_path.join("ds-token/src")),
             },
             Remapping {
+                context: None,
                 name: "erc20/".to_string(),
                 path: to_str(tmp_dir_path.join("ds-token/lib/erc20/src")),
             },
@@ -933,6 +1003,7 @@ mod tests {
         let remappings = Remapping::find_many(tmp_dir.path());
 
         let expected = vec![Remapping {
+            context: None,
             name: "@chainlink/".to_string(),
             path: to_str(tmp_dir.path().join("@chainlink")),
         }];
@@ -1017,6 +1088,7 @@ mod tests {
         let remappings = Remapping::find_many(tmp_dir.path());
 
         let expected = vec![Remapping {
+            context: None,
             name: "@openzeppelin/".to_string(),
             path: to_str(tmp_dir.path().join("@openzeppelin")),
         }];
@@ -1039,7 +1111,10 @@ mod tests {
         paths.remappings = remappings;
 
         let resolved = paths
-            .resolve_library_import(Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"))
+            .resolve_library_import(
+                tmp_dir.path(),
+                Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"),
+            )
             .unwrap();
         assert!(resolved.exists());
 
@@ -1047,7 +1122,10 @@ mod tests {
         paths.remappings[0].name = "@openzeppelin/".to_string();
 
         let resolved = paths
-            .resolve_library_import(Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"))
+            .resolve_library_import(
+                tmp_dir.path(),
+                Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"),
+            )
             .unwrap();
         assert!(resolved.exists());
     }
@@ -1079,40 +1157,88 @@ mod tests {
 
         let mut expected = vec![
             Remapping {
+                context: None,
                 name: "repo1/".to_string(),
                 path: to_str(tmp_dir_path.join("repo1").join("src")),
             },
             Remapping {
+                context: None,
                 name: "ds-math/".to_string(),
                 path: to_str(tmp_dir_path.join("repo1").join("lib").join("ds-math").join("src")),
             },
             Remapping {
+                context: None,
                 name: "ds-test/".to_string(),
                 path: to_str(tmp_dir_path.join("repo1").join("lib").join("ds-test").join("src")),
             },
             Remapping {
+                context: None,
                 name: "guni-lev/".to_string(),
                 path: to_str(tmp_dir_path.join("repo1/lib/guni-lev").join("src")),
             },
             Remapping {
+                context: None,
                 name: "solmate/".to_string(),
                 path: to_str(tmp_dir_path.join("repo1/lib/solmate").join("src")),
             },
             Remapping {
+                context: None,
                 name: "openzeppelin-contracts/".to_string(),
                 path: to_str(tmp_dir_path.join("repo1/lib/openzeppelin-contracts/contracts")),
             },
             Remapping {
+                context: None,
                 name: "ds-stop/".to_string(),
                 path: to_str(tmp_dir_path.join("repo1/lib/ds-token/lib/ds-stop/src")),
             },
             Remapping {
+                context: None,
                 name: "ds-note/".to_string(),
                 path: to_str(tmp_dir_path.join("repo1/lib/ds-token/lib/ds-stop/lib/ds-note/src")),
             },
         ];
         expected.sort_unstable();
         pretty_assertions::assert_eq!(remappings, expected);
+    }
+
+    #[test]
+    fn can_resolve_contexts() {
+        let remapping = "context:oz=a/b/c/d";
+        let remapping = Remapping::from_str(remapping).unwrap();
+
+        assert_eq!(
+            remapping,
+            Remapping {
+                context: Some("context".to_string()),
+                name: "oz".to_string(),
+                path: "a/b/c/d".to_string(),
+            }
+        );
+        assert_eq!(remapping.to_string(), "context:oz=a/b/c/d/".to_string());
+
+        let remapping = "context:foo=C:/bar/src/";
+        let remapping = Remapping::from_str(remapping).unwrap();
+
+        assert_eq!(
+            remapping,
+            Remapping {
+                context: Some("context".to_string()),
+                name: "foo".to_string(),
+                path: "C:/bar/src/".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn can_resolve_global_contexts() {
+        let remapping = ":oz=a/b/c/d/";
+        let remapping = Remapping::from_str(remapping).unwrap();
+
+        assert_eq!(
+            remapping,
+            Remapping { context: None, name: "oz".to_string(), path: "a/b/c/d/".to_string() }
+        );
+        assert_eq!(remapping.to_string(), "oz=a/b/c/d/".to_string());
     }
 
     #[test]
@@ -1139,10 +1265,12 @@ mod tests {
         remappings.sort_unstable();
         let mut expected = vec![
             Remapping {
+                context: None,
                 name: "src_repo/".to_string(),
                 path: format!("{}/", dir1.into_os_string().into_string().unwrap()),
             },
             Remapping {
+                context: None,
                 name: "contracts_repo/".to_string(),
                 path: format!(
                     "{}/",
@@ -1177,14 +1305,17 @@ mod tests {
 
         let mut expected = vec![
             Remapping {
+                context: None,
                 name: "ds-test/".to_string(),
                 path: to_str(tmp_dir_path.join("ds-test/src")),
             },
             Remapping {
+                context: None,
                 name: "openzeppelin/".to_string(),
                 path: to_str(tmp_dir_path.join("openzeppelin/src")),
             },
             Remapping {
+                context: None,
                 name: "standards/".to_string(),
                 path: to_str(tmp_dir_path.join("standards/src")),
             },
@@ -1217,18 +1348,22 @@ mod tests {
         remappings.sort_unstable();
         let mut expected = vec![
             Remapping {
+                context: None,
                 name: "@aave/".to_string(),
                 path: to_str(tmp_dir_node_modules.join("@aave")),
             },
             Remapping {
+                context: None,
                 name: "@ensdomains/".to_string(),
                 path: to_str(tmp_dir_node_modules.join("@ensdomains")),
             },
             Remapping {
+                context: None,
                 name: "@openzeppelin/".to_string(),
                 path: to_str(tmp_dir_node_modules.join("@openzeppelin")),
             },
             Remapping {
+                context: None,
                 name: "eth-gas-reporter/".to_string(),
                 path: to_str(tmp_dir_node_modules.join("eth-gas-reporter")),
             },
@@ -1268,14 +1403,17 @@ mod tests {
 
         let mut expected = vec![
             Remapping {
+                context: None,
                 name: "ds-test/".to_string(),
                 path: to_str(tmp_dir_path.join("lib/ds-test/src")),
             },
             Remapping {
+                context: None,
                 name: "openzeppelin/".to_string(),
                 path: to_str(tmp_dir_path.join("openzeppelin/contracts")),
             },
             Remapping {
+                context: None,
                 name: "forge-std/".to_string(),
                 path: to_str(tmp_dir_path.join("lib/forge-std/src")),
             },

@@ -235,7 +235,7 @@ impl ProjectPathsConfig {
             })
         } else {
             // resolve library file
-            let resolved = self.resolve_library_import(import.as_ref());
+            let resolved = self.resolve_library_import(cwd.as_ref(), import.as_ref());
 
             if resolved.is_none() {
                 // absolute paths in solidity are a thing for example `import
@@ -325,23 +325,37 @@ impl ProjectPathsConfig {
     /// duplicate `contracts` segment:
     /// `@openzeppelin/contracts/contracts/token/ERC20/IERC20.sol` we check for this edge case
     /// here so that both styles work out of the box.
-    pub fn resolve_library_import(&self, import: &Path) -> Option<PathBuf> {
+    pub fn resolve_library_import(&self, cwd: &Path, import: &Path) -> Option<PathBuf> {
         // if the import path starts with the name of the remapping then we get the resolved path by
         // removing the name and adding the remainder to the path of the remapping
-        if let Some(path) = self.remappings.iter().find_map(|r| {
-            import.strip_prefix(&r.name).ok().map(|stripped_import| {
-                let lib_path = Path::new(&r.path).join(stripped_import);
-
-                // we handle the edge case where the path of a remapping ends with "contracts"
-                // (`<name>/=.../contracts`) and the stripped import also starts with `contracts`
-                if let Ok(adjusted_import) = stripped_import.strip_prefix("contracts/") {
-                    if r.path.ends_with("contracts/") && !lib_path.exists() {
-                        return Path::new(&r.path).join(adjusted_import)
-                    }
+        let cwd = cwd.strip_prefix(&self.root).unwrap_or(cwd);
+        if let Some(path) = self
+            .remappings
+            .iter()
+            .filter(|r| {
+                // only check remappings that are either global or for `cwd`
+                if let Some(ctx) = r.context.as_ref() {
+                    cwd.starts_with(ctx)
+                } else {
+                    true
                 }
-                lib_path
             })
-        }) {
+            .find_map(|r| {
+                import.strip_prefix(&r.name).ok().map(|stripped_import| {
+                    let lib_path = Path::new(&r.path).join(stripped_import);
+
+                    // we handle the edge case where the path of a remapping ends with "contracts"
+                    // (`<name>/=.../contracts`) and the stripped import also starts with
+                    // `contracts`
+                    if let Ok(adjusted_import) = stripped_import.strip_prefix("contracts/") {
+                        if r.path.ends_with("contracts/") && !lib_path.exists() {
+                            return Path::new(&r.path).join(adjusted_import)
+                        }
+                    }
+                    lib_path
+                })
+            })
+        {
             Some(self.root.join(path))
         } else {
             utils::resolve_library(&self.libraries, import)
