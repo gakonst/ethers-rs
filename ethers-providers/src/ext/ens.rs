@@ -6,7 +6,6 @@ use ethers_core::{
 };
 
 use std::convert::TryInto;
-use idna::domain_to_ascii;
 
 /// ENS registry address (`0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e`)
 pub const ENS_ADDRESS: Address = H160([
@@ -79,18 +78,18 @@ pub fn reverse_address(addr: Address) -> String {
 /// Returns the ENS namehash as specified in [EIP-137](https://eips.ethereum.org/EIPS/eip-137)
 pub fn namehash(name: &str) -> H256 {
     if name.is_empty() {
-        return H256::zero();
+        return H256::zero()
     }
 
-    let name = match domain_to_ascii(name) {
-        Ok(v) => v,
-        Err(_) => return H256::zero(),
-    };
+    // Remove the variation selector U+FE0F
+    let name = name.replace("\u{fe0f}", "");
 
+    // Generate the node starting from the right
     name.rsplit('.')
         .fold([0u8; 32], |node, label| keccak256([node, keccak256(label.as_bytes())].concat()))
         .into()
 }
+
 /// Returns a number in bytes form with padding to fit in 32 bytes.
 pub fn bytes_32ify(n: u64) -> Vec<u8> {
     let b = n.to_be_bytes();
@@ -125,6 +124,7 @@ mod tests {
             ("foo.eth", "de9b09fd7c5f901e23a3f19fecc54828e9c848539801e86591bd9801b019f84f"),
             ("eth", "0x93cdeb708b7545dc668eb9280176169d1c33cfd8ed6f04690a0bcc88a93fc4ae"),
             ("alice.eth", "0x787192fc5378cc32aa956ddfdedbf26b24e8d78e40109add0eea2c1a012c3dec"),
+            ("ret↩️rn.eth", "0x3de5f4c02db61b221e7de7f1c40e29b6e2f07eb48d65bf7e304715cd9ed33b24"),
         ] {
             assert_hex(namehash(name), expected);
         }
