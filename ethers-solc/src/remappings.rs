@@ -88,27 +88,22 @@ pub enum RemappingError {
 impl FromStr for Remapping {
     type Err = RemappingError;
 
-    fn from_str(remapping_orig: &str) -> Result<Self, Self::Err> {
-        let mut remapping = remapping_orig;
-        let mut context = None;
-        if let Some((prefix, rest)) = remapping_orig.split_once(':') {
-            // Context can be empty, which just means it is global
-            if prefix.trim().is_empty() {
-                context = None;
-            } else {
-                context = Some(prefix.to_string());
-            }
-            remapping = rest;
-        }
+    fn from_str(remapping: &str) -> Result<Self, Self::Err> {
         let (name, path) = remapping
             .split_once('=')
-            .ok_or_else(|| RemappingError::InvalidRemapping(remapping_orig.to_string()))?;
+            .ok_or_else(|| RemappingError::InvalidRemapping(remapping.to_string()))?;
+        let (context, name) = name
+            .split_once(':')
+            .map_or((None, name), |(context, name)| (Some(context.to_string()), name));
         if name.trim().is_empty() {
-            return Err(RemappingError::EmptyRemappingKey(remapping_orig.to_string()))
+            return Err(RemappingError::EmptyRemappingKey(remapping.to_string()))
         }
         if path.trim().is_empty() {
-            return Err(RemappingError::EmptyRemappingValue(remapping_orig.to_string()))
+            return Err(RemappingError::EmptyRemappingValue(remapping.to_string()))
         }
+        // if the remapping just starts with : (no context name), treat it as global
+        let context =
+            context.and_then(|c| if c.trim().is_empty() { None } else { Some(c.to_string()) });
         Ok(Remapping { context, name: name.to_string(), path: path.to_string() })
     }
 }
@@ -1223,6 +1218,18 @@ mod tests {
             }
         );
         assert_eq!(remapping.to_string(), "context:oz=a/b/c/d/".to_string());
+
+        let remapping = "context:foo=C:/bar/src/";
+        let remapping = Remapping::from_str(remapping).unwrap();
+
+        assert_eq!(
+            remapping,
+            Remapping {
+                context: Some("context".to_string()),
+                name: "foo".to_string(),
+                path: "C:/bar/src/".to_string()
+            }
+        );
     }
 
     #[test]
