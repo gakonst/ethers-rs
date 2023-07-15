@@ -10,6 +10,62 @@ which is configured [here](./cliff.toml).
 
 Please do not manually edit this file.
 
+## [2.0.8] - 2023-07-15
+
+### Bug Fixes
+
+- `ens::namehash` with Unicode characters ([#2510](https://github.com/gakonst/ethers-rs/issues/2510))
+- De impl ([#2492](https://github.com/gakonst/ethers-rs/issues/2492))
+- Let geth chose ports by default ([#2488](https://github.com/gakonst/ethers-rs/issues/2488))
+- Polygon gas stations ([#2479](https://github.com/gakonst/ethers-rs/issues/2479))
+- Prevent panic decoding too short input ([#2470](https://github.com/gakonst/ethers-rs/issues/2470))
+- Avoid payload moving ([#2460](https://github.com/gakonst/ethers-rs/issues/2460))
+- Allow arrays in abigen 'methods' ([#2465](https://github.com/gakonst/ethers-rs/issues/2465))
+- Re-introduce etherscan typo and populate properly-spelled field as backup ([#2468](https://github.com/gakonst/ethers-rs/issues/2468))
+
+### Depedencies
+
+- Bump semver from 5.7.1 to 5.7.2 in /examples/wasm ([#2505](https://github.com/gakonst/ethers-rs/issues/2505))
+- Update solang-parser requirement from =0.3.0 to =0.3.1 ([#2496](https://github.com/gakonst/ethers-rs/issues/2496))
+- Update strum requirement from 0.24 to 0.25 ([#2481](https://github.com/gakonst/ethers-rs/issues/2481))
+
+### Documentation
+
+- Fix doc example ([#2489](https://github.com/gakonst/ethers-rs/issues/2489))
+
+### Features
+
+- Support remapping contexts ([#2509](https://github.com/gakonst/ethers-rs/issues/2509))
+- Add with_via_ir_minimum_optimization ([#2504](https://github.com/gakonst/ethers-rs/issues/2504))
+- Do not re-parse ABI at runtime ([#2482](https://github.com/gakonst/ethers-rs/issues/2482))
+- Verification and status check for proxy contracts ([#2466](https://github.com/gakonst/ethers-rs/issues/2466))
+- OP Bedrock Upgrade ([#2461](https://github.com/gakonst/ethers-rs/issues/2461))
+
+### Miscellaneous Tasks
+
+- Clippy ([#2506](https://github.com/gakonst/ethers-rs/issues/2506))
+- Clippy ([#2493](https://github.com/gakonst/ethers-rs/issues/2493))
+- Clippy ([#2472](https://github.com/gakonst/ethers-rs/issues/2472))
+- Clippy ([#2462](https://github.com/gakonst/ethers-rs/issues/2462))
+
+### Other
+
+- Make AggregatedCompilerOutput DeSerialize/Serialize ([#2495](https://github.com/gakonst/ethers-rs/issues/2495))
+- Etherscan could also have a plain source mapping ([#2491](https://github.com/gakonst/ethers-rs/issues/2491))
+- Add bundler to README.md ([#2477](https://github.com/gakonst/ethers-rs/issues/2477))
+- Add timeout to all jobs ([#2476](https://github.com/gakonst/ethers-rs/issues/2476))
+- Get_transaction_by_block_and_index ([#2473](https://github.com/gakonst/ethers-rs/issues/2473))
+- Update optimism blocktime hint ([#2463](https://github.com/gakonst/ethers-rs/issues/2463))
+- Improve `ContractInstance` impls ([#2458](https://github.com/gakonst/ethers-rs/issues/2458))
+
+### Refactor
+
+- Replace unused ports with unused port ([#2475](https://github.com/gakonst/ethers-rs/issues/2475))
+
+### Styling
+
+- Rustfmt ([#2490](https://github.com/gakonst/ethers-rs/issues/2490))
+
 ## [2.0.7] - 2023-06-02
 
 ### Bug Fixes
