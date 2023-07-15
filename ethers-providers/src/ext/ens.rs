@@ -82,7 +82,7 @@ pub fn namehash(name: &str) -> H256 {
     }
 
     // Remove the variation selector U+FE0F
-    let name = name.replace("\u{fe0f}", "");
+    let name = name.replace('\u{fe0f}', "");
 
     // Generate the node starting from the right
     name.rsplit('.')
