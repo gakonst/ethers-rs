@@ -88,9 +88,10 @@ pub enum RemappingError {
 impl FromStr for Remapping {
     type Err = RemappingError;
 
-    fn from_str(mut remapping: &str) -> Result<Self, Self::Err> {
+    fn from_str(remapping_orig: &str) -> Result<Self, Self::Err> {
+        let mut remapping = remapping_orig;
         let mut context = None;
-        if let Some((prefix, rest)) = remapping.split_once(':') {
+        if let Some((prefix, rest)) = remapping_orig.split_once(':') {
             // Context can be empty, which just means it is global
             if prefix.trim().is_empty() {
                 context = None;
@@ -101,12 +102,12 @@ impl FromStr for Remapping {
         }
         let (name, path) = remapping
             .split_once('=')
-            .ok_or_else(|| RemappingError::InvalidRemapping(remapping.to_string()))?;
+            .ok_or_else(|| RemappingError::InvalidRemapping(remapping_orig.to_string()))?;
         if name.trim().is_empty() {
-            return Err(RemappingError::EmptyRemappingKey(remapping.to_string()))
+            return Err(RemappingError::EmptyRemappingKey(remapping_orig.to_string()))
         }
         if path.trim().is_empty() {
-            return Err(RemappingError::EmptyRemappingValue(remapping.to_string()))
+            return Err(RemappingError::EmptyRemappingValue(remapping_orig.to_string()))
         }
         Ok(Remapping { context, name: name.to_string(), path: path.to_string() })
     }
