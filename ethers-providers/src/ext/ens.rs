@@ -6,6 +6,7 @@ use ethers_core::{
 };
 
 use std::convert::TryInto;
+use idna::domain_to_ascii;
 
 /// ENS registry address (`0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e`)
 pub const ENS_ADDRESS: Address = H160([
@@ -78,15 +79,18 @@ pub fn reverse_address(addr: Address) -> String {
 /// Returns the ENS namehash as specified in [EIP-137](https://eips.ethereum.org/EIPS/eip-137)
 pub fn namehash(name: &str) -> H256 {
     if name.is_empty() {
-        return H256::zero()
+        return H256::zero();
     }
 
-    // iterate in reverse
+    let name = match domain_to_ascii(name) {
+        Ok(v) => v,
+        Err(_) => return H256::zero(),
+    };
+
     name.rsplit('.')
         .fold([0u8; 32], |node, label| keccak256([node, keccak256(label.as_bytes())].concat()))
         .into()
 }
-
 /// Returns a number in bytes form with padding to fit in 32 bytes.
 pub fn bytes_32ify(n: u64) -> Vec<u8> {
     let b = n.to_be_bytes();
