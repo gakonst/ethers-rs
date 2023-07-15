@@ -291,7 +291,6 @@ impl RelativeRemapping {
     /// Creates a new `RelativeRemapping` starting prefixed with `root`
     pub fn new(remapping: Remapping, root: impl AsRef<Path>) -> Self {
         Self {
-            // todo: hacky way to make the context relative, should follow same rules as path
             context: remapping.context.map(|c| {
                 RelativeRemappingPathBuf::with_root(root.as_ref(), c)
                     .path
@@ -443,8 +442,6 @@ impl<'de> Deserialize<'de> for RelativeRemapping {
     {
         let remapping = String::deserialize(deserializer)?;
         let remapping = Remapping::from_str(&remapping).map_err(serde::de::Error::custom)?;
-        // todo: add test for ser/de (remapping, relativeremapping)
-        // todo: add test for remapping -> relativeremapping -> remapping
         Ok(RelativeRemapping {
             context: remapping.context,
             name: remapping.name,
