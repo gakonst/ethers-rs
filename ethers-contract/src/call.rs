@@ -104,6 +104,39 @@ impl<M: Middleware> ContractError<M> {
         }
     }
 
+    /// extract reason msg from a revert error
+    ///
+    /// ## Returns
+    /// `None` if we couldnt decode
+    /// `Some(string)` if we could get the revert message. The string has no null bytes
+    ///
+    /// ## NOTE
+    ///
+    /// A lot of ethers RPC do not enable this by default. Make sure yours has it enabled.
+    /// for more details see https://docs.soliditylang.org/en/v0.8.12/control-structures.html#revert
+    pub fn get_revert_msg(&self) -> Option<String> {
+        self.as_revert().and_then(|data: &Bytes| {
+            let bytes = data.to_vec();
+            let mut bytes = bytes.as_slice();
+            let data_string: &[u8];
+
+            (_, bytes) = bytes.split_at(4); // first 4 bytes for function selector
+            (_, bytes) = bytes.split_at(32); // next 32 for data offset
+            (_, bytes) = bytes.split_at(32); // next 32 bytes for str len
+            (data_string, _) = bytes.split_at(32); // remaining 32 for string data
+
+            // remove trailling null bytes
+            let idx = data_string.iter().position(|x| x == "\0".as_bytes().first().unwrap());
+            match idx {
+                Some(i) => {
+                    let (stripped, _) = data_string.split_at(i);
+                    String::from_utf8(stripped.to_vec()).ok()
+                }
+                None => None,
+            }
+        })
+    }
+
     /// True if the error is a revert, false otherwise
     pub fn is_revert(&self) -> bool {
         matches!(self, ContractError::Revert(_))
