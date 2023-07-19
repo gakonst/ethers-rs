@@ -151,6 +151,7 @@ pub enum Chain {
 
     Boba = 288,
 
+    Base = 8453,
     BaseGoerli = 84531,
 
     LineaTestnet = 59140,
@@ -296,7 +297,7 @@ impl Chain {
             ScrollAlphaTestnet => 3_000,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
-            MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba |
+            MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
             BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm | PolygonZkEvmTestnet | Metis |
             LineaTestnet => return None,
         };
@@ -335,7 +336,6 @@ impl Chain {
             Boba |
             ZkSync |
             ZkSyncTestnet |
-            BaseGoerli |
             PolygonZkEvm |
             PolygonZkEvmTestnet => true,
 
@@ -343,6 +343,8 @@ impl Chain {
             Mainnet |
             Goerli |
             Sepolia |
+            Base |
+            BaseGoerli |
             Optimism |
             OptimismGoerli |
             Polygon |
@@ -520,6 +522,8 @@ impl Chain {
 
             Boba => ("https://api.bobascan.com/api", "https://bobascan.com"),
 
+            Base => ("https://api.basescan.org/api", "https://basescan.org"),
+
             BaseGoerli => ("https://api-goerli.basescan.org/api", "https://goerli.basescan.org"),
 
             ZkSync => {
@@ -579,6 +583,7 @@ impl Chain {
             Celo |
             CeloAlfajores |
             CeloBaklava |
+            Base |
             BaseGoerli => "ETHERSCAN_API_KEY",
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
