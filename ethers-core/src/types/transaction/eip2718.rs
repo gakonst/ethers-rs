@@ -34,13 +34,13 @@ use super::optimism_deposited::{
 #[cfg_attr(feature = "legacy", serde(untagged))]
 pub enum TypedTransaction {
     // 0x00
-    #[serde(rename = "0x00")]
+    #[serde(rename = "0x00", alias = "0x0")]
     Legacy(TransactionRequest),
     // 0x01
-    #[serde(rename = "0x01")]
+    #[serde(rename = "0x01", alias = "0x1")]
     Eip2930(Eip2930TransactionRequest),
     // 0x02
-    #[serde(rename = "0x02")]
+    #[serde(rename = "0x02", alias = "0x2")]
     Eip1559(Eip1559TransactionRequest),
     // 0x7E
     #[cfg(feature = "optimism")]
@@ -715,7 +715,7 @@ mod tests {
 
     #[test]
     fn test_typed_tx() {
-        let tx: Eip1559TransactionRequest = serde_json::from_str(
+        let envelope: TypedTransaction = serde_json::from_str(
             r#"{
             "gas": "0x186a0",
             "maxFeePerGas": "0x77359400",
@@ -740,8 +740,6 @@ mod tests {
         }"#,
         )
         .unwrap();
-
-        let envelope = TypedTransaction::Eip1559(tx);
 
         let expected =
             H256::from_str("0x090b19818d9d087a49c3d2ecee4829ee4acea46089c1381ac5e588188627466d")
