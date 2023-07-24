@@ -218,12 +218,18 @@ impl Solc {
 
     /// Returns the directory in which [svm](https://github.com/roynalnaruto/svm-rs) stores all versions
     ///
-    /// This will be `~/.svm` on unix
+    /// This will be:
+    ///  `~/.svm` on unix, if it exists
+    /// - $XDG_DATA_HOME (~/.local/share/svm) if the svm folder does not exist.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn svm_home() -> Option<PathBuf> {
-        home::home_dir()
-            .map(|dir| dir.join("./local/share/svm"))
-            .or(home::home_dir().map(|dir| dir.join(".svm")))
+        match home::home_dir().map(|dir| dir.join(".svm")) {
+            Some(dir) => return Some(dir),
+            None => match dirs::data_dir() {
+                Some(dir) => return Some(dir.join("svm")),
+                None => return None,
+            },
+        }
     }
 
     /// Returns the `semver::Version` [svm](https://github.com/roynalnaruto/svm-rs)'s `.global_version` is currently set to.
