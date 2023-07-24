@@ -224,7 +224,13 @@ impl Solc {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn svm_home() -> Option<PathBuf> {
         match home::home_dir().map(|dir| dir.join(".svm")) {
-            Some(dir) => Some(dir),
+            Some(dir) => {
+                if !dir.exists() {
+                    dirs::data_dir().map(|dir| dir.join("svm"))
+                } else {
+                    Some(dir)
+                }
+            }
             None => dirs::data_dir().map(|dir| dir.join("svm")),
         }
     }
