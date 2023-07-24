@@ -221,7 +221,9 @@ impl Solc {
     /// This will be `~/.svm` on unix
     #[cfg(not(target_arch = "wasm32"))]
     pub fn svm_home() -> Option<PathBuf> {
-        home::home_dir().map(|dir| dir.join(".svm"))
+        home::home_dir()
+            .map(|dir| dir.join("./local/share/svm"))
+            .or(home::home_dir().map(|dir| dir.join(".svm")))
     }
 
     /// Returns the `semver::Version` [svm](https://github.com/roynalnaruto/svm-rs)'s `.global_version` is currently set to.
