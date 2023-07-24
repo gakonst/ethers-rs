@@ -353,7 +353,7 @@ impl Solc {
         let _lock = take_solc_installer_lock();
 
         // load the local / remote versions
-        let versions = utils::installed_versions(svm::SVM_HOME.as_path()).unwrap_or_default();
+        let versions = utils::installed_versions(svm::SVM_DATA_DIR.as_path()).unwrap_or_default();
 
         let local_versions = Self::find_matching_installation(&versions, sol_version);
         let remote_versions = Self::find_matching_installation(&RELEASES.1, sol_version);
@@ -861,14 +861,14 @@ mod tests {
         let _lock = LOCK.lock();
         let ver = "0.8.6";
         let version = Version::from_str(ver).unwrap();
-        if utils::installed_versions(svm::SVM_HOME.as_path())
+        if utils::installed_versions(svm::SVM_DATA_DIR.as_path())
             .map(|versions| !versions.contains(&version))
             .unwrap_or_default()
         {
             Solc::blocking_install(&version).unwrap();
         }
         let res = Solc::find_svm_installed_version(version.to_string()).unwrap().unwrap();
-        let expected = svm::SVM_HOME.join(ver).join(format!("solc-{ver}"));
+        let expected = svm::SVM_DATA_DIR.join(ver).join(format!("solc-{ver}"));
         assert_eq!(res.solc, expected);
     }
 
