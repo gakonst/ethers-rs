@@ -387,7 +387,7 @@ impl TypedTransaction {
             // Legacy (0x00)
             // use the original rlp
             let decoded_request = TransactionRequest::decode_signed_rlp(rlp)?;
-            return Ok((Self::Legacy(decoded_request.0), decoded_request.1));
+            return Ok((Self::Legacy(decoded_request.0), decoded_request.1))
         }
 
         let rest = rlp::Rlp::new(
@@ -397,18 +397,18 @@ impl TypedTransaction {
         if first == 0x01 {
             // EIP-2930 (0x01)
             let decoded_request = Eip2930TransactionRequest::decode_signed_rlp(&rest)?;
-            return Ok((Self::Eip2930(decoded_request.0), decoded_request.1));
+            return Ok((Self::Eip2930(decoded_request.0), decoded_request.1))
         }
         if first == 0x02 {
             // EIP-1559 (0x02)
             let decoded_request = Eip1559TransactionRequest::decode_signed_rlp(&rest)?;
-            return Ok((Self::Eip1559(decoded_request.0), decoded_request.1));
+            return Ok((Self::Eip1559(decoded_request.0), decoded_request.1))
         }
         #[cfg(feature = "optimism")]
         if first == 0x7E {
             // Optimism Deposited (0x7E)
             let decoded_request = OptimismDepositedTransactionRequest::decode_signed_rlp(&rest)?;
-            return Ok((Self::OptimismDeposited(decoded_request.0), decoded_request.1));
+            return Ok((Self::OptimismDeposited(decoded_request.0), decoded_request.1))
         }
 
         Err(rlp::DecoderError::Custom("invalid tx type").into())
