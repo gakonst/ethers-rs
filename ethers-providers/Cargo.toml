@@ -50,7 +50,7 @@ futures-channel = { workspace = true, optional = true }
 pin-project.workspace = true
 
 # peer-related admin namespace
-enr = { version = "0.8.1", default-features = false, features = ["k256", "serde"] }
+enr = { version = "0.9.0", default-features = false, features = ["k256", "serde"] }
 
 # tracing
 tracing = { workspace = true, features = ["attributes"] }
