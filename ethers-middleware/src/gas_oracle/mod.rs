@@ -153,7 +153,7 @@ pub trait GasOracle: Send + Sync + Debug {
 #[inline]
 #[doc(hidden)]
 pub(crate) fn from_gwei_f64(gwei: f64) -> U256 {
-    ethers_core::types::u256_from_f64_saturating(gwei) * GWEI_TO_WEI_U256
+    U256::from((gwei * GWEI_TO_WEI as f64).ceil() as u64)
 }
 
 #[cfg(test)]
