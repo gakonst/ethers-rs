@@ -40,7 +40,7 @@ pub use test_provider::{GOERLI, MAINNET, ROPSTEN, SEPOLIA};
 /// to prevent rate limits
 pub mod test_provider {
     use super::*;
-    use crate::Http;
+    use crate::Http; // TODO: test LooseHttp
     use once_cell::sync::Lazy;
     use std::{convert::TryFrom, iter::Cycle, slice::Iter, sync::Mutex};
 
