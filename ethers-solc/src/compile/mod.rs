@@ -218,10 +218,21 @@ impl Solc {
 
     /// Returns the directory in which [svm](https://github.com/roynalnaruto/svm-rs) stores all versions
     ///
-    /// This will be `~/.svm` on unix
+    /// This will be:
+    ///  `~/.svm` on unix, if it exists
+    /// - $XDG_DATA_HOME (~/.local/share/svm) if the svm folder does not exist.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn svm_home() -> Option<PathBuf> {
-        home::home_dir().map(|dir| dir.join(".svm"))
+        match home::home_dir().map(|dir| dir.join(".svm")) {
+            Some(dir) => {
+                if !dir.exists() {
+                    dirs::data_dir().map(|dir| dir.join("svm"))
+                } else {
+                    Some(dir)
+                }
+            }
+            None => dirs::data_dir().map(|dir| dir.join("svm")),
+        }
     }
 
     /// Returns the `semver::Version` [svm](https://github.com/roynalnaruto/svm-rs)'s `.global_version` is currently set to.
@@ -353,7 +364,7 @@ impl Solc {
         let _lock = take_solc_installer_lock();
 
         // load the local / remote versions
-        let versions = utils::installed_versions(svm::SVM_HOME.as_path()).unwrap_or_default();
+        let versions = utils::installed_versions(svm::SVM_DATA_DIR.as_path()).unwrap_or_default();
 
         let local_versions = Self::find_matching_installation(&versions, sol_version);
         let remote_versions = Self::find_matching_installation(&RELEASES.1, sol_version);
@@ -845,7 +856,7 @@ mod tests {
             (">=0.4.0 <0.5.0", "0.4.26"),
             // latest - this has to be updated every time a new version is released.
             // Requires the SVM version list to be updated as well.
-            (">=0.5.0", "0.8.20"),
+            (">=0.5.0", "0.8.21"),
         ] {
             let source = source(pragma);
             let res = Solc::detect_version(&source).unwrap();
@@ -861,14 +872,14 @@ mod tests {
         let _lock = LOCK.lock();
         let ver = "0.8.6";
         let version = Version::from_str(ver).unwrap();
-        if utils::installed_versions(svm::SVM_HOME.as_path())
+        if utils::installed_versions(svm::SVM_DATA_DIR.as_path())
             .map(|versions| !versions.contains(&version))
             .unwrap_or_default()
         {
             Solc::blocking_install(&version).unwrap();
         }
         let res = Solc::find_svm_installed_version(version.to_string()).unwrap().unwrap();
-        let expected = svm::SVM_HOME.join(ver).join(format!("solc-{ver}"));
+        let expected = svm::SVM_DATA_DIR.join(ver).join(format!("solc-{ver}"));
         assert_eq!(res.solc, expected);
     }
 
