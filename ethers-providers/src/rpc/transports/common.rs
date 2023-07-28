@@ -96,7 +96,7 @@ impl<'a, T> Request<'a, T> {
 
 /// A JSON-RPC response
 #[derive(Debug)]
-pub enum Response<'a, const STRICT:bool > {
+pub enum Response<'a, const RELAXED:bool > {
     Success { id: u64, result: &'a RawValue },
     Error { id: u64, error: JsonRpcError },
     Notification { method: &'a str, params: Params<'a> },
@@ -109,10 +109,10 @@ pub struct Params<'a> {
     pub result: &'a RawValue,
 }
 
-struct ResponseVisitor<'b,const STRICT:bool>(&'b ());
+struct ResponseVisitor<'b,const RELAXED:bool>(&'b ());
 
-impl<'de: 'a, 'a, const STRICT:bool> Visitor<'de> for ResponseVisitor<'a,STRICT> {
-    type Value = Response<'a,STRICT>;
+impl<'de: 'a, 'a, const RELAXED:bool> Visitor<'de> for ResponseVisitor<'a,RELAXED> {
+    type Value = Response<'a,RELAXED>;
     
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("a valid jsonrpc 2.0 response object")
@@ -203,10 +203,10 @@ impl<'de: 'a, 'a, const STRICT:bool> Visitor<'de> for ResponseVisitor<'a,STRICT>
         }
 
         match (id, result, error, method, params) {
-            (Some(id), Some(result), None, None, None) if STRICT => {
+            (Some(id), Some(result), None, None, None) if RELAXED => {
                 Ok(Response::Success { id, result })
             }
-            (Some(id), Some(result), None, _, _) if !STRICT => {
+            (Some(id), Some(result), None, _, _) if !RELAXED => {
                 Ok(Response::Success { id, result })
             }
             (Some(id), None, Some(error), None, None) => Ok(Response::Error { id, error }),
@@ -223,7 +223,7 @@ impl<'de: 'a, 'a, const STRICT:bool> Visitor<'de> for ResponseVisitor<'a,STRICT>
 
 // FIXME: ideally, this could be auto-derived as an untagged enum, but due to
 // https://github.com/serde-rs/serde/issues/1183 this currently fails
-impl<'a, const STRICT: bool> Deserialize<'a> for Response<'a, STRICT> {
+impl<'a, const RELAXED: bool> Deserialize<'a> for Response<'a, RELAXED> {
     fn deserialize<D: serde::Deserializer<'a> >(deserializer: D) -> Result<Self, D::Error> {
         deserializer.deserialize_map(ResponseVisitor(&()))
     }

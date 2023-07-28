@@ -6,10 +6,10 @@ pub use self::http::{ClientError as HttpClientError, Provider as HttpProvider};
 use self::http::{JsonRpcClient as RawJsonRpcClient,ClientError};
 
 ///the old strict Http provider -- fails if the response has a `method:` entry
-pub type Http = HttpProvider<true>;
+pub type Http = HttpProvider<false>;
 
 ///the new loose Http provider
-pub type LooseHttp = HttpProvider<false>;
+pub type RelaxedHttp = HttpProvider<true>;
 
 ///when you want either Http or LooseHttp
 pub type HttpClient = dyn RawJsonRpcClient<Error=ClientError>;

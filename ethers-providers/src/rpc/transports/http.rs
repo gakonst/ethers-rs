@@ -29,7 +29,7 @@ use url::Url;
 /// # }
 /// ```
 #[derive(Debug)]
-pub struct Provider<const STRICT:bool> {
+pub struct Provider<const RELAXED:bool> {
     id: AtomicU64,
     client: Client,
     url: Url,
@@ -83,7 +83,7 @@ impl crate::RpcError for ClientError {
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl<const STRICT:bool> JsonRpcClient for Provider<STRICT> {
+impl<const RELAXED:bool> JsonRpcClient for Provider<RELAXED> {
     type Error = ClientError;
 
     async fn request<T: Serialize + Send + Sync, R: DeserializeOwned >(
@@ -97,7 +97,7 @@ impl<const STRICT:bool> JsonRpcClient for Provider<STRICT> {
         let res = self.client.post(self.url.as_ref()).json(&payload).send().await?;
         let body = res.bytes().await?;
 
-        let raw = match serde_json::from_slice::<'_,Response<'_,STRICT>>(&body) {
+        let raw = match serde_json::from_slice::<'_,Response<'_,RELAXED>>(&body) {
             Ok(Response::Success { result, .. }) => { result.to_owned() },
             Ok(Response::Error { error, .. }) => { return Err(error.into());},
             Ok(_) => {
@@ -122,7 +122,7 @@ impl<const STRICT:bool> JsonRpcClient for Provider<STRICT> {
     }
 }
 
-impl<const STRICT:bool> Provider<STRICT> {
+impl<const RELAXED:bool> Provider<RELAXED> {
     /// Initializes a new HTTP Client
     ///
     /// # Example
@@ -191,7 +191,7 @@ impl<const STRICT:bool> Provider<STRICT> {
     }
 }
 
-impl<const STRICT:bool> FromStr for Provider<STRICT> {
+impl<const RELAXED:bool> FromStr for Provider<RELAXED> {
     type Err = url::ParseError;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
@@ -200,7 +200,7 @@ impl<const STRICT:bool> FromStr for Provider<STRICT> {
     }
 }
 
-impl<const STRICT:bool> Clone for Provider<STRICT> {
+impl<const RELAXED:bool> Clone for Provider<RELAXED> {
     fn clone(&self) -> Self {
         Self { id: AtomicU64::new(1), client: self.client.clone(), url: self.url.clone() }
     }
