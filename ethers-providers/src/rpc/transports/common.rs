@@ -302,8 +302,13 @@ impl JwtKey {
     }
 
     /// Returns a reference to the underlying byte array.
-    pub fn as_bytes(&self) -> &[u8] {
+    pub fn as_bytes(&self) -> &[u8; JWT_SECRET_LENGTH] {
         &self.0
+    }
+
+    /// Consumes the key, returning its underlying byte array.
+    pub fn into_bytes(self) -> [u8; JWT_SECRET_LENGTH] {
+        self.0
     }
 }
 
