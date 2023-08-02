@@ -154,6 +154,7 @@ pub enum Chain {
     Base = 8453,
     BaseGoerli = 84531,
 
+    Linea = 59144,
     LineaTestnet = 59140,
 
     #[strum(to_string = "zksync")]
@@ -299,6 +300,7 @@ impl Chain {
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
             MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
             BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm | PolygonZkEvmTestnet | Metis |
+            Linea => return None,
             LineaTestnet => return None,
         };
 
@@ -355,6 +357,7 @@ impl Chain {
             ArbitrumGoerli |
             ArbitrumNova |
             FilecoinMainnet |
+            Linea |
             LineaTestnet |
             FilecoinHyperspaceTestnet => false,
 
@@ -533,6 +536,7 @@ impl Chain {
                 "https://zksync2-testnet-explorer.zksync.dev/",
                 "https://goerli.explorer.zksync.io/",
             ),
+            Linea => ("https://api.lineascan.build/api", "https://lineascan.build/"),
             LineaTestnet => {
                 ("https://explorer.goerli.linea.build/api", "https://explorer.goerli.linea.build/")
             }
@@ -584,6 +588,7 @@ impl Chain {
             CeloAlfajores |
             CeloBaklava |
             Base |
+            Linea |
             BaseGoerli => "ETHERSCAN_API_KEY",
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
