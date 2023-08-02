@@ -115,25 +115,25 @@ impl<M: Middleware> ContractError<M> {
     /// A lot of ethers RPC do not enable this by default. Make sure yours has it enabled.
     /// for more details see https://docs.soliditylang.org/en/v0.8.12/control-structures.html#revert
     pub fn get_revert_msg(&self) -> Option<String> {
-        self.as_revert().and_then(|data: &Bytes| {
-            let bytes = data.to_vec();
-            let mut bytes = bytes.as_slice();
+        self.as_revert().and_then(|bytes: &Bytes| {
             let data_string: &[u8];
 
-            (_, bytes) = bytes.split_at(4); // first 4 bytes for function selector
-            (_, bytes) = bytes.split_at(32); // next 32 for data offset
-            (_, bytes) = bytes.split_at(32); // next 32 bytes for str len
-            (data_string, _) = bytes.split_at(32); // remaining 32 for string data
+            data_string = &bytes[68..]; //message in 32 last bytes
 
-            // remove trailling null bytes
-            let idx = data_string.iter().position(|x| x == "\0".as_bytes().first().unwrap());
-            match idx {
-                Some(i) => {
-                    let (stripped, _) = data_string.split_at(i);
-                    String::from_utf8(stripped.to_vec()).ok()
-                }
-                None => None,
+            // check for length and selector == keccak256("Error(string)")
+            if data_string.len() != 32 || bytes[..4] != [0x08, 0xc3, 0x79, 0xa0] {
+                return None
             }
+
+            // remove trailing nullbytes
+            let index = data_string.iter().position(|x| x == "\0".as_bytes().first().unwrap());
+            let idx: usize;
+            match index {
+                Some(i) => idx = i,
+                None => idx = 32 // max string size ; checked above
+            }
+            
+            String::from_utf8(data_string[0..idx].to_vec()).ok()
         })
     }
 
