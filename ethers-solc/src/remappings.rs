@@ -1112,7 +1112,6 @@ mod tests {
 
         let resolved = paths
             .resolve_library_import(
-                tmp_dir.path(),
                 Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"),
             )
             .unwrap();
@@ -1123,7 +1122,6 @@ mod tests {
 
         let resolved = paths
             .resolve_library_import(
-                tmp_dir.path(),
                 Path::new("@openzeppelin/contracts/token/ERC20/IERC20.sol"),
             )
             .unwrap();
