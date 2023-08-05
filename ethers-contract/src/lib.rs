@@ -3,6 +3,14 @@
 #![warn(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
+macro_rules! if_providers {
+    ($($item:item)*) => {$(
+        #[cfg(feature = "providers")]
+        #[cfg_attr(docsrs, doc(cfg(feature = "providers")))]
+        $item
+    )*}
+}
+
 mod base;
 pub use base::{decode_function_data, encode_function_data, AbiError, BaseContract};
 
@@ -65,36 +73,35 @@ pub mod contract {
 #[doc(hidden)]
 pub use ethers_core as core;
 
-cfg_if::cfg_if! {
-    if #[cfg(feature = "providers")] {
-        mod event;
-        pub use event::Event;
+if_providers! {
+    mod event;
+    pub use event::Event;
 
-        #[path = "contract.rs"]
-        mod _contract;
-        pub use _contract::{Contract, ContractInstance};
+    #[path = "contract.rs"]
+    mod _contract;
+    pub use _contract::{Contract, ContractInstance};
 
-        mod call;
-        pub use call::{ContractCall, ContractError, FunctionCall};
+    mod call;
+    pub use call::{ContractCall, ContractError, FunctionCall};
 
-        mod factory;
-        pub use factory::{ContractDeployer, ContractDeploymentTx, ContractFactory, DeploymentTxFactory};
+    mod factory;
+    pub use factory::{ContractDeployer, ContractDeploymentTx, ContractFactory, DeploymentTxFactory};
 
-        #[cfg(all(feature = "abigen"))]
-        pub use multicall::{error::MulticallError, Call, Multicall, MulticallContract};
+    #[cfg(all(feature = "abigen"))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
+    pub use multicall::{error::MulticallError, Call, Multicall, MulticallContract};
 
-        /// This module exposes low lever builder structures which are only consumed by the
-        /// type-safe ABI bindings generators.
-        #[doc(hidden)]
-        pub mod builders {
-            pub use super::{
-                call::ContractCall,
-                event::Event,
-                factory::{ContractDeployer, Deployer},
-            };
-        }
-
-        #[doc(hidden)]
-        pub use ethers_providers as providers;
+    /// This module exposes low lever builder structures which are only consumed by the
+    /// type-safe ABI bindings generators.
+    #[doc(hidden)]
+    pub mod builders {
+        pub use super::{
+            call::ContractCall,
+            event::Event,
+            factory::{ContractDeployer, Deployer},
+        };
     }
+
+    #[doc(hidden)]
+    pub use ethers_providers as providers;
 }

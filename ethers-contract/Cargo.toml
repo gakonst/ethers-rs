@@ -26,7 +26,6 @@ all-features = true
 ethers-providers = { workspace = true, optional = true }
 ethers-core.workspace = true
 
-cfg-if.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 futures-util.workspace = true

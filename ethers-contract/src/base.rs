@@ -9,13 +9,11 @@ use std::{
     hash::Hash,
 };
 
-cfg_if::cfg_if! {
-    if #[cfg(feature = "providers")] {
-        use crate::ContractInstance;
-        use ethers_providers::Middleware;
-        use ethers_core::types::Address;
-        use std::borrow::Borrow;
-    }
+if_providers! {
+    use crate::ContractInstance;
+    use ethers_providers::Middleware;
+    use ethers_core::types::Address;
+    use std::borrow::Borrow;
 }
 
 /// A reduced form of `Contract` which just takes the `abi` and produces

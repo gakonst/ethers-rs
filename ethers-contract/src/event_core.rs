@@ -7,14 +7,12 @@ use ethers_core::{
 };
 use std::borrow::Cow;
 
-cfg_if::cfg_if! {
-    if #[cfg(feature = "providers")] {
-        use std::borrow::Borrow;
-        use std::marker::PhantomData;
-        use ethers_core::types::Filter;
-        use ethers_providers::Middleware;
-        use crate::event::Event;
-    }
+if_providers! {
+    use std::borrow::Borrow;
+    use std::marker::PhantomData;
+    use ethers_core::types::Filter;
+    use ethers_providers::Middleware;
+    use crate::event::Event;
 }
 
 /// Attempt to parse a log into a specific output type.
