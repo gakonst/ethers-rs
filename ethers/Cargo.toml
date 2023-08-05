@@ -86,7 +86,7 @@ solc-sha2-asm = []
 
 [dependencies]
 ethers-addressbook.workspace = true
-ethers-contract.workspace = true
+ethers-contract = { workspace = true, features = ["providers"] }
 ethers-core.workspace = true
 ethers-etherscan.workspace = true
 ethers-middleware.workspace = true

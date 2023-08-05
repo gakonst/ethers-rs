@@ -1,32 +1,45 @@
-use crate::call::{ContractCall, ContractError};
-use ethers_core::{
-    abi::{Detokenize, Function, Token, Tokenizable},
-    types::{
-        transaction::eip2718::TypedTransaction, Address, BlockNumber, Bytes, NameOrAddress, U256,
-    },
-};
-use ethers_providers::{Middleware, PendingTransaction};
-use std::{convert::TryFrom, fmt, result::Result as StdResult, sync::Arc};
+use std::{convert::TryFrom, result::Result as StdResult};
 
 /// The Multicall contract bindings. Auto-generated with `abigen`.
 pub mod contract;
-pub use contract::Multicall3 as MulticallContract;
-use contract::{
-    Call as Multicall1Call, Call3 as Multicall3Call, Call3Value as Multicall3CallValue,
-    Result as MulticallResult,
-};
 
 pub mod constants;
 
-/// Type alias for `Result<T, MulticallError<M>>`
-pub type Result<T, M> = StdResult<T, error::MulticallError<M>>;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "providers")] {
+        use crate::call::{ContractCall, ContractError};
 
-/// MultiCall error type
-pub mod error;
+        use ethers_core::{
+            abi::{Detokenize, Function, Token, Tokenizable},
+            types::{
+                transaction::eip2718::TypedTransaction, Address, BlockNumber, Bytes,
+                NameOrAddress, U256,
+            },
+        };
+        use std::{fmt, sync::Arc};
+
+        use ethers_providers::{Middleware, PendingTransaction};
+
+        pub use contract::Multicall3 as MulticallContract;
+        use contract::{
+            Call as Multicall1Call,
+            Call3 as Multicall3Call,
+            Call3Value as Multicall3CallValue,
+            Result as MulticallResult,
+        };
+
+        /// MultiCall error type
+        pub mod error;
+
+        /// Type alias for `Result<T, MulticallError<M>>`
+        pub type Result<T, M> = StdResult<T, error::MulticallError<M>>;
+    }
+}
 
 /// Helper struct for managing calls to be made to the `function` in smart contract `target`
 /// with `data`.
 #[derive(Clone, Debug)]
+#[cfg(feature = "providers")]
 pub struct Call {
     target: Address,
     data: Bytes,
@@ -194,6 +207,7 @@ impl MulticallVersion {
 /// [`call`]: #method.call
 /// [`send`]: #method.send
 #[must_use = "Multicall does nothing unless you use `call` or `send`"]
+#[cfg(feature = "providers")]
 pub struct Multicall<M> {
     /// The Multicall contract interface.
     pub contract: MulticallContract<M>,
@@ -212,6 +226,7 @@ pub struct Multicall<M> {
 }
 
 // Manually implement Clone and Debug to avoid trait bounds.
+#[cfg(feature = "providers")]
 impl<M> Clone for Multicall<M> {
     fn clone(&self) -> Self {
         Self {
@@ -224,6 +239,7 @@ impl<M> Clone for Multicall<M> {
     }
 }
 
+#[cfg(feature = "providers")]
 impl<M> fmt::Debug for Multicall<M> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Multicall")
@@ -236,6 +252,7 @@ impl<M> fmt::Debug for Multicall<M> {
     }
 }
 
+#[cfg(feature = "providers")]
 impl<M: Middleware> Multicall<M> {
     /// Creates a new Multicall instance from the provided client. If provided with an `address`,
     /// it instantiates the Multicall contract with that address, otherwise it defaults to

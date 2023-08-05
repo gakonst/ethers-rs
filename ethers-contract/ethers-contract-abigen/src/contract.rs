@@ -8,9 +8,11 @@ mod types;
 
 use super::{util, Abigen};
 use crate::contract::{methods::MethodAlias, structs::InternalStructs};
+#[cfg(feature = "providers")]
+use ethers_core::macros::ethers_providers_crate;
 use ethers_core::{
     abi::{Abi, AbiParser, ErrorExt, EventExt, JsonAbi},
-    macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
+    macros::{ethers_contract_crate, ethers_core_crate},
     types::Bytes,
 };
 use eyre::{eyre, Context as _, Result};
@@ -131,9 +133,7 @@ pub struct Context {
 impl Context {
     /// Generates the tokens.
     pub fn expand(&self) -> Result<ExpandedContract> {
-        let name = &self.contract_ident;
         let name_mod = util::ident(&util::safe_module_name(&self.contract_name));
-        let abi_name = self.inline_abi_ident();
 
         // 1. Declare Contract struct
         let struct_decl = self.struct_declaration();
@@ -141,27 +141,36 @@ impl Context {
         // 2. Declare events structs & impl FromTokens for each event
         let events_decl = self.events_declaration()?;
 
-        // 3. impl block for the event functions
-        let contract_events = self.event_methods()?;
-
-        // 4. impl block for the contract methods and their corresponding types
+        // 3. impl block for the contract methods and their corresponding types
         let (contract_methods, call_structs) = self.methods_and_call_structs()?;
 
-        // 5. The deploy method, only if the contract has a bytecode object
-        let deployment_methods = self.deployment_methods();
-
-        // 6. Declare the structs parsed from the human readable abi
+        // 4. Declare the structs parsed from the human readable abi
         let abi_structs_decl = self.abi_structs()?;
 
-        // 7. declare all error types
+        // 5. declare all error types
         let errors_decl = self.errors()?;
 
-        let ethers_core = ethers_core_crate();
-        let ethers_contract = ethers_contract_crate();
-        let ethers_providers = ethers_providers_crate();
-
         let contract = quote! {
-                #struct_decl
+            #struct_decl
+        };
+
+        #[cfg(feature = "providers")]
+        let contract = {
+            let name = &self.contract_ident;
+            let abi_name = self.inline_abi_ident();
+
+            // 6. impl block for the event functions
+            let contract_events = self.event_methods()?;
+
+            // 7. The deploy method, only if the contract has a bytecode object
+            let deployment_methods = self.deployment_methods();
+
+            let ethers_core = ethers_core_crate();
+            let ethers_contract = ethers_contract_crate();
+            let ethers_providers = ethers_providers_crate();
+
+            quote! {
+                #contract
 
                 impl<M: #ethers_providers::Middleware> #name<M> {
                     /// Creates a new contract instance with the specified `ethers` client at
@@ -182,7 +191,12 @@ impl Context {
                         Self::new(contract.address(), contract.client())
                     }
                 }
+            }
         };
+
+        // Avoid having a warning
+        #[cfg(not(feature = "providers"))]
+        let _ = contract_methods;
 
         Ok(ExpandedContract {
             module: name_mod,
@@ -339,8 +353,6 @@ impl Context {
 
     /// Generates the token stream for the contract's ABI, bytecode and struct declarations.
     pub(crate) fn struct_declaration(&self) -> TokenStream {
-        let name = &self.contract_ident;
-
         let ethers_core = ethers_core_crate();
         let ethers_contract = ethers_contract_crate();
 
@@ -390,7 +402,7 @@ impl Context {
             }
         });
 
-        quote! {
+        let code = quote! {
             // The `Lazy` ABI
             #abi
 
@@ -399,41 +411,52 @@ impl Context {
 
             // The static deployed Bytecode, if present
             #deployed_bytecode
+        };
 
-            // Struct declaration
-            pub struct #name<M>(#ethers_contract::Contract<M>);
+        #[cfg(feature = "providers")]
+        let code = {
+            let name = &self.contract_ident;
 
-            // Manual implementation since `M` is stored in `Arc<M>` and does not need to be `Clone`
-            impl<M> ::core::clone::Clone for #name<M> {
-                fn clone(&self) -> Self {
-                    Self(::core::clone::Clone::clone(&self.0))
+            quote! {
+                #code
+
+                // Struct declaration
+                pub struct #name<M>(#ethers_contract::Contract<M>);
+
+                // Manual implementation since `M` is stored in `Arc<M>` and does not need to be `Clone`
+                impl<M> ::core::clone::Clone for #name<M> {
+                    fn clone(&self) -> Self {
+                        Self(::core::clone::Clone::clone(&self.0))
+                    }
+                }
+
+                // Deref to the inner contract to have access to all its methods
+                impl<M> ::core::ops::Deref for #name<M> {
+                    type Target = #ethers_contract::Contract<M>;
+
+                    fn deref(&self) -> &Self::Target {
+                        &self.0
+                    }
+                }
+
+                impl<M> ::core::ops::DerefMut for #name<M> {
+                    fn deref_mut(&mut self) -> &mut Self::Target {
+                        &mut self.0
+                    }
+                }
+
+                // `<name>(<address>)`
+                impl<M> ::core::fmt::Debug for #name<M> {
+                    fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                        f.debug_tuple(::core::stringify!(#name))
+                            .field(&self.address())
+                            .finish()
+                    }
                 }
             }
+        };
 
-            // Deref to the inner contract to have access to all its methods
-            impl<M> ::core::ops::Deref for #name<M> {
-                type Target = #ethers_contract::Contract<M>;
-
-                fn deref(&self) -> &Self::Target {
-                    &self.0
-                }
-            }
-
-            impl<M> ::core::ops::DerefMut for #name<M> {
-                fn deref_mut(&mut self) -> &mut Self::Target {
-                    &mut self.0
-                }
-            }
-
-            // `<name>(<address>)`
-            impl<M> ::core::fmt::Debug for #name<M> {
-                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
-                    f.debug_tuple(::core::stringify!(#name))
-                        .field(&self.address())
-                        .finish()
-                }
-            }
-        }
+        code
     }
 }
 

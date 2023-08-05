@@ -115,6 +115,7 @@ auto_impl = "1.1"
 
 # misc
 bytes = "1.4"
+cfg-if = "1.0.0"
 criterion = "0.5"
 dunce = "1.0"
 eyre = "0.6"

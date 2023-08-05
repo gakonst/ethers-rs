@@ -1,16 +1,22 @@
-use crate::ContractInstance;
 pub use ethers_core::abi::AbiError;
 use ethers_core::{
     abi::{Abi, Detokenize, Error, Event, Function, FunctionExt, RawLog, Token, Tokenize},
-    types::{Address, Bytes, Selector, H256},
+    types::{Bytes, Selector, H256},
 };
-use ethers_providers::Middleware;
 use std::{
-    borrow::Borrow,
     collections::{BTreeMap, HashMap},
     fmt::Debug,
     hash::Hash,
 };
+
+cfg_if::cfg_if! {
+    if #[cfg(feature = "providers")] {
+        use crate::ContractInstance;
+        use ethers_providers::Middleware;
+        use ethers_core::types::Address;
+        use std::borrow::Borrow;
+    }
+}
 
 /// A reduced form of `Contract` which just takes the `abi` and produces
 /// ABI encoded data for its functions.
@@ -219,6 +225,7 @@ impl BaseContract {
     }
 
     /// Upgrades a `BaseContract` into a full fledged contract with an address and middleware.
+    #[cfg(feature = "providers")]
     pub fn into_contract<B, M>(self, address: Address, client: B) -> ContractInstance<B, M>
     where
         B: Borrow<M>,
@@ -314,7 +321,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethers_core::{abi::parse_abi, types::U256};
+    use ethers_core::{
+        abi::parse_abi,
+        types::{Address, U256},
+    };
 
     #[test]
     fn can_parse_function_inputs() {

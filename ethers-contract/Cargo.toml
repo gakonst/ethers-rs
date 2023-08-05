@@ -23,10 +23,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
-ethers-providers.workspace = true
+ethers-providers = { workspace = true, optional = true }
 ethers-core.workspace = true
-ethers-signers.workspace = true
 
+cfg-if.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 futures-util.workspace = true
@@ -41,12 +41,15 @@ ethers-contract-derive = { workspace = true, optional = true }
 
 [dev-dependencies]
 ethers-providers = { workspace = true, features = ["ws"] }
+ethers-signers.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]
-default = ["abigen"]
+default = ["abigen", "providers"]
+
+providers = ["ethers-providers", "ethers-contract-abigen/providers", "ethers-contract-derive/providers"]
 
 abigen = ["ethers-contract-abigen", "ethers-contract-derive"]
 abigen-online = ["abigen", "ethers-contract-abigen/online"]

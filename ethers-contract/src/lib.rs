@@ -3,24 +3,17 @@
 #![warn(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-#[path = "contract.rs"]
-mod _contract;
-pub use _contract::{Contract, ContractInstance};
-
 mod base;
 pub use base::{decode_function_data, encode_function_data, AbiError, BaseContract};
 
-mod call;
-pub use call::{ContractCall, ContractError, EthCall, FunctionCall};
+mod call_core;
+pub use call_core::EthCall;
 
 mod error;
 pub use error::{ContractRevert, EthError};
 
-mod factory;
-pub use factory::{ContractDeployer, ContractDeploymentTx, ContractFactory, DeploymentTxFactory};
-
-mod event;
-pub use event::{parse_log, EthEvent, Event};
+mod event_core;
+pub use event_core::{parse_log, EthEvent};
 
 mod log;
 pub use log::{decode_logs, EthLogDecode, LogMeta};
@@ -34,21 +27,8 @@ mod multicall;
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
 pub use multicall::{
     constants::{MULTICALL_ADDRESS, MULTICALL_SUPPORTED_CHAIN_IDS},
-    contract as multicall_contract,
-    error::MulticallError,
-    Call, Multicall, MulticallContract, MulticallVersion,
+    contract as multicall_contract, MulticallVersion,
 };
-
-/// This module exposes low lever builder structures which are only consumed by the
-/// type-safe ABI bindings generators.
-#[doc(hidden)]
-pub mod builders {
-    pub use super::{
-        call::ContractCall,
-        event::Event,
-        factory::{ContractDeployer, Deployer},
-    };
-}
 
 #[cfg(feature = "abigen")]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
@@ -85,5 +65,36 @@ pub mod contract {
 #[doc(hidden)]
 pub use ethers_core as core;
 
-#[doc(hidden)]
-pub use ethers_providers as providers;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "providers")] {
+        mod event;
+        pub use event::Event;
+
+        #[path = "contract.rs"]
+        mod _contract;
+        pub use _contract::{Contract, ContractInstance};
+
+        mod call;
+        pub use call::{ContractCall, ContractError, FunctionCall};
+
+        mod factory;
+        pub use factory::{ContractDeployer, ContractDeploymentTx, ContractFactory, DeploymentTxFactory};
+
+        #[cfg(all(feature = "abigen"))]
+        pub use multicall::{error::MulticallError, Call, Multicall, MulticallContract};
+
+        /// This module exposes low lever builder structures which are only consumed by the
+        /// type-safe ABI bindings generators.
+        #[doc(hidden)]
+        pub mod builders {
+            pub use super::{
+                call::ContractCall,
+                event::Event,
+                factory::{ContractDeployer, Deployer},
+            };
+        }
+
+        #[doc(hidden)]
+        pub use ethers_providers as providers;
+    }
+}

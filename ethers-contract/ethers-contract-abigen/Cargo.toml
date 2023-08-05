@@ -50,6 +50,7 @@ tokio = { workspace = true, optional = true }
 url = { workspace = true, optional = true }
 
 [features]
+providers = []
 online = ["reqwest", "ethers-etherscan", "url", "tokio"]
 rustls = ["reqwest?/rustls-tls", "ethers-etherscan?/rustls"]
 openssl = ["reqwest?/native-tls", "ethers-etherscan?/openssl"]
