@@ -272,7 +272,11 @@ impl Anvil {
             }
 
             if is_private_key && line.starts_with('(') {
-                let key_str = &line[6..line.len() - 1];
+                let key_str = line
+                    .split("0x")
+                    .last()
+                    .unwrap_or_else(|| panic!("could not parse private key: {}", line))
+                    .trim();
                 let key_hex = hex::decode(key_str).expect("could not parse as hex");
                 let key = K256SecretKey::from_bytes(&GenericArray::clone_from_slice(&key_hex))
                     .expect("did not get private key");
@@ -292,5 +296,10 @@ mod tests {
     #[test]
     fn can_launch_anvil() {
         let _ = Anvil::new().spawn();
+    }
+
+    #[test]
+    fn can_launch_anvil_with_more_accounts() {
+        let _ = Anvil::new().arg("--accounts").arg("20").spawn();
     }
 }
