@@ -34,7 +34,6 @@ use ethers_core::{
     utils,
 };
 use futures_util::{lock::Mutex, try_join};
-use hex::FromHex;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::VecDeque, convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration,
@@ -584,11 +583,10 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let data = utils::serialize(&data.into());
         let from = utils::serialize(from);
 
-        // get the response from `eth_sign` call and trim the 0x-prefix if present.
+        // get the response from `eth_sign` call
         let sig: String = self.request("eth_sign", [from, data]).await?;
-        let sig = sig.strip_prefix("0x").unwrap_or(&sig);
 
-        // decode the signature.
+        // decode the signature
         let sig = hex::decode(sig)?;
         Ok(Signature::try_from(sig.as_slice())
             .map_err(|e| ProviderError::CustomError(e.to_string()))?)
@@ -682,11 +680,17 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let from = utils::serialize(&from);
         let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
 
-        // get the hex encoded value.
+        // get the hex encoded value
         let value: String = self.request("eth_getStorageAt", [from, position, block]).await?;
-        // get rid of the 0x prefix and left pad it with zeroes.
-        let value = format!("{:0>64}", value.replace("0x", ""));
-        Ok(H256::from_slice(&Vec::from_hex(value)?))
+        // decode and left-pad to 32 bytes
+        let bytes = hex::decode(value)?;
+        if bytes.len() > 32 {
+            Err(hex::FromHexError::InvalidStringLength.into())
+        } else {
+            let mut buf = [0; 32];
+            buf[32 - bytes.len()..].copy_from_slice(&bytes);
+            Ok(H256(buf))
+        }
     }
 
     async fn get_code<T: Into<NameOrAddress> + Send + Sync>(

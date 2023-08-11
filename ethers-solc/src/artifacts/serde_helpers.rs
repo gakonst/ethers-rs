@@ -7,7 +7,7 @@ pub fn deserialize_bytes<'de, D>(d: D) -> Result<Bytes, D::Error>
 where
     D: Deserializer<'de>,
 {
-    String::deserialize(d)?.parse::<Bytes>().map_err(|e| serde::de::Error::custom(e.to_string()))
+    String::deserialize(d)?.parse::<Bytes>().map_err(serde::de::Error::custom)
 }
 
 pub fn deserialize_opt_bytes<'de, D>(d: D) -> Result<Option<Bytes>, D::Error>
@@ -15,19 +15,7 @@ where
     D: Deserializer<'de>,
 {
     let value = Option::<String>::deserialize(d)?;
-    if let Some(value) = value {
-        Ok(Some(
-            if let Some(value) = value.strip_prefix("0x") {
-                hex::decode(value)
-            } else {
-                hex::decode(&value)
-            }
-            .map_err(|e| serde::de::Error::custom(e.to_string()))?
-            .into(),
-        ))
-    } else {
-        Ok(None)
-    }
+    value.as_deref().map(str::parse).transpose().map_err(serde::de::Error::custom)
 }
 
 pub fn default_for_null<'de, D, T>(deserializer: D) -> Result<T, D::Error>

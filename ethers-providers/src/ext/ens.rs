@@ -112,9 +112,7 @@ mod tests {
     use super::*;
 
     fn assert_hex(hash: H256, val: &str) {
-        let v = if let Some(stripped) = val.strip_prefix("0x") { stripped } else { val };
-
-        assert_eq!(hash.0.to_vec(), hex::decode(v).unwrap());
+        assert_eq!(hash.0.to_vec(), hex::decode(val).unwrap());
     }
 
     #[test]

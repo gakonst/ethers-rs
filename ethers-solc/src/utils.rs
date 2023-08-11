@@ -283,9 +283,11 @@ pub fn library_fully_qualified_placeholder(name: impl AsRef<str>) -> String {
 
 /// Returns the library hash placeholder as `$hex(library_hash(name))$`
 pub fn library_hash_placeholder(name: impl AsRef<[u8]>) -> String {
-    let hash = library_hash(name);
-    let placeholder = hex::encode(hash);
-    format!("${placeholder}$")
+    let mut s = String::with_capacity(34 + 2);
+    s.push('$');
+    s.push_str(hex::Buffer::<17, false>::new().format(&library_hash(name)));
+    s.push('$');
+    s
 }
 
 /// Returns the library placeholder for the given name
