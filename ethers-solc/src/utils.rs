@@ -448,10 +448,8 @@ pub(crate) fn tempdir(name: &str) -> Result<tempfile::TempDir, SolcIoError> {
 /// Reads the json file and deserialize it into the provided type
 pub fn read_json_file<T: DeserializeOwned>(path: impl AsRef<Path>) -> Result<T, SolcError> {
     let path = path.as_ref();
-    let file = std::fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
-    let file = std::io::BufReader::new(file);
-    let val: T = serde_json::from_reader(file)?;
-    Ok(val)
+    let contents = std::fs::read_to_string(path).map_err(|err| SolcError::io(err, path))?;
+    serde_json::from_str(&contents).map_err(Into::into)
 }
 
 /// Creates the parent directory of the `file` and all its ancestors if it does not exist

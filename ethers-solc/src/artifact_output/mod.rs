@@ -21,7 +21,6 @@ use std::{
     ffi::OsString,
     fmt, fs,
     hash::Hash,
-    io,
     ops::Deref,
     path::{Path, PathBuf},
 };
@@ -763,10 +762,7 @@ pub trait ArtifactOutput {
     ///     - The file does not exist
     ///     - The file's content couldn't be deserialized into the `Artifact` type
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
-        let path = path.as_ref();
-        let file = fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
-        let file = io::BufReader::new(file);
-        Ok(serde_json::from_reader(file)?)
+        crate::utils::read_json_file(path)
     }
 
     /// Read the cached artifacts that are located the paths the iterator yields
