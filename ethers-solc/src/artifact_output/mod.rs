@@ -256,11 +256,12 @@ impl<T> Artifacts<T> {
 
     /// Iterate over all artifact files
     pub fn artifact_files(&self) -> impl Iterator<Item = &ArtifactFile<T>> {
-        self.0.values().flat_map(|c| c.values().flat_map(|artifacts| artifacts.iter()))
+        self.0.values().flat_map(BTreeMap::values).flatten()
     }
+
     /// Iterate over all artifact files
     pub fn artifact_files_mut(&mut self) -> impl Iterator<Item = &mut ArtifactFile<T>> {
-        self.0.values_mut().flat_map(|c| c.values_mut().flat_map(|artifacts| artifacts.iter_mut()))
+        self.0.values_mut().flat_map(BTreeMap::values_mut).flatten()
     }
 
     /// Returns an iterator over _all_ artifacts and `<file name:contract name>`
