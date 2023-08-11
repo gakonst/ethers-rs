@@ -15,7 +15,7 @@ pub trait AbiEncode {
     where
         Self: Sized,
     {
-        format!("0x{}", hex::encode(self.encode()))
+        hex::encode_prefixed(self.encode())
     }
 }
 

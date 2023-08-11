@@ -340,7 +340,7 @@ fn parse_event_attributes(input: &DeriveInput) -> Result<EthEventAttributes> {
             meta.input.parse::<Token![=]>()?;
             let litstr: LitStr = meta.input.parse()?;
             let s = litstr.value();
-            let b = hex::decode(s.strip_prefix("0x").unwrap_or(&s)).map_err(|e| meta.error(e))?;
+            let b = hex::decode(s).map_err(|e| meta.error(e))?;
             result.signature = Some((b, litstr.span()));
         }
         "anonymous", result.anonymous => { result.anonymous = Some((true, meta.path.span())); }
