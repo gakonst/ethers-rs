@@ -16,6 +16,7 @@ use std::{
         hash_map, BTreeSet, HashMap, HashSet,
     },
     fs::{self},
+    io::Write,
     path::{Path, PathBuf},
     time::{Duration, UNIX_EPOCH},
 };
@@ -139,7 +140,9 @@ impl SolFilesCache {
             self.len(),
             path.display()
         );
-        serde_json::to_writer_pretty(file, self)?;
+        let mut writer = std::io::BufWriter::with_capacity(1024 * 256, file);
+        serde_json::to_writer_pretty(&mut writer, self)?;
+        writer.flush().map_err(|e| SolcError::io(e, path))?;
         tracing::trace!("cache file located: \"{}\"", path.display());
         Ok(())
     }
