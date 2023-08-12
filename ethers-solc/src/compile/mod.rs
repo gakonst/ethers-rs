@@ -464,6 +464,7 @@ impl Solc {
     /// Verify that the checksum for this version of solc is correct. We check against the SHA256
     /// checksum from the build information published by [binaries.soliditylang.org](https://binaries.soliditylang.org/)
     #[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
+    #[cfg_attr(windows, allow(unreachable_code, unused_variables))]
     pub fn verify_checksum(&self) -> Result<()> {
         let version = self.version_short()?;
         let mut version_path = svm::version_path(version.to_string().as_str());
@@ -475,6 +476,13 @@ impl Solc {
         if !RELEASES.2 {
             // we skip checksum verification because the underlying request to fetch release info
             // failed so we have nothing to compare against
+            return Ok(())
+        }
+
+        #[cfg(windows)]
+        {
+            // we skip checksum verification on windows because the expected checksum is for the
+            // entire zip file and not the extracted solc binary TODO: <https://github.com/alloy-rs/svm-rs/issues/95>
             return Ok(())
         }
 
