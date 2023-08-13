@@ -480,7 +480,7 @@ impl Solc {
 
         #[cfg(windows)]
         {
-            // first windows .exe release, prior to 0.7.2, binaries are released as exe files which are hard to verify: <https://github.com/foundry-rs/foundry/issues/5601>
+            // Prior to 0.7.2, binaries are released as exe files which are hard to verify: <https://github.com/foundry-rs/foundry/issues/5601>
             // <https://binaries.soliditylang.org/windows-amd64/list.json>
             const V0_7_2: Version = Version::new(0, 7, 2);
             if version < V0_7_2 {
