@@ -13,7 +13,7 @@ use ethers_core::{
     macros::{ethers_contract_crate, ethers_core_crate, ethers_providers_crate},
     types::Bytes,
 };
-use eyre::{eyre, Context as _, Result};
+use eyre::{eyre, Result};
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{format_ident, quote};
 use serde::Deserialize;
@@ -206,8 +206,8 @@ impl Context {
         // holds the deployed bytecode parsed from the abi_str, if present
         let mut contract_deployed_bytecode = None;
 
-        let (abi, human_readable, abi_parser) = parse_abi(&abi_str).wrap_err_with(|| {
-            eyre::eyre!("error parsing abi for contract: {}", args.contract_name)
+        let (abi, human_readable, abi_parser) = parse_abi(&abi_str).map_err(|e| {
+            eyre::eyre!("error parsing abi for contract '{}': {e}", args.contract_name)
         })?;
 
         // try to extract all the solidity structs from the normal JSON ABI
@@ -465,16 +465,15 @@ where
 /// Parse the abi via `Source::parse` and return if the abi defined as human readable
 fn parse_abi(abi_str: &str) -> Result<(Abi, bool, AbiParser)> {
     let mut abi_parser = AbiParser::default();
-    let res = if let Ok(abi) = abi_parser.parse_str(abi_str) {
-        (abi, true, abi_parser)
-    } else {
-        // a best-effort coercion of an ABI or an artifact JSON into an artifact JSON.
-        let contract: JsonContract = serde_json::from_str(abi_str)
-            .wrap_err_with(|| eyre::eyre!("failed deserializing abi:\n{}", abi_str))?;
-
-        (contract.into_abi(), false, abi_parser)
-    };
-    Ok(res)
+    match abi_parser.parse_str(abi_str) {
+        Ok(abi) => Ok((abi, true, abi_parser)),
+        Err(e) => match serde_json::from_str::<JsonContract>(abi_str) {
+            Ok(contract) => Ok((contract.into_abi(), false, abi_parser)),
+            Err(e2) => Err(eyre::eyre!(
+                "couldn't parse ABI string as either human readable (1) or JSON (2):\n1. {e}\n2. {e2}"
+            )),
+        },
+    }
 }
 
 #[derive(Deserialize)]

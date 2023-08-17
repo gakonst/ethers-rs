@@ -133,17 +133,17 @@ impl AbiParser {
         let mut unresolved = self.structs.keys().collect::<VecDeque<_>>();
         let mut sequential_retries = 0;
         while let Some(name) = unresolved.pop_front() {
-            let mut resolved = true;
+            let mut unresolved_field = None;
             let sol = &self.structs[name];
             let mut tuple = Vec::with_capacity(sol.fields().len());
             for field in sol.fields() {
                 match field.r#type() {
                     FieldType::Elementary(param) => tuple.push(param.clone()),
                     FieldType::Struct(ty) => {
-                        if let Some(param) = self.struct_tuples.get(ty.name()).cloned() {
-                            tuple.push(ty.as_param(ParamType::Tuple(param)))
+                        if let Some(param) = self.struct_tuples.get(ty.name()) {
+                            tuple.push(ty.as_param(ParamType::Tuple(param.clone())))
                         } else {
-                            resolved = false;
+                            unresolved_field = Some(field);
                             break
                         }
                     }
@@ -155,15 +155,15 @@ impl AbiParser {
                     }
                 }
             }
-            if resolved {
-                sequential_retries = 0;
-                self.struct_tuples.insert(sol.name().to_string(), tuple);
-            } else {
+            if let Some(f) = unresolved_field {
                 sequential_retries += 1;
                 if sequential_retries > unresolved.len() {
-                    bail!("No struct definition found for struct `{}`", name)
+                    bail!("Could not resolve field of struct '{name}': `{}: {:?}`", f.name, f.ty)
                 }
                 unresolved.push_back(name);
+            } else {
+                sequential_retries = 0;
+                self.struct_tuples.insert(sol.name().to_string(), tuple);
             }
         }
         Ok(())
