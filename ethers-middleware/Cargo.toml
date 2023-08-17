@@ -67,3 +67,4 @@ celo = ["ethers-core/celo", "ethers-providers/celo", "ethers-signers/celo", "eth
 optimism = ["ethers-core/optimism", "ethers-providers/optimism", "ethers-contract/optimism"]
 rustls = ["reqwest/rustls-tls"]
 openssl = ["reqwest/native-tls"]
+quorum = ["ethers-core/quorum", "ethers-providers/quorum", "ethers-contract/quorum"]

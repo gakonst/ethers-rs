@@ -58,6 +58,8 @@ legacy = []
 rustls = ["ethers-contract-abigen/rustls"]
 openssl = ["ethers-contract-abigen/openssl"]
 
+quorum = []
+
 # Deprecated
 abigen-offline = ["abigen"]
 eip712 = []

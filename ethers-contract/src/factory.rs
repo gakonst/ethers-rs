@@ -158,8 +158,16 @@ where
     /// Broadcasts the contract deployment transaction and after waiting for it to
     /// be sufficiently confirmed (default: 1), it returns a new instance of the contract type at
     /// the deployed contract's address.
+    #[cfg(not(feature = "quorum"))]
     pub async fn send(self) -> Result<C, ContractError<M>> {
         let contract = self.deployer.send().await?;
+        Ok(C::from(contract))
+    }
+
+    /// Quorum related send function
+    #[cfg(feature = "quorum")]
+    pub async fn send(self, private_for: Option<Vec<String>>) -> Result<C, ContractError<M>> {
+        let contract = self.deployer.send(private_for).await?;
         Ok(C::from(contract))
     }
 
@@ -167,8 +175,19 @@ where
     /// be sufficiently confirmed (default: 1), it returns a new instance of the contract type at
     /// the deployed contract's address and the corresponding
     /// [`TransactionReceipt`](ethers_core::types::TransactionReceipt).
+    #[cfg(not(feature = "quorum"))]
     pub async fn send_with_receipt(self) -> Result<(C, TransactionReceipt), ContractError<M>> {
         let (contract, receipt) = self.deployer.send_with_receipt().await?;
+        Ok((C::from(contract), receipt))
+    }
+
+    /// Quorum related send_with_receipt function
+    #[cfg(feature = "quorum")]
+    pub async fn send_with_receipt(
+        self,
+        private_for: Option<Vec<String>>,
+    ) -> Result<(C, TransactionReceipt), ContractError<M>> {
+        let (contract, receipt) = self.deployer.send_with_receipt(private_for).await?;
         Ok((C::from(contract), receipt))
     }
 
@@ -267,8 +286,19 @@ where
     /// Broadcasts the contract deployment transaction and after waiting for it to
     /// be sufficiently confirmed (default: 1), it returns a [`Contract`](crate::Contract)
     /// struct at the deployed contract's address.
+    #[cfg(not(feature = "quorum"))]
     pub async fn send(self) -> Result<ContractInstance<B, M>, ContractError<M>> {
         let (contract, _) = self.send_with_receipt().await?;
+        Ok(contract)
+    }
+
+    /// Allow private for recipients when broadcasting contract deployment transaction
+    #[cfg(feature = "quorum")]
+    pub async fn send(
+        self,
+        private_for: Option<Vec<String>>,
+    ) -> Result<ContractInstance<B, M>, ContractError<M>> {
+        let (contract, _) = self.send_with_receipt(private_for).await?;
         Ok(contract)
     }
 
@@ -276,9 +306,37 @@ where
     /// be sufficiently confirmed (default: 1), it returns a tuple with
     /// the [`Contract`](crate::Contract) struct at the deployed contract's address
     /// and the corresponding [`TransactionReceipt`].
+    #[cfg(not(feature = "quorum"))]
     pub async fn send_with_receipt(
         self,
     ) -> Result<(ContractInstance<B, M>, TransactionReceipt), ContractError<M>> {
+        let pending_tx = self
+            .client
+            .borrow()
+            .send_transaction(self.tx, Some(self.block.into()))
+            .await
+            .map_err(ContractError::from_middleware_error)?;
+
+        // TODO: Should this be calculated "optimistically" by address/nonce?
+        let receipt = pending_tx
+            .confirmations(self.confs)
+            .await
+            .ok()
+            .flatten()
+            .ok_or(ContractError::ContractNotDeployed)?;
+        let address = receipt.contract_address.ok_or(ContractError::ContractNotDeployed)?;
+
+        let contract = ContractInstance::new(address, self.abi, self.client);
+        Ok((contract, receipt))
+    }
+
+    /// Allow private for recipients when broadcasting contract deployment transaction with receipt
+    #[cfg(feature = "quorum")]
+    pub async fn send_with_receipt(
+        mut self,
+        private_for: Option<Vec<String>>,
+    ) -> Result<(ContractInstance<B, M>, TransactionReceipt), ContractError<M>> {
+        self.tx.set_private_for(private_for);
         let pending_tx = self
             .client
             .borrow()

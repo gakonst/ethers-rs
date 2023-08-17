@@ -339,7 +339,22 @@ where
     }
 
     /// Signs and broadcasts the provided transaction
+    #[cfg(not(feature = "quorum"))]
     pub async fn send(&self) -> Result<PendingTransaction<'_, M::Provider>, ContractError<M>> {
+        self.client
+            .borrow()
+            .send_transaction(self.tx.clone(), self.block)
+            .await
+            .map_err(ContractError::from_middleware_error)
+    }
+
+    /// Signs and broadcasts the provided transaction for quorum
+    #[cfg(feature = "quorum")]
+    pub async fn send(
+        &mut self,
+        private_for: Option<Vec<String>>,
+    ) -> Result<PendingTransaction<'_, M::Provider>, ContractError<M>> {
+        self.tx.set_private_for(private_for);
         self.client
             .borrow()
             .send_transaction(self.tx.clone(), self.block)

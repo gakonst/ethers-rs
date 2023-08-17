@@ -301,8 +301,16 @@ where
                 .inner
                 .send_transaction(tx, block)
                 .await
-                .map_err(SignerMiddlewareError::MiddlewareError)
+                .map_err(SignerMiddlewareError::MiddlewareError);
         }
+
+        // Only allow send transaction until send raw transaction is implemented
+        #[cfg(feature = "quorum")]
+        return self
+            .inner
+            .send_transaction(tx, block)
+            .await
+            .map_err(SignerMiddlewareError::MiddlewareError);
 
         // if we have a nonce manager set, we should try handling the result in
         // case there was a nonce mismatch

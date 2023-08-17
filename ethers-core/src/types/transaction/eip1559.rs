@@ -75,6 +75,11 @@ pub struct Eip1559TransactionRequest {
     #[serde(default, rename = "chainId")]
     /// Chain ID (None for mainnet)
     pub chain_id: Option<U64>,
+
+    /// Private for recipients
+    #[cfg(feature = "quorum")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub private_for: Option<Vec<String>>,
 }
 
 impl Eip1559TransactionRequest {
@@ -262,6 +267,8 @@ impl From<Eip1559TransactionRequest> for super::request::TransactionRequest {
             gateway_fee_recipient: None,
             #[cfg(feature = "celo")]
             gateway_fee: None,
+            #[cfg(feature = "quorum")]
+            private_for: None,
             chain_id: tx.chain_id,
         }
     }
@@ -280,6 +287,9 @@ impl From<&Transaction> for Eip1559TransactionRequest {
             max_priority_fee_per_gas: tx.max_priority_fee_per_gas,
             max_fee_per_gas: tx.max_fee_per_gas,
             chain_id: tx.chain_id.map(|x| U64::from(x.as_u64())),
+
+            #[cfg(feature = "quorum")]
+            private_for: tx.private_for.clone(),
         }
     }
 }
