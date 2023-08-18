@@ -2,10 +2,11 @@ use crate::call::{ContractCall, ContractError};
 use ethers_core::{
     abi::{Detokenize, Function, Token, Tokenizable},
     types::{
-        transaction::eip2718::TypedTransaction, Address, BlockNumber, Bytes, NameOrAddress, U256,
+        transaction::eip2718::TypedTransaction, Address, BlockId, BlockNumber, Bytes,
+        NameOrAddress, U256,
     },
 };
-use ethers_providers::{Middleware, PendingTransaction};
+use ethers_providers::{spoof::State, Middleware, PendingTransaction, RawCall};
 use std::{convert::TryFrom, fmt, result::Result as StdResult, sync::Arc};
 
 /// The Multicall contract bindings. Auto-generated with `abigen`.
@@ -205,7 +206,10 @@ pub struct Multicall<M> {
     pub legacy: bool,
 
     /// The `block` field of the Multicall aggregate call.
-    pub block: Option<BlockNumber>,
+    pub block: Option<BlockId>,
+
+    /// The state overrides of the Multicall aggregate
+    pub state: Option<State>,
 
     /// The internal call vector.
     calls: Vec<Call>,
@@ -220,6 +224,7 @@ impl<M> Clone for Multicall<M> {
             legacy: self.legacy,
             block: self.block,
             calls: self.calls.clone(),
+            state: self.state.clone(),
         }
     }
 }
@@ -231,6 +236,7 @@ impl<M> fmt::Debug for Multicall<M> {
             .field("version", &self.version)
             .field("legacy", &self.legacy)
             .field("block", &self.block)
+            .field("state", &self.state)
             .field("calls", &self.calls)
             .finish()
     }
@@ -278,6 +284,7 @@ impl<M: Middleware> Multicall<M> {
             version: MulticallVersion::Multicall3,
             legacy: false,
             block: None,
+            state: None,
             calls: vec![],
             contract,
         })
@@ -327,6 +334,7 @@ impl<M: Middleware> Multicall<M> {
             version: MulticallVersion::Multicall3,
             legacy: false,
             block: None,
+            state: None,
             calls: vec![],
             contract,
         })
@@ -363,7 +371,13 @@ impl<M: Middleware> Multicall<M> {
 
     /// Sets the `block` field of the Multicall aggregate call.
     pub fn block(mut self, block: impl Into<BlockNumber>) -> Self {
-        self.block = Some(block.into());
+        self.block = Some(block.into().into());
+        self
+    }
+
+    /// Sets the `overriding state` of the Multicall aggregate call.
+    pub fn state(mut self, state: State) -> Self {
+        self.state = Some(state);
         self
     }
 
@@ -684,7 +698,11 @@ impl<M: Middleware> Multicall<M> {
             // Wrap the return data with `success: true` since version 1 reverts if any call failed
             MulticallVersion::Multicall => {
                 let call = self.as_aggregate();
-                let (_, bytes) = ContractCall::call(&call).await?;
+                let (_, bytes) = if let Some(state) = &self.state {
+                    ContractCall::call_raw(&call).state(state).await?
+                } else {
+                    ContractCall::call(&call).await?
+                };
                 self.parse_call_result(
                     bytes
                         .into_iter()
@@ -698,7 +716,11 @@ impl<M: Middleware> Multicall<M> {
                 } else {
                     self.as_aggregate_3()
                 };
-                let results = ContractCall::call(&call).await?;
+                let results = if let Some(state) = &self.state {
+                    ContractCall::call_raw(&call).state(state).await?
+                } else {
+                    ContractCall::call(&call).await?
+                };
                 self.parse_call_result(results.into_iter())
             }
         }
@@ -869,7 +891,7 @@ impl<M: Middleware> Multicall<M> {
     /// Sets the block and legacy flags on a [ContractCall] if they were set on Multicall.
     fn set_call_flags<D: Detokenize>(&self, mut call: ContractCall<M, D>) -> ContractCall<M, D> {
         if let Some(block) = self.block {
-            call.block = Some(block.into());
+            call = call.block(block);
         }
 
         if self.legacy {
@@ -877,5 +899,16 @@ impl<M: Middleware> Multicall<M> {
         } else {
             call
         }
+    }
+}
+
+impl<'a, M: Middleware> RawCall<'a> for Multicall<M> {
+    fn block(self, id: ethers_core::types::BlockId) -> Self {
+        let mut call = self;
+        call.block = Some(id);
+        call
+    }
+    fn state(self, state: &'a ethers_providers::spoof::State) -> Self {
+        self.state(state.clone())
     }
 }
