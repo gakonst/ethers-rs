@@ -88,7 +88,6 @@ impl PubsubClient for MockProvider {
     type NotificationStream = mpsc::UnboundedReceiver<Box<RawValue>>;
     fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream, Self::Error> {
         let (mut stream_handle, sink_handle) = mpsc::unbounded::<Box<RawValue>>();
-
         let stream_handles = self.stream_handles.lock().unwrap();
         let (_, receiver) = stream_handles.get(&id.into()).unwrap().clone();
 
