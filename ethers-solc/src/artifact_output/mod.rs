@@ -21,7 +21,6 @@ use std::{
     ffi::OsString,
     fmt, fs,
     hash::Hash,
-    io,
     ops::Deref,
     path::{Path, PathBuf},
 };
@@ -256,11 +255,12 @@ impl<T> Artifacts<T> {
 
     /// Iterate over all artifact files
     pub fn artifact_files(&self) -> impl Iterator<Item = &ArtifactFile<T>> {
-        self.0.values().flat_map(|c| c.values().flat_map(|artifacts| artifacts.iter()))
+        self.0.values().flat_map(BTreeMap::values).flatten()
     }
+
     /// Iterate over all artifact files
     pub fn artifact_files_mut(&mut self) -> impl Iterator<Item = &mut ArtifactFile<T>> {
-        self.0.values_mut().flat_map(|c| c.values_mut().flat_map(|artifacts| artifacts.iter_mut()))
+        self.0.values_mut().flat_map(BTreeMap::values_mut).flatten()
     }
 
     /// Returns an iterator over _all_ artifacts and `<file name:contract name>`
@@ -763,10 +763,7 @@ pub trait ArtifactOutput {
     ///     - The file does not exist
     ///     - The file's content couldn't be deserialized into the `Artifact` type
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
-        let path = path.as_ref();
-        let file = fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
-        let file = io::BufReader::new(file);
-        Ok(serde_json::from_reader(file)?)
+        crate::utils::read_json_file(path)
     }
 
     /// Read the cached artifacts that are located the paths the iterator yields

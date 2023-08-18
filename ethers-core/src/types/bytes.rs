@@ -16,6 +16,14 @@ pub struct Bytes(
     pub  bytes::Bytes,
 );
 
+impl hex::FromHex for Bytes {
+    type Error = hex::FromHexError;
+
+    fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
+        hex::decode(hex).map(Into::into)
+    }
+}
+
 impl FromIterator<u8> for Bytes {
     fn from_iter<T: IntoIterator<Item = u8>>(iter: T) -> Self {
         iter.into_iter().collect::<bytes::Bytes>().into()
@@ -197,19 +205,13 @@ impl Decodable for Bytes {
 
 #[derive(Debug, Clone, Error)]
 #[error("Failed to parse bytes: {0}")]
-pub struct ParseBytesError(String);
+pub struct ParseBytesError(hex::FromHexError);
 
 impl FromStr for Bytes {
     type Err = ParseBytesError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        if let Some(value) = value.strip_prefix("0x") {
-            hex::decode(value)
-        } else {
-            hex::decode(value)
-        }
-        .map(Into::into)
-        .map_err(|e| ParseBytesError(format!("Invalid hex: {e}")))
+        hex::FromHex::from_hex(value).map_err(ParseBytesError)
     }
 }
 
@@ -218,7 +220,7 @@ where
     S: Serializer,
     T: AsRef<[u8]>,
 {
-    s.serialize_str(&format!("0x{}", hex::encode(x.as_ref())))
+    s.serialize_str(&hex::encode_prefixed(x))
 }
 
 pub fn deserialize_bytes<'de, D>(d: D) -> Result<bytes::Bytes, D::Error>
@@ -226,13 +228,7 @@ where
     D: Deserializer<'de>,
 {
     let value = String::deserialize(d)?;
-    if let Some(value) = value.strip_prefix("0x") {
-        hex::decode(value)
-    } else {
-        hex::decode(&value)
-    }
-    .map(Into::into)
-    .map_err(|e| serde::de::Error::custom(e.to_string()))
+    hex::decode(value).map(Into::into).map_err(serde::de::Error::custom)
 }
 
 #[cfg(test)]

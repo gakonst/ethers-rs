@@ -64,8 +64,7 @@ pub struct Signature {
 
 impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let sig = <[u8; 65]>::from(self);
-        write!(f, "{}", hex::encode(&sig[..]))
+        f.write_str(hex::Buffer::<65, false>::new().format(&self.into()))
     }
 }
 
@@ -213,9 +212,7 @@ impl FromStr for Signature {
     type Err = SignatureError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.strip_prefix("0x").unwrap_or(s);
-        let bytes = hex::decode(s)?;
-        Signature::try_from(&bytes[..])
+        Signature::try_from(&hex::decode(s)?[..])
     }
 }
 

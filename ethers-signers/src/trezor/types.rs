@@ -40,11 +40,11 @@ pub enum TrezorError {
     FeaturesError,
     #[error("Not able to unpack value for TrezorTransaction.")]
     DataError,
-    #[error(transparent)]
     /// Error when converting from a hex string
-    HexError(#[from] hex::FromHexError),
     #[error(transparent)]
+    HexError(#[from] hex::FromHexError),
     /// Error when converting a semver requirement
+    #[error(transparent)]
     SemVerError(#[from] semver::Error),
     /// Error when signing EIP712 struct with not compatible Trezor ETH app
     #[error("Trezor ethereum app requires at least version: {0:?}")]
@@ -79,7 +79,7 @@ impl TrezorTransaction {
         let to: String = match tx.to() {
             Some(v) => match v {
                 NameOrAddress::Name(_) => return Err(TrezorError::NoENSSupport),
-                NameOrAddress::Address(value) => format!("0x{}", hex::encode(value)),
+                NameOrAddress::Address(value) => hex::encode_prefixed(value),
             },
             // Contract Creation
             None => "".to_string(),
@@ -113,7 +113,7 @@ impl TrezorTransaction {
 
                 let mut access_list: Vec<Trezor_AccessListItem> = Vec::new();
                 for item in &eip1559_tx.access_list.0 {
-                    let address: String = format!("0x{}", hex::encode(item.address));
+                    let address: String = hex::encode_prefixed(item.address);
                     let mut storage_keys: Vec<Vec<u8>> = Vec::new();
 
                     for key in &item.storage_keys {
