@@ -178,12 +178,8 @@ impl MockProvider {
                 Ok(value) => {
                     stream.start_send(value).unwrap();
                 }
-                Err(MockError::EmptyResponses) => {
-                    return Ok(());
-                }
-                Err(e) => {
-                    return Err(e);
-                }
+                Err(MockError::EmptyResponses) => return Ok(()),
+                Err(e) => return Err(e),
             }
         }
     }
