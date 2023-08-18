@@ -83,6 +83,7 @@ impl JsonRpcClient for MockProvider {
     }
 }
 
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl PubsubClient for MockProvider {
     type NotificationStream = mpsc::UnboundedReceiver<Box<RawValue>>;
     fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream, Self::Error> {
