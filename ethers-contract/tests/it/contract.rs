@@ -8,7 +8,7 @@ use ethers_core::{
     types::{Address, BlockId, Bytes, Filter, ValueOrArray, H160, H256, U256},
     utils::{keccak256, Anvil},
 };
-use ethers_providers::{Http, Middleware, MiddlewareError, Provider, StreamExt, Ws};
+use ethers_providers::{spoof, Http, Middleware, MiddlewareError, Provider, StreamExt, Ws};
 use std::{sync::Arc, time::Duration};
 
 #[derive(Debug)]
@@ -776,4 +776,96 @@ async fn multicall_aggregate() {
     let bytes = err.as_revert().unwrap();
     assert_eq!(bytes[..4], keccak256("CustomErrorWithData(string)")[..4]);
     assert_eq!(bytes[4..], encode(&[Token::String("Data".to_string())]));
+}
+
+#[tokio::test]
+async fn test_multicall_state_overrides() {
+    // get ABI and bytecode for the Multicall contract
+    let (multicall_abi, multicall_bytecode) = get_contract("Multicall.json");
+
+    // get ABI and bytecode for the NotSoSimpleStorage contract
+    let (slot_storage_abi, slot_storage_bytecode) = get_contract("SlotStorage.json");
+
+    // launch anvil
+    let anvil = Anvil::new().spawn();
+
+    let client = connect(&anvil, 0);
+    let client2 = connect(&anvil, 1);
+
+    // create a factory which will be used to deploy instances of the contract
+    let multicall_factory = ContractFactory::new(multicall_abi, multicall_bytecode, client.clone());
+    let slot_storage_factory =
+        ContractFactory::new(slot_storage_abi, slot_storage_bytecode, client2.clone());
+
+    let multicall_contract = multicall_factory.deploy(()).unwrap().legacy().send().await.unwrap();
+    let multicall_addr = multicall_contract.address();
+
+    let value: H256 =
+        "0x312c22f60e0b666af7fce7332bfbe2a3247e19b8d612289c16b8f2e37516de36".parse().unwrap();
+    let addr = "0x851a842060FC8ae05848d08872653E30FD4c9829".parse().unwrap();
+    let slot: H256 =
+        "0xa35a6bd95953594c6d23a75dc715af91915e970ba4d87f1141e13b915e0201a3".parse().unwrap();
+
+    let slot_storage_contract =
+        slot_storage_factory.deploy(value).unwrap().legacy().send().await.unwrap();
+
+    // initiate the Multicall instance and add calls one by one in builder style
+    let mut multicall =
+        Multicall::<Provider<Http>>::new(client.clone(), Some(multicall_addr)).await.unwrap();
+
+    // test balance override
+    multicall = multicall.version(MulticallVersion::Multicall3);
+
+    let balance = 100.into();
+    let mut state = spoof::state();
+    state.account(addr).balance(balance);
+
+    multicall = multicall.state(state);
+    let (get_balance,): (U256,) =
+        multicall.clear_calls().add_get_eth_balance(addr, true).call().await.unwrap();
+    assert_eq!(get_balance, balance);
+
+    // test code override
+    let deployed_bytecode = client.get_code(slot_storage_contract.address(), None).await.unwrap();
+    state = spoof::state();
+    state.account(addr).code(deployed_bytecode);
+
+    multicall = multicall.state(state);
+    let new_value: H256 =
+        "0x5d2c59f6581053209078988fe8cad8edb594bad62e570e99ad4f5ea38049677b".parse().unwrap();
+    let (get_old_value, get_value): (H256, H256) = multicall
+        .clear_calls()
+        .add_call(
+            slot_storage_contract.at(addr).method::<_, H256>("setValue", new_value).unwrap(),
+            false,
+        )
+        .add_call(slot_storage_contract.at(addr).method::<_, H256>("getValue", ()).unwrap(), false)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(get_old_value, H256::default());
+    assert_eq!(get_value, new_value);
+
+    // test slot override
+    let deployed_bytecode = client.get_code(slot_storage_contract.address(), None).await.unwrap();
+    let old_value =
+        "0xfce2394e4cb6779bdacc1983fb24636007e9c843211586811e46b52c86d97c34".parse().unwrap();
+    state = spoof::state();
+    state.account(addr).code(deployed_bytecode).store(slot, old_value);
+
+    multicall = multicall.state(state);
+    let new_value: H256 =
+        "0x5d2c59f6581053209078988fe8cad8edb594bad62e570e99ad4f5ea38049677b".parse().unwrap();
+    let (get_old_value, get_value): (H256, H256) = multicall
+        .clear_calls()
+        .add_call(
+            slot_storage_contract.at(addr).method::<_, H256>("setValue", new_value).unwrap(),
+            false,
+        )
+        .add_call(slot_storage_contract.at(addr).method::<_, H256>("getValue", ()).unwrap(), false)
+        .call()
+        .await
+        .unwrap();
+    assert_eq!(get_old_value, old_value);
+    assert_eq!(get_value, new_value);
 }

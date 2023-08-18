@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, result::Result as StdResult};
+use std::result::Result as StdResult;
 
 /// The Multicall contract bindings. Auto-generated with `abigen`.
 pub mod contract;

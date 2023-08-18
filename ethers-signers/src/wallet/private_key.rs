@@ -154,8 +154,7 @@ impl FromStr for Wallet<SigningKey> {
     type Err = WalletError;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let src = src.strip_prefix("0x").or_else(|| src.strip_prefix("0X")).unwrap_or(src);
-        let src = hex::decode(src)?;
+        let src = hex::decode(src.strip_prefix("0X").unwrap_or(src))?;
 
         if src.len() != 32 {
             return Err(WalletError::HexError(hex::FromHexError::InvalidStringLength))

@@ -818,8 +818,8 @@ impl VersionedSources {
                 );
             } else {
                 tracing::trace!("verifying solc checksum for {}", solc.solc.display());
-                if solc.verify_checksum().is_err() {
-                    tracing::trace!("corrupted solc version, redownloading  \"{}\"", version);
+                if let Err(err) = solc.verify_checksum() {
+                    tracing::trace!(?err, "corrupted solc version, redownloading  \"{}\"", version);
                     Solc::blocking_install(version.as_ref())?;
                     tracing::trace!("reinstalled solc: \"{}\"", version);
                 }

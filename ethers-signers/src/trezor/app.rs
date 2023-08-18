@@ -153,13 +153,10 @@ impl TrezorEthereum {
         derivation: &DerivationType,
     ) -> Result<Address, TrezorError> {
         let mut client = self.get_client(self.session_id.clone())?;
-
         let address_str = client.ethereum_get_address(Self::convert_path(derivation))?;
-
-        let mut address = [0; 20];
-        address.copy_from_slice(&hex::decode(&address_str[2..])?);
-
-        Ok(Address::from(address))
+        let mut address_bytes = [0; 20];
+        hex::decode_to_slice(address_str, &mut address_bytes)?;
+        Ok(address_bytes.into())
     }
 
     /// Signs an Ethereum transaction (requires confirmation on the Trezor)
