@@ -166,11 +166,16 @@ impl MockProvider {
     }
 
     async fn drain_sync_queue_to_stream(&mut self, stream_id: U256) -> Result<(), MockError> {
-        let stream_handles = self.stream_handles.lock().unwrap();
+        // Wrapping this in a scope because the Mutex type used is not async aware and thus needs to
+        // be explicitly scoped
+        let mut stream = {
+            let stream_handles = self.stream_handles.lock().unwrap();
 
-        let stream = stream_handles.get(&stream_id);
-        assert!(stream.is_some());
-        let (mut stream, _) = stream.unwrap().clone();
+            let stream = stream_handles.get(&stream_id);
+            assert!(stream.is_some());
+            let (stream, _) = stream.unwrap().clone();
+            stream
+        };
 
         loop {
             // T is a dummy type to pass the type check
