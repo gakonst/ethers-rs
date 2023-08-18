@@ -4,12 +4,10 @@ use crate::{error::ContractRevert, EthError};
 
 use super::base::{decode_function_data, AbiError};
 use ethers_core::{
-    abi::{AbiDecode, AbiEncode, Detokenize, Function, InvalidOutputType, Tokenizable},
+    abi::{Detokenize, Function, InvalidOutputType},
     types::{
-        transaction::eip2718::TypedTransaction, Address, BlockId, Bytes, Selector,
-        TransactionRequest, U256,
+        transaction::eip2718::TypedTransaction, Address, BlockId, Bytes, TransactionRequest, U256,
     },
-    utils::id,
 };
 use ethers_providers::{
     call_raw::{CallBuilder, RawCall},
@@ -17,7 +15,7 @@ use ethers_providers::{
 };
 
 use std::{
-    borrow::{Borrow, Cow},
+    borrow::Borrow,
     fmt::Debug,
     future::{Future, IntoFuture},
     marker::PhantomData,
@@ -25,20 +23,6 @@ use std::{
 };
 
 use thiserror::Error as ThisError;
-
-/// A helper trait for types that represent all call input parameters of a specific function
-pub trait EthCall: Tokenizable + AbiDecode + AbiEncode + Send + Sync {
-    /// The name of the function
-    fn function_name() -> Cow<'static, str>;
-
-    /// Retrieves the ABI signature for the call
-    fn abi_signature() -> Cow<'static, str>;
-
-    /// The selector of the function
-    fn selector() -> Selector {
-        id(Self::abi_signature())
-    }
-}
 
 #[derive(ThisError, Debug)]
 /// An Error which is thrown when interacting with a smart contract

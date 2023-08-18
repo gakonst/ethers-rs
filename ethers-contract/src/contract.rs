@@ -1,7 +1,8 @@
 use crate::{
     base::{encode_function_data, AbiError, BaseContract},
     call::FunctionCall,
-    event::{EthEvent, Event},
+    event::Event,
+    event_core::EthEvent,
 };
 use ethers_core::{
     abi::{Abi, Detokenize, Error, EventExt, Function, Tokenize},

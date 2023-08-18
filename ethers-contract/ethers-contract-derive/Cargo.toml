@@ -31,3 +31,8 @@ syn.workspace = true
 Inflector.workspace = true
 hex.workspace = true
 serde_json.workspace = true
+
+[features]
+default = ["providers"]
+
+providers = ["ethers-contract-abigen/providers"]

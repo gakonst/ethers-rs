@@ -3,6 +3,7 @@ use ethers_core::{
     types::Selector,
     utils::id,
 };
+#[cfg(feature = "providers")]
 use ethers_providers::JsonRpcError;
 use std::borrow::Cow;
 
@@ -46,6 +47,7 @@ pub trait EthError: Tokenizable + AbiDecode + AbiEncode + Send + Sync {
     /// Attempt to decode from a [`JsonRpcError`] by extracting revert data
     ///
     /// Fails if the error is not a revert, or decoding fails
+    #[cfg(feature = "providers")]
     fn from_rpc_response(response: &JsonRpcError) -> Option<Self> {
         Self::decode_with_selector(&response.as_revert_data()?)
     }

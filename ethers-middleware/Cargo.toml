@@ -23,7 +23,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [dependencies]
-ethers-contract = { workspace = true, features = ["abigen"] }
+ethers-contract = { workspace = true, features = ["abigen", "providers"] }
 ethers-core.workspace = true
 ethers-etherscan.workspace = true
 ethers-providers.workspace = true
