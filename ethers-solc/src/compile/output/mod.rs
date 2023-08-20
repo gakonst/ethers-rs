@@ -51,6 +51,16 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
         self
     }
 
+    /// All artifacts together with their contract file name and name `<file name>:<name>`.
+    ///
+    /// This returns a chained iterator of both cached and recompiled contract artifacts.
+    ///
+    /// Borrowed version of [`Self::into_artifacts`].
+    pub fn artifact_ids<'a>(&'a self) -> impl Iterator<Item = (ArtifactId, &'a T::Artifact)> + 'a {
+        let Self { cached_artifacts, compiled_artifacts, .. } = self;
+        cached_artifacts.artifacts::<T>().chain(compiled_artifacts.artifacts::<T>())
+    }
+
     /// All artifacts together with their contract file name and name `<file name>:<name>`
     ///
     /// This returns a chained iterator of both cached and recompiled contract artifacts
@@ -109,6 +119,22 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
                 T::contract_name(&artifact.file)
                     .map(|name| (name, (&artifact.artifact, &artifact.version)))
             })
+    }
+
+    /// All artifacts together with their contract file and name as tuple `(file, contract
+    /// name, artifact)`
+    ///
+    /// This returns a chained iterator of both cached and recompiled contract artifacts
+    ///
+    /// Borrowed version of [`Self::into_artifacts_with_files`].
+    ///
+    /// **NOTE** the `file` will be returned as is, see also
+    /// [`Self::with_stripped_file_prefixes()`].
+    pub fn artifacts_with_files<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (&'a String, &'a String, &'a T::Artifact)> + 'a {
+        let Self { cached_artifacts, compiled_artifacts, .. } = self;
+        cached_artifacts.artifacts_with_files().chain(compiled_artifacts.artifacts_with_files())
     }
 
     /// All artifacts together with their contract file and name as tuple `(file, contract
