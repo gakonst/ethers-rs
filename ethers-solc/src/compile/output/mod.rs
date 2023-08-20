@@ -56,7 +56,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     /// This returns a chained iterator of both cached and recompiled contract artifacts.
     ///
     /// Borrowed version of [`Self::into_artifacts`].
-    pub fn artifact_ids<'a>(&'a self) -> impl Iterator<Item = (ArtifactId, &'a T::Artifact)> + 'a {
+    pub fn artifact_ids(&self) -> impl Iterator<Item = (ArtifactId, &T::Artifact)> + '_ {
         let Self { cached_artifacts, compiled_artifacts, .. } = self;
         cached_artifacts.artifacts::<T>().chain(compiled_artifacts.artifacts::<T>())
     }
@@ -130,9 +130,9 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     ///
     /// **NOTE** the `file` will be returned as is, see also
     /// [`Self::with_stripped_file_prefixes()`].
-    pub fn artifacts_with_files<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (&'a String, &'a String, &'a T::Artifact)> + 'a {
+    pub fn artifacts_with_files(
+        &self,
+    ) -> impl Iterator<Item = (&String, &String, &T::Artifact)> + '_ {
         let Self { cached_artifacts, compiled_artifacts, .. } = self;
         cached_artifacts.artifacts_with_files().chain(compiled_artifacts.artifacts_with_files())
     }

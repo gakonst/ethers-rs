@@ -9,7 +9,7 @@ use std::fmt;
 
 mod types;
 pub use types::ConnectionDetails;
-pub(self) use types::*;
+use types::*;
 
 mod error;
 pub use error::*;

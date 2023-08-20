@@ -266,9 +266,9 @@ impl<T> Artifacts<T> {
     /// Returns an iterator over _all_ artifacts and `<file name:contract name>`.
     ///
     /// Borrowed version of [`Self::into_artifacts`].
-    pub fn artifacts<'a, O: ArtifactOutput<Artifact = T>>(
-        &'a self,
-    ) -> impl Iterator<Item = (ArtifactId, &'a T)> + 'a {
+    pub fn artifacts<O: ArtifactOutput<Artifact = T>>(
+        &self,
+    ) -> impl Iterator<Item = (ArtifactId, &T)> + '_ {
         self.0.iter().flat_map(|(file, contract_artifacts)| {
             contract_artifacts.iter().flat_map(move |(_contract_name, artifacts)| {
                 let source = PathBuf::from(file.clone());
@@ -320,12 +320,10 @@ impl<T> Artifacts<T> {
     /// **NOTE** this returns the path as is
     ///
     /// Borrowed version of [`Self::into_artifacts_with_files`].
-    pub fn artifacts_with_files<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (&'a String, &'a String, &'a T)> + 'a {
+    pub fn artifacts_with_files(&self) -> impl Iterator<Item = (&String, &String, &T)> + '_ {
         self.0.iter().flat_map(|(f, contract_artifacts)| {
             contract_artifacts.iter().flat_map(move |(name, artifacts)| {
-                artifacts.into_iter().map(move |artifact| (f, name, &artifact.artifact))
+                artifacts.iter().map(move |artifact| (f, name, &artifact.artifact))
             })
         })
     }
