@@ -263,6 +263,33 @@ impl<T> Artifacts<T> {
         self.0.values_mut().flat_map(BTreeMap::values_mut).flatten()
     }
 
+    /// Returns an iterator over _all_ artifacts and `<file name:contract name>`.
+    ///
+    /// Borrowed version of [`Self::into_artifacts`].
+    pub fn artifacts<O: ArtifactOutput<Artifact = T>>(
+        &self,
+    ) -> impl Iterator<Item = (ArtifactId, &T)> + '_ {
+        self.0.iter().flat_map(|(file, contract_artifacts)| {
+            contract_artifacts.iter().flat_map(move |(_contract_name, artifacts)| {
+                let source = PathBuf::from(file.clone());
+                artifacts.iter().filter_map(move |artifact| {
+                    O::contract_name(&artifact.file).map(|name| {
+                        (
+                            ArtifactId {
+                                path: PathBuf::from(&artifact.file),
+                                name,
+                                source: source.clone(),
+                                version: artifact.version.clone(),
+                            }
+                            .with_slashed_paths(),
+                            &artifact.artifact,
+                        )
+                    })
+                })
+            })
+        })
+    }
+
     /// Returns an iterator over _all_ artifacts and `<file name:contract name>`
     pub fn into_artifacts<O: ArtifactOutput<Artifact = T>>(
         self,
@@ -284,6 +311,19 @@ impl<T> Artifacts<T> {
                         )
                     })
                 })
+            })
+        })
+    }
+
+    /// Returns an iterator that yields the tuple `(file, contract name, artifact)`
+    ///
+    /// **NOTE** this returns the path as is
+    ///
+    /// Borrowed version of [`Self::into_artifacts_with_files`].
+    pub fn artifacts_with_files(&self) -> impl Iterator<Item = (&String, &String, &T)> + '_ {
+        self.0.iter().flat_map(|(f, contract_artifacts)| {
+            contract_artifacts.iter().flat_map(move |(name, artifacts)| {
+                artifacts.iter().map(move |artifact| (f, name, &artifact.artifact))
             })
         })
     }
