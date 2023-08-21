@@ -12,7 +12,7 @@ if_providers! {
     pub mod error;
 }
 
-/// The version of the [`Multicall`](super::Multicall).
+/// The version of the [`Multicall`].
 /// Used to determine which methods of the Multicall smart contract to use:
 /// - [`Multicall`] : `aggregate((address,bytes)[])`
 /// - [`Multicall2`] : `try_aggregate(bool, (address,bytes)[])`

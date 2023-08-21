@@ -16,7 +16,7 @@ const ANVIL_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
 
 /// An anvil CLI instance. Will close the instance when dropped.
 ///
-/// Construct this using [`Anvil`](crate::utils::Anvil)
+/// Construct this using [`Anvil`].
 pub struct AnvilInstance {
     pid: Child,
     private_keys: Vec<K256SecretKey>,
