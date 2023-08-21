@@ -476,16 +476,6 @@ pub struct TransactionReceipt {
     pub other: crate::types::OtherFields,
 }
 
-impl rlp::Encodable for TransactionReceipt {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(4);
-        rlp_opt(s, &self.status);
-        s.append(&self.cumulative_gas_used);
-        s.append(&self.logs_bloom);
-        s.append_list(&self.logs);
-    }
-}
-
 // Compares the transaction receipt against another receipt by checking the blocks first and then
 // the transaction index in the block
 impl Ord for TransactionReceipt {
@@ -508,10 +498,47 @@ impl PartialOrd<Self> for TransactionReceipt {
     }
 }
 
+impl TransactionReceipt {
+    /// Encode a transaction receipt into bytes base on RLP.
+    ///
+    /// According to [`EIP-2718`]:
+    /// - `Receipt` is either `TransactionType || ReceiptPayload` or `LegacyReceipt`.
+    /// - `LegacyReceipt` is kept to be RLP encoded bytes; it is `rlp([status, cumulativeGasUsed,
+    ///   logsBloom, logs])`.
+    /// - `ReceiptPayload` is an opaque byte array whose interpretation is dependent on the
+    ///   `TransactionType` and defined in future EIPs.
+    ///   - As [`EIP-2930`] defined: if `TransactionType` is `1`, `ReceiptPayload` is `rlp([status,
+    ///     cumulativeGasUsed, logsBloom, logs])`.
+    ///   - As [`EIP-1559`] defined: if `TransactionType` is `2`, `ReceiptPayload` is `rlp([status,
+    ///     cumulative_transaction_gas_used, logs_bloom, logs])`.
+    ///
+    /// [`EIP-2718`]: https://eips.ethereum.org/EIPS/eip-2718#receipts
+    /// [`EIP-2930`]: https://eips.ethereum.org/EIPS/eip-2930#parameters
+    /// [`EIP-1559`]: https://eips.ethereum.org/EIPS/eip-1559#specification
+    pub fn rlp(&self) -> Bytes {
+        let mut rlp = RlpStream::new();
+        rlp.begin_list(4);
+        rlp_opt(&mut rlp, &self.status);
+        rlp.append(&self.cumulative_gas_used);
+        rlp.append(&self.logs_bloom);
+        rlp.append_list(&self.logs);
+
+        let rlp_bytes: Bytes = rlp.out().freeze().into();
+        match self.transaction_type.map(|x| x.as_u64()) {
+            Some(x) if x == 0x01 || x == 0x02 => {
+                [&x.to_be_bytes()[7..], &rlp_bytes].concat().into()
+            }
+            #[cfg(feature = "optimism")]
+            Some(x) if x == 0x7E => [&x.to_be_bytes()[7..], &rlp_bytes].concat().into(),
+            _ => rlp_bytes,
+        }
+    }
+}
+
 #[cfg(test)]
 #[cfg(not(any(feature = "celo", feature = "optimism")))]
 mod tests {
-    use rlp::{Encodable, Rlp};
+    use rlp::Rlp;
 
     use crate::types::transaction::eip2930::AccessListItem;
 
@@ -1085,12 +1112,45 @@ mod tests {
     #[test]
     fn rlp_encode_receipt() {
         let receipt = TransactionReceipt { status: Some(1u64.into()), ..Default::default() };
-        let encoded = receipt.rlp_bytes();
+        let encoded = receipt.rlp();
 
         assert_eq!(
             encoded,
             hex::decode("f901060180b9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c0").unwrap(),
         );
+    }
+
+    #[test]
+    fn rlp_encode_legacy_receipt() {
+        // Test case from Ethereum Mainnet (block-number: 17451262, tx-index: 12).
+        let receipt_json_str = include_str!("../../../testdata/receipt-17451262-12.json");
+        let expected_hex_str = include_str!("../../../testdata/receipt-17451262-12.hex");
+        let v: serde_json::Value = serde_json::from_str(receipt_json_str).unwrap();
+        let receipt: TransactionReceipt = serde_json::from_value(v.clone()).unwrap();
+        let encoded = receipt.rlp();
+        assert_eq!(encoded, hex::decode(expected_hex_str).unwrap());
+    }
+
+    #[test]
+    fn rlp_encode_typed_receipt_eip2930() {
+        // Test case from Ethereum Mainnet (block-number: 17451262, tx-index: 6).
+        let receipt_json_str = include_str!("../../../testdata/receipt-17451262-6.json");
+        let expected_hex_str = include_str!("../../../testdata/receipt-17451262-6.hex");
+        let v: serde_json::Value = serde_json::from_str(receipt_json_str).unwrap();
+        let receipt: TransactionReceipt = serde_json::from_value(v.clone()).unwrap();
+        let encoded = receipt.rlp();
+        assert_eq!(encoded, hex::decode(expected_hex_str).unwrap());
+    }
+
+    #[test]
+    fn rlp_encode_typed_receipt_eip1559() {
+        // Test case from Ethereum Mainnet (block-number: 17451262, tx-index: 2).
+        let receipt_json_str = include_str!("../../../testdata/receipt-17451262-2.json");
+        let expected_hex_str = include_str!("../../../testdata/receipt-17451262-2.hex");
+        let v: serde_json::Value = serde_json::from_str(receipt_json_str).unwrap();
+        let receipt: TransactionReceipt = serde_json::from_value(v.clone()).unwrap();
+        let encoded = receipt.rlp();
+        assert_eq!(encoded, hex::decode(expected_hex_str).unwrap());
     }
 
     #[test]
