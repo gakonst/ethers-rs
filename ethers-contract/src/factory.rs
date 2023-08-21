@@ -166,7 +166,7 @@ where
     /// Broadcasts the contract deployment transaction and after waiting for it to
     /// be sufficiently confirmed (default: 1), it returns a new instance of the contract type at
     /// the deployed contract's address and the corresponding
-    /// [`TransactionReceipt`](ethers_core::types::TransactionReceipt).
+    /// [`TransactionReceipt`].
     pub async fn send_with_receipt(self) -> Result<(C, TransactionReceipt), ContractError<M>> {
         let (contract, receipt) = self.deployer.send_with_receipt().await?;
         Ok((C::from(contract), receipt))

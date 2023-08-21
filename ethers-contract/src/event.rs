@@ -90,14 +90,21 @@ where
 {
     /// Turns this event filter into `Stream` that yields decoded events.
     ///
-    /// This will first install a new logs filter via [`eth_newFilter`](https://docs.alchemy.com/alchemy/apis/ethereum/eth-newfilter) using the configured `filter` object. See also [`FilterWatcher`](ethers_providers::FilterWatcher).
+    /// This will first install a new logs filter via [`eth_newFilter`] using the configured
+    /// `filter` object. See also [`FilterWatcher`].
     ///
-    /// Once the filter is created, this will periodically call [`eth_getFilterChanges`](https://docs.alchemy.com/alchemy/apis/ethereum/eth-getfilterchanges) to get the newest logs and decode them
+    ///
+    /// Once the filter is created, this will periodically call [`eth_getFilterChanges`] to get the
+    /// newest logs and decode them.
+    ///
     ///
     /// **Note:** Compared to [`Self::subscribe`], which is only available on `PubsubClient`s, such
     /// as Websocket, this is a poll-based subscription, as the node does not notify us when a new
     /// matching log is available, instead we have to actively ask for new logs using additional RPC
     /// requests, and this is done on an interval basis.
+    ///
+    /// [`eth_newFilter`]: https://docs.alchemy.com/alchemy/apis/ethereum/eth-newfilter
+    /// [`eth_getFilterChanges`]: https://docs.alchemy.com/alchemy/apis/ethereum/eth-getfilterchanges
     ///
     /// # Example
     // Ignore because `ethers-contract-derive` macros do not work in doctests in `ethers-contract`.

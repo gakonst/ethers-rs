@@ -15,7 +15,7 @@ const GANACHE_STARTUP_TIMEOUT_MILLIS: u64 = 10_000;
 
 /// A ganache CLI instance. Will close the instance when dropped.
 ///
-/// Construct this using [`Ganache`](crate::utils::Ganache)
+/// Construct this using [`Ganache`].
 pub struct GanacheInstance {
     pid: Child,
     private_keys: Vec<K256SecretKey>,

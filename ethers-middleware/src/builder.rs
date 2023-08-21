@@ -6,10 +6,11 @@ use ethers_core::types::Address;
 use ethers_providers::Middleware;
 use ethers_signers::Signer;
 
-/// A builder trait to compose different [`Middleware`](ethers_providers::Middleware) layers
-/// and then build a composed [`Provider`](ethers_providers::Provider) architecture.
-/// [`Middleware`](ethers_providers::Middleware) composition acts in a wrapping fashion. Adding a
-/// new layer results in wrapping its predecessor.
+/// A builder trait to compose different [`Middleware`] layers and then build a composed
+/// [`Provider`](ethers_providers::Provider) architecture.
+///
+/// [`Middleware`] composition acts in a wrapping fashion. Adding a new layer results in wrapping
+/// its predecessor.
 ///
 /// ```rust
 /// use ethers_providers::{Middleware, Provider, Http};
@@ -48,10 +49,9 @@ use ethers_signers::Signer;
 /// }
 /// ```
 pub trait MiddlewareBuilder: Middleware + Sized + 'static {
-    /// Wraps `self` inside a new [`Middleware`](ethers_providers::Middleware).
+    /// Wraps `self` inside a new [`Middleware`].
     ///
-    /// `f` Consumes `self`. Must be used to return a new
-    /// [`Middleware`](ethers_providers::Middleware) wrapping `self`.
+    /// `f` Consumes `self`. Must be used to return a new [`Middleware`] wrapping `self`.
     fn wrap_into<F, T>(self, f: F) -> T
     where
         F: FnOnce(Self) -> T,
@@ -60,9 +60,7 @@ pub trait MiddlewareBuilder: Middleware + Sized + 'static {
         f(self)
     }
 
-    /// Wraps `self` inside a [`SignerMiddleware`](crate::SignerMiddleware).
-    ///
-    /// [`Signer`](ethers_signers::Signer)
+    /// Wraps `self` inside a [`SignerMiddleware`].
     fn with_signer<S>(self, s: S) -> SignerMiddleware<Self, S>
     where
         S: Signer,
@@ -70,16 +68,12 @@ pub trait MiddlewareBuilder: Middleware + Sized + 'static {
         SignerMiddleware::new(self, s)
     }
 
-    /// Wraps `self` inside a [`NonceManagerMiddleware`](crate::NonceManagerMiddleware).
-    ///
-    /// [`Address`](ethers_core::types::Address)
+    /// Wraps `self` inside a [`NonceManagerMiddleware`].
     fn nonce_manager(self, address: Address) -> NonceManagerMiddleware<Self> {
         NonceManagerMiddleware::new(self, address)
     }
 
-    /// Wraps `self` inside a [`GasOracleMiddleware`](crate::gas_oracle::GasOracleMiddleware).
-    ///
-    /// [`GasOracle`](crate::gas_oracle::GasOracle)
+    /// Wraps `self` inside a [`GasOracleMiddleware`].
     fn gas_oracle<G>(self, gas_oracle: G) -> GasOracleMiddleware<Self, G>
     where
         G: GasOracle,

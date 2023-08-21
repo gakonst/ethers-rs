@@ -42,7 +42,7 @@ pub enum GethInstanceError {
 
 /// A geth instance. Will close the instance when dropped.
 ///
-/// Construct this using [`Geth`](crate::utils::Geth).
+/// Construct this using [`Geth`].
 #[derive(Debug)]
 pub struct GethInstance {
     pid: Child,

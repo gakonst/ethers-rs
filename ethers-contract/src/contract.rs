@@ -238,9 +238,10 @@ where
     B: Borrow<M>,
     M: Middleware,
 {
-    /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
-    /// This function operates in a static context, then it does not require a `self`
-    /// to reference to instantiate an [`Event`](crate::builders::Event) builder.
+    /// Returns an [`Event`] builder for the provided event.
+    ///
+    /// This function operates in a static context, then it does not require a `self` to reference
+    /// to instantiate an [`Event`] builder.
     pub fn event_of_type<D: EthEvent>(client: B) -> Event<B, M, D> {
         Event {
             provider: client,
@@ -299,7 +300,7 @@ where
     B: Clone + Borrow<M>,
     M: Middleware,
 {
-    /// Returns an [`Event`](crate::builders::Event) builder with the provided filter.
+    /// Returns an [`Event`] builder with the provided filter.
     pub fn event_with_filter<D>(&self, filter: Filter) -> Event<B, M, D> {
         Event {
             provider: self.client.clone(),
@@ -309,12 +310,12 @@ where
         }
     }
 
-    /// Returns an [`Event`](crate::builders::Event) builder for the provided event.
+    /// Returns an [`Event`] builder for the provided event.
     pub fn event<D: EthEvent>(&self) -> Event<B, M, D> {
         D::new(Filter::new(), self.client.clone())
     }
 
-    /// Returns an [`Event`](crate::builders::Event) builder with the provided name.
+    /// Returns an [`Event`] builder with the provided name.
     pub fn event_for_name<D>(&self, name: &str) -> Result<Event<B, M, D>, Error> {
         // get the event's full name
         let event = self.base_contract.abi.event(name)?;
