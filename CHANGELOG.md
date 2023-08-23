@@ -10,6 +10,54 @@ which is configured [here](./cliff.toml).
 
 Please do not manually edit this file.
 
+## [2.0.9] - 2023-08-23
+
+### Bug Fixes
+
+- Skip checksums for old windows solc ([#2554](https://github.com/gakonst/ethers-rs/issues/2554))
+- Skip checksums on windows for now ([#2553](https://github.com/gakonst/ethers-rs/issues/2553))
+- Parse privat keys correctly ([#2548](https://github.com/gakonst/ethers-rs/issues/2548))
+
+### Depedencies
+
+- Bump all dependencies ([#2565](https://github.com/gakonst/ethers-rs/issues/2565))
+- Update num_enum requirement from 0.6 to 0.7 ([#2555](https://github.com/gakonst/ethers-rs/issues/2555))
+- Bump svm-rs ([#2525](https://github.com/gakonst/ethers-rs/issues/2525))
+- Update enr requirement from 0.8.1 to 0.9.0 ([#2517](https://github.com/gakonst/ethers-rs/issues/2517))
+- Update cargo_metadata requirement from 0.15.4 to 0.17.0 ([#2524](https://github.com/gakonst/ethers-rs/issues/2524))
+
+### Features
+
+- Add more borrowed artifact iterators ([#2562](https://github.com/gakonst/ethers-rs/issues/2562))
+- Make ethers-providers optional ([#2536](https://github.com/gakonst/ethers-rs/issues/2536))
+- Support state overrides for `Multicall` ([#2478](https://github.com/gakonst/ethers-rs/issues/2478))
+- Add engine api-compatible bearer token generation ([#2529](https://github.com/gakonst/ethers-rs/issues/2529))
+- Add Wallet::encrypt_keystore ([#2502](https://github.com/gakonst/ethers-rs/issues/2502))
+- Add base network ([#2516](https://github.com/gakonst/ethers-rs/issues/2516))
+
+### Miscellaneous Tasks
+
+- Fix new rustdoc lints ([#2563](https://github.com/gakonst/ethers-rs/issues/2563))
+- Improve ABI parser and Abigen errors ([#2561](https://github.com/gakonst/ethers-rs/issues/2561))
+- Add `aws` feature to ethers ([#2558](https://github.com/gakonst/ethers-rs/issues/2558))
+- Include error in log message ([#2552](https://github.com/gakonst/ethers-rs/issues/2552))
+- Clippy ([#2534](https://github.com/gakonst/ethers-rs/issues/2534))
+- Support latest svm ([#2523](https://github.com/gakonst/ethers-rs/issues/2523))
+- Clippy
+
+### Other
+
+- Update watcher.rs ([#2559](https://github.com/gakonst/ethers-rs/issues/2559))
+- Add Linea ([#2533](https://github.com/gakonst/ethers-rs/issues/2533))
+- Add aliases for TypedTransaction tags that work with Hardhat ([#2518](https://github.com/gakonst/ethers-rs/issues/2518))
+
+### Performance
+
+- Memoize `is_dirty` results ([#2550](https://github.com/gakonst/ethers-rs/issues/2550))
+- Buffer writes when serializing json ([#2549](https://github.com/gakonst/ethers-rs/issues/2549))
+- Avoid `serde_json::from_reader` ([#2543](https://github.com/gakonst/ethers-rs/issues/2543))
+- Replace `hex` with `const-hex` ([#2544](https://github.com/gakonst/ethers-rs/issues/2544))
+
 ## [2.0.8] - 2023-07-15
 
 ### Bug Fixes
