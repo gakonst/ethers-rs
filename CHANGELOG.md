@@ -37,6 +37,7 @@ Please do not manually edit this file.
 
 ### Miscellaneous Tasks
 
+- Disable signers
 - Fix new rustdoc lints ([#2563](https://github.com/gakonst/ethers-rs/issues/2563))
 - Improve ABI parser and Abigen errors ([#2561](https://github.com/gakonst/ethers-rs/issues/2561))
 - Add `aws` feature to ethers ([#2558](https://github.com/gakonst/ethers-rs/issues/2558))
