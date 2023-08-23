@@ -109,7 +109,7 @@ pub struct Params<'a> {
     pub result: &'a RawValue,
 }
 
-struct ResponseVisitor<'b,const RELAXED:bool>(&'b ());
+struct ResponseVisitor<'b,const RELAXED:bool>(PhantomData<&'b ()>);
 
 impl<'de: 'a, 'a, const RELAXED:bool> Visitor<'de> for ResponseVisitor<'a,RELAXED> {
     type Value = Response<'a,RELAXED>;
