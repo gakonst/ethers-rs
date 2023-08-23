@@ -96,7 +96,7 @@ impl<'a, T> Request<'a, T> {
 
 /// A JSON-RPC response
 #[derive(Debug)]
-pub enum Response<'a, const RELAXED:bool > {
+pub enum Response<'a, const RELAXED: bool> {
     Success { id: u64, result: &'a RawValue },
     Error { id: u64, error: JsonRpcError },
     Notification { method: &'a str, params: Params<'a> },
@@ -109,11 +109,11 @@ pub struct Params<'a> {
     pub result: &'a RawValue,
 }
 
-struct ResponseVisitor<'b,const RELAXED:bool>(PhantomData<&'b ()>);
+struct ResponseVisitor<'b, const RELAXED: bool>(PhantomData<&'b ()>);
 
-impl<'de: 'a, 'a, const RELAXED:bool> Visitor<'de> for ResponseVisitor<'a,RELAXED> {
-    type Value = Response<'a,RELAXED>;
-    
+impl<'de: 'a, 'a, const RELAXED: bool> Visitor<'de> for ResponseVisitor<'a, RELAXED> {
+    type Value = Response<'a, RELAXED>;
+
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("a valid jsonrpc 2.0 response object")
     }
@@ -220,11 +220,10 @@ impl<'de: 'a, 'a, const RELAXED:bool> Visitor<'de> for ResponseVisitor<'a,RELAXE
     }
 }
 
-
 // FIXME: ideally, this could be auto-derived as an untagged enum, but due to
 // https://github.com/serde-rs/serde/issues/1183 this currently fails
 impl<'a, const RELAXED: bool> Deserialize<'a> for Response<'a, RELAXED> {
-    fn deserialize<D: serde::Deserializer<'a> >(deserializer: D) -> Result<Self, D::Error> {
+    fn deserialize<D: serde::Deserializer<'a>>(deserializer: D) -> Result<Self, D::Error> {
         deserializer.deserialize_map(ResponseVisitor(&()))
     }
 }
@@ -280,12 +279,13 @@ mod tests {
 
     #[test]
     fn deser_response() {
-        let _ =
-            serde_json::from_str::<Response<'_,true>>(r#"{"jsonrpc":"2.0","result":19}"#).unwrap_err();
-        let _ = serde_json::from_str::<Response<'_,true>>(r#"{"jsonrpc":"3.0","result":19,"id":1}"#)
+        let _ = serde_json::from_str::<Response<'_, true>>(r#"{"jsonrpc":"2.0","result":19}"#)
             .unwrap_err();
+        let _ =
+            serde_json::from_str::<Response<'_, true>>(r#"{"jsonrpc":"3.0","result":19,"id":1}"#)
+                .unwrap_err();
 
-        let response: Response<'_,true> =
+        let response: Response<'_, true> =
             serde_json::from_str(r#"{"jsonrpc":"2.0","result":19,"id":1}"#).unwrap();
 
         match response {
@@ -297,7 +297,7 @@ mod tests {
             _ => panic!("expected `Success` response"),
         }
 
-        let response: Response<'_,true> = serde_json::from_str(
+        let response: Response<'_, true> = serde_json::from_str(
             r#"{"jsonrpc":"2.0","error":{"code":-32000,"message":"error occurred"},"id":2}"#,
         )
         .unwrap();
@@ -312,7 +312,7 @@ mod tests {
             _ => panic!("expected `Error` response"),
         }
 
-        let response: Response<'_,true> =
+        let response: Response<'_, true> =
             serde_json::from_str(r#"{"jsonrpc":"2.0","result":"0xfa","id":0}"#).unwrap();
 
         match response {

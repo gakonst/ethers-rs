@@ -2,8 +2,8 @@ pub(crate) mod common;
 pub use common::{Authorization, JsonRpcError};
 
 mod http;
+use self::http::{ClientError, JsonRpcClient as RawJsonRpcClient};
 pub use self::http::{ClientError as HttpClientError, Provider as HttpProvider};
-use self::http::{JsonRpcClient as RawJsonRpcClient,ClientError};
 
 ///the old strict Http provider -- fails if the response has a `method:` entry
 pub type Http = HttpProvider<false>;
@@ -12,7 +12,7 @@ pub type Http = HttpProvider<false>;
 pub type RelaxedHttp = HttpProvider<true>;
 
 ///when you want either Http or LooseHttp
-pub type HttpClient = dyn RawJsonRpcClient<Error=ClientError>;
+pub type HttpClient = dyn RawJsonRpcClient<Error = ClientError>;
 
 #[cfg(all(feature = "ipc", any(unix, windows)))]
 mod ipc;

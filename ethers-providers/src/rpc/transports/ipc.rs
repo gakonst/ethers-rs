@@ -409,7 +409,7 @@ impl Shared {
 
     fn handle_bytes(&self, bytes: &BytesMut) -> Result<usize, IpcError> {
         // deserialize all complete jsonrpc responses in the buffer
-        let mut de = Deserializer::from_slice(bytes.as_ref()).into_iter::<Response<'_,true>>();
+        let mut de = Deserializer::from_slice(bytes.as_ref()).into_iter::<Response<'_, true>>();
         while let Some(Ok(response)) = de.next() {
             match response {
                 Response::Success { id, result } => self.send_response(id, Ok(result.to_owned())),
