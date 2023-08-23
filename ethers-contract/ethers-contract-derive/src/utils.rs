@@ -232,8 +232,7 @@ pub fn derive_abi_inputs_from_fields(
     fields
         .iter()
         .map(|f| {
-            let name =
-                f.ident.as_ref().map(|name| name.to_string()).unwrap_or_else(|| "".to_string());
+            let name = f.ident.as_ref().map(|name| name.to_string()).unwrap_or_default();
             find_parameter_type(&f.ty).map(|ty| (name, ty))
         })
         .collect()

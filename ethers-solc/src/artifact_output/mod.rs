@@ -21,7 +21,6 @@ use std::{
     ffi::OsString,
     fmt, fs,
     hash::Hash,
-    io,
     ops::Deref,
     path::{Path, PathBuf},
 };
@@ -256,11 +255,39 @@ impl<T> Artifacts<T> {
 
     /// Iterate over all artifact files
     pub fn artifact_files(&self) -> impl Iterator<Item = &ArtifactFile<T>> {
-        self.0.values().flat_map(|c| c.values().flat_map(|artifacts| artifacts.iter()))
+        self.0.values().flat_map(BTreeMap::values).flatten()
     }
+
     /// Iterate over all artifact files
     pub fn artifact_files_mut(&mut self) -> impl Iterator<Item = &mut ArtifactFile<T>> {
-        self.0.values_mut().flat_map(|c| c.values_mut().flat_map(|artifacts| artifacts.iter_mut()))
+        self.0.values_mut().flat_map(BTreeMap::values_mut).flatten()
+    }
+
+    /// Returns an iterator over _all_ artifacts and `<file name:contract name>`.
+    ///
+    /// Borrowed version of [`Self::into_artifacts`].
+    pub fn artifacts<O: ArtifactOutput<Artifact = T>>(
+        &self,
+    ) -> impl Iterator<Item = (ArtifactId, &T)> + '_ {
+        self.0.iter().flat_map(|(file, contract_artifacts)| {
+            contract_artifacts.iter().flat_map(move |(_contract_name, artifacts)| {
+                let source = PathBuf::from(file.clone());
+                artifacts.iter().filter_map(move |artifact| {
+                    O::contract_name(&artifact.file).map(|name| {
+                        (
+                            ArtifactId {
+                                path: PathBuf::from(&artifact.file),
+                                name,
+                                source: source.clone(),
+                                version: artifact.version.clone(),
+                            }
+                            .with_slashed_paths(),
+                            &artifact.artifact,
+                        )
+                    })
+                })
+            })
+        })
     }
 
     /// Returns an iterator over _all_ artifacts and `<file name:contract name>`
@@ -284,6 +311,19 @@ impl<T> Artifacts<T> {
                         )
                     })
                 })
+            })
+        })
+    }
+
+    /// Returns an iterator that yields the tuple `(file, contract name, artifact)`
+    ///
+    /// **NOTE** this returns the path as is
+    ///
+    /// Borrowed version of [`Self::into_artifacts_with_files`].
+    pub fn artifacts_with_files(&self) -> impl Iterator<Item = (&String, &String, &T)> + '_ {
+        self.0.iter().flat_map(|(f, contract_artifacts)| {
+            contract_artifacts.iter().flat_map(move |(name, artifacts)| {
+                artifacts.iter().map(move |artifact| (f, name, &artifact.artifact))
             })
         })
     }
@@ -763,10 +803,7 @@ pub trait ArtifactOutput {
     ///     - The file does not exist
     ///     - The file's content couldn't be deserialized into the `Artifact` type
     fn read_cached_artifact(path: impl AsRef<Path>) -> Result<Self::Artifact> {
-        let path = path.as_ref();
-        let file = fs::File::open(path).map_err(|err| SolcError::io(err, path))?;
-        let file = io::BufReader::new(file);
-        Ok(serde_json::from_reader(file)?)
+        crate::utils::read_json_file(path)
     }
 
     /// Read the cached artifacts that are located the paths the iterator yields

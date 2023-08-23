@@ -478,6 +478,16 @@ impl Solc {
             return Ok(())
         }
 
+        #[cfg(windows)]
+        {
+            // Prior to 0.7.2, binaries are released as exe files which are hard to verify: <https://github.com/foundry-rs/foundry/issues/5601>
+            // <https://binaries.soliditylang.org/windows-amd64/list.json>
+            const V0_7_2: Version = Version::new(0, 7, 2);
+            if version < V0_7_2 {
+                return Ok(())
+            }
+        }
+
         use sha2::Digest;
         let mut hasher = sha2::Sha256::new();
         hasher.update(content);

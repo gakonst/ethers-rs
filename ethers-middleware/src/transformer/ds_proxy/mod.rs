@@ -18,7 +18,7 @@ const DS_PROXY_EXECUTE_TARGET: &str =
 const DS_PROXY_EXECUTE_CODE: &str =
     "function execute(bytes memory code, bytes memory data) public payable returns (address target, bytes memory response)";
 
-/// Represents the DsProxy type that implements the [Transformer](super::Transformer) trait.
+/// Represents the DsProxy type that implements the [Transformer] trait.
 ///
 /// # Example
 ///

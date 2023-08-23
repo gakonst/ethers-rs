@@ -1,5 +1,5 @@
 pub(crate) mod common;
-pub use common::{Authorization, JsonRpcError};
+pub use common::{Authorization, JsonRpcError, JwtAuth, JwtKey};
 
 mod http;
 use self::http::{ClientError, JsonRpcClient as RawJsonRpcClient};

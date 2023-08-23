@@ -399,21 +399,14 @@ impl Cache {
 
     fn get<T: DeserializeOwned>(&self, prefix: &str, address: Address) -> Option<T> {
         let path = self.root.join(prefix).join(format!("{address:?}.json"));
-        let reader = std::io::BufReader::new(std::fs::File::open(path).ok()?);
-        if let Ok(inner) = serde_json::from_reader::<_, CacheEnvelope<T>>(reader) {
-            // If this does not return None then we have passed the expiry
-            if SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("system time is before unix epoch")
-                .checked_sub(Duration::from_secs(inner.expiry))
-                .is_some()
-            {
-                return None
-            }
-
-            return Some(inner.data)
-        }
-        None
+        let Ok(contents) = std::fs::read_to_string(path) else { return None };
+        let Ok(inner) = serde_json::from_str::<CacheEnvelope<T>>(&contents) else { return None };
+        // If this does not return None then we have passed the expiry
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time is before unix epoch")
+            .checked_sub(Duration::from_secs(inner.expiry))
+            .map(|_| inner.data)
     }
 }
 

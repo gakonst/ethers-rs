@@ -1,10 +1,17 @@
-use ethers_contract::{Contract, ContractFactory, EthEvent};
+use ethers_contract::EthEvent;
+use ethers_core::types::Address;
+
+#[cfg(feature = "providers")]
+use ethers_contract::{Contract, ContractFactory};
+#[cfg(feature = "providers")]
 use ethers_core::{
     abi::{Abi, JsonAbi},
-    types::{Address, Bytes},
+    types::Bytes,
     utils::AnvilInstance,
 };
+#[cfg(feature = "providers")]
 use ethers_providers::{Http, Middleware, Provider};
+#[cfg(feature = "providers")]
 use std::{convert::TryFrom, fs, sync::Arc, time::Duration};
 
 // Note: The `EthEvent` derive macro implements the necessary conversion between `Tokens` and
@@ -21,6 +28,7 @@ pub struct ValueChanged {
 }
 
 /// Gets the contract ABI and bytecode from a JSON file
+#[cfg(feature = "providers")]
 #[track_caller]
 pub fn get_contract(filename: &str) -> (Abi, Bytes) {
     let path = format!("./tests/solidity-contracts/{filename}");
@@ -34,6 +42,7 @@ pub fn get_contract(filename: &str) -> (Abi, Bytes) {
 }
 
 /// connects the private key to http://localhost:8545
+#[cfg(feature = "providers")]
 pub fn connect(anvil: &AnvilInstance, idx: usize) -> Arc<Provider<Http>> {
     let sender = anvil.addresses()[idx];
     let provider = Provider::<Http>::try_from(anvil.endpoint())
@@ -44,6 +53,7 @@ pub fn connect(anvil: &AnvilInstance, idx: usize) -> Arc<Provider<Http>> {
 }
 
 /// Launches a Anvil instance and deploys the SimpleStorage contract
+#[cfg(feature = "providers")]
 pub async fn deploy<M: Middleware>(client: Arc<M>, abi: Abi, bytecode: Bytes) -> Contract<M> {
     let factory = ContractFactory::new(abi, bytecode, client);
     let deployer = factory.deploy("initial value".to_string()).unwrap();

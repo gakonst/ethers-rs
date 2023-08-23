@@ -37,7 +37,7 @@ celo = [
 ]
 
 optimism = [
-    "ethers-core/optimism", 
+    "ethers-core/optimism",
     "ethers-providers/optimism",
     "ethers-signers/optimism",
     "ethers-middleware/optimism",
@@ -66,6 +66,7 @@ ipc = ["ethers-providers/ipc"]
 dev-rpc = ["ethers-providers/dev-rpc"]
 
 # ethers-signers
+aws = ["ethers-signers/aws"]
 ledger = ["ethers-signers/ledger"]
 trezor = ["ethers-signers/trezor"]
 yubi = ["ethers-signers/yubi"]
@@ -86,7 +87,7 @@ solc-sha2-asm = []
 
 [dependencies]
 ethers-addressbook.workspace = true
-ethers-contract.workspace = true
+ethers-contract = { workspace = true, features = ["providers"] }
 ethers-core.workspace = true
 ethers-etherscan.workspace = true
 ethers-middleware.workspace = true
