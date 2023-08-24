@@ -13,6 +13,7 @@ use serde::{
 use serde_json::{value::RawValue, Value};
 use std::fmt;
 use thiserror::Error;
+use std::marker::PhantomData;
 
 /// A JSON-RPC 2.0 error
 #[derive(Deserialize, Debug, Clone, Error)]
@@ -114,7 +115,7 @@ struct ResponseVisitor<'b, const RELAXED: bool>(PhantomData<&'b ()>);
 
 impl<'de: 'a, 'a, const RELAXED: bool> Visitor<'de> for ResponseVisitor<'a, RELAXED> {
     type Value = Response<'a, RELAXED>;
-
+    
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("a valid jsonrpc 2.0 response object")
     }
@@ -204,10 +205,10 @@ impl<'de: 'a, 'a, const RELAXED: bool> Visitor<'de> for ResponseVisitor<'a, RELA
         }
 
         match (id, result, error, method, params) {
-            (Some(id), Some(result), None, None, None) if RELAXED => {
+            (Some(id), Some(result), None, None, None) if !RELAXED => {
                 Ok(Response::Success { id, result })
             }
-            (Some(id), Some(result), None, _, _) if !RELAXED => {
+            (Some(id), Some(result), None, _, _) if RELAXED => {
                 Ok(Response::Success { id, result })
             }
             (Some(id), None, Some(error), None, None) => Ok(Response::Error { id, error }),
@@ -225,7 +226,7 @@ impl<'de: 'a, 'a, const RELAXED: bool> Visitor<'de> for ResponseVisitor<'a, RELA
 // https://github.com/serde-rs/serde/issues/1183 this currently fails
 impl<'a, const RELAXED: bool> Deserialize<'a> for Response<'a, RELAXED> {
     fn deserialize<D: serde::Deserializer<'a>>(deserializer: D) -> Result<Self, D::Error> {
-        deserializer.deserialize_map(ResponseVisitor(&()))
+        deserializer.deserialize_map(ResponseVisitor(PhantomData::<&()>))
     }
 }
 
@@ -384,7 +385,7 @@ mod tests {
             .unwrap_err();
         let _ =
             serde_json::from_str::<Response<'_, true>>(r#"{"jsonrpc":"3.0","result":19,"id":1}"#)
-                .unwrap_err();
+            .unwrap_err();
 
         let response: Response<'_, true> =
             serde_json::from_str(r#"{"jsonrpc":"2.0","result":19,"id":1}"#).unwrap();
