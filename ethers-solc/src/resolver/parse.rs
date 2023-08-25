@@ -1,8 +1,8 @@
 use crate::{utils, Solc};
 use semver::VersionReq;
 use solang_parser::pt::{
-    ContractPart, ContractTy, FunctionAttribute, FunctionDefinition, Import, Loc, SourceUnitPart,
-    Visibility,
+    ContractPart, ContractTy, FunctionAttribute, FunctionDefinition, Import, ImportPath, Loc,
+    SourceUnitPart, Visibility,
 };
 use std::{
     ops::Range,
@@ -65,15 +65,18 @@ impl SolData {
                                 Import::GlobalSymbol(s, i, l) => (s, vec![(i, None)], l),
                                 Import::Rename(s, i, l) => (s, i, l),
                             };
-                            let sol_import = SolImport::new(PathBuf::from(import.string))
-                                .set_aliases(
-                                    ids.into_iter()
-                                        .map(|(id, alias)| match alias {
-                                            Some(al) => SolImportAlias::Contract(al.name, id.name),
-                                            None => SolImportAlias::File(id.name),
-                                        })
-                                        .collect(),
-                                );
+                            let import = match import {
+                                ImportPath::Filename(s) => s.string.clone(),
+                                ImportPath::Path(p) => p.to_string(),
+                            };
+                            let sol_import = SolImport::new(PathBuf::from(import)).set_aliases(
+                                ids.into_iter()
+                                    .map(|(id, alias)| match alias {
+                                        Some(al) => SolImportAlias::Contract(al.name, id.name),
+                                        None => SolImportAlias::File(id.name),
+                                    })
+                                    .collect(),
+                            );
                             imports.push(SolDataUnit::from_loc(sol_import, loc));
                         }
                         SourceUnitPart::ContractDefinition(def) => {
