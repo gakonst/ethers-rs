@@ -479,7 +479,11 @@ pub struct TransactionReceipt {
 impl rlp::Encodable for TransactionReceipt {
     fn rlp_append(&self, s: &mut RlpStream) {
         s.begin_list(4);
-        rlp_opt(s, &self.status);
+        if let Some(post_state) = self.root {
+            s.append(&post_state);
+        } else {
+            s.append(&self.status.expect("No post-state or status in receipt"));
+        }
         s.append(&self.cumulative_gas_used);
         s.append(&self.logs_bloom);
         s.append_list(&self.logs);
