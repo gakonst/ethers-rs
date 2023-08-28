@@ -256,8 +256,8 @@ impl Anvil {
         let mut is_private_key = false;
         let mut chain_id = None;
         loop {
-            if start + Duration::from_millis(self.timeout.unwrap_or(ANVIL_STARTUP_TIMEOUT_MILLIS)) <=
-                Instant::now()
+            if start + Duration::from_millis(self.timeout.unwrap_or(ANVIL_STARTUP_TIMEOUT_MILLIS))
+                <= Instant::now()
             {
                 panic!("Timed out waiting for anvil to start. Is anvil installed?")
             }
@@ -265,7 +265,7 @@ impl Anvil {
             let mut line = String::new();
             reader.read_line(&mut line).expect("Failed to read line from anvil process");
             if line.contains("Listening on") {
-                break
+                break;
             }
 
             if line.starts_with("Private Keys") {
@@ -287,13 +287,21 @@ impl Anvil {
 
             if let Some(start_chain_id) = line.find("Chain ID:") {
                 let rest = &line[start_chain_id + "Chain ID:".len()..];
-                if let Ok(chain) = rest.trim_start().split_whitespace().next().unwrap_or("").parse::<u64>() {
+                if let Ok(chain) =
+                    rest.split_whitespace().next().unwrap_or("").parse::<u64>()
+                {
                     chain_id = Some(chain);
                 };
             }
         }
 
-        AnvilInstance { pid: child, private_keys, addresses, port, chain_id: self.chain_id.or(chain_id) }
+        AnvilInstance {
+            pid: child,
+            private_keys,
+            addresses,
+            port,
+            chain_id: self.chain_id.or(chain_id),
+        }
     }
 }
 
