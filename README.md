@@ -188,7 +188,7 @@ issues itself: `cargo +nightly clippy --fix`
 Tests require the following installed:
 
 1. [`solc`](https://docs.soliditylang.org/en/latest/installing-solidity.html) (>=0.8.0). We also recommend using [svm](https://github.com/roynalnaruto/svm-rs) for more flexibility.
-2. [`anvil`](https://github.com/foundry-rs/foundry/blob/master/anvil/README.md)
+2. [`anvil`](https://github.com/foundry-rs/foundry/tree/master/crates/anvil#readme)
 3. [`geth`](https://github.com/ethereum/go-ethereum)
 
 Additionally, the `ETHERSCAN_API_KEY` environment variable has to be set to run [`ethers-etherscan`](./ethers-etherscan) tests.

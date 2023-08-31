@@ -22,6 +22,8 @@ pub const MULTICALL_SUPPORTED_CHAIN_IDS: &[u64] = {
         Optimism as u64,                 // Optimism
         OptimismKovan as u64,            // Optimism Kovan
         OptimismGoerli as u64,           // Optimism Görli
+        Base as u64,                     // Base
+        BaseGoerli as u64,               // Base Görli
         Arbitrum as u64,                 // Arbitrum
         ArbitrumNova as u64,             // Arbitrum Nova
         ArbitrumGoerli as u64,           // Arbitrum Görli
