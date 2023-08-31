@@ -98,7 +98,7 @@ impl<T: ArtifactOutput> ProjectCompileOutput<T> {
     }
 
     /// This returns a chained iterator of both cached and recompiled contract artifacts that yields
-    /// the contract name and the corresponding artifact
+    /// the contract name and the corresponding artifact with its version
     ///
     /// # Example
     ///
