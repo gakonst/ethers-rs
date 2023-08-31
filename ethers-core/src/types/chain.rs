@@ -61,6 +61,7 @@ pub enum Chain {
     Rinkeby = 4,
     Goerli = 5,
     Kovan = 42,
+    Holesky = 17000,
     Sepolia = 11155111,
 
     Optimism = 10,
@@ -297,11 +298,10 @@ impl Chain {
             FilecoinHyperspaceTestnet | FilecoinMainnet => 30_000,
             ScrollAlphaTestnet => 3_000,
             // Explicitly exhaustive. See NB above.
-            Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
-            MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
-            BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm | PolygonZkEvmTestnet | Metis |
-            Linea => return None,
-            LineaTestnet => return None,
+            Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Holesky |
+            Moonbase | MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet |
+            Boba | Base | BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm |
+            PolygonZkEvmTestnet | Metis | Linea | LineaTestnet => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -345,6 +345,7 @@ impl Chain {
             Mainnet |
             Goerli |
             Sepolia |
+            Holesky |
             Base |
             BaseGoerli |
             Optimism |
@@ -541,7 +542,7 @@ impl Chain {
                 ("https://explorer.goerli.linea.build/api", "https://explorer.goerli.linea.build/")
             }
 
-            AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
+            Holesky | AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
                 return None
@@ -609,6 +610,7 @@ impl Chain {
             Metis |
             Chiado |
             Sepolia |
+            Holesky |
             Rsk |
             Sokol |
             Poa |

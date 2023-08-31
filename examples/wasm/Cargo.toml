@@ -33,5 +33,9 @@ console_error_panic_hook = { version = "0.1.7", optional = true }
 
 web-sys = { version = "0.3.63", features = ["console"] }
 
+# needed to enable the "js" feature for compatibility with wasm,
+# see https://docs.rs/getrandom/#webassembly-support
+getrandom = { version = "0.2", features = ["js"] }
+
 [dev-dependencies]
 wasm-bindgen-test = "0.3.36"
