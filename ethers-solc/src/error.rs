@@ -10,9 +10,9 @@ pub type Result<T> = std::result::Result<T, SolcError>;
 /// Various error types
 #[derive(Debug, Error)]
 pub enum SolcError {
-    /// Internal solc error
-    #[error("Solc Error: {0}")]
-    SolcError(String),
+    /// Errors related to the Solc executable itself.
+    #[error("Solc exited with {0}\n{1}")]
+    SolcError(std::process::ExitStatus, String),
     #[error("Missing pragma from solidity file")]
     PragmaNotFound,
     #[error("Could not find solc version locally or upstream")]
@@ -49,7 +49,7 @@ pub enum SolcError {
     NoContracts(String),
     #[error(transparent)]
     PatternError(#[from] glob::PatternError),
-    /// General purpose message
+    /// General purpose message.
     #[error("{0}")]
     Message(String),
 
@@ -65,11 +65,24 @@ impl SolcError {
     pub(crate) fn io(err: io::Error, path: impl Into<PathBuf>) -> Self {
         SolcIoError::new(err, path).into()
     }
-    pub(crate) fn solc(msg: impl Into<String>) -> Self {
-        SolcError::SolcError(msg.into())
+
+    /// Create an error from the Solc executable's output.
+    pub(crate) fn solc_output(output: &std::process::Output) -> Self {
+        let mut msg = String::from_utf8_lossy(&output.stderr);
+        let mut trimmed = msg.trim();
+        if trimmed.is_empty() {
+            msg = String::from_utf8_lossy(&output.stdout);
+            trimmed = msg.trim();
+            if trimmed.is_empty() {
+                trimmed = "<empty output>";
+            }
+        }
+        SolcError::SolcError(output.status, trimmed.into())
     }
-    pub fn msg(msg: impl Into<String>) -> Self {
-        SolcError::Message(msg.into())
+
+    /// General purpose message.
+    pub fn msg(msg: impl std::fmt::Display) -> Self {
+        SolcError::Message(msg.to_string())
     }
 }
 
