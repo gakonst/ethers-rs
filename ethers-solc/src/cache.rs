@@ -459,7 +459,7 @@ impl CacheEntry {
             .modified()
             .map_err(|err| SolcError::io(err, file.to_path_buf()))?
             .duration_since(UNIX_EPOCH)
-            .map_err(|err| SolcError::solc(err.to_string()))?
+            .map_err(SolcError::msg)?
             .as_millis() as u64;
         Ok(last_modification_date)
     }

@@ -8,7 +8,6 @@ use semver::{Version, VersionReq};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     fmt,
-    io::BufRead,
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
     str::FromStr,
@@ -300,7 +299,7 @@ impl Solc {
     pub fn find_svm_installed_version(version: impl AsRef<str>) -> Result<Option<Self>> {
         let version = version.as_ref();
         let solc = Self::svm_home()
-            .ok_or_else(|| SolcError::solc("svm home dir not found"))?
+            .ok_or_else(|| SolcError::msg("svm home dir not found"))?
             .join(version)
             .join(format!("solc-{version}"));
 
@@ -710,23 +709,22 @@ fn compile_output(output: Output) -> Result<Vec<u8>> {
     if output.status.success() {
         Ok(output.stdout)
     } else {
-        Err(SolcError::solc(String::from_utf8_lossy(&output.stderr).to_string()))
+        Err(SolcError::solc_output(&output))
     }
 }
 
 fn version_from_output(output: Output) -> Result<Version> {
     if output.status.success() {
-        let version = output
-            .stdout
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let version = stdout
             .lines()
-            .map_while(std::result::Result::ok)
             .filter(|l| !l.trim().is_empty())
             .last()
-            .ok_or_else(|| SolcError::solc("version not found in solc output"))?;
+            .ok_or_else(|| SolcError::msg("Version not found in Solc output"))?;
         // NOTE: semver doesn't like `+` in g++ in build metadata which is invalid semver
         Ok(Version::from_str(&version.trim_start_matches("Version: ").replace(".g++", ".gcc"))?)
     } else {
-        Err(SolcError::solc(String::from_utf8_lossy(&output.stderr).to_string()))
+        Err(SolcError::solc_output(&output))
     }
 }
 
