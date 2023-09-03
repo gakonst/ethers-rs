@@ -103,6 +103,7 @@ impl WsBackend {
             }
             Err(e) => {
                 error!(e = %e, "Failed to deserialize message");
+                return Err(WsClientError::JsonError(e))
             }
         }
         Ok(())

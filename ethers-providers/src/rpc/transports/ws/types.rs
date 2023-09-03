@@ -141,6 +141,9 @@ impl<'de> Deserialize<'de> for PubSubItem {
                     (Some(id), None, Some(error), None, None) => {
                         Ok(PubSubItem::Error { id, error })
                     }
+                    (Some(id), Some(_), Some(error), None, None) => {
+                        Ok(PubSubItem::Error { id, error })
+                    }
                     (None, None, None, Some(_), Some(params)) => {
                         Ok(PubSubItem::Notification { params })
                     }
