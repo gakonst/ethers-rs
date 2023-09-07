@@ -10,6 +10,30 @@ which is configured [here](./cliff.toml).
 
 Please do not manually edit this file.
 
+## [2.0.10] - 2023-09-07
+
+### Bug Fixes
+
+- Anvil invalid chain id ([#2573](https://github.com/gakonst/ethers-rs/issues/2573))
+- Empty 'Solc error: ' message ([#2582](https://github.com/gakonst/ethers-rs/issues/2582))
+- Wasm ci compilation ([#2570](https://github.com/gakonst/ethers-rs/issues/2570))
+
+### Depedencies
+
+- Update solang-parser requirement from =0.3.1 to =0.3.2 ([#2567](https://github.com/gakonst/ethers-rs/issues/2567))
+
+### Features
+
+- Add support for Base mainnet and Goerli ([#2574](https://github.com/gakonst/ethers-rs/issues/2574))
+- Holesky ([#2569](https://github.com/gakonst/ethers-rs/issues/2569))
+
+### Other
+
+- PubSubItem deserialize ([#2578](https://github.com/gakonst/ethers-rs/issues/2578))
+- Update mod.rs ([#2575](https://github.com/gakonst/ethers-rs/issues/2575))
+- Anvil broken link ([#2579](https://github.com/gakonst/ethers-rs/issues/2579))
+- Revert "chore: disable signers"
+
 ## [2.0.9] - 2023-08-23
 
 ### Bug Fixes
