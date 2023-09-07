@@ -27,6 +27,10 @@ Please do not manually edit this file.
 - Add support for Base mainnet and Goerli ([#2574](https://github.com/gakonst/ethers-rs/issues/2574))
 - Holesky ([#2569](https://github.com/gakonst/ethers-rs/issues/2569))
 
+### Miscellaneous Tasks
+
+- Disable signers
+
 ### Other
 
 - PubSubItem deserialize ([#2578](https://github.com/gakonst/ethers-rs/issues/2578))
