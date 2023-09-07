@@ -40,7 +40,7 @@ ethers-contract-derive = { workspace = true, optional = true }
 
 [dev-dependencies]
 ethers-providers = { workspace = true, features = ["ws"] }
-ethers-signers.workspace = true
+# ethers-signers.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
