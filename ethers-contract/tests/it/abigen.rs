@@ -3,16 +3,14 @@
 use ethers_contract::{abigen, EthEvent};
 use ethers_core::{
     abi::{AbiDecode, AbiEncode, Tokenizable},
-    rand::thread_rng,
-    types::{Bytes, U256},
+    types::{Address, Bytes, U256},
 };
-use ethers_signers::{LocalWallet, Signer};
 use std::{fmt::Debug, hash::Hash, str::FromStr};
 
 #[cfg(feature = "providers")]
 use ethers_contract::{ContractError, EthCall, EthError};
 #[cfg(feature = "providers")]
-use ethers_core::{abi::Address, utils::Anvil};
+use ethers_core::utils::Anvil;
 #[cfg(feature = "providers")]
 use ethers_providers::{MockProvider, Provider};
 #[cfg(feature = "providers")]
@@ -826,8 +824,6 @@ fn can_generate_hardhat_console() {
 
 #[test]
 fn abigen_overloaded_methods() {
-    let alice = LocalWallet::new(&mut thread_rng());
-
     abigen!(
         OverloadedFuncs,
         r"[
@@ -843,17 +839,15 @@ fn abigen_overloaded_methods() {
             myfunc(address[2],address,address[]) as myfunc4;
         },
     );
-    let f1 = Myfunc1Call(alice.address(), U256::from(10));
-    let _ = Myfunc2Call(alice.address(), alice.address());
-    let _ = Myfunc3Call(alice.address(), vec![alice.address()]);
-    let f4 = Myfunc4Call(
-        [alice.address(), alice.address()],
-        alice.address(),
-        vec![alice.address(), alice.address(), alice.address(), alice.address()],
-    );
+
+    let address = Address::random();
+    let f1 = Myfunc1Call(address, U256::from(10));
+    let _ = Myfunc2Call(address, address);
+    let _ = Myfunc3Call(address, vec![address]);
+    let f4 = Myfunc4Call([address, address], address, vec![address, address, address, address]);
     assert_eq!(f1.1, U256::from(10));
-    assert_eq!(f4.0, [alice.address(), alice.address()]);
-    assert_eq!(f4.1, alice.address());
+    assert_eq!(f4.0, [address, address]);
+    assert_eq!(f4.1, address);
 }
 
 #[test]
