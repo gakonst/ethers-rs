@@ -6,7 +6,7 @@ pub mod eip2718;
 pub mod eip2930;
 
 #[cfg(feature = "optimism")]
-pub mod optimism_deposited;
+pub mod optimism;
 
 pub mod eip712;
 
