@@ -473,6 +473,22 @@ pub struct TransactionReceipt {
     /// Deposit nonce for Optimism deposited transactions
     #[cfg(feature = "optimism")]
     pub deposit_nonce: Option<u64>,
+    /// L1 fee for the transaction
+    #[cfg(feature = "optimism")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub l1_fee: Option<U256>,
+    /// L1 fee scalar for the transaction
+    #[cfg(feature = "optimism")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub l1_fee_scalar: Option<U256>,
+    /// L1 gas price for the transaction
+    #[cfg(feature = "optimism")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub l1_gas_price: Option<U256>,
+    /// L1 gas used for the transaction
+    #[cfg(feature = "optimism")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub l1_gas_used: Option<U256>,
     /// Captures unknown fields such as additional fields used by L2s
     #[cfg(not(feature = "celo"))]
     #[serde(flatten)]
@@ -482,23 +498,24 @@ pub struct TransactionReceipt {
 impl rlp::Encodable for TransactionReceipt {
     fn rlp_append(&self, s: &mut RlpStream) {
         #[cfg(feature = "optimism")]
-        if self.transaction_type == Some(U64::from(0x7E)) {
-            s.append(&U64::from(0x7E));
+        let is_deposit = self.transaction_type == Some(U64::from(0x7E));
+        #[cfg(feature = "optimism")]
+        {
+            if is_deposit {
+                s.append(&U64::from(0x7E));
+                s.begin_list(5);
+            } else {
+                s.begin_list(4);
+            }
         }
         #[cfg(not(feature = "optimism"))]
         s.begin_list(4);
-        #[cfg(feature = "optimism")]
-        if self.transaction_type == Some(U64::from(0x7E)) {
-            s.begin_list(5);
-        } else {
-            s.begin_list(4);
-        }
         rlp_opt(s, &self.status);
         s.append(&self.cumulative_gas_used);
         s.append(&self.logs_bloom);
         s.append_list(&self.logs);
         #[cfg(feature = "optimism")]
-        if self.transaction_type == Some(U64::from(0x7E)) {
+        if is_deposit {
             if let Some(deposit_nonce) = self.deposit_nonce {
                 s.append(&deposit_nonce);
             }
@@ -554,6 +571,10 @@ mod tests {
             transaction_type: Some(U64::from(0x7E)),
             effective_gas_price: None,
             deposit_nonce: Some(4012991),
+            l1_fee: None,
+            l1_fee_scalar: None,
+            l1_gas_price: None,
+            l1_gas_used: None,
             #[cfg(not(feature = "celo"))]
             other: crate::types::OtherFields::default(),
         };
