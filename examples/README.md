@@ -66,6 +66,7 @@
   - [x] Remove liquidity
   - [ ] Set gas for a transaction
   - [ ] Send raw transaction
+  - [x] Send raw transaction conditional
   - [ ] Send typed transaction
   - [x] Trace
   - [ ] Transaction receipt
