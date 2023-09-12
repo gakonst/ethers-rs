@@ -94,7 +94,7 @@ where
                 }
             }
             #[cfg(feature = "optimism")]
-            TypedTransaction::OptimismDeposited(ref mut inner) => {
+            TypedTransaction::DepositTransaction(ref mut inner) => {
                 if inner.tx.gas_price.is_none() {
                     inner.tx.gas_price = Some(self.get_gas_price().await?);
                 }
