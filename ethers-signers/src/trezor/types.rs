@@ -136,7 +136,7 @@ impl TrezorTransaction {
                 })
             }
             #[cfg(feature = "optimism")]
-            TypedTransaction::OptimismDeposited(_) => Ok(Self {
+            TypedTransaction::DepositTransaction(_) => Ok(Self {
                 nonce,
                 gas,
                 gas_price,

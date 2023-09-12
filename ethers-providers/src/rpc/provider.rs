@@ -313,7 +313,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                 };
             }
             #[cfg(feature = "optimism")]
-            TypedTransaction::OptimismDeposited(_) => {
+            TypedTransaction::DepositTransaction(_) => {
                 let gas_price = maybe(tx.gas_price(), self.get_gas_price()).await?;
                 tx.set_gas_price(gas_price);
             }

@@ -162,7 +162,7 @@ impl LedgerEthereum {
                 }
                 TypedTransaction::Legacy(_) => eip155_chain_id + ecc_parity,
                 #[cfg(feature = "optimism")]
-                TypedTransaction::OptimismDeposited(_) => 0,
+                TypedTransaction::DepositTransaction(_) => 0,
             };
         }
 

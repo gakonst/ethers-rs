@@ -193,7 +193,7 @@ impl TrezorEthereum {
                 transaction.access_list,
             )?,
             #[cfg(feature = "optimism")]
-            TypedTransaction::OptimismDeposited(tx) => {
+            TypedTransaction::DepositTransaction(tx) => {
                 trezor_client::client::Signature { r: 0.into(), s: 0.into(), v: 0 }
             }
         };

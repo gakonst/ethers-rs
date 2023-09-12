@@ -8,7 +8,7 @@ const NUM_TX_FIELDS: usize = 8;
 
 /// An error involving an OptimismDeposited transaction request.
 #[derive(Debug, Error)]
-pub enum OptimismDepositedRequestError {
+pub enum DepositTransactionError {
     /// When decoding a transaction request from RLP
     #[error(transparent)]
     DecodingError(#[from] rlp::DecoderError),
@@ -16,7 +16,7 @@ pub enum OptimismDepositedRequestError {
 
 /// Parameters for sending a transaction
 #[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq, Debug)]
-pub struct OptimismDepositedTransactionRequest {
+pub struct DepositTransaction {
     #[serde(flatten)]
     pub tx: TransactionRequest,
 
@@ -34,7 +34,7 @@ pub struct OptimismDepositedTransactionRequest {
     pub is_system_tx: Option<bool>,
 }
 
-impl OptimismDepositedTransactionRequest {
+impl DepositTransaction {
     pub fn new(
         tx: TransactionRequest,
         source_hash: Option<H256>,
@@ -90,9 +90,7 @@ impl OptimismDepositedTransactionRequest {
 
     /// Decodes the given RLP into a transaction
     /// Note: this transaction does not have a signature
-    pub fn decode_signed_rlp(
-        rlp: &rlp::Rlp,
-    ) -> Result<(Self, Signature), OptimismDepositedRequestError> {
+    pub fn decode_signed_rlp(rlp: &rlp::Rlp) -> Result<(Self, Signature), DepositTransactionError> {
         let mut offset = 0;
         let txn = Self::decode_base_rlp(rlp, &mut offset)?;
         let sig = Signature { r: 0.into(), s: 0.into(), v: 0 };
@@ -102,16 +100,16 @@ impl OptimismDepositedTransactionRequest {
 }
 
 /// Get a Eip2930TransactionRequest from a rlp encoded byte stream
-impl Decodable for OptimismDepositedTransactionRequest {
+impl Decodable for DepositTransaction {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         Self::decode_base_rlp(rlp, &mut 0)
     }
 }
 
 /// Get an OptimismDeposited transaction request from a Transaction
-impl From<&Transaction> for OptimismDepositedTransactionRequest {
-    fn from(tx: &Transaction) -> OptimismDepositedTransactionRequest {
-        OptimismDepositedTransactionRequest {
+impl From<&Transaction> for DepositTransaction {
+    fn from(tx: &Transaction) -> DepositTransaction {
+        DepositTransaction {
             tx: tx.into(),
             source_hash: tx.source_hash,
             mint: tx.mint,
@@ -173,7 +171,7 @@ mod test {
         let encoded = Bytes::from(hex::decode("7ef90159a0a8157ccf61bcdfbcb74a84ec1262e62644dd1e7e3614abcbd8db0c99a60049fc94deaddeaddeaddeaddeaddeaddeaddeaddead00019442000000000000000000000000000000000000158080830f424080b90104015d8eb90000000000000000000000000000000000000000000000000000000000878c1c00000000000000000000000000000000000000000000000000000000644662bc0000000000000000000000000000000000000000000000000000001ee24fba17b7e19cc10812911dfa8a438e0a81a9933f843aa5b528899b8d9e221b649ae0df00000000000000000000000000000000000000000000000000000000000000060000000000000000000000007431310e026b69bfc676c0013e12a1a11411eec9000000000000000000000000000000000000000000000000000000000000083400000000000000000000000000000000000000000000000000000000000f4240").unwrap());
         let tx = TypedTransaction::decode(&rlp::Rlp::new(&encoded)).unwrap();
 
-        assert!(matches!(tx, TypedTransaction::OptimismDeposited(_)));
+        assert!(matches!(tx, TypedTransaction::DepositTransaction(_)));
 
         assert_eq!(tx.gas(), Some(&U256::from(1000000u64)));
         assert_eq!(tx.gas_price(), None);
