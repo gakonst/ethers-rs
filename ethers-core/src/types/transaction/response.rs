@@ -476,16 +476,6 @@ pub struct TransactionReceipt {
     pub other: crate::types::OtherFields,
 }
 
-impl rlp::Encodable for TransactionReceipt {
-    fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(4);
-        rlp_opt(s, &self.status);
-        s.append(&self.cumulative_gas_used);
-        s.append(&self.logs_bloom);
-        s.append_list(&self.logs);
-    }
-}
-
 // Compares the transaction receipt against another receipt by checking the blocks first and then
 // the transaction index in the block
 impl Ord for TransactionReceipt {
@@ -508,10 +498,44 @@ impl PartialOrd<Self> for TransactionReceipt {
     }
 }
 
+impl TransactionReceipt {
+    pub fn rlp(&self) -> Bytes {
+        let mut s = RlpStream::new();
+        s.begin_list(4);
+        if let Some(post_state) = self.root {
+            s.append(&post_state);
+        } else {
+            s.append(&self.status.expect("No post-state or status in receipt"));
+        }
+        s.append(&self.cumulative_gas_used);
+        s.append(&self.logs_bloom);
+        s.append_list(&self.logs);
+
+        let rlp_bytes = s.out().freeze();
+        let mut encoded = vec![];
+        match self.transaction_type {
+            Some(x) if x == U64::from(0x1) => {
+                encoded.extend_from_slice(&[0x1]);
+                encoded.extend_from_slice(rlp_bytes.as_ref());
+                encoded.into()
+            }
+            Some(x) if x == U64::from(0x2) => {
+                encoded.extend_from_slice(&[0x2]);
+                encoded.extend_from_slice(rlp_bytes.as_ref());
+                encoded.into()
+            }
+            _ => {
+                encoded.extend_from_slice(rlp_bytes.as_ref());
+                encoded.into()
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 #[cfg(not(any(feature = "celo", feature = "optimism")))]
 mod tests {
-    use rlp::{Encodable, Rlp};
+    use rlp::Rlp;
 
     use crate::types::transaction::eip2930::AccessListItem;
 
@@ -1085,11 +1109,26 @@ mod tests {
     #[test]
     fn rlp_encode_receipt() {
         let receipt = TransactionReceipt { status: Some(1u64.into()), ..Default::default() };
-        let encoded = receipt.rlp_bytes();
+        let encoded = receipt.rlp();
 
         assert_eq!(
             encoded,
             hex::decode("f901060180b9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c0").unwrap(),
+        );
+    }
+
+    #[test]
+    fn rlp_encode_receipt_type2() {
+        let receipt = TransactionReceipt {
+            transaction_type: Some(U64([2])),
+            status: Some(1u64.into()),
+            ..Default::default()
+        };
+        let encoded = receipt.rlp();
+
+        assert_eq!(
+            encoded,
+            hex::decode("02f901060180b9010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c0").unwrap(),
         );
     }
 
