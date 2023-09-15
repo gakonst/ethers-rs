@@ -8,7 +8,7 @@ use crate::{
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
     utils::maybe,
     Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MiddlewareError,
-    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient,
+    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient, UserOperation, UserOperationHash,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -566,6 +566,18 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let rlp = utils::serialize(&tx);
         let tx_hash = self.request("eth_sendRawTransaction", [rlp]).await?;
         Ok(PendingTransaction::new(tx_hash, self))
+    }
+
+    async fn send_user_operation(
+        &self,
+        user_operation: UserOperation,
+        entry_point: Address,
+    ) -> Result<UserOperationHash, ProviderError> {
+        let serialized_user_operation = utils::serialize(&user_operation);
+        // Some nodes (e.g. old Optimism clients) don't support a block ID being passed as a param,
+        // so refrain from defaulting to BlockNumber::Latest.
+        let params = vec![serialized_user_operation, utils::serialize(&entry_point)];
+        self.request("eth_sendUserOperation", params).await
     }
 
     async fn is_signer(&self) -> bool {
