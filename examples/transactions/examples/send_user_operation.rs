@@ -4,7 +4,7 @@ use ethers::{
     contract::{abigen, ContractFactory},
     middleware::SignerMiddleware,
     providers::{Http, Middleware, Provider, UserOperation},
-    signers::{LocalWallet, Signer}, types::{Bytes, Address, U256, transaction::eip2718::TypedTransaction}, abi::ethereum_types::Signature, utils::hex
+    signers::{LocalWallet, Signer}, types::{Bytes, Address, U256, transaction::eip2718::TypedTransaction, H160}, abi::ethereum_types::Signature, utils::hex
 };
 use eyre::Result;
 
@@ -30,8 +30,8 @@ async fn main() -> Result<()> {
 
         let mut uo =  
             UserOperation {
-                sender: "0x921f125A92930cabb2969AD9323261D3A2A784e7".parse().unwrap(),
-                nonce: 1.into(),
+                sender: Address::default(),
+                nonce: U256::default(),
                 init_code: Bytes::default(),
                 // transfer 0 eth
                 call_data: "0xb61d27f6000000000000000000000000a02bfd0ba5d182226627a933333ba92d1a60e234000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000".parse().unwrap(),
@@ -48,27 +48,42 @@ async fn main() -> Result<()> {
         let entry_point_contract = EntryPointContract::new(entry_point, client.clone());
         let account_factory_address: Address = "0x9406Cc6185a346906296840746125a0E44976454".parse().unwrap();
         let account_factory_contract = EntryPointContract::new(account_factory_address, client.clone());
-        let nonce = entry_point_contract.get_nonce("0x9c5754De1443984659E1b3a8d1931D83475ba29C".parse().unwrap(), 0.into()).call().await?;
-        uo = uo.nonce(nonce);
-        if nonce.eq(&U256::from(0)) {
-            let call = account_factory_contract.create_account(from, U256::from(0));
-            let tx: TypedTransaction = call.tx;
-            println!("tx: {:?}", tx);
-            let mut vec1:Vec<u8> = account_factory_address.as_bytes().to_vec();
-            let vec2:Vec<u8> = tx.data().unwrap().clone().to_vec();
-            vec1.extend(vec2);
-            let init_code: Bytes = Bytes::from(vec1);
-            println!("init_code: {:?}", init_code);
-            // let sender_address = entry_point_contract.get_sender_address(init_code.clone()).await?;
-            uo = uo.init_code(init_code);
-            // uo = uo.sender(sender_address);
+        let init_code: Bytes;
+        let call = account_factory_contract.create_account(from, U256::from(0));
+        let tx: TypedTransaction = call.tx;
+        println!("tx: {:?}", tx);
+        let mut vec1:Vec<u8> = account_factory_address.as_bytes().to_vec();
+        let vec2:Vec<u8> = tx.data().unwrap().clone().to_vec();
+        vec1.extend(vec2);   
+        init_code = Bytes::from(vec1);
+        println!("init_code: {:?}", init_code);
+
+        let sender_addr_result = entry_point_contract.get_sender_address(init_code.clone()).call().await;
+        let sender:Address = match sender_addr_result {
+            Ok(sender) => sender,
+            Err(err) =>  {
+                let data:Bytes = err.as_revert().unwrap().clone();
+                let address_array: Result<[u8; 20], _> = data[data.len()-20..].try_into();
+                let address:Address = address_array.unwrap().into();
+                address
+            },
         };
+            
+
+        let nonce = entry_point_contract.get_nonce(sender, 0.into()).call().await?;
+        uo = uo.nonce(nonce);
+        uo = uo.sender(sender);
+        if nonce.eq(&U256::from(0)) {
+            uo = uo.init_code(init_code.clone());
+
+        };
+
+
         let uo_hash = uo.cal_uo_hash(entry_point, 5.into());
         let signature = wallet.sign_message(uo_hash.as_bytes()).await?;
         uo = uo.signature(signature.to_vec().into());
-        println!("uo_hash: {:?}", uo_hash);
-        println!("sig: {:?}", uo.signature);
-        println!("uo: {:?}", uo);
+
+        println!("user_operation: {:?}", uo);
 
         let pending_uo = client
             .send_user_operation(

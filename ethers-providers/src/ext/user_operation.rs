@@ -1,4 +1,8 @@
-use ethers_core::{types::{Address, Bytes, H256, U256, U64}, abi::{encode, encode_packed, Token}, utils::keccak256};
+use ethers_core::{
+    abi::{encode, encode_packed, Token},
+    types::{Address, Bytes, H256, U256, U64},
+    utils::keccak256,
+};
 use serde::{Deserialize, Serialize};
 
 /// UserOperation - a structure that describes a transaction to be sent on behalf of a user. To avoid confusion, it is not named “transaction”.
@@ -42,14 +46,13 @@ pub struct UserOperation {
 }
 
 impl UserOperation {
-
     /// set sender
     pub fn sender(mut self, sender: Address) -> Self {
         self.sender = sender;
         self
     }
 
-    /// set nonce 
+    /// set nonce
     pub fn nonce(mut self, nonce: U256) -> Self {
         self.nonce = nonce;
         self
@@ -100,10 +103,10 @@ impl UserOperation {
         self
     }
 
-    /// Pack the user operation data into bytes 
+    /// Pack the user operation data into bytes
     pub fn pack(&self) -> Bytes {
-        let encoded = encode(
-            &[Token::Address(self.sender),
+        let encoded = encode(&[
+            Token::Address(self.sender),
             Token::Uint(self.nonce),
             Token::Bytes(self.init_code.0.to_vec()),
             Token::Bytes(self.call_data.0.to_vec()),
@@ -113,19 +116,17 @@ impl UserOperation {
             Token::Uint(self.max_fee_per_gas),
             Token::Uint(self.max_priority_fee_per_gas),
             Token::Bytes(self.paymaster_and_data.0.to_vec()),
-            Token::Bytes(self.signature.0.to_vec())
-            ],
-        );
-
+            Token::Bytes(self.signature.0.to_vec()),
+        ]);
 
         let encoded_bytes = Bytes::from(encoded);
         encoded_bytes
     }
 
-    /// Pack the user operation data into bytes 
+    /// Pack the user operation data into bytes
     pub fn pack_without_signature(&self) -> Bytes {
-        let encoded = encode(
-            &[Token::Address(self.sender),
+        let encoded = encode(&[
+            Token::Address(self.sender),
             Token::Uint(self.nonce),
             Token::FixedBytes(keccak256(self.init_code.0.to_vec()).into()),
             Token::FixedBytes(keccak256(self.call_data.0.to_vec()).into()),
@@ -135,8 +136,7 @@ impl UserOperation {
             Token::Uint(self.max_fee_per_gas),
             Token::Uint(self.max_priority_fee_per_gas),
             Token::FixedBytes(keccak256(self.paymaster_and_data.0.to_vec()).into()),
-            ],
-        );
+        ]);
 
         let encoded_bytes = Bytes::from(encoded);
         encoded_bytes
@@ -149,30 +149,30 @@ impl UserOperation {
     }
 
     /// calculate the hash of UserOperation
-    pub fn cal_uo_hash(&self, entry_point:Address, chain_id: U256) -> H256 {
-        let op_hash:H256 = keccak256(self.pack_without_signature().0.to_vec()).into();
+    pub fn cal_uo_hash(&self, entry_point: Address, chain_id: U256) -> H256 {
+        let op_hash: H256 = keccak256(self.pack_without_signature().0.to_vec()).into();
         H256::from_slice(
             keccak256(
-                encode(
-                    &[
+                encode(&[
                     Token::FixedBytes(op_hash.as_bytes().to_vec()),
                     Token::Address(entry_point),
                     Token::Uint(chain_id),
-                    ]
-            ).to_vec()
-        ).as_slice()
-    ).into()
-    
+                ])
+                .to_vec(),
+            )
+            .as_slice(),
+        )
+        .into()
     }
-     /// Creates random user operation (for testing purposes)
-     #[cfg(feature = "test-utils")]
-     pub fn random() -> Self {
-         UserOperation::default()
-             .sender(Address::random())
-             .verification_gas_limit(100_000.into())
-             .pre_verification_gas(21_000.into())
-             .max_priority_fee_per_gas(1_000_000_000.into())
-     }
+    /// Creates random user operation (for testing purposes)
+    #[cfg(feature = "test-utils")]
+    pub fn random() -> Self {
+        UserOperation::default()
+            .sender(Address::random())
+            .verification_gas_limit(100_000.into())
+            .pre_verification_gas(21_000.into())
+            .max_priority_fee_per_gas(1_000_000_000.into())
+    }
 }
 
 /// User operation hash
@@ -193,7 +193,6 @@ impl From<UserOperationHash> for H256 {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -211,27 +210,35 @@ mod tests {
     #[test]
     fn test_user_operation_hash() {
         let uos =  vec![
-            UserOperation { 
+            UserOperation {
             sender: "0x921f125a92930cabb2969ad9323261d3a2a784e7".parse().unwrap(), 
-            nonce: 0.into(), 
+            nonce: 0.into(),
             init_code: "0x9406cc6185a346906296840746125a0e449764545fbfb9cf00000000000000000000000043378ff8c70109ee4dbe85af34428ab0615ebd230000000000000000000000000000000000000000000000000000000000000000".parse::<Bytes>().unwrap(), 
             call_data: "0xb61d27f6000000000000000000000000a02bfd0ba5d182226627a933333ba92d1a60e234000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000".parse::<Bytes>().unwrap(), 
-            call_gas_limit: 530_100.into(), 
-            verification_gas_limit: 500_624.into(), 
-            pre_verification_gas: 104_056.into(), 
-            max_fee_per_gas: 1_695_000_030.into(), 
-            max_priority_fee_per_gas: 1_695_000_000.into(), 
-            paymaster_and_data: Bytes::default(), 
-            signature: "0x5ae30c60c3ad36192f6efc38b3ac41d70d2c08fd8efc5a2f2457bfc17a4deea72fb6b40081dc8e05da85a5f05b977d15a9583fbe0d1766357d2553ad233ddd2f1c".parse::<Bytes>().unwrap() 
+            call_gas_limit: 530_100.into(),
+            verification_gas_limit: 500_624.into(),
+            pre_verification_gas: 104_056.into(),
+            max_fee_per_gas: 1_695_000_030.into(),
+            max_priority_fee_per_gas: 1_695_000_000.into(),
+            paymaster_and_data: Bytes::default(),
+            signature: "0x5ae30c60c3ad36192f6efc38b3ac41d70d2c08fd8efc5a2f2457bfc17a4deea72fb6b40081dc8e05da85a5f05b977d15a9583fbe0d1766357d2553ad233ddd2f1c".parse::<Bytes>().unwrap()
         },
         ];
-        let entry_point_address: Address = "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789".parse().unwrap();
+        let entry_point_address: Address =
+            "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789".parse().unwrap();
         let chain_id = U256::from(5);
         assert_eq!(uos[0].pack_without_signature(), "0x000000000000000000000000921f125a92930cabb2969ad9323261d3a2a784e700000000000000000000000000000000000000000000000000000000000000008c7ec65f2478610babbba00a0ef4d343dfb054b4710761d5a21998c4accc5fe801e1ed1ec5f58d8c4d9a1c367d605d2be58bcf15aa2c09f4ac075deb572e164b00000000000000000000000000000000000000000000000000000000000816b4000000000000000000000000000000000000000000000000000000000007a3900000000000000000000000000000000000000000000000000000000000019678000000000000000000000000000000000000000000000000000000006507a5de000000000000000000000000000000000000000000000000000000006507a5c0c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470".parse::<Bytes>().unwrap());
-        assert_eq!(uos[0].cal_op_hash(), "0x0f3fe7fc49990fb0faf26e30cf0cf56c9d74d90175a233cb294d0a3c76786143".parse::<H256>().unwrap());
-        assert_eq!(uos[0].cal_uo_hash(entry_point_address, chain_id), "0x7bca0c9a2ffbd23c25c7d5e1df0520142c0c39454cee778c3201eef6a8a27f06".parse::<H256>().unwrap());
-
+        assert_eq!(
+            uos[0].cal_op_hash(),
+            "0x0f3fe7fc49990fb0faf26e30cf0cf56c9d74d90175a233cb294d0a3c76786143"
+                .parse::<H256>()
+                .unwrap()
+        );
+        assert_eq!(
+            uos[0].cal_uo_hash(entry_point_address, chain_id),
+            "0x7bca0c9a2ffbd23c25c7d5e1df0520142c0c39454cee778c3201eef6a8a27f06"
+                .parse::<H256>()
+                .unwrap()
+        );
     }
-
-
 }

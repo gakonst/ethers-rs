@@ -169,7 +169,10 @@ pub trait Middleware: Sync + Send + Debug {
         user_operation: UserOperation,
         entry_point: Address,
     ) -> Result<UserOperationHash, Self::Error> {
-        self.inner().send_user_operation(user_operation, entry_point).await.map_err(MiddlewareError::from_err)
+        self.inner()
+            .send_user_operation(user_operation, entry_point)
+            .await
+            .map_err(MiddlewareError::from_err)
     }
 
     /// Send a transaction with a simple escalation policy.
