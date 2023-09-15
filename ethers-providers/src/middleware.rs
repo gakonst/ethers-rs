@@ -12,7 +12,7 @@ use url::Url;
 use crate::{
     erc, EscalatingPending, EscalationPolicy, FilterKind, FilterWatcher, JsonRpcClient, LogQuery,
     MiddlewareError, NodeInfo, PeerInfo, PendingTransaction, Provider, ProviderError, PubsubClient,
-    SubscriptionStream,
+    SubscriptionStream, UserOperation, UserOperationHash,
 };
 
 /// A middleware allows customizing requests send and received from an ethereum node.
@@ -158,6 +158,18 @@ pub trait Middleware: Sync + Send + Debug {
         block: Option<BlockId>,
     ) -> Result<PendingTransaction<'_, Self::Provider>, Self::Error> {
         self.inner().send_transaction(tx, block).await.map_err(MiddlewareError::from_err)
+    }
+
+    /// Sends the transaction to the entire Ethereum network and returns the
+    /// transaction's hash. This will consume gas from the account that signed
+    /// the transaction. This call will fail if no signer is available, and the
+    /// RPC node does  not have an unlocked accounts
+    async fn send_user_operation(
+        &self,
+        user_operation: UserOperation,
+        entry_point: Address,
+    ) -> Result<UserOperationHash, Self::Error> {
+        self.inner().send_user_operation(user_operation, entry_point).await.map_err(MiddlewareError::from_err)
     }
 
     /// Send a transaction with a simple escalation policy.
