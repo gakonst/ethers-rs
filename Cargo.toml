@@ -129,7 +129,7 @@ regex = "1.9"
 semver = "1.0"
 tempfile = "3.8"
 thiserror = "1.0"
-toml = "0.7"
+toml = "0.8"
 walkdir = "2.3"
 
 # tracing
