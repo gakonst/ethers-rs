@@ -98,11 +98,11 @@ pub use ethers_middleware as middleware;
 pub use ethers_providers as providers;
 #[doc(inline)]
 pub use ethers_signers as signers;
-#[doc(inline)]
 #[cfg(feature = "ethers-solc")]
+#[doc(inline)]
 pub use ethers_solc as solc;
 
-#[doc(inline)]
+#[doc(no_inline)]
 pub use ethers_core::{abi, types, utils};
 
 /// Easy imports of frequently used type definitions and traits.
