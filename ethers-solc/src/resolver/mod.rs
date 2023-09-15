@@ -255,6 +255,7 @@ impl Graph {
     pub(crate) fn display_node(&self, index: usize) -> DisplayNode {
         DisplayNode { node: self.node(index), root: &self.root }
     }
+
     /// Returns an iterator that yields all nodes of the dependency tree that the given node id
     /// spans, starting with the node itself.
     ///
@@ -517,20 +518,25 @@ impl Graph {
     }
 
     /// Writes the list of imported files into the given formatter:
-    /// `A (version) imports B (version)`
+    ///
+    /// ```text
+    /// path/to/a.sol (<version>) imports:
+    ///     path/to/b.sol (<version>)
+    ///     path/to/c.sol (<version>)
+    ///     ...
+    /// ```
     fn format_imports_list<W: std::fmt::Write>(
         &self,
         idx: usize,
         f: &mut W,
     ) -> std::result::Result<(), std::fmt::Error> {
         let node = self.node(idx);
-        write!(f, "{} ", utils::source_name(&node.path, &self.root).display(),)?;
+        write!(f, "{} ", utils::source_name(&node.path, &self.root).display())?;
         node.data.fmt_version(f)?;
-        write!(f, " imports:",)?;
+        write!(f, " imports:")?;
         for dep in self.node_ids(idx).skip(1) {
-            writeln!(f)?;
             let dep = self.node(dep);
-            write!(f, "    {} ", utils::source_name(&dep.path, &self.root).display())?;
+            write!(f, "\n    {} ", utils::source_name(&dep.path, &self.root).display())?;
             dep.data.fmt_version(f)?;
         }
 
@@ -541,8 +547,7 @@ impl Graph {
     fn retain_compatible_versions(&self, idx: usize, candidates: &mut Vec<&crate::SolcVersion>) {
         let nodes: HashSet<_> = self.node_ids(idx).collect();
         for node in nodes {
-            let node = self.node(node);
-            if let Some(ref req) = node.data.version_req {
+            if let Some(req) = &self.node(node).data.version_req {
                 candidates.retain(|v| req.matches(v.as_ref()));
             }
             if candidates.is_empty() {
@@ -598,17 +603,14 @@ impl Graph {
 
             if candidates.is_empty() && !erroneous_nodes.contains(&idx) {
                 // check if the version is even valid
-                if let Some(Err(version_err)) =
-                    self.node(idx).check_available_version(&all_versions, offline)
-                {
-                    let f = utils::source_name(&self.node(idx).path, &self.root).display();
+                let node = self.node(idx);
+                if let Err(version_err) = node.check_available_version(&all_versions, offline) {
+                    let f = utils::source_name(&node.path, &self.root).display();
                     errors.push(format!("Encountered invalid solc version in {f}: {version_err}"));
                 } else {
                     let mut msg = String::new();
                     self.format_imports_list(idx, &mut msg).unwrap();
-                    errors.push(format!(
-                        "Discovered incompatible solidity versions in following\n: {msg}"
-                    ));
+                    errors.push(format!("Found incompatible Solidity versions:\n{msg}"));
                 }
 
                 erroneous_nodes.insert(idx);
@@ -903,32 +905,27 @@ impl Node {
     ///
     /// This returns an error if the file's version is invalid semver, or is not available such as
     /// 0.8.20, if the highest available version is `0.8.19`
-    #[allow(dead_code)]
+    #[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
     fn check_available_version(
         &self,
         all_versions: &[SolcVersion],
         offline: bool,
-    ) -> Option<std::result::Result<(), SourceVersionError>> {
-        fn ensure_version(
-            v: &str,
-            all_versions: &[SolcVersion],
-            offline: bool,
-        ) -> std::result::Result<(), SourceVersionError> {
-            let req: VersionReq =
-                v.parse().map_err(|err| SourceVersionError::InvalidVersion(v.to_string(), err))?;
+    ) -> std::result::Result<(), SourceVersionError> {
+        let Some(data) = &self.data.version else { return Ok(()) };
+        let v = data.data();
 
-            if !all_versions.iter().any(|v| req.matches(v.as_ref())) {
-                return if offline {
-                    Err(SourceVersionError::NoMatchingVersionOffline(req))
-                } else {
-                    Err(SourceVersionError::NoMatchingVersion(req))
-                }
+        let req: VersionReq =
+            v.parse().map_err(|err| SourceVersionError::InvalidVersion(v.to_string(), err))?;
+
+        if !all_versions.iter().any(|v| req.matches(v.as_ref())) {
+            return if offline {
+                Err(SourceVersionError::NoMatchingVersionOffline(req))
+            } else {
+                Err(SourceVersionError::NoMatchingVersion(req))
             }
-
-            Ok(())
         }
-        let v = self.data.version.as_ref()?.data();
-        Some(ensure_version(v, all_versions, offline))
+
+        Ok(())
     }
 }
 
