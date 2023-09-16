@@ -193,6 +193,21 @@ impl From<UserOperationHash> for H256 {
     }
 }
 
+/// Gas estimations result for user operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserOperationGasEstimation {
+
+    ///gas overhead of this UserOperation
+    pub pre_verification_gas: U256,
+
+    ///actual gas used by the validation of this UserOperation
+    pub verification_gas_limit: U256,
+
+    ///value used by inner account execution
+    pub call_gas_limit: U256,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -12,7 +12,7 @@ use url::Url;
 use crate::{
     erc, EscalatingPending, EscalationPolicy, FilterKind, FilterWatcher, JsonRpcClient, LogQuery,
     MiddlewareError, NodeInfo, PeerInfo, PendingTransaction, Provider, ProviderError, PubsubClient,
-    SubscriptionStream, UserOperation, UserOperationHash,
+    SubscriptionStream, UserOperation, UserOperationHash, UserOperationGasEstimation,
 };
 
 /// A middleware allows customizing requests send and received from an ethereum node.
@@ -359,6 +359,18 @@ pub trait Middleware: Sync + Send + Debug {
         block: Option<BlockId>,
     ) -> Result<U256, Self::Error> {
         self.inner().estimate_gas(tx, block).await.map_err(MiddlewareError::from_err)
+    }
+
+    /// Estimate the gas values for a UserOperation. Given UserOperation optionally without gas 
+    /// limits and gas prices, return the needed gas limits. The signature field is ignored by 
+    /// the wallet, so that the operation will not require user’s approval. Still, it might
+    /// require putting a “semi-valid” signature (e.g. a signature in the right length).
+    async fn estimate_user_operation_gas(
+        &self,
+        user_operation: UserOperation,
+        entry_point: Address,
+    ) -> Result<UserOperationGasEstimation, Self::Error> {
+        self.inner().estimate_user_operation_gas(user_operation, entry_point).await.map_err(MiddlewareError::from_err)
     }
 
     /// Sends the read-only (constant) transaction to a single Ethereum node and return the result

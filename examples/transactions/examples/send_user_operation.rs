@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use ethers::{
-    contract::{abigen, ContractFactory},
+    contract::abigen,
     middleware::SignerMiddleware,
     providers::{Http, Middleware, Provider, UserOperation},
-    signers::{LocalWallet, Signer}, types::{Bytes, Address, U256, transaction::eip2718::TypedTransaction, H160}, abi::ethereum_types::Signature, utils::hex
+    signers::{LocalWallet, Signer}, 
+    types::{Bytes, Address, U256, transaction::eip2718::TypedTransaction, H160}, abi::ethereum_types::Signature, utils::hex
 };
 use eyre::Result;
 
@@ -78,6 +79,21 @@ async fn main() -> Result<()> {
 
         };
 
+        // use dummy signature
+        uo = uo.signature("0xfffffffffffffffffffffffffffffff0000000000000000000000000000000007aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1c".parse::<Bytes>().unwrap());
+        
+        // estimate user operation gas
+        let pending_estimation = client
+        .estimate_user_operation_gas(
+            uo.clone(),
+            entry_point 
+        ).await 
+        .unwrap();
+        println!("estimation result: {}\n", serde_json::to_string(&pending_estimation)?);
+
+        uo = uo.pre_verification_gas(pending_estimation.pre_verification_gas);
+        uo = uo.verification_gas_limit(pending_estimation.verification_gas_limit);
+        uo = uo.call_gas_limit(pending_estimation.call_gas_limit);
 
         let uo_hash = uo.cal_uo_hash(entry_point, 5.into());
         let signature = wallet.sign_message(uo_hash.as_bytes()).await?;

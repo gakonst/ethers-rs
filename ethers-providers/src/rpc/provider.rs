@@ -8,7 +8,7 @@ use crate::{
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
     utils::maybe,
     Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MiddlewareError,
-    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient, UserOperation, UserOperationHash,
+    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient, UserOperation, UserOperationHash, user_operation::UserOperationGasEstimation,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -537,6 +537,16 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_estimateGas", params).await
     }
 
+    async fn estimate_user_operation_gas(
+        &self,
+        user_operation: UserOperation,
+        entry_point: Address,
+    ) -> Result<UserOperationGasEstimation, ProviderError> {
+        let serialized_user_operation = utils::serialize(&user_operation);
+        let params = vec![serialized_user_operation, utils::serialize(&entry_point)];
+        self.request("eth_estimateUserOperationGas", params).await
+    }
+
     async fn create_access_list(
         &self,
         tx: &TypedTransaction,
@@ -574,8 +584,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         entry_point: Address,
     ) -> Result<UserOperationHash, ProviderError> {
         let serialized_user_operation = utils::serialize(&user_operation);
-        // Some nodes (e.g. old Optimism clients) don't support a block ID being passed as a param,
-        // so refrain from defaulting to BlockNumber::Latest.
         let params = vec![serialized_user_operation, utils::serialize(&entry_point)];
         self.request("eth_sendUserOperation", params).await
     }
