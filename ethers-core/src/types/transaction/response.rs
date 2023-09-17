@@ -10,7 +10,7 @@ use crate::{
     },
     utils::keccak256,
 };
-use rlp::{Decodable, DecoderError, RlpStream};
+use rlp::{Decodable, DecoderError, Encodable, RlpStream};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
@@ -137,6 +137,89 @@ pub struct Transaction {
     pub other: crate::types::OtherFields,
 }
 
+impl rlp::Encodable for Transaction {
+    fn rlp_append(&self, rlp: &mut RlpStream) {
+        match self.transaction_type {
+            Some(x) if x == U64::from(0x1) => rlp.append_raw(&[0x1], 1),
+            Some(x) if x == U64::from(0x2) => rlp.append_raw(&[0x2], 1),
+            #[cfg(feature = "optimism")]
+            Some(x) if x == U64::from(0x7E) => rlp.append_raw(&[0x7E], 1),
+            _ => rlp,
+        };
+        rlp.begin_unbounded_list();
+
+        match self.transaction_type {
+            // EIP-2930 (0x01)
+            Some(x) if x == U64::from(0x1) => {
+                rlp_opt(rlp, &self.chain_id);
+                rlp.append(&self.nonce);
+                rlp_opt(rlp, &self.gas_price);
+                rlp.append(&self.gas);
+
+                #[cfg(feature = "celo")]
+                self.inject_celo_metadata(rlp);
+
+                rlp_opt(rlp, &self.to);
+                rlp.append(&self.value);
+                rlp.append(&self.input.as_ref());
+                rlp_opt_list(rlp, &self.access_list);
+                if let Some(chain_id) = self.chain_id {
+                    rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
+                }
+                rlp.append(&self.r);
+                rlp.append(&self.s);
+            }
+            // EIP-1559 (0x02)
+            Some(x) if x == U64::from(0x2) => {
+                rlp_opt(rlp, &self.chain_id);
+                rlp.append(&self.nonce);
+                rlp_opt(rlp, &self.max_priority_fee_per_gas);
+                rlp_opt(rlp, &self.max_fee_per_gas);
+                rlp.append(&self.gas);
+                rlp_opt(rlp, &self.to);
+                rlp.append(&self.value);
+                rlp.append(&self.input.as_ref());
+                rlp_opt_list(rlp, &self.access_list);
+                if let Some(chain_id) = self.chain_id {
+                    rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
+                }
+                rlp.append(&self.r);
+                rlp.append(&self.s);
+            }
+            // Optimism Deposited Transaction
+            #[cfg(feature = "optimism")]
+            Some(x) if x == U64::from(0x7E) => {
+                rlp_opt(rlp, &self.source_hash);
+                rlp.append(&self.from);
+                rlp_opt(rlp, &self.to);
+                rlp_opt(rlp, &self.mint);
+                rlp.append(&self.value);
+                rlp.append(&self.gas);
+                rlp_opt(rlp, &self.is_system_tx);
+                rlp.append(&self.input.as_ref());
+            }
+            // Legacy (0x00)
+            _ => {
+                rlp.append(&self.nonce);
+                rlp_opt(rlp, &self.gas_price);
+                rlp.append(&self.gas);
+
+                #[cfg(feature = "celo")]
+                self.inject_celo_metadata(rlp);
+
+                rlp_opt(rlp, &self.to);
+                rlp.append(&self.value);
+                rlp.append(&self.input.as_ref());
+                rlp.append(&self.v);
+                rlp.append(&self.r);
+                rlp.append(&self.s);
+            }
+        }
+
+        rlp.finalize_unbounded_list();
+    }
+}
+
 impl Transaction {
     // modifies the RLP stream with the Celo-specific information
     // This is duplicated from TransactionRequest. Is there a good way to get rid
@@ -149,104 +232,7 @@ impl Transaction {
     }
 
     pub fn hash(&self) -> H256 {
-        keccak256(self.rlp().as_ref()).into()
-    }
-
-    pub fn rlp(&self) -> Bytes {
-        let mut rlp = RlpStream::new();
-        rlp.begin_unbounded_list();
-
-        match self.transaction_type {
-            // EIP-2930 (0x01)
-            Some(x) if x == U64::from(0x1) => {
-                rlp_opt(&mut rlp, &self.chain_id);
-                rlp.append(&self.nonce);
-                rlp_opt(&mut rlp, &self.gas_price);
-                rlp.append(&self.gas);
-
-                #[cfg(feature = "celo")]
-                self.inject_celo_metadata(&mut rlp);
-
-                rlp_opt(&mut rlp, &self.to);
-                rlp.append(&self.value);
-                rlp.append(&self.input.as_ref());
-                rlp_opt_list(&mut rlp, &self.access_list);
-                if let Some(chain_id) = self.chain_id {
-                    rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
-                }
-                rlp.append(&self.r);
-                rlp.append(&self.s);
-            }
-            // EIP-1559 (0x02)
-            Some(x) if x == U64::from(0x2) => {
-                rlp_opt(&mut rlp, &self.chain_id);
-                rlp.append(&self.nonce);
-                rlp_opt(&mut rlp, &self.max_priority_fee_per_gas);
-                rlp_opt(&mut rlp, &self.max_fee_per_gas);
-                rlp.append(&self.gas);
-                rlp_opt(&mut rlp, &self.to);
-                rlp.append(&self.value);
-                rlp.append(&self.input.as_ref());
-                rlp_opt_list(&mut rlp, &self.access_list);
-                if let Some(chain_id) = self.chain_id {
-                    rlp.append(&normalize_v(self.v.as_u64(), U64::from(chain_id.as_u64())));
-                }
-                rlp.append(&self.r);
-                rlp.append(&self.s);
-            }
-            // Optimism Deposited Transaction
-            #[cfg(feature = "optimism")]
-            Some(x) if x == U64::from(0x7E) => {
-                rlp_opt(&mut rlp, &self.source_hash);
-                rlp.append(&self.from);
-                rlp_opt(&mut rlp, &self.to);
-                rlp_opt(&mut rlp, &self.mint);
-                rlp.append(&self.value);
-                rlp.append(&self.gas);
-                rlp_opt(&mut rlp, &self.is_system_tx);
-                rlp.append(&self.input.as_ref());
-            }
-            // Legacy (0x00)
-            _ => {
-                rlp.append(&self.nonce);
-                rlp_opt(&mut rlp, &self.gas_price);
-                rlp.append(&self.gas);
-
-                #[cfg(feature = "celo")]
-                self.inject_celo_metadata(&mut rlp);
-
-                rlp_opt(&mut rlp, &self.to);
-                rlp.append(&self.value);
-                rlp.append(&self.input.as_ref());
-                rlp.append(&self.v);
-                rlp.append(&self.r);
-                rlp.append(&self.s);
-            }
-        }
-
-        rlp.finalize_unbounded_list();
-
-        let rlp_bytes: Bytes = rlp.out().freeze().into();
-        let mut encoded = vec![];
-        match self.transaction_type {
-            Some(x) if x == U64::from(0x1) => {
-                encoded.extend_from_slice(&[0x1]);
-                encoded.extend_from_slice(rlp_bytes.as_ref());
-                encoded.into()
-            }
-            Some(x) if x == U64::from(0x2) => {
-                encoded.extend_from_slice(&[0x2]);
-                encoded.extend_from_slice(rlp_bytes.as_ref());
-                encoded.into()
-            }
-            #[cfg(feature = "optimism")]
-            Some(x) if x == U64::from(0x7E) => {
-                encoded.extend_from_slice(&[0x7E]);
-                encoded.extend_from_slice(rlp_bytes.as_ref());
-                encoded.into()
-            }
-            _ => rlp_bytes,
-        }
+        keccak256(self.rlp_bytes().as_ref()).into()
     }
 
     /// Decodes the Celo-specific metadata starting at the RLP offset passed.
@@ -498,9 +484,17 @@ impl PartialOrd<Self> for TransactionReceipt {
     }
 }
 
-impl TransactionReceipt {
-    pub fn rlp(&self) -> Bytes {
-        let mut s = RlpStream::new();
+impl rlp::Encodable for TransactionReceipt {
+    fn rlp_append(&self, s: &mut RlpStream) {
+        match self.transaction_type {
+            Some(x) if x == U64::from(0x1) => {
+                s.append_raw(&[0x1], 1);
+            }
+            Some(x) if x == U64::from(0x2) => {
+                s.append_raw(&[0x2], 1);
+            }
+            _ => (),
+        }
         s.begin_list(4);
         if let Some(post_state) = self.root {
             s.append(&post_state);
@@ -510,25 +504,6 @@ impl TransactionReceipt {
         s.append(&self.cumulative_gas_used);
         s.append(&self.logs_bloom);
         s.append_list(&self.logs);
-
-        let rlp_bytes = s.out().freeze();
-        let mut encoded = vec![];
-        match self.transaction_type {
-            Some(x) if x == U64::from(0x1) => {
-                encoded.extend_from_slice(&[0x1]);
-                encoded.extend_from_slice(rlp_bytes.as_ref());
-                encoded.into()
-            }
-            Some(x) if x == U64::from(0x2) => {
-                encoded.extend_from_slice(&[0x2]);
-                encoded.extend_from_slice(rlp_bytes.as_ref());
-                encoded.into()
-            }
-            _ => {
-                encoded.extend_from_slice(rlp_bytes.as_ref());
-                encoded.into()
-            }
-        }
     }
 }
 
@@ -657,12 +632,12 @@ mod tests {
             .unwrap(),
             other: Default::default(),
         };
-        println!("0x{}", hex::encode(&tx.rlp()));
+        println!("0x{}", hex::encode(&tx.rlp_bytes()));
         assert_eq!(
-            tx.rlp(),
-            Bytes::from(
+            tx.rlp_bytes(),
+
                 hex::decode("02f87a018201df851344ead983851344ead983826d2294c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2882b40d6d551c8970c84d0e30db0c001a05616cdaec839ca14d209b59eafb706e623169dc9d0fa58fbf13931cef5b5e3b0a03e708f8044bd158d29c2e250b6a98ea637c3bc460beeea63a8f00f7cebac432a").unwrap()
-            )
+
         );
     }
 
@@ -701,12 +676,12 @@ mod tests {
             .unwrap(),
             other: Default::default(),
         };
-        println!("0x{}", hex::encode(&tx.rlp()));
+        println!("0x{}", hex::encode(&tx.rlp_bytes()));
         assert_eq!(
-            tx.rlp(),
-            Bytes::from(
+            tx.rlp_bytes(),
+
                 hex::decode("02f87a018201df851344ead983851344ead983826d2294c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2882b40d6d551c8970c84d0e30db0c001a05616cdaec839ca14d209b59eafb706e623169dc9d0fa58fbf13931cef5b5e3b0a03e708f8044bd158d29c2e250b6a98ea637c3bc460beeea63a8f00f7cebac432a").unwrap()
-            )
+
         );
     }
 
@@ -737,10 +712,10 @@ mod tests {
             other: Default::default()
         };
         assert_eq!(
-            tx.rlp(),
-            Bytes::from(
+            tx.rlp_bytes(),
+
                 hex::decode("f8aa808512ec276caf83010e2b94dac17f958d2ee523a2206206994597c13d831ec780b844a9059cbb000000000000000000000000fdae129ecc2c27d166a3131098bc05d143fa258e0000000000000000000000000000000000000000000000000000000002faf08025a0c81e70f9e49e0d3b854720143e86d172fecc9e76ef8a8666f2fdc017017c5141a01dd3410180f6a6ca3e25ad3058789cd0df3321ed76b5b4dbe0a2bb2dc28ae274").unwrap()
-            )
+
         );
     }
 
@@ -783,10 +758,10 @@ mod tests {
             other: Default::default(),
         };
         assert_eq!(
-            tx.rlp(),
-            Bytes::from(
+            tx.rlp_bytes(),
+
                 hex::decode("02f86f05418459682f008459682f098301a0cf9411d7c2ab0d4aa26b7d8502f6a7ef6844908495c28084e5225381c001a01a8d7bef47f6155cbdf13d57107fc577fd52880fa2862b1a50d47641f8839419a03279bbf73fde76de83440d04b9d97f3809fec8617d3557ee40ac3e0edc391514").unwrap()
-            )
+
         );
     }
 
@@ -1109,7 +1084,7 @@ mod tests {
     #[test]
     fn rlp_encode_receipt() {
         let receipt = TransactionReceipt { status: Some(1u64.into()), ..Default::default() };
-        let encoded = receipt.rlp();
+        let encoded = receipt.rlp_bytes();
 
         assert_eq!(
             encoded,
@@ -1124,7 +1099,7 @@ mod tests {
             status: Some(1u64.into()),
             ..Default::default()
         };
-        let encoded = receipt.rlp();
+        let encoded = receipt.rlp_bytes();
 
         assert_eq!(
             encoded,
@@ -1201,7 +1176,7 @@ mod tests {
             value: U256::zero(),
             ..Default::default()
         };
-        Transaction::decode(&Rlp::new(&tx.rlp())).unwrap();
+        Transaction::decode(&Rlp::new(&tx.rlp_bytes())).unwrap();
     }
 
     #[test]
@@ -1235,9 +1210,9 @@ mod tests {
             other: Default::default()
         };
 
-        let rlp = deposited_tx.rlp();
+        let rlp = deposited_tx.rlp_bytes();
 
-        let expected_rlp = Bytes::from(hex::decode("7ef90159a0a8157ccf61bcdfbcb74a84ec1262e62644dd1e7e3614abcbd8db0c99a60049fc94deaddeaddeaddeaddeaddeaddeaddeaddead00019442000000000000000000000000000000000000158080830f424080b90104015d8eb90000000000000000000000000000000000000000000000000000000000878c1c00000000000000000000000000000000000000000000000000000000644662bc0000000000000000000000000000000000000000000000000000001ee24fba17b7e19cc10812911dfa8a438e0a81a9933f843aa5b528899b8d9e221b649ae0df00000000000000000000000000000000000000000000000000000000000000060000000000000000000000007431310e026b69bfc676c0013e12a1a11411eec9000000000000000000000000000000000000000000000000000000000000083400000000000000000000000000000000000000000000000000000000000f4240").unwrap());
+        let expected_rlp = hex::decode("7ef90159a0a8157ccf61bcdfbcb74a84ec1262e62644dd1e7e3614abcbd8db0c99a60049fc94deaddeaddeaddeaddeaddeaddeaddeaddead00019442000000000000000000000000000000000000158080830f424080b90104015d8eb90000000000000000000000000000000000000000000000000000000000878c1c00000000000000000000000000000000000000000000000000000000644662bc0000000000000000000000000000000000000000000000000000001ee24fba17b7e19cc10812911dfa8a438e0a81a9933f843aa5b528899b8d9e221b649ae0df00000000000000000000000000000000000000000000000000000000000000060000000000000000000000007431310e026b69bfc676c0013e12a1a11411eec9000000000000000000000000000000000000000000000000000000000000083400000000000000000000000000000000000000000000000000000000000f4240").unwrap();
 
         assert_eq!(rlp, expected_rlp);
     }
