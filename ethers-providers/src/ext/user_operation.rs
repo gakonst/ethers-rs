@@ -208,6 +208,27 @@ pub struct UserOperationGasEstimation {
     pub call_gas_limit: U256,
 }
 
+/// Return a UserOperation based on a hash (userOpHash) returned by eth_sendUserOperation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserOperationByHash {
+    
+    /// A structure that describes a transaction to be sent on behalf of a user
+    pub user_operation: UserOperation,
+    
+    /// EntryPoint address
+    pub entry_point: Address,
+    
+    /// Block hash of the block containing UserOperation
+    pub block_hash: H256,
+    
+    /// Block number in which UserOperation is included
+    pub block_number: U64,
+
+    /// Transaction hash of the UserOperation
+    pub transaction_hash: H256,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

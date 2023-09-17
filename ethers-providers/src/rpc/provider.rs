@@ -8,7 +8,7 @@ use crate::{
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
     utils::maybe,
     Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MiddlewareError,
-    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient, UserOperation, UserOperationHash, user_operation::UserOperationGasEstimation,
+    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient, UserOperation, UserOperationHash, user_operation::{UserOperationGasEstimation, UserOperationByHash},
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -389,6 +389,13 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     ) -> Result<Option<Transaction>, ProviderError> {
         let hash = transaction_hash.into();
         self.request("eth_getTransactionByHash", [hash]).await
+    }
+
+    async fn get_user_operation(
+        &self,
+        user_operation_hash: UserOperationHash,
+    ) -> Result<Option<UserOperationByHash>, ProviderError> {
+        self.request("eth_getUserOperationByHash", [user_operation_hash]).await
     }
 
     async fn get_transaction_by_block_and_index<T: Into<BlockId> + Send + Sync>(
