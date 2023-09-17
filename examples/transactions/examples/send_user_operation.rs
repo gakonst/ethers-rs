@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ethers::{
     contract::abigen,
     middleware::SignerMiddleware,
-    providers::{Http, Middleware, Provider, UserOperation, user_operation::UserOperationByHash},
+    providers::{Http, Middleware, Provider, UserOperation, user_operation::{UserOperationByHash, UserOperationReceipt}},
     signers::{LocalWallet, Signer}, 
     types::{Bytes, Address, U256, transaction::eip2718::TypedTransaction}, 
 };
@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
         );
         let provider = Provider::<Http>::try_from(url)?;
         let wallet: LocalWallet =
-            "c6cbc5ffad570fdad0544d1b5358a36edeb98d163b6567912ac4754e144d4edb".parse()?;
+            "".parse()?;
         let from = wallet.address();
         println!("from: {:?}", from);
 
@@ -124,6 +124,19 @@ async fn main() -> Result<()> {
             if !user_operation_by_hash.is_none() { break; }
         }
         println!("user_operation_by_hash: {}\n", serde_json::to_string(&user_operation_by_hash)?);
+
+        let mut user_operation_receipt: Option<UserOperationReceipt>;
+        loop {
+            user_operation_receipt = client
+        .get_user_operation_receipt(
+            pending_uo    
+        )
+        .await 
+        .unwrap();
+
+            if !user_operation_receipt.is_none() { break; }
+        }
+        println!("user_operation_receipt: {}\n", serde_json::to_string(&user_operation_receipt)?);
 
     }
 

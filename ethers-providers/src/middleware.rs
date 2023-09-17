@@ -12,7 +12,7 @@ use url::Url;
 use crate::{
     erc, EscalatingPending, EscalationPolicy, FilterKind, FilterWatcher, JsonRpcClient, LogQuery,
     MiddlewareError, NodeInfo, PeerInfo, PendingTransaction, Provider, ProviderError, PubsubClient,
-    SubscriptionStream, UserOperation, UserOperationHash, UserOperationGasEstimation, user_operation::UserOperationByHash,
+    SubscriptionStream, UserOperation, UserOperationHash, UserOperationGasEstimation, user_operation::{UserOperationByHash, UserOperationReceipt},
 };
 
 /// A middleware allows customizing requests send and received from an ethereum node.
@@ -444,6 +444,17 @@ pub trait Middleware: Sync + Send + Debug {
     ) -> Result<Option<TransactionReceipt>, Self::Error> {
         self.inner()
             .get_transaction_receipt(transaction_hash)
+            .await
+            .map_err(MiddlewareError::from_err)
+    }
+
+    /// Gets the user_operation receipt with `user_operation_hash`
+    async fn get_user_operation_receipt(
+        &self,
+        user_operation_hash: UserOperationHash,
+    ) -> Result<Option<UserOperationReceipt>, Self::Error> {
+        self.inner()
+            .get_user_operation_receipt(user_operation_hash)
             .await
             .map_err(MiddlewareError::from_err)
     }
