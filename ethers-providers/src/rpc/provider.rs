@@ -602,6 +602,12 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_sendUserOperation", params).await
     }
 
+    async fn get_supported_entry_points(
+        &self
+    ) -> Result<Vec<Address>, ProviderError>{
+        self.request("eth_supportedEntryPoints", Vec::<Address>::new()).await
+    }
+
     async fn is_signer(&self) -> bool {
         match self.from {
             Some(sender) => self.sign(vec![], &sender).await.is_ok(),

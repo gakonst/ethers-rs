@@ -10,9 +10,11 @@ use std::fmt::Debug;
 use url::Url;
 
 use crate::{
-    erc, EscalatingPending, EscalationPolicy, FilterKind, FilterWatcher, JsonRpcClient, LogQuery,
+    erc,
+    user_operation::{UserOperationByHash, UserOperationReceipt},
+    EscalatingPending, EscalationPolicy, FilterKind, FilterWatcher, JsonRpcClient, LogQuery,
     MiddlewareError, NodeInfo, PeerInfo, PendingTransaction, Provider, ProviderError, PubsubClient,
-    SubscriptionStream, UserOperation, UserOperationHash, UserOperationGasEstimation, user_operation::{UserOperationByHash, UserOperationReceipt},
+    SubscriptionStream, UserOperation, UserOperationGasEstimation, UserOperationHash,
 };
 
 /// A middleware allows customizing requests send and received from an ethereum node.
@@ -160,10 +162,12 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().send_transaction(tx, block).await.map_err(MiddlewareError::from_err)
     }
 
-    /// Sends the transaction to the entire Ethereum network and returns the
-    /// transaction's hash. This will consume gas from the account that signed
-    /// the transaction. This call will fail if no signer is available, and the
-    /// RPC node does  not have an unlocked accounts
+    /// eth_sendUserOperation submits a User Operation object to the User Operation pool of the client. 
+    /// The client MUST validate the UserOperation, and return a result accordingly.
+    /// The result SHOULD be set to the userOpHash if and only if the request passed simulation 
+    /// and was accepted in the client’s User Operation pool. 
+    /// If the validation, simulation, or User Operation pool inclusion fails, result SHOULD NOT be returned. 
+    /// Rather, the client SHOULD return the failure reason.
     async fn send_user_operation(
         &self,
         user_operation: UserOperation,
@@ -171,6 +175,15 @@ pub trait Middleware: Sync + Send + Debug {
     ) -> Result<UserOperationHash, Self::Error> {
         self.inner()
             .send_user_operation(user_operation, entry_point)
+            .await
+            .map_err(MiddlewareError::from_err)
+    }
+
+    /// Returns an array of the entryPoint addresses supported by the client. 
+    /// The first element of the array SHOULD be the entryPoint addressed preferred by the client.
+    async fn get_supported_entry_points(&self) -> Result<Vec<Address>, ProviderError> {
+        self.inner()
+            .get_supported_entry_points()
             .await
             .map_err(MiddlewareError::from_err)
     }
@@ -361,8 +374,8 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().estimate_gas(tx, block).await.map_err(MiddlewareError::from_err)
     }
 
-    /// Estimate the gas values for a UserOperation. Given UserOperation optionally without gas 
-    /// limits and gas prices, return the needed gas limits. The signature field is ignored by 
+    /// Estimate the gas values for a UserOperation. Given UserOperation optionally without gas
+    /// limits and gas prices, return the needed gas limits. The signature field is ignored by
     /// the wallet, so that the operation will not require user’s approval. Still, it might
     /// require putting a “semi-valid” signature (e.g. a signature in the right length).
     async fn estimate_user_operation_gas(
@@ -370,7 +383,10 @@ pub trait Middleware: Sync + Send + Debug {
         user_operation: UserOperation,
         entry_point: Address,
     ) -> Result<UserOperationGasEstimation, Self::Error> {
-        self.inner().estimate_user_operation_gas(user_operation, entry_point).await.map_err(MiddlewareError::from_err)
+        self.inner()
+            .estimate_user_operation_gas(user_operation, entry_point)
+            .await
+            .map_err(MiddlewareError::from_err)
     }
 
     /// Sends the read-only (constant) transaction to a single Ethereum node and return the result
@@ -422,9 +438,12 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         user_operation_hash: UserOperationHash,
     ) -> Result<Option<UserOperationByHash>, Self::Error> {
-        self.inner().get_user_operation(user_operation_hash).await.map_err(MiddlewareError::from_err)
+        self.inner()
+            .get_user_operation(user_operation_hash)
+            .await
+            .map_err(MiddlewareError::from_err)
     }
-    
+
     /// Gets the transaction with block and index
     async fn get_transaction_by_block_and_index<T: Into<BlockId> + Send + Sync>(
         &self,

@@ -24,6 +24,8 @@ async fn main() -> Result<()> {
             ]"#,
         );
         let provider = Provider::<Http>::try_from(url)?;
+
+        // add privateKey 
         let wallet: LocalWallet =
             "".parse()?;
         let from = wallet.address();
@@ -45,14 +47,22 @@ async fn main() -> Result<()> {
                 signature: Bytes::default(),
             };
         let client =  Arc::new(SignerMiddleware::new(provider, wallet.clone()));
-        let entry_point:Address = "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789".parse().unwrap();
+        
+        // get preferred entryPoint by the client
+        let supported_entry_points = client
+        .get_supported_entry_points()
+        .await 
+        .unwrap();
+        let entry_point:Address = supported_entry_points[0].into();
+        
+        
         let entry_point_contract = EntryPointContract::new(entry_point, client.clone());
         let account_factory_address: Address = "0x9406Cc6185a346906296840746125a0E44976454".parse().unwrap();
         let account_factory_contract = EntryPointContract::new(account_factory_address, client.clone());
         let init_code: Bytes;
         let call = account_factory_contract.create_account(from, U256::from(0));
         let tx: TypedTransaction = call.tx;
-        println!("tx: {:?}", tx);
+
         let mut vec1:Vec<u8> = account_factory_address.as_bytes().to_vec();
         let vec2:Vec<u8> = tx.data().unwrap().clone().to_vec();
         vec1.extend(vec2);   
@@ -70,7 +80,6 @@ async fn main() -> Result<()> {
             },
         };
             
-
         let nonce = entry_point_contract.get_nonce(sender, 0.into()).call().await?;
         uo = uo.nonce(nonce);
         uo = uo.sender(sender);
