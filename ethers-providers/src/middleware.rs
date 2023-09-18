@@ -162,11 +162,11 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().send_transaction(tx, block).await.map_err(MiddlewareError::from_err)
     }
 
-    /// eth_sendUserOperation submits a User Operation object to the User Operation pool of the client. 
+    /// eth_sendUserOperation submits a User Operation object to the User Operation pool of the client.
     /// The client MUST validate the UserOperation, and return a result accordingly.
-    /// The result SHOULD be set to the userOpHash if and only if the request passed simulation 
-    /// and was accepted in the client’s User Operation pool. 
-    /// If the validation, simulation, or User Operation pool inclusion fails, result SHOULD NOT be returned. 
+    /// The result SHOULD be set to the userOpHash if and only if the request passed simulation
+    /// and was accepted in the client’s User Operation pool.
+    /// If the validation, simulation, or User Operation pool inclusion fails, result SHOULD NOT be returned.
     /// Rather, the client SHOULD return the failure reason.
     async fn send_user_operation(
         &self,
@@ -179,13 +179,10 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(MiddlewareError::from_err)
     }
 
-    /// Returns an array of the entryPoint addresses supported by the client. 
+    /// Returns an array of the entryPoint addresses supported by the client.
     /// The first element of the array SHOULD be the entryPoint addressed preferred by the client.
     async fn get_supported_entry_points(&self) -> Result<Vec<Address>, ProviderError> {
-        self.inner()
-            .get_supported_entry_points()
-            .await
-            .map_err(MiddlewareError::from_err)
+        self.inner().get_supported_entry_points().await.map_err(MiddlewareError::from_err)
     }
 
     /// Send a transaction with a simple escalation policy.

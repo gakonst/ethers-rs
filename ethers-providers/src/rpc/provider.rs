@@ -6,9 +6,11 @@ use crate::{
     ext::{ens, erc},
     rpc::pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
+    user_operation::{UserOperationByHash, UserOperationGasEstimation, UserOperationReceipt},
     utils::maybe,
     Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MiddlewareError,
-    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient, UserOperation, UserOperationHash, user_operation::{UserOperationGasEstimation, UserOperationByHash, UserOperationReceipt},
+    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient, UserOperation,
+    UserOperationHash,
 };
 
 #[cfg(not(target_arch = "wasm32"))]

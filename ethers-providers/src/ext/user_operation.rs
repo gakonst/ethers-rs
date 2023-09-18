@@ -1,13 +1,13 @@
+//! ERC4337 related utilities.
 use ethers_core::{
     abi::{encode, Token},
-    types::{Address, Bytes, H256, U256, U64, TransactionReceipt, Log},
+    types::{Address, Bytes, Log, TransactionReceipt, H256, U256, U64},
     utils::keccak256,
-
 };
 use serde::{Deserialize, Serialize};
 
 /// UserOperation - a structure that describes a transaction to be sent on behalf of a user. To avoid confusion, it is not named “transaction”.
-// Like a transaction, it contains “sender”, “to”, “calldata”, “maxFeePerGas”, “maxPriorityFee”, “signature”, “nonce”
+/// Like a transaction, it contains “sender”, “to”, “calldata”, “maxFeePerGas”, “maxPriorityFee”, “signature”, “nonce”
 /// See EIP-4337: Account Abstraction Using Alt Mempool.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -129,8 +129,7 @@ impl UserOperation {
             Token::Bytes(self.signature.0.to_vec()),
         ]);
 
-        let encoded_bytes = Bytes::from(encoded);
-        encoded_bytes
+        Bytes::from(encoded)
     }
 
     /// Pack the user operation data into bytes
@@ -138,29 +137,27 @@ impl UserOperation {
         let encoded = encode(&[
             Token::Address(self.sender),
             Token::Uint(self.nonce),
-            Token::FixedBytes(keccak256(self.init_code.0.to_vec()).into()),
-            Token::FixedBytes(keccak256(self.call_data.0.to_vec()).into()),
+            Token::FixedBytes(keccak256(&self.init_code.0).into()),
+            Token::FixedBytes(keccak256(&self.call_data.0).into()),
             Token::Uint(self.call_gas_limit),
             Token::Uint(self.verification_gas_limit),
             Token::Uint(self.pre_verification_gas),
             Token::Uint(self.max_fee_per_gas),
             Token::Uint(self.max_priority_fee_per_gas),
-            Token::FixedBytes(keccak256(self.paymaster_and_data.0.to_vec()).into()),
+            Token::FixedBytes(keccak256(&self.paymaster_and_data.0).into()),
         ]);
 
-        let encoded_bytes = Bytes::from(encoded);
-        encoded_bytes
+        Bytes::from(encoded)
     }
 
     /// calculate the hash of UserOperation
     pub fn cal_op_hash(&self) -> H256 {
-        let op_hash = keccak256(self.pack_without_signature()).into();
-        op_hash
+        keccak256(self.pack_without_signature()).into()
     }
 
     /// calculate the hash of UserOperation
     pub fn cal_uo_hash(&self, entry_point: Address, chain_id: U256) -> H256 {
-        let op_hash: H256 = keccak256(self.pack_without_signature().0.to_vec()).into();
+        let op_hash: H256 = keccak256(&self.pack_without_signature().0).into();
         H256::from_slice(
             keccak256(
                 encode(&[
@@ -168,11 +165,9 @@ impl UserOperation {
                     Token::Address(entry_point),
                     Token::Uint(chain_id),
                 ])
-                .to_vec(),
             )
             .as_slice(),
         )
-        .into()
     }
     /// Creates random user operation (for testing purposes)
     #[cfg(feature = "test-utils")]
@@ -207,7 +202,6 @@ impl From<UserOperationHash> for H256 {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserOperationGasEstimation {
-
     ///gas overhead of this UserOperation
     pub pre_verification_gas: U256,
 
@@ -222,16 +216,15 @@ pub struct UserOperationGasEstimation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserOperationByHash {
-    
     /// A structure that describes a transaction to be sent on behalf of a user
     pub user_operation: UserOperation,
-    
+
     /// EntryPoint address
     pub entry_point: Address,
-    
+
     /// Block hash of the block containing UserOperation
     pub block_hash: H256,
-    
+
     /// Block number in which UserOperation is included
     pub block_number: U64,
 
@@ -243,7 +236,6 @@ pub struct UserOperationByHash {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserOperationReceipt {
-
     /// The request hash
     pub user_op_hash: UserOperationHash,
 
