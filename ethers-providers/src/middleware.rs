@@ -162,12 +162,12 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().send_transaction(tx, block).await.map_err(MiddlewareError::from_err)
     }
 
-    /// eth_sendUserOperation submits a User Operation object to the User Operation pool of the client.
-    /// The client MUST validate the UserOperation, and return a result accordingly.
+    /// eth_sendUserOperation submits a User Operation object to the User Operation pool of the
+    /// client. The client MUST validate the UserOperation, and return a result accordingly.
     /// The result SHOULD be set to the userOpHash if and only if the request passed simulation
     /// and was accepted in the client’s User Operation pool.
-    /// If the validation, simulation, or User Operation pool inclusion fails, result SHOULD NOT be returned.
-    /// Rather, the client SHOULD return the failure reason.
+    /// If the validation, simulation, or User Operation pool inclusion fails, result SHOULD NOT be
+    /// returned. Rather, the client SHOULD return the failure reason.
     async fn send_user_operation(
         &self,
         user_operation: UserOperation,

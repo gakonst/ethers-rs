@@ -31,14 +31,14 @@ async fn main() -> Result<()> {
         let from = wallet.address();
         println!("from: {:?}", from);
 
-        let mut uo =  
+        let mut uo =
             UserOperation {
                 sender: Address::default(),
                 nonce: U256::default(),
                 init_code: Bytes::default(),
                 // transfer 0 eth
                 call_data: "0xb61d27f6000000000000000000000000a02bfd0ba5d182226627a933333ba92d1a60e234000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000000".parse().unwrap(),
-                call_gas_limit: 530_100.into(), 
+                call_gas_limit: 530_100.into(),
                 verification_gas_limit: 500_624.into(),
                 pre_verification_gas: 104_056.into(),
                 max_fee_per_gas: 1_695_000_030_u64.into(),
@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
 
         // get preferred entryPoint by the client
         let supported_entry_points = client.get_supported_entry_points().await.unwrap();
-        let entry_point: Address = supported_entry_points[0].into();
+        let entry_point: Address = supported_entry_points[0];
 
         let entry_point_contract = EntryPointContract::new(entry_point, client.clone());
         let account_factory_address: Address =
@@ -112,8 +112,8 @@ async fn main() -> Result<()> {
         loop {
             user_operation_by_hash = client.get_user_operation(pending_uo).await.unwrap();
 
-            if !user_operation_by_hash.is_none() {
-                break;
+            if user_operation_by_hash.is_some() {
+                break
             }
         }
         println!("user_operation_by_hash: {}\n", serde_json::to_string(&user_operation_by_hash)?);
@@ -122,8 +122,8 @@ async fn main() -> Result<()> {
         loop {
             user_operation_receipt = client.get_user_operation_receipt(pending_uo).await.unwrap();
 
-            if !user_operation_receipt.is_none() {
-                break;
+            if user_operation_receipt.is_some() {
+                break
             }
         }
         println!("user_operation_receipt: {}\n", serde_json::to_string(&user_operation_receipt)?);

@@ -604,9 +604,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_sendUserOperation", params).await
     }
 
-    async fn get_supported_entry_points(
-        &self
-    ) -> Result<Vec<Address>, ProviderError>{
+    async fn get_supported_entry_points(&self) -> Result<Vec<Address>, ProviderError> {
         self.request("eth_supportedEntryPoints", Vec::<Address>::new()).await
     }
 
