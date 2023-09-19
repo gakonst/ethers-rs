@@ -46,9 +46,7 @@
 //! [version pragma](https://docs.soliditylang.org/en/develop/layout-of-source-files.html#version-pragma),
 //! which is defined on a per source file basis.
 
-use crate::{
-    error::Result, utils, IncludePaths, ProjectPathsConfig, SolcError, SolcVersion, Source, Sources,
-};
+use crate::{error::Result, utils, IncludePaths, ProjectPathsConfig, SolcError, Source, Sources};
 use parse::{SolData, SolDataUnit, SolImport};
 use rayon::prelude::*;
 use semver::VersionReq;
@@ -908,14 +906,14 @@ impl Node {
     #[cfg(all(feature = "svm-solc", not(target_arch = "wasm32")))]
     fn check_available_version(
         &self,
-        all_versions: &[SolcVersion],
+        all_versions: &[crate::SolcVersion],
         offline: bool,
     ) -> std::result::Result<(), SourceVersionError> {
         let Some(data) = &self.data.version else { return Ok(()) };
         let v = data.data();
 
-        let req: VersionReq =
-            v.parse().map_err(|err| SourceVersionError::InvalidVersion(v.to_string(), err))?;
+        let req = crate::Solc::version_req(v)
+            .map_err(|err| SourceVersionError::InvalidVersion(v.to_string(), err))?;
 
         if !all_versions.iter().any(|v| req.matches(v.as_ref())) {
             return if offline {
@@ -951,7 +949,7 @@ impl<'a> fmt::Display for DisplayNode<'a> {
 #[allow(unused)]
 enum SourceVersionError {
     #[error("Failed to parse solidity version {0}: {1}")]
-    InvalidVersion(String, semver::Error),
+    InvalidVersion(String, SolcError),
     #[error("No solc version exists that matches the version requirement: {0}")]
     NoMatchingVersion(VersionReq),
     #[error("No solc version installed that matches the version requirement: {0}")]

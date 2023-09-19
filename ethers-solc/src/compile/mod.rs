@@ -395,7 +395,10 @@ impl Solc {
         Self::version_req(version.as_str())
     }
 
-    /// Returns the corresponding SemVer version requirement for the solidity version
+    /// Returns the corresponding SemVer version requirement for the solidity version.
+    ///
+    /// Note: This is a workaround for the fact that `VersionReq::parse` does not support whitespace
+    /// separators and requires comma separated operators. See [VersionReq].
     pub fn version_req(version: &str) -> Result<VersionReq> {
         let version = version.replace(' ', ",");
 
@@ -744,6 +747,13 @@ impl<T: Into<PathBuf>> From<T> for Solc {
 mod tests {
     use super::*;
     use crate::{Artifact, CompilerInput};
+
+    #[test]
+    fn test_version_parse() {
+        let req = Solc::version_req(">=0.6.2 <0.8.21").unwrap();
+        let semver_req: VersionReq = ">=0.6.2,<0.8.21".parse().unwrap();
+        assert_eq!(req, semver_req);
+    }
 
     fn solc() -> Solc {
         Solc::default()
