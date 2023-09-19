@@ -156,7 +156,8 @@
                             "typeIdentifier": "t_uint192",
                             "typeString": "uint192"
                           }
-                        }
+                        },
+                        null
                       ],
                       "id": 19,
                       "isConstant": false,

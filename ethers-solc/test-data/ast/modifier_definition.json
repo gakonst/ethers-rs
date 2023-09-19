@@ -111,6 +111,21 @@
               },
               "nodeType": "ModifierInvocation",
               "src": "52:4:1"
+            },
+            {
+              "arguments": null,
+              "id": 10,
+              "kind": "modifierInvocation",
+              "modifierName": {
+                "id": 8,
+                "name": "M",
+                "nameLocations": ["52:1:1"],
+                "nodeType": "IdentifierPath",
+                "referencedDeclaration": 6,
+                "src": "52:1:1"
+              },
+              "nodeType": "ModifierInvocation",
+              "src": "52:4:1"
             }
           ],
           "name": "F",
