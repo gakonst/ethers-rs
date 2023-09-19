@@ -133,7 +133,7 @@ pub enum Chain {
     EmeraldTestnet = 42261,
 
     FilecoinMainnet = 314,
-    FilecoinHyperspaceTestnet = 3141,
+    FilecoinCalibrationTestnet = 314159,
 
     Avalanche = 43114,
     #[strum(to_string = "fuji", serialize = "avalanche-fuji")]
@@ -295,7 +295,7 @@ impl Chain {
             Emerald => 6_000,
             Dev | AnvilHardhat => 200,
             Celo | CeloAlfajores | CeloBaklava => 5_000,
-            FilecoinHyperspaceTestnet | FilecoinMainnet => 30_000,
+            FilecoinCalibrationTestnet | FilecoinMainnet => 30_000,
             ScrollAlphaTestnet => 3_000,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Holesky |
@@ -360,7 +360,7 @@ impl Chain {
             FilecoinMainnet |
             Linea |
             LineaTestnet |
-            FilecoinHyperspaceTestnet => false,
+            FilecoinCalibrationTestnet => false,
 
             // Unknown / not applicable, default to false for backwards compatibility
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
@@ -482,9 +482,10 @@ impl Chain {
                 ("https://blockscout.chiadochain.net/api", "https://blockscout.chiadochain.net")
             }
 
-            FilecoinHyperspaceTestnet => {
-                ("https://api.hyperspace.node.glif.io/rpc/v1", "https://hyperspace.filfox.info")
-            }
+            FilecoinCalibrationTestnet => (
+                "https://api.calibration.node.glif.io/rpc/v1",
+                "https://calibration.filfox.info/en",
+            ),
 
             Sokol => ("https://blockscout.com/poa/sokol/api", "https://blockscout.com/poa/sokol"),
 
@@ -625,7 +626,7 @@ impl Chain {
             ZkSyncTestnet |
             FilecoinMainnet |
             LineaTestnet |
-            FilecoinHyperspaceTestnet => return None,
+            FilecoinCalibrationTestnet => return None,
         };
 
         Some(api_key_name)
