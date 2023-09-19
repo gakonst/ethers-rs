@@ -176,9 +176,9 @@ ast_node!(
         linearized_base_contracts: Vec<usize>,
         nodes: Vec<ContractDefinitionPart>,
         scope: usize,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         used_errors: Vec<usize>,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         used_events: Vec<usize>,
         #[serde(default, rename = "internalFunctionIDs")]
         internal_function_ids: BTreeMap<usize, usize>,
@@ -607,7 +607,7 @@ ast_node!(
 expr_node!(
     /// A tuple expression.
     struct TupleExpression {
-        components: Vec<Expression>,
+        components: Vec<Option<Expression>>,
         is_inline_array: bool,
     }
 );
@@ -696,7 +696,7 @@ ast_node!(
         name: String,
         #[serde(default, with = "serde_helpers::display_from_str_opt")]
         name_location: Option<SourceLocation>,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         base_functions: Vec<usize>,
         body: Option<Block>,
         documentation: Option<StructuredDocumentation>,
@@ -870,7 +870,7 @@ ast_node!(
         // TODO: We need this camel case for the AST, but pascal case other places in ethers-solc
         //evm_version: EvmVersion,
         external_references: Vec<ExternalInlineAssemblyReference>,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         flags: Vec<InlineAssemblyFlag>,
     }
 );
@@ -943,7 +943,7 @@ ast_node!(
     struct TryCatchClause {
         block: Block,
         error_name: String,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         parameters: Vec<ParameterList>,
     }
 );
@@ -966,7 +966,7 @@ stmt_node!(
 ast_node!(
     /// A modifier or base constructor invocation.
     struct ModifierInvocation {
-        #[serde(default)]
+        #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         arguments: Vec<Expression>,
         kind: Option<ModifierInvocationKind>,
         modifier_name: IdentifierOrIdentifierPath,
@@ -1028,7 +1028,7 @@ ast_node!(
 ast_node!(
     /// A using for directive.
     struct UsingForDirective {
-        #[serde(default)]
+        #[serde(default, deserialize_with = "serde_helpers::default_for_null")]
         function_list: Vec<FunctionIdentifierPath>,
         #[serde(default)]
         global: bool,
