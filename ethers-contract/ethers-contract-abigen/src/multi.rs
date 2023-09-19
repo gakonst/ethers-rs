@@ -333,7 +333,12 @@ impl MultiExpansionResult {
             None
         };
 
-        MultiBindingsInner { root, bindings, shared_types }
+        MultiBindingsInner {
+            root,
+            bindings,
+            shared_types,
+            dependencies: vec![String::from(r#"serde = "1.0.188""#)],
+        }
     }
 }
 
@@ -581,6 +586,8 @@ struct MultiBindingsInner {
     bindings: BTreeMap<String, ContractBindings>,
     /// contains the content of the shared types if any
     shared_types: Option<ContractBindings>,
+    /// Dependencies other than `ethers-rs` to add to the `Cargo.toml` for bindings generated as a crate.
+    dependencies: Vec<String>,
 }
 
 // deref allows for inspection without modification
@@ -611,6 +618,9 @@ impl MultiBindingsInner {
         writeln!(toml)?;
         writeln!(toml, "[dependencies]")?;
         writeln!(toml, r#"{crate_version}"#)?;
+        for dependency in self.dependencies.clone() {
+            writeln!(toml, "{}", dependency)?;
+        }
         Ok(toml)
     }
 
