@@ -27,6 +27,7 @@ async fn main() -> Result<()> {
                 ..Default::default()
             },
             state_overrides: None,
+            block_overrides: None,
         };
         let traces = client.debug_trace_call(tx, Some(block), options).await?;
         println!("{traces:?}");
