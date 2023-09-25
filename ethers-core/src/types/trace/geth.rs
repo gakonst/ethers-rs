@@ -199,6 +199,28 @@ pub struct GethDebugTracingOptions {
     pub timeout: Option<String>,
 }
 
+/// Bindings for block overrides in `debug_traceCall` options
+///
+/// See <https://github.com/ethereum/go-ethereum/pull/24871>
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct BlockOverrides {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub number: Option<U64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub difficulty: Option<U256>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub time: Option<U64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gas_limit: Option<U64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub coinbase: Option<Address>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub random: Option<H256>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub base_fee: Option<U256>,
+}
+
 /// Bindings for additional `debug_traceCall` options
 ///
 /// See <https://geth.ethereum.org/docs/rpc/ns-debug#debug_tracecall>
@@ -209,7 +231,8 @@ pub struct GethDebugTracingCallOptions {
     pub tracing_options: GethDebugTracingOptions,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub state_overrides: Option<spoof::State>,
-    // TODO: Add blockoverrides options
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub block_overrides: Option<BlockOverrides>,
 }
 
 /// Provides types and methods for constructing an `eth_call`
