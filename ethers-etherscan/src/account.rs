@@ -1,7 +1,7 @@
 use crate::{Client, EtherscanError, Query, Response, Result};
 use ethers_core::{
     abi::Address,
-    types::{serde_helpers::*, BlockNumber, Bytes, H256, H32, U256},
+    types::{serde_helpers::*, BlockNumber, Bytes, H256, U256},
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -99,42 +99,6 @@ mod json_string {
     }
 }
 
-mod hex_string {
-    use super::*;
-    use serde::{
-        de::{DeserializeOwned, Error as _},
-        ser::Error as _,
-        Deserializer, Serializer,
-    };
-
-    pub fn serialize<T, S>(value: &Option<T>, serializer: S) -> std::result::Result<S::Ok, S::Error>
-    where
-        T: Serialize,
-        S: Serializer,
-    {
-        let json = match value {
-            Option::None => Cow::from("0x"),
-            Option::Some(value) => serde_json::to_string(value).map_err(S::Error::custom)?.into(),
-        };
-        serializer.serialize_str(&json)
-    }
-
-    pub fn deserialize<'de, T, D>(deserializer: D) -> std::result::Result<Option<T>, D::Error>
-    where
-        T: DeserializeOwned,
-        D: Deserializer<'de>,
-    {
-        let json = Cow::<'de, str>::deserialize(deserializer)?;
-        if json.is_empty() || json == "0x" {
-            Ok(Option::None)
-        } else {
-            serde_json::from_str(&format!("\"{}\"", &json))
-                .map(Option::Some)
-                .map_err(D::Error::custom)
-        }
-    }
-}
-
 /// Possible values for some field responses.
 ///
 /// Transactions from the Genesis block may contain fields that do not conform to the expected
@@ -205,8 +169,7 @@ pub struct NormalTransaction {
     pub cumulative_gas_used: U256,
     #[serde(deserialize_with = "deserialize_stringified_u64")]
     pub confirmations: u64,
-    #[serde(with = "hex_string")]
-    pub method_id: Option<H32>,
+    pub method_id: Option<Bytes>,
     #[serde(with = "json_string")]
     pub function_name: Option<String>,
 }
@@ -709,5 +672,44 @@ impl Client {
         let response: Response<Vec<MinedBlock>> = self.get_json(&query).await?;
 
         Ok(response.result)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // <https://github.com/gakonst/ethers-rs/issues/2612>
+    #[test]
+    fn can_parse_response_2612() {
+        let err = r#"{
+  "status": "1",
+  "message": "OK",
+  "result": [
+    {
+      "blockNumber": "18185184",
+      "timeStamp": "1695310607",
+      "hash": "0x95983231acd079498b7628c6b6dd4866f559a23120fbce590c5dd7f10c7628af",
+      "nonce": "1325609",
+      "blockHash": "0x61e106aa2446ba06fe0217eb5bd9dae98a72b56dad2c2197f60a0798ce9f0dc6",
+      "transactionIndex": "45",
+      "from": "0xae2fc483527b8ef99eb5d9b44875f005ba1fae13",
+      "to": "0x6b75d8af000000e20b7a7ddf000ba900b4009a80",
+      "value": "23283064365",
+      "gas": "107142",
+      "gasPrice": "15945612744",
+      "isError": "0",
+      "txreceipt_status": "1",
+      "input": "0xe061",
+      "contractAddress": "",
+      "cumulativeGasUsed": "3013734",
+      "gasUsed": "44879",
+      "confirmations": "28565",
+      "methodId": "0xe061",
+      "functionName": ""
+    }
+  ]
+}"#;
+        let _resp: Response<Vec<NormalTransaction>> = serde_json::from_str(err).unwrap();
     }
 }
