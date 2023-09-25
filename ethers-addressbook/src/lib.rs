@@ -41,6 +41,7 @@ mod tests {
     fn test_tokens() {
         assert!(contract("dai").is_some());
         assert!(contract("usdc").is_some());
+        assert!(contract("usdt").is_some());
         assert!(contract("rand").is_none());
     }
 
