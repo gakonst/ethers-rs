@@ -585,7 +585,7 @@ impl PartialOrd<Self> for TransactionReceipt {
 }
 
 #[cfg(test)]
-#[cfg(feature = "optimism")]
+#[cfg(all(feature = "optimism", not(feature = "celo")))]
 mod tests {
     use std::str::FromStr;
 
