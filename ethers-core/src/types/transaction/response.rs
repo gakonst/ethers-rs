@@ -354,6 +354,35 @@ impl Transaction {
         Ok(())
     }
 
+    /// Decodes a deposit transaction starting at the RLP offset passed.
+    /// Increments the offset for each element parsed.
+    #[cfg(feature = "optimism")]
+    #[inline]
+    fn decode_base_deposit(
+        &mut self,
+        rlp: &rlp::Rlp,
+        offset: &mut usize,
+    ) -> Result<(), DecoderError> {
+        self.source_hash = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.from = rlp.val_at(*offset)?;
+        *offset += 1;
+        self.to = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.mint = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        self.value = rlp.val_at(*offset)?;
+        *offset += 1;
+        self.gas = rlp.val_at(*offset)?;
+        *offset += 1;
+        self.is_system_tx = Some(rlp.val_at(*offset)?);
+        *offset += 1;
+        let input = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
+        self.input = Bytes::from(input.to_vec());
+        *offset += 1;
+        Ok(())
+    }
+
     /// Recover the sender of the tx from signature
     pub fn recover_from(&self) -> Result<Address, SignatureError> {
         let signature = Signature { r: self.r, s: self.s, v: self.v.as_u64() };
@@ -408,6 +437,11 @@ impl Decodable for Transaction {
                 0x02 => {
                     txn.decode_base_eip1559(&rest, &mut offset)?;
                     txn.transaction_type = Some(2u64.into());
+                }
+                #[cfg(feature = "optimism")]
+                0x7E => {
+                    txn.decode_base_deposit(&rest, &mut offset)?;
+                    txn.transaction_type = Some(0x7Eu64.into());
                 }
                 _ => return Err(DecoderError::Custom("invalid tx type")),
             }
