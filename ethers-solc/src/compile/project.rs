@@ -752,12 +752,12 @@ mod tests {
 
         tmp.add_source(
             "C",
-            r#"
+            r"
     pragma solidity ^0.8.10;
     contract C {
             function hello() public {}
     }
-   "#,
+   ",
         )
         .unwrap();
         let compiled = tmp.compile().unwrap();

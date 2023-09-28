@@ -592,7 +592,7 @@ contract A {}
 
     #[test]
     fn can_find_single_quote_imports() {
-        let content = r#"
+        let content = r"
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.6;
 
@@ -601,7 +601,7 @@ import '@openzeppelin/contracts/utils/Address.sol';
 
 import './../interfaces/IJBDirectory.sol';
 import './../libraries/JBTokens.sol';
-        "#;
+        ";
         let imports: Vec<_> = find_import_paths(content).map(|m| m.as_str()).collect();
 
         assert_eq!(
@@ -631,9 +631,9 @@ import { T } from '../Test2.sol';
     }
     #[test]
     fn can_find_version() {
-        let s = r##"//SPDX-License-Identifier: Unlicense
+        let s = r"//SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
-"##;
+";
         assert_eq!(Some("^0.8.0"), find_version_pragma(s).map(|s| s.as_str()));
     }
 
