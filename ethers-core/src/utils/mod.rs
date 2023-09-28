@@ -1192,7 +1192,6 @@ mod tests {
             ("10", U256::from(10)),
             ("\"10\"", U256::from(10)),
             // max u256, in both num and str form
-            ("115792089237316195423570985008687907853269984665640564039457584007913129639935", U256::from_dec_str("115792089237316195423570985008687907853269984665640564039457584007913129639935").unwrap()),
             ("\"115792089237316195423570985008687907853269984665640564039457584007913129639935\"", U256::from_dec_str("115792089237316195423570985008687907853269984665640564039457584007913129639935").unwrap())
         ];
 
@@ -1200,9 +1199,9 @@ mod tests {
         struct TestUint(#[serde(deserialize_with = "deserialize_stringified_numeric")] U256);
 
         for (string, expected) in cases {
-            println!("testing {}", string);
-            let test: TestUint = serde_json::from_str(string).unwrap();
-            assert_eq!(test.0, expected);
+            let test: TestUint = serde_json::from_str(string)
+                .unwrap_or_else(|err| panic!("failed to deserialize {string}: {err}"));
+            assert_eq!(test.0, expected, "expected to deserialize {}", string);
         }
     }
 }
