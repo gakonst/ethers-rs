@@ -180,11 +180,11 @@ fn can_compile_dapp_detect_changes_in_libs() {
     let lib = project
         .add_lib(
             "remapping/Bar",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
     contract Bar {}
-    "#,
+    ",
         )
         .unwrap();
 
@@ -209,12 +209,12 @@ fn can_compile_dapp_detect_changes_in_libs() {
     project
         .add_lib(
             "remapping/Bar",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
     // changed lib
     contract Bar {}
-    "#,
+    ",
         )
         .unwrap();
 
@@ -247,7 +247,7 @@ fn can_compile_dapp_detect_changes_in_sources() {
     let base = project
         .add_source(
             "DssSpell.t.base",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
   contract DssSpellTestBase {
@@ -256,7 +256,7 @@ fn can_compile_dapp_detect_changes_in_sources() {
            deployed_spell = address(0xA867399B43aF7790aC800f2fF3Fa7387dc52Ec5E);
        }
   }
-   "#,
+   ",
         )
         .unwrap();
 
@@ -285,7 +285,7 @@ fn can_compile_dapp_detect_changes_in_sources() {
     let _ = project
         .add_source(
             "DssSpell.t.base",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
   contract DssSpellTestBase {
@@ -294,7 +294,7 @@ fn can_compile_dapp_detect_changes_in_sources() {
            deployed_spell = address(0);
        }
   }
-   "#,
+   ",
         )
         .unwrap();
     let graph = Graph::resolve(project.paths()).unwrap();
@@ -331,10 +331,10 @@ contract A { }
     project
         .add_source(
             "B",
-            r#"
+            r"
 pragma solidity ^0.8.10;
 contract B { }
-"#,
+",
         )
         .unwrap();
 
@@ -537,14 +537,14 @@ contract C { }
 
     assert_eq!(
         result,
-        r#"pragma solidity ^0.8.10;
+        r"pragma solidity ^0.8.10;
 
 contract C { }
 
 contract B { }
 
 contract A { }
-"#
+"
     );
 }
 
@@ -593,7 +593,7 @@ contract C { }
 
     assert_eq!(
         result,
-        r#"pragma solidity ^0.8.10;
+        r"pragma solidity ^0.8.10;
 pragma experimental ABIEncoderV2;
 
 contract C { }
@@ -601,7 +601,7 @@ contract C { }
 contract B { }
 
 contract A { }
-"#
+"
     );
 }
 
@@ -619,7 +619,7 @@ fn can_flatten_file_with_duplicates() {
     let result = result.unwrap();
     assert_eq!(
         result,
-        r#"//SPDX-License-Identifier: UNLICENSED
+        r"//SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.6.0;
 
 contract Bar {}
@@ -627,7 +627,7 @@ contract Bar {}
 contract Foo {}
 
 contract FooBar {}
-"#
+"
     );
 }
 
@@ -646,7 +646,7 @@ fn can_flatten_on_solang_failure() {
     let result = result.unwrap();
     assert_eq!(
         result,
-        r#"// SPDX-License-Identifier: UNLICENSED
+        r"// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.10;
 
 library Lib {}
@@ -655,7 +655,7 @@ library Lib {}
 contract Contract {
     failure();
 }
-"#
+"
     );
 }
 
@@ -681,28 +681,28 @@ contract A { }
     project
         .add_source(
             "Errors",
-            r#"
+            r"
 pragma solidity ^0.8.10;
 error IllegalArgument();
 error IllegalState();
-"#,
+",
         )
         .unwrap();
 
     project
         .add_source(
             "C",
-            r#"
+            r"
 pragma solidity ^0.8.10;
 contract C { }
-"#,
+",
         )
         .unwrap();
 
     let result = project.flatten(&f).unwrap();
     assert_eq!(
         result,
-        r#"pragma solidity ^0.8.10;
+        r"pragma solidity ^0.8.10;
 
 contract C { }
 
@@ -710,7 +710,7 @@ error IllegalArgument();
 error IllegalState();
 
 contract A { }
-"#
+"
     );
 }
 
@@ -745,16 +745,16 @@ contract B { }
     project
         .add_source(
             "C",
-            r#"pragma solidity ^0.8.10;
+            r"pragma solidity ^0.8.10;
 contract C { }
-"#,
+",
         )
         .unwrap();
 
     let result = project.flatten(&f).unwrap();
     assert_eq!(
         result,
-        r#"pragma solidity ^0.8.10;
+        r"pragma solidity ^0.8.10;
 
 contract C { }
 
@@ -763,7 +763,7 @@ contract C { }
 contract B { }
 
 contract A { }
-"#
+"
     );
 }
 
@@ -809,34 +809,34 @@ contract Contract is Parent,
     project
         .add_source(
             "Parent",
-            r#"pragma solidity ^0.8.10;
+            r"pragma solidity ^0.8.10;
 contract ParentContract { }
-"#,
+",
         )
         .unwrap();
 
     project
         .add_source(
             "AnotherParent",
-            r#"pragma solidity ^0.8.10;
+            r"pragma solidity ^0.8.10;
 contract AnotherParentContract { }
-"#,
+",
         )
         .unwrap();
 
     project
         .add_source(
             "Peer",
-            r#"pragma solidity ^0.8.10;
+            r"pragma solidity ^0.8.10;
 contract PeerContract { }
-"#,
+",
         )
         .unwrap();
 
     project
         .add_source(
             "Math",
-            r#"pragma solidity ^0.8.10;
+            r"pragma solidity ^0.8.10;
 library MathLibrary {
     function minusOne(uint256 val) internal returns (uint256) {
         return val - 1;
@@ -850,16 +850,16 @@ library MathLibrary {
         return type(uint256).max - value;
     }
 }
-"#,
+",
         )
         .unwrap();
 
     project
         .add_source(
             "SomeLib",
-            r#"pragma solidity ^0.8.10;
+            r"pragma solidity ^0.8.10;
 library SomeLib { }
-"#,
+",
         )
         .unwrap();
 
@@ -947,27 +947,27 @@ contract B { }
     project
         .add_source(
             "C",
-            r#"
+            r"
 pragma solidity ^0.8.10;
 contract C { }
-"#,
+",
         )
         .unwrap();
 
     project
         .add_source(
             "D",
-            r#"
+            r"
 pragma solidity ^0.8.10;
 contract D { }
-"#,
+",
         )
         .unwrap();
 
     let result = project.flatten(&f).unwrap();
     assert_eq!(
         result,
-        r#"pragma solidity ^0.8.10;
+        r"pragma solidity ^0.8.10;
 
 contract D { }
 
@@ -976,7 +976,7 @@ contract C { }
 contract B { }
 
 contract A { }
-"#
+"
     );
 }
 
@@ -1010,11 +1010,11 @@ fn can_compile_single_files() {
     let f = tmp
         .add_contract(
             "examples/Foo",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
     contract Foo {}
-   "#,
+   ",
         )
         .unwrap();
 
@@ -1025,11 +1025,11 @@ fn can_compile_single_files() {
     let bar = tmp
         .add_contract(
             "examples/Bar",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
     contract Bar {}
-   "#,
+   ",
         )
         .unwrap();
 
@@ -1045,7 +1045,7 @@ fn consistent_bytecode() {
 
     tmp.add_source(
         "LinkTest",
-        r#"
+        r"
 // SPDX-License-Identifier: MIT
 library LibTest {
     function foobar(uint256 a) public view returns (uint256) {
@@ -1057,7 +1057,7 @@ contract LinkTest {
         return LibTest.foobar(1);
     }
 }
-"#,
+",
     )
     .unwrap();
 
@@ -1095,14 +1095,14 @@ contract LinkTest {
     let lib = tmp
         .add_source(
             "MyLib",
-            r#"
+            r"
 // SPDX-License-Identifier: MIT
 library MyLib {
     function foobar(uint256 a) public view returns (uint256) {
     	return a * 100;
     }
 }
-"#,
+",
         )
         .unwrap();
 
@@ -1167,14 +1167,14 @@ contract LinkTest {
 
     tmp.add_lib(
         "remapping/MyLib",
-        r#"
+        r"
 // SPDX-License-Identifier: MIT
 library MyLib {
     function foobar(uint256 a) public view returns (uint256) {
     	return a * 100;
     }
 }
-"#,
+",
     )
     .unwrap();
 
@@ -1202,10 +1202,10 @@ library MyLib {
 #[test]
 fn can_detect_invalid_version() {
     let tmp = TempProject::dapptools().unwrap();
-    let content = r#"
+    let content = r"
     pragma solidity ^0.100.10;
     contract A {}
-   "#;
+   ";
     tmp.add_source("A", content).unwrap();
 
     let out = tmp.compile().unwrap_err();
@@ -1233,10 +1233,10 @@ fn can_recompile_with_changes() {
 
     tmp.add_contract(
         "modules/B",
-        r#"
+        r"
     pragma solidity ^0.8.10;
     contract B {}
-   "#,
+   ",
     )
     .unwrap();
 
@@ -1265,10 +1265,10 @@ fn can_recompile_with_lowercase_names() {
 
     tmp.add_source(
         "deployProxy.sol",
-        r#"
+        r"
     pragma solidity =0.8.12;
     contract DeployProxy {}
-   "#,
+   ",
     )
     .unwrap();
 
@@ -1282,10 +1282,10 @@ fn can_recompile_with_lowercase_names() {
 
     tmp.add_source(
         "ProxyAdmin.sol",
-        r#"
+        r"
     pragma solidity =0.8.12;
     contract ProxyAdmin {}
-   "#,
+   ",
     )
     .unwrap();
 
@@ -1342,10 +1342,10 @@ fn can_recompile_unchanged_with_empty_files() {
     )
     .unwrap();
 
-    let c = r#"
+    let c = r"
     pragma solidity ^0.8.10;
     contract C {}
-   "#;
+   ";
     tmp.add_source("C", c).unwrap();
 
     let compiled = tmp.compile().unwrap();
@@ -1374,9 +1374,9 @@ fn can_emit_empty_artifacts() {
     let top_level = tmp
         .add_source(
             "top_level",
-            r#"
+            r"
     function test() {}
-   "#,
+   ",
         )
         .unwrap();
 
@@ -1421,10 +1421,10 @@ contract Contract {
 
     tmp.add_source(
         "top_level",
-        r#"
+        r"
     error MyError();
     function test() {}
-   "#,
+   ",
     )
     .unwrap();
     let compiled = tmp.compile().unwrap();
@@ -1438,61 +1438,61 @@ fn can_detect_contract_def_source_files() {
     let mylib = tmp
         .add_source(
             "MyLib",
-            r#"
+            r"
         pragma solidity 0.8.10;
         library MyLib {
         }
-   "#,
+   ",
         )
         .unwrap();
 
     let myinterface = tmp
         .add_source(
             "MyInterface",
-            r#"
+            r"
         pragma solidity 0.8.10;
         interface MyInterface {}
-   "#,
+   ",
         )
         .unwrap();
 
     let mycontract = tmp
         .add_source(
             "MyContract",
-            r#"
+            r"
         pragma solidity 0.8.10;
         contract MyContract {}
-   "#,
+   ",
         )
         .unwrap();
 
     let myabstract_contract = tmp
         .add_source(
             "MyAbstractContract",
-            r#"
+            r"
         pragma solidity 0.8.10;
         contract MyAbstractContract {}
-   "#,
+   ",
         )
         .unwrap();
 
     let myerr = tmp
         .add_source(
             "MyError",
-            r#"
+            r"
         pragma solidity 0.8.10;
        error MyError();
-   "#,
+   ",
         )
         .unwrap();
 
     let myfunc = tmp
         .add_source(
             "MyFunction",
-            r#"
+            r"
         pragma solidity 0.8.10;
         function abc(){}
-   "#,
+   ",
         )
         .unwrap();
 
@@ -1541,12 +1541,12 @@ fn can_compile_sparse_with_link_references() {
     let my_lib_path = tmp
         .add_source(
             "mylib.sol",
-            r#"
+            r"
     pragma solidity =0.8.12;
     library MyLib {
        function doStuff() external pure returns (uint256) {return 1337;}
     }
-   "#,
+   ",
         )
         .unwrap();
 
@@ -1588,10 +1588,10 @@ fn can_sanitize_bytecode_hash() {
 
     tmp.add_source(
         "A",
-        r#"
+        r"
     pragma solidity =0.5.17;
     contract A {}
-   "#,
+   ",
     )
     .unwrap();
 
@@ -1767,14 +1767,14 @@ fn can_purge_obsolete_artifacts() {
     project
         .add_source(
             "Contract",
-            r#"
+            r"
     pragma solidity >=0.8.10;
 
    contract Contract {
         function xyz() public {
         }
    }
-   "#,
+   ",
         )
         .unwrap();
 
@@ -1797,7 +1797,7 @@ fn can_parse_notice() {
     project.project_mut().artifacts.additional_values.userdoc = true;
     project.project_mut().solc_config.settings = project.project_mut().artifacts.settings();
 
-    let contract = r#"
+    let contract = r"
     pragma solidity $VERSION;
 
    contract Contract {
@@ -1820,7 +1820,7 @@ fn can_parse_notice() {
         function abc() public {
         }
    }
-   "#;
+   ";
     project.add_source("Contract", contract.replace("$VERSION", "=0.5.17")).unwrap();
 
     let mut compiled = project.compile().unwrap();
@@ -1877,7 +1877,7 @@ fn can_parse_doc() {
     project.project_mut().artifacts.additional_values.devdoc = true;
     project.project_mut().solc_config.settings = project.project_mut().artifacts.settings();
 
-    let contract = r#"
+    let contract = r"
 // SPDX-License-Identifier: GPL-3.0-only
 pragma solidity 0.8.17;
 
@@ -1914,7 +1914,7 @@ contract NotERC20 is INotERC20 {
         return false;
     }
 }
-    "#;
+    ";
     project.add_source("Contract", contract).unwrap();
 
     let mut compiled = project.compile().unwrap();
@@ -2060,37 +2060,37 @@ fn test_relative_cache_entries() {
     let _a = project
         .add_source(
             "A",
-            r#"
+            r"
 pragma solidity ^0.8.10;
 contract A { }
-"#,
+",
         )
         .unwrap();
     let _b = project
         .add_source(
             "B",
-            r#"
+            r"
 pragma solidity ^0.8.10;
 contract B { }
-"#,
+",
         )
         .unwrap();
     let _c = project
         .add_source(
             "C",
-            r#"
+            r"
 pragma solidity ^0.8.10;
 contract C { }
-"#,
+",
         )
         .unwrap();
     let _d = project
         .add_source(
             "D",
-            r#"
+            r"
 pragma solidity ^0.8.10;
 contract D { }
-"#,
+",
         )
         .unwrap();
 
@@ -2143,10 +2143,10 @@ contract B { }
     let c = project
         .add_source(
             "C",
-            r#"
+            r"
 pragma solidity ^0.8.10;
 contract C { }
-"#,
+",
         )
         .unwrap();
 
@@ -2165,22 +2165,22 @@ fn can_handle_conflicting_files() {
     project
         .add_source(
             "Greeter",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
     contract Greeter {}
-   "#,
+   ",
         )
         .unwrap();
 
     project
         .add_source(
             "tokens/Greeter",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
     contract Greeter {}
-   "#,
+   ",
         )
         .unwrap();
 
@@ -2230,26 +2230,26 @@ fn can_handle_conflicting_files_recompile() {
     project
         .add_source(
             "A",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
     contract A {
             function foo() public{}
     }
-   "#,
+   ",
         )
         .unwrap();
 
     project
         .add_source(
             "inner/A",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
     contract A {
             function bar() public{}
     }
-   "#,
+   ",
         )
         .unwrap();
 
@@ -2287,13 +2287,13 @@ fn can_handle_conflicting_files_recompile() {
     project
         .add_source(
             "inner/A",
-            r#"
+            r"
     pragma solidity ^0.8.10;
     contract A {
     function bar() public{}
     function baz() public{}
     }
-   "#,
+   ",
         )
         .unwrap();
 
@@ -2327,26 +2327,26 @@ fn can_handle_conflicting_files_case_sensitive_recompile() {
     project
         .add_source(
             "a",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
     contract A {
             function foo() public{}
     }
-   "#,
+   ",
         )
         .unwrap();
 
     project
         .add_source(
             "inner/A",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
     contract A {
             function bar() public{}
     }
-   "#,
+   ",
         )
         .unwrap();
 
@@ -2384,13 +2384,13 @@ fn can_handle_conflicting_files_case_sensitive_recompile() {
     project
         .add_source(
             "inner/A",
-            r#"
+            r"
     pragma solidity ^0.8.10;
     contract A {
     function bar() public{}
     function baz() public{}
     }
-   "#,
+   ",
         )
         .unwrap();
 
@@ -2449,11 +2449,11 @@ fn can_detect_config_changes() {
     project
         .add_lib(
             "remapping/Bar",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
     contract Bar {}
-    "#,
+    ",
         )
         .unwrap();
 
@@ -2513,11 +2513,11 @@ fn can_handle_nested_absolute_imports() {
     project
         .add_lib(
             "myDepdendency/src/interfaces/IConfig.sol",
-            r#"
+            r"
     pragma solidity ^0.8.10;
 
     interface IConfig {}
-   "#,
+   ",
         )
         .unwrap();
 
@@ -2559,7 +2559,7 @@ fn can_handle_nested_test_absolute_imports() {
     project
         .add_source(
             "Contract.sol",
-            r#"
+            r"
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.13;
 
@@ -2576,7 +2576,7 @@ contract Contract {
         c = Library.f(1, 2);
     }
 }
-   "#,
+   ",
         )
         .unwrap();
 

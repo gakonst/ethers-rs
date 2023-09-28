@@ -151,7 +151,7 @@ mod tests {
 
     #[test]
     fn deserialize_sync_false() {
-        let s = r#"false"#;
+        let s = r"false";
 
         let sync: SyncingStatus = serde_json::from_str(s).unwrap();
         match sync {

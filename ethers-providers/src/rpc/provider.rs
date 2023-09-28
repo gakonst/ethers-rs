@@ -598,7 +598,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         _tx: &TypedTransaction,
         _from: Address,
     ) -> Result<Signature, Self::Error> {
-        Err(ProviderError::SignerUnavailable).map_err(MiddlewareError::from_err)
+        Err(MiddlewareError::from_err(ProviderError::SignerUnavailable))
     }
 
     ////// Contract state

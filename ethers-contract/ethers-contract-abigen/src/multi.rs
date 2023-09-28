@@ -881,12 +881,12 @@ mod tests {
 
         let human_readable = Abigen::new(
             "HrContract",
-            r#"[
+            r"[
         struct Foo { uint256 x; }
         function foo(Foo memory x)
         function bar(uint256 x, uint256 y, address addr)
         yeet(uint256,uint256,address)
-    ]"#,
+    ]",
         )
         .unwrap();
 
@@ -1001,9 +1001,9 @@ mod tests {
             multi_gen.push(
                 Abigen::new(
                     "AdditionalContract",
-                    r#"[
+                    r"[
                         getValue() (uint256)
-                    ]"#,
+                    ]",
                 )
                 .unwrap(),
             );
@@ -1028,9 +1028,9 @@ mod tests {
             multi_gen.push(
                 Abigen::new(
                     "AdditionalContract",
-                    r#"[
+                    r"[
                         getValue() (uint256)
-                    ]"#,
+                    ]",
                 )
                 .unwrap(),
             );
@@ -1062,9 +1062,9 @@ mod tests {
             multi_gen.push(
                 Abigen::new(
                     "AdditionalContract",
-                    r#"[
+                    r"[
                             getValue() (uint256)
-                        ]"#,
+                        ]",
                 )
                 .unwrap(),
             );
@@ -1099,9 +1099,9 @@ mod tests {
             multi_gen.push(
                 Abigen::new(
                     "AdditionalContract",
-                    r#"[
+                    r"[
                             getValue() (uint256)
-                        ]"#,
+                        ]",
                 )
                 .unwrap(),
             );
@@ -1121,11 +1121,11 @@ mod tests {
     fn does_not_generate_shared_types_if_empty() {
         let gen = Abigen::new(
             "Greeter",
-            r#"[
+            r"[
                         struct Inner {bool a;}
                         greet1() (uint256)
                         greet2(Inner inner) (string)
-                    ]"#,
+                    ]",
         )
         .unwrap();
 
@@ -1137,9 +1137,9 @@ mod tests {
     fn can_filter_abigen() {
         let abi = Abigen::new(
             "MyGreeter",
-            r#"[
+            r"[
                         greet() (string)
-                    ]"#,
+                    ]",
         )
         .unwrap();
         let mut gen = MultiAbigen::from_abigens(vec![abi]).with_filter(ContractFilter::All);
@@ -1167,9 +1167,9 @@ mod tests {
         gen.push(
             Abigen::new(
                 "MyGreeterTest",
-                r#"[
+                r"[
                         greet() (string)
-                    ]"#,
+                    ]",
             )
             .unwrap(),
         );
