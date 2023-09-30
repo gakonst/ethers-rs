@@ -1513,7 +1513,9 @@ pub fn is_local_endpoint(endpoint: &str) -> bool {
     if let Ok(url) = Url::parse(endpoint) {
         if let Some(host) = url.host() {
             match host {
-                Host::Domain(domain) => return domain.contains("localhost"),
+                Host::Domain(domain) => {
+                    return domain.contains("localhost") || domain.contains("localdev.me")
+                }
                 Host::Ipv4(ipv4) => {
                     return ipv4 == Ipv4Addr::LOCALHOST ||
                         ipv4.is_link_local() ||
