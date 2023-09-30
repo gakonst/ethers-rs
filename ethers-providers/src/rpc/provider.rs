@@ -1501,6 +1501,7 @@ impl ProviderExt for Provider<HttpProvider> {
 /// ```
 /// use ethers_providers::is_local_endpoint;
 /// assert!(is_local_endpoint("http://localhost:8545"));
+/// assert!(is_local_endpoint("http://test.localdev.me"));
 /// assert!(is_local_endpoint("http://169.254.0.0:8545"));
 /// assert!(is_local_endpoint("http://127.0.0.1:8545"));
 /// assert!(!is_local_endpoint("http://206.71.50.230:8545"));
@@ -1513,7 +1514,9 @@ pub fn is_local_endpoint(endpoint: &str) -> bool {
     if let Ok(url) = Url::parse(endpoint) {
         if let Some(host) = url.host() {
             match host {
-                Host::Domain(domain) => return domain.contains("localhost"),
+                Host::Domain(domain) => {
+                    return domain.contains("localhost") || domain.contains("localdev.me")
+                }
                 Host::Ipv4(ipv4) => {
                     return ipv4 == Ipv4Addr::LOCALHOST ||
                         ipv4.is_link_local() ||
