@@ -410,6 +410,7 @@ impl Chain {
             Rinkeby => ("https://api-rinkeby.etherscan.io/api", "https://rinkeby.etherscan.io"),
             Goerli => ("https://api-goerli.etherscan.io/api", "https://goerli.etherscan.io"),
             Sepolia => ("https://api-sepolia.etherscan.io/api", "https://sepolia.etherscan.io"),
+            Holesky => ("https://api-holesky.etherscan.io/api", "https://holesky.etherscan.io"),
 
             Polygon => ("https://api.polygonscan.com/api", "https://polygonscan.com"),
             PolygonMumbai => {
@@ -543,7 +544,7 @@ impl Chain {
                 ("https://explorer.goerli.linea.build/api", "https://explorer.goerli.linea.build/")
             }
 
-            Holesky | AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
+            AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
                 return None
@@ -573,6 +574,7 @@ impl Chain {
             Kovan |
             Rinkeby |
             Goerli |
+            Holesky |
             Optimism |
             OptimismGoerli |
             OptimismKovan |
@@ -611,7 +613,6 @@ impl Chain {
             Metis |
             Chiado |
             Sepolia |
-            Holesky |
             Rsk |
             Sokol |
             Poa |
