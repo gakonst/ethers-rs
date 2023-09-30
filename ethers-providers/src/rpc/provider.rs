@@ -1501,6 +1501,7 @@ impl ProviderExt for Provider<HttpProvider> {
 /// ```
 /// use ethers_providers::is_local_endpoint;
 /// assert!(is_local_endpoint("http://localhost:8545"));
+/// assert!(is_local_endpoint("http://test.localdev.me"));
 /// assert!(is_local_endpoint("http://169.254.0.0:8545"));
 /// assert!(is_local_endpoint("http://127.0.0.1:8545"));
 /// assert!(!is_local_endpoint("http://206.71.50.230:8545"));
