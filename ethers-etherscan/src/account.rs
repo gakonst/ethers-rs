@@ -317,7 +317,7 @@ pub struct MinedBlock {
     pub block_reward: String,
 }
 
-/// The raw response from the wihtdrawal transaction list API endpoint
+/// The raw response from the beacon wihtdrawal transaction list API endpoint
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BeaconWithdrawalTransaction {
