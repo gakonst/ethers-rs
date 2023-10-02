@@ -689,7 +689,8 @@ impl Client {
         Ok(response.result)
     }
 
-    /// Returns the list of beacon withdrawal transactions performed by an address, with optional pagination.
+    /// Returns the list of beacon withdrawal transactions performed by an address, with optional
+    /// pagination.
     ///
     /// # Examples
     ///

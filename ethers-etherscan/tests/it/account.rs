@@ -160,7 +160,10 @@ async fn get_mined_blocks_success() {
 async fn get_beacon_withdrawal_transactions_success() {
     run_with_client(Chain::Mainnet, |client| async move {
         let txs = client
-            .get_beacon_withdrawal_transactions(&"0xB9D7934878B5FB9610B3fE8A5e441e8fad7E293f".parse().unwrap(), None)
+            .get_beacon_withdrawal_transactions(
+                &"0xB9D7934878B5FB9610B3fE8A5e441e8fad7E293f".parse().unwrap(),
+                None,
+            )
             .await;
         txs.unwrap();
     })
