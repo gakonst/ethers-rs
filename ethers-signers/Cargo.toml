@@ -56,9 +56,11 @@ coins-ledger = { version = "0.8.3", default-features = false, optional = true }
 semver = { workspace = true, optional = true }
 
 # trezor
+# TODO: bump this and remove protobuf pin
 trezor-client = { version = "=0.1.0", default-features = false, features = [
     "ethereum",
 ], optional = true }
+protobuf = { version = "=3.2.0", optional = true }
 
 # yubi
 yubihsm = { version = "0.42", features = ["secp256k1", "http", "usb"], optional = true }
@@ -79,6 +81,6 @@ celo = ["ethers-core/celo"]
 optimism = ["ethers-core/optimism"]
 
 ledger = ["coins-ledger", "futures", "semver"]
-trezor = ["trezor-client", "futures", "semver", "home"]
+trezor = ["trezor-client", "futures", "semver", "home", "protobuf"]
 aws = ["rusoto_core/rustls", "rusoto_kms/rustls", "spki"]
 yubi = ["yubihsm"]
