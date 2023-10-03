@@ -157,6 +157,7 @@ mod test {
             max_priority_fee_per_gas: None,
             max_fee_per_gas: None,
             chain_id: None,
+            other: crate::types::OtherFields::default(),
         };
 
         let rlp = deposited_tx.rlp();

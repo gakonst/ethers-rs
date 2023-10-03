@@ -132,7 +132,7 @@ pub struct Transaction {
     pub chain_id: Option<U256>,
 
     /// Captures unknown fields such as additional fields used by L2s
-    #[cfg(not(any(feature = "celo", feature = "optimism")))]
+    #[cfg(not(any(feature = "celo")))]
     #[serde(flatten)]
     pub other: crate::types::OtherFields,
 }
@@ -649,6 +649,8 @@ mod tests {
             max_priority_fee_per_gas: None,
             max_fee_per_gas: None,
             chain_id: None,
+            #[cfg(not(feature = "celo"))]
+            other: crate::types::OtherFields::default(),
         };
 
         let encoded_rlp_bytes = deposited_tx.rlp();
