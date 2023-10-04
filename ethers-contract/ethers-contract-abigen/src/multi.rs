@@ -602,7 +602,8 @@ struct MultiBindingsInner {
     bindings: BTreeMap<String, ContractBindings>,
     /// contains the content of the shared types if any
     shared_types: Option<ContractBindings>,
-    /// Dependencies other than `ethers-rs` to add to the `Cargo.toml` for bindings generated as a crate.
+    /// Dependencies other than `ethers-rs` to add to the `Cargo.toml` for bindings generated as a
+    /// crate.
     dependencies: Vec<String>,
 }
 
