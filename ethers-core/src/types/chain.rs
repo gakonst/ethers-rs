@@ -308,7 +308,9 @@ impl Chain {
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Holesky |
             Moonbase | MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet |
             Boba | Base | BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm |
-            PolygonZkEvmTestnet | Metis | Linea | LineaTestnet | Mantle | MantleTestnet => return None,
+            PolygonZkEvmTestnet | Metis | Linea | LineaTestnet | Mantle | MantleTestnet => {
+                return None
+            }
         };
 
         Some(Duration::from_millis(ms))
@@ -345,7 +347,7 @@ impl Chain {
             Boba |
             ZkSync |
             ZkSyncTestnet |
-            Mantle | 
+            Mantle |
             MantleTestnet |
             PolygonZkEvm |
             PolygonZkEvmTestnet => true,
@@ -553,8 +555,9 @@ impl Chain {
                 ("https://explorer.goerli.linea.build/api", "https://explorer.goerli.linea.build/")
             }
             Mantle => ("https://explorer.mantle.xyz/api", "https://explorer.mantle.xyz"),
-            MantleTestnet => ("https://explorer.testnet.mantle.xyz/api", "https://explorer.testnet.mantle.xyz"),
-
+            MantleTestnet => {
+                ("https://explorer.testnet.mantle.xyz/api", "https://explorer.testnet.mantle.xyz")
+            }
 
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
