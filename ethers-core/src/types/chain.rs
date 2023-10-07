@@ -164,6 +164,13 @@ pub enum Chain {
     #[strum(to_string = "zksync-testnet")]
     #[serde(alias = "zksync_testnet")]
     ZkSyncTestnet = 280,
+
+    #[strum(to_string = "mantle")]
+    #[serde(alias = "mantle")]
+    Mantle = 5000,
+    #[strum(to_string = "mantle-testnet")]
+    #[serde(alias = "mantle_testnet")]
+    MantleTestnet = 5001,
 }
 
 // === impl Chain ===
@@ -301,7 +308,9 @@ impl Chain {
             Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Holesky |
             Moonbase | MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet |
             Boba | Base | BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm |
-            PolygonZkEvmTestnet | Metis | Linea | LineaTestnet => return None,
+            PolygonZkEvmTestnet | Metis | Linea | LineaTestnet | Mantle | MantleTestnet => {
+                return None
+            }
         };
 
         Some(Duration::from_millis(ms))
@@ -338,6 +347,8 @@ impl Chain {
             Boba |
             ZkSync |
             ZkSyncTestnet |
+            Mantle |
+            MantleTestnet |
             PolygonZkEvm |
             PolygonZkEvmTestnet => true,
 
@@ -543,6 +554,10 @@ impl Chain {
             LineaTestnet => {
                 ("https://explorer.goerli.linea.build/api", "https://explorer.goerli.linea.build/")
             }
+            Mantle => ("https://explorer.mantle.xyz/api", "https://explorer.mantle.xyz"),
+            MantleTestnet => {
+                ("https://explorer.testnet.mantle.xyz/api", "https://explorer.testnet.mantle.xyz")
+            }
 
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
@@ -593,6 +608,8 @@ impl Chain {
             CeloBaklava |
             Base |
             Linea |
+            Mantle |
+            MantleTestnet |
             BaseGoerli => "ETHERSCAN_API_KEY",
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
@@ -702,6 +719,8 @@ mod tests {
             (AnvilHardhat, &["anvil", "hardhat"]),
             (AvalancheFuji, &["fuji"]),
             (ZkSync, &["zksync"]),
+            (Mantle, &["mantle"]),
+            (MantleTestnet, &["mantle-testnet"]),
         ];
 
         for &(chain, aliases) in ALIASES {
