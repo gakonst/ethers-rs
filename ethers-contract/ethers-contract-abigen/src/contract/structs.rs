@@ -234,7 +234,12 @@ impl InternalStructs {
         {
             let is_event = item.type_field == "event";
 
-            if let Some(name) = item.name {
+            let name = match item.name {
+                None if item.type_field == "constructor" => Some("constructor".to_owned()),
+                other => other,
+            };
+
+            if let Some(name) = name {
                 for (idx, input) in item.inputs.into_iter().enumerate() {
                     if let Some(ty) = input
                         .internal_type
