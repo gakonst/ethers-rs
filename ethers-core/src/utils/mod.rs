@@ -606,7 +606,7 @@ pub(crate) fn unused_port() -> u16 {
     local_addr.port()
 }
 
-
+/// Converts an public key, in compressed or uncompressed form to an Ethereum address
 pub fn pubkey_to_addr<T: AsRef<[u8]>>(pubkey: T) -> Result<[u8; 20], elliptic_curve::Error> {
     let pubkey = PublicKey::from_sec1_bytes(pubkey.as_ref())?;
     let affine: AffinePoint = pubkey.into();
