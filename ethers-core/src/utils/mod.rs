@@ -38,7 +38,8 @@ pub use hex;
 
 use crate::types::{Address, Bytes, ParseI256Error, H256, I256, U256};
 use ethabi::ethereum_types::FromDecStrErr;
-use k256::ecdsa::SigningKey;
+use k256::{ecdsa::SigningKey, AffinePoint};
+use elliptic_curve::{PublicKey, sec1::ToEncodedPoint};
 use std::{
     collections::HashMap,
     convert::{TryFrom, TryInto},
@@ -603,6 +604,15 @@ pub(crate) fn unused_port() -> u16 {
     let local_addr =
         listener.local_addr().expect("Failed to read TCP listener local_addr to find unused port");
     local_addr.port()
+}
+
+
+pub fn pubkey_to_addr<T: AsRef<[u8]>>(pubkey: T) -> Result<[u8; 20], elliptic_curve::Error> {
+    let pubkey = PublicKey::from_sec1_bytes(pubkey.as_ref())?;
+    let affine: AffinePoint = pubkey.into();
+    let encoded = affine.to_encoded_point(false);
+    let digest : [u8; 32] = keccak256(&encoded.as_bytes()[1..]);
+    Ok(digest[12..].try_into().unwrap())
 }
 
 #[cfg(test)]
@@ -1204,5 +1214,19 @@ mod tests {
             let test: TestUint = serde_json::from_str(string).unwrap();
             assert_eq!(test.0, expected);
         }
+    }
+
+    // Only tests for correctness, no edge cases. Uses examples from https://docs.ethers.org/v5/api/utils/address/#utils-computeAddress
+    #[test]
+    fn test_pubkey_to_addr() {
+        // Compressed
+        let addr = hex::decode("0Ac1dF02185025F65202660F8167210A80dD5086").unwrap();
+        let pubkey = hex::decode("0376698beebe8ee5c74d8cc50ab84ac301ee8f10af6f28d0ffd6adf4d6d3b9b762").unwrap();
+        assert_eq!(addr, pubkey_to_addr::<Vec<u8>>(pubkey.try_into().unwrap()).unwrap());
+
+        // Uncompressed 
+        let addr = hex::decode("0Ac1dF02185025F65202660F8167210A80dD5086").unwrap();
+        let pubkey = hex::decode("0476698beebe8ee5c74d8cc50ab84ac301ee8f10af6f28d0ffd6adf4d6d3b9b762d46ca56d3dad2ce13213a6f42278dabbb53259f2d92681ea6a0b98197a719be3").unwrap();
+        assert_eq!(addr, pubkey_to_addr::<Vec<u8>>(pubkey.try_into().unwrap()).unwrap());
     }
 }
