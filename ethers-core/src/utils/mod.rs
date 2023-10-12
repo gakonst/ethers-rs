@@ -37,8 +37,12 @@ pub use rlp;
 pub use hex;
 
 use crate::types::{Address, Bytes, ParseI256Error, H256, I256, U256};
+use elliptic_curve::sec1::ToEncodedPoint;
 use ethabi::ethereum_types::FromDecStrErr;
-use k256::ecdsa::SigningKey;
+use k256::{
+    ecdsa::{SigningKey, VerifyingKey},
+    AffinePoint,
+};
 use std::{
     collections::HashMap,
     convert::{TryFrom, TryInto},
@@ -390,17 +394,37 @@ pub fn get_create2_address_from_hash(
     Address::from(bytes)
 }
 
+/// Convert a raw, uncompressed public key to an address.
+///
+/// ### Warning
+///
+/// This method **does not** verify that the public key is valid. It is the
+/// caller's responsibility to pass a valid public key. Passing an invalid
+/// public key will produce an unspendable output.
+///
+/// ### Panics
+///
+/// When the input is not EXACTLY 64 bytes.
+pub fn raw_public_key_to_address<T: AsRef<[u8]>>(pubkey: T) -> Address {
+    let pubkey = pubkey.as_ref();
+    assert_eq!(pubkey.len(), 64, "raw public key must be 64 bytes");
+    let digest = keccak256(pubkey);
+    Address::from_slice(&digest[12..])
+}
+
+/// Converts an public key, in compressed or uncompressed form to an Ethereum
+/// address
+pub fn public_key_to_address(pubkey: &VerifyingKey) -> Address {
+    let affine: &AffinePoint = pubkey.as_ref();
+    let encoded = affine.to_encoded_point(false);
+    raw_public_key_to_address(&encoded.as_bytes()[1..])
+}
+
 /// Converts a K256 SigningKey to an Ethereum Address
 pub fn secret_key_to_address(secret_key: &SigningKey) -> Address {
     let public_key = secret_key.verifying_key();
-    let public_key = public_key.to_encoded_point(/* compress = */ false);
-    let public_key = public_key.as_bytes();
-    debug_assert_eq!(public_key[0], 0x04);
-    let hash = keccak256(&public_key[1..]);
 
-    let mut bytes = [0u8; 20];
-    bytes.copy_from_slice(&hash[12..]);
-    Address::from(bytes)
+    public_key_to_address(public_key)
 }
 
 /// Encodes an Ethereum address to its [EIP-55] checksum.
@@ -1204,5 +1228,40 @@ mod tests {
             let test: TestUint = serde_json::from_str(string).unwrap();
             assert_eq!(test.0, expected);
         }
+    }
+
+    // Only tests for correctness, no edge cases. Uses examples from https://docs.ethers.org/v5/api/utils/address/#utils-computeAddress
+    #[test]
+    fn test_public_key_to_address() {
+        let addr = "0Ac1dF02185025F65202660F8167210A80dD5086".parse::<Address>().unwrap();
+
+        // Compressed
+        let pubkey = VerifyingKey::from_sec1_bytes(
+            &hex::decode("0376698beebe8ee5c74d8cc50ab84ac301ee8f10af6f28d0ffd6adf4d6d3b9b762")
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(public_key_to_address(&pubkey), addr);
+
+        // Uncompressed
+        let pubkey= VerifyingKey::from_sec1_bytes(&hex::decode("0476698beebe8ee5c74d8cc50ab84ac301ee8f10af6f28d0ffd6adf4d6d3b9b762d46ca56d3dad2ce13213a6f42278dabbb53259f2d92681ea6a0b98197a719be3").unwrap()).unwrap();
+        assert_eq!(public_key_to_address(&pubkey), addr);
+    }
+
+    #[test]
+    fn test_raw_public_key_to_address() {
+        let addr = "0Ac1dF02185025F65202660F8167210A80dD5086".parse::<Address>().unwrap();
+
+        let pubkey_bytes = hex::decode("76698beebe8ee5c74d8cc50ab84ac301ee8f10af6f28d0ffd6adf4d6d3b9b762d46ca56d3dad2ce13213a6f42278dabbb53259f2d92681ea6a0b98197a719be3").unwrap();
+
+        assert_eq!(raw_public_key_to_address(pubkey_bytes), addr);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_raw_public_key_to_address_panics() {
+        let fake_pkb = vec![];
+
+        raw_public_key_to_address(fake_pkb);
     }
 }
