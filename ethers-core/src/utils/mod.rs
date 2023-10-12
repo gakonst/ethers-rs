@@ -396,6 +396,12 @@ pub fn get_create2_address_from_hash(
 
 /// Convert a raw, uncompressed public key to an address.
 ///
+/// ### Warning
+///
+/// This method **does not** verify that the public key is valid. It is the
+/// caller's responsibility to pass a valid public key. Passing an invalid
+/// public key will produce an unspendable output.
+///
 /// ### Panics
 ///
 /// When the input is not EXACTLY 64 bytes.
