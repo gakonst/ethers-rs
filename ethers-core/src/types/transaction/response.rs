@@ -10,6 +10,7 @@ use crate::{
     },
     utils::keccak256,
 };
+use bytes::BufMut;
 use rlp::{Decodable, DecoderError, RlpStream};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -549,7 +550,11 @@ impl rlp::Encodable for TransactionReceipt {
         }
         #[cfg(not(feature = "optimism"))]
         s.begin_list(4);
-        rlp_opt(s, &self.status);
+        if let Some(post_state) = self.root {
+            s.append(&post_state);
+        } else {
+            s.append(&self.status.expect("No post-state or status in receipt"));
+        }
         s.append(&self.cumulative_gas_used);
         s.append(&self.logs_bloom);
         s.append_list(&self.logs);
@@ -559,6 +564,20 @@ impl rlp::Encodable for TransactionReceipt {
                 s.append(&deposit_nonce);
             }
         }
+    }
+
+    fn rlp_bytes(&self) -> bytes::BytesMut {
+        let mut s = RlpStream::new();
+        self.rlp_append(&mut s);
+        let rlp_out = s.out();
+        let mut out = bytes::BytesMut::with_capacity(rlp_out.len() + 1);
+        if let Some(tx_type) = self.transaction_type {
+            if tx_type.as_u32() > 0 {
+                out.put_u8(tx_type.as_u32() as u8);
+            }
+        }
+        out.put(&rlp_out[..]);
+        out
     }
 }
 
