@@ -37,9 +37,12 @@ pub use rlp;
 pub use hex;
 
 use crate::types::{Address, Bytes, ParseI256Error, H256, I256, U256};
-use elliptic_curve::{sec1::ToEncodedPoint, PublicKey};
+use elliptic_curve::sec1::ToEncodedPoint;
 use ethabi::ethereum_types::FromDecStrErr;
-use k256::{ecdsa::SigningKey, AffinePoint};
+use k256::{
+    ecdsa::{SigningKey, VerifyingKey},
+    AffinePoint,
+};
 use std::{
     collections::HashMap,
     convert::{TryFrom, TryInto},
@@ -391,21 +394,31 @@ pub fn get_create2_address_from_hash(
     Address::from(bytes)
 }
 
-/// Converts an public key, in compressed or uncompressed form to an Ethereum address
-pub fn public_key_to_address<T: AsRef<[u8]>>(pubkey: T) -> Result<Address, elliptic_curve::Error> {
-    let pubkey = PublicKey::from_sec1_bytes(pubkey.as_ref())?;
-    let affine: AffinePoint = pubkey.into();
+/// Convert a raw, uncompressed public key to an address.
+///
+/// ### Panics
+///
+/// When the input is not EXACTLY 64 bytes.
+pub fn raw_public_key_to_address<T: AsRef<[u8]>>(pubkey: T) -> Address {
+    let pubkey = pubkey.as_ref();
+    assert_eq!(pubkey.len(), 64, "raw public key must be 64 bytes");
+    let digest = keccak256(pubkey);
+    Address::from_slice(&digest[12..])
+}
+
+/// Converts an public key, in compressed or uncompressed form to an Ethereum
+/// address
+pub fn public_key_to_address(pubkey: &VerifyingKey) -> Address {
+    let affine: &AffinePoint = pubkey.as_ref();
     let encoded = affine.to_encoded_point(false);
-    let digest: [u8; 32] = keccak256(&encoded.as_bytes()[1..]);
-    Ok(Address::from_slice(&digest[12..]))
+    raw_public_key_to_address(&encoded.as_bytes()[1..])
 }
 
 /// Converts a K256 SigningKey to an Ethereum Address
 pub fn secret_key_to_address(secret_key: &SigningKey) -> Address {
     let public_key = secret_key.verifying_key();
-    let public_key = public_key.to_encoded_point(/* compress = */ false);
-    let public_key = public_key.as_bytes();
-    public_key_to_address(public_key).unwrap()
+
+    public_key_to_address(public_key)
 }
 
 /// Encodes an Ethereum address to its [EIP-55] checksum.
@@ -1214,16 +1227,35 @@ mod tests {
     // Only tests for correctness, no edge cases. Uses examples from https://docs.ethers.org/v5/api/utils/address/#utils-computeAddress
     #[test]
     fn test_public_key_to_address() {
-        // Compressed
         let addr = "0Ac1dF02185025F65202660F8167210A80dD5086".parse::<Address>().unwrap();
-        let pubkey =
-            hex::decode("0376698beebe8ee5c74d8cc50ab84ac301ee8f10af6f28d0ffd6adf4d6d3b9b762")
-                .unwrap();
-        assert_eq!(addr, public_key_to_address::<Vec<u8>>(pubkey).unwrap());
+
+        // Compressed
+        let pubkey = VerifyingKey::from_sec1_bytes(
+            &hex::decode("0376698beebe8ee5c74d8cc50ab84ac301ee8f10af6f28d0ffd6adf4d6d3b9b762")
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(public_key_to_address(&pubkey), addr);
 
         // Uncompressed
+        let pubkey= VerifyingKey::from_sec1_bytes(&hex::decode("0476698beebe8ee5c74d8cc50ab84ac301ee8f10af6f28d0ffd6adf4d6d3b9b762d46ca56d3dad2ce13213a6f42278dabbb53259f2d92681ea6a0b98197a719be3").unwrap()).unwrap();
+        assert_eq!(public_key_to_address(&pubkey), addr);
+    }
+
+    #[test]
+    fn test_raw_public_key_to_address() {
         let addr = "0Ac1dF02185025F65202660F8167210A80dD5086".parse::<Address>().unwrap();
-        let pubkey = hex::decode("0476698beebe8ee5c74d8cc50ab84ac301ee8f10af6f28d0ffd6adf4d6d3b9b762d46ca56d3dad2ce13213a6f42278dabbb53259f2d92681ea6a0b98197a719be3").unwrap();
-        assert_eq!(addr, public_key_to_address::<Vec<u8>>(pubkey).unwrap());
+
+        let pubkey_bytes = hex::decode("76698beebe8ee5c74d8cc50ab84ac301ee8f10af6f28d0ffd6adf4d6d3b9b762d46ca56d3dad2ce13213a6f42278dabbb53259f2d92681ea6a0b98197a719be3").unwrap();
+
+        assert_eq!(raw_public_key_to_address(pubkey_bytes), addr);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_raw_public_key_to_address_panics() {
+        let fake_pkb = vec![];
+
+        raw_public_key_to_address(fake_pkb);
     }
 }
