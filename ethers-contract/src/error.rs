@@ -89,7 +89,7 @@ impl EthError for String {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "abigen"))]
 mod test {
 
     use ethers_core::types::Bytes;
