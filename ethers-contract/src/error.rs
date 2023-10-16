@@ -34,7 +34,7 @@ pub trait ContractRevert: AbiDecode + AbiEncode + Send + Sync {
         if !Self::valid_selector(selector) {
             return None
         }
-        <Self as AbiDecode>::decode(&data[4..]).ok()
+        <Self as AbiDecode>::decode(&data).ok()
     }
 
     /// `true` if the selector corresponds to an error that this contract can
