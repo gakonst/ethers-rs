@@ -32,7 +32,7 @@ http = "0.2"
 reqwest = { workspace = true, features = ["json"] }
 url.workspace = true
 base64 = "0.21"
-jsonwebtoken = "8"
+jsonwebtoken = "9"
 
 async-trait.workspace = true
 hex.workspace = true
