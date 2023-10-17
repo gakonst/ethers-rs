@@ -92,9 +92,9 @@ pub enum Chain {
 
     Metis = 1088,
 
-    #[strum(to_string = "xdai", serialize = "gnosis", serialize = "gnosis-chain")]
-    #[serde(alias = "xdai", alias = "gnosis", alias = "gnosis_chain")]
-    XDai = 100,
+    #[strum(to_string = "gnosis", serialize = "gnosis-chain")]
+    #[serde(alias = "gnosis", alias = "gnosis_chain")]
+    Gnosis = 100,
 
     Polygon = 137,
     #[strum(to_string = "mumbai", serialize = "polygon-mumbai")]
@@ -304,13 +304,12 @@ impl Chain {
             Celo | CeloAlfajores | CeloBaklava => 5_000,
             FilecoinCalibrationTestnet | FilecoinMainnet => 30_000,
             ScrollAlphaTestnet => 3_000,
+            Gnosis | Chiado => 5_000,
             // Explicitly exhaustive. See NB above.
-            Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Holesky |
-            Moonbase | MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet |
-            Boba | Base | BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm |
-            PolygonZkEvmTestnet | Metis | Linea | LineaTestnet | Mantle | MantleTestnet => {
-                return None
-            }
+            Morden | Ropsten | Rinkeby | Goerli | Kovan | Sepolia | Holesky | Moonbase |
+            MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
+            BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm | PolygonZkEvmTestnet | Metis |
+            Linea | LineaTestnet | Mantle | MantleTestnet => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -371,13 +370,15 @@ impl Chain {
             FilecoinMainnet |
             Linea |
             LineaTestnet |
-            FilecoinCalibrationTestnet => false,
+            FilecoinCalibrationTestnet |
+            Gnosis |
+            Chiado => false,
 
             // Unknown / not applicable, default to false for backwards compatibility
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
-            Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
-            EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet |
-            ScrollAlphaTestnet | Metis => false,
+            Sokol | Poa | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
+            EvmosTestnet | Aurora | AuroraTestnet | Canto | CantoTestnet | ScrollAlphaTestnet |
+            Metis => false,
         }
     }
 
@@ -387,7 +388,7 @@ impl Chain {
     /// `<https://eips.ethereum.org/EIPS/eip-3855>`
     pub const fn supports_push0(&self) -> bool {
         match self {
-            Chain::Mainnet | Chain::Goerli | Chain::Sepolia => true,
+            Chain::Mainnet | Chain::Goerli | Chain::Sepolia | Chain::Gnosis | Chain::Chiado => true,
             _ => false,
         }
     }
@@ -477,10 +478,7 @@ impl Chain {
             Moonbase => ("https://api-moonbase.moonscan.io/api", "https://moonbase.moonscan.io/"),
             Moonriver => ("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io"),
 
-            // blockscout API is etherscan compatible
-            XDai => {
-                ("https://blockscout.com/xdai/mainnet/api", "https://blockscout.com/xdai/mainnet")
-            }
+            Gnosis => ("https://api.gnosisscan.io/api", "https://gnosisscan.io"),
 
             ScrollAlphaTestnet => {
                 ("https://blockscout.scroll.io/api", "https://blockscout.scroll.io/")
@@ -610,7 +608,8 @@ impl Chain {
             Linea |
             Mantle |
             MantleTestnet |
-            BaseGoerli => "ETHERSCAN_API_KEY",
+            BaseGoerli |
+            Gnosis => "ETHERSCAN_API_KEY",
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
@@ -625,7 +624,6 @@ impl Chain {
             Boba => "BOBASCAN_API_KEY",
 
             // Explicitly exhaustive. See NB above.
-            XDai |
             ScrollAlphaTestnet |
             Metis |
             Chiado |
@@ -712,7 +710,7 @@ mod tests {
             (Mainnet, &["ethlive"]),
             (BinanceSmartChain, &["bsc", "binance-smart-chain"]),
             (BinanceSmartChainTestnet, &["bsc-testnet", "binance-smart-chain-testnet"]),
-            (XDai, &["xdai", "gnosis", "gnosis-chain"]),
+            (Gnosis, &["gnosis", "gnosis-chain"]),
             (PolygonMumbai, &["mumbai"]),
             (PolygonZkEvm, &["zkevm", "polygon-zkevm"]),
             (PolygonZkEvmTestnet, &["zkevm-testnet", "polygon-zkevm-testnet"]),

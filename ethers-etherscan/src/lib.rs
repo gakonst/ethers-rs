@@ -92,7 +92,6 @@ impl Client {
                 .map_err(Into::into),
 
             // Backwards compatibility, ideally these should return an error.
-            Chain::XDai |
             Chain::Chiado |
             Chain::Sepolia |
             Chain::Rsk |
