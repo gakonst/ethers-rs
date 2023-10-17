@@ -92,8 +92,8 @@ pub enum Chain {
 
     Metis = 1088,
 
-    #[strum(to_string = "gnosis", serialize = "gnosis-chain")]
-    #[serde(alias = "gnosis", alias = "gnosis_chain")]
+    #[strum(to_string = "xdai", serialize = "gnosis", serialize = "gnosis-chain")]
+    #[serde(alias = "xdai", alias = "gnosis", alias = "gnosis_chain")]
     Gnosis = 100,
 
     Polygon = 137,
