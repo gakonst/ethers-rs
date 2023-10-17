@@ -38,7 +38,10 @@ pub trait ContractRevert: AbiDecode + AbiEncode + Send + Sync {
         if selector == String::selector() {
             <Self as AbiDecode>::decode(&data[4..]).ok()
         } else {
-            <Self as AbiDecode>::decode(data).ok()
+            // Try with and without a prefix, just in case.
+            <Self as AbiDecode>::decode(data)
+                .or_else(|_| <Self as AbiDecode>::decode(&data[4..]))
+                .ok()
         }
     }
 
