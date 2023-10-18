@@ -317,6 +317,21 @@ pub struct MinedBlock {
     pub block_reward: String,
 }
 
+/// The raw response from the beacon wihtdrawal transaction list API endpoint
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BeaconWithdrawalTransaction {
+    #[serde(deserialize_with = "deserialize_stringified_block_number")]
+    pub block_number: BlockNumber,
+    pub timestamp: String,
+    #[serde(deserialize_with = "deserialize_stringified_u64")]
+    pub withdrawal_index: u64,
+    #[serde(deserialize_with = "deserialize_stringified_u64")]
+    pub validator_index: u64,
+    pub address: Address,
+    pub amount: String,
+}
+
 /// The pre-defined block parameter for balance API endpoints
 #[derive(Clone, Copy, Debug, Default)]
 pub enum Tag {
@@ -670,6 +685,30 @@ impl Client {
         }
         let query = self.create_query("account", "getminedblocks", params);
         let response: Response<Vec<MinedBlock>> = self.get_json(&query).await?;
+
+        Ok(response.result)
+    }
+
+    /// Returns the list of beacon withdrawal transactions performed by an address, with optional
+    /// pagination.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn foo(client: ethers_etherscan::Client) -> Result<(), Box<dyn std::error::Error>> {
+    /// let address = "0xB9D7934878B5FB9610B3fE8A5e441e8fad7E293f".parse()?;
+    /// let beacon_withdrawal_transactions = client.get_beacon_withdrawal_transactions(&address, None).await?;
+    /// # Ok(()) }
+    /// ```
+    pub async fn get_beacon_withdrawal_transactions(
+        &self,
+        address: &Address,
+        params: Option<TxListParams>,
+    ) -> Result<Vec<BeaconWithdrawalTransaction>> {
+        let mut tx_params: HashMap<&str, String> = params.unwrap_or_default().into();
+        tx_params.insert("address", format!("{address:?}"));
+        let query = self.create_query("account", "txsBeaconWithdrawal", tx_params);
+        let response: Response<Vec<BeaconWithdrawalTransaction>> = self.get_json(&query).await?;
 
         Ok(response.result)
     }
