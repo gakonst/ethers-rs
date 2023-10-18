@@ -420,4 +420,13 @@ mod tests {
         let out = gen.tokens.to_string();
         assert!(out.contains("pub struct Stuff"));
     }
+
+    #[test]
+    fn can_generate_constructor_params() {
+        let contract = include_str!("../../tests/solidity-contracts/StructConstructor.json");
+        let abigen = Abigen::new("MyContract", contract).unwrap();
+        let gen = abigen.generate().unwrap();
+        let out = gen.tokens.to_string();
+        assert!(out.contains("pub struct ConstructorParams"));
+    }
 }
