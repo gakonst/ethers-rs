@@ -199,7 +199,6 @@ fn normalize_recovery_id(v: u64) -> u8 {
         // Case 2: non-eip155 v value
         v @ 27..=34 => ((v - 27) % 4) as u8,
         // Case 3: eip155 V value
-        //   By EIP-155 convention,
         v @ 35.. => ((v - 1) % 2) as _,
     }
 }
