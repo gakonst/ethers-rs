@@ -51,7 +51,7 @@ impl DepositTransaction {
         rlp.append(&self.source_hash.unwrap_or_default());
         rlp.append(&self.tx.from.unwrap_or_default());
         rlp_opt(&mut rlp, &self.tx.to);
-        rlp.append(&self.mint.unwrap_or_default());
+        rlp_opt(&mut rlp, &self.mint);
         rlp.append(&self.tx.value.unwrap_or_default());
         rlp.append(&self.tx.gas.unwrap_or_default().as_u64());
         rlp.append(&self.is_system_tx.unwrap_or_default());
