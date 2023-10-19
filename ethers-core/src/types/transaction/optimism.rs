@@ -154,9 +154,9 @@ mod test {
                 nonce: None,
                 chain_id: None,
             },
-            source_hash: Some(source_hash.into()),
+            source_hash: source_hash.into(),
             mint: Some(value),
-            is_system_tx: Some(false),
+            is_system_tx: false,
         }
     }
 
@@ -202,9 +202,9 @@ mod test {
             v: U64::zero(),
             r: U256::zero(),
             s: U256::zero(),
-            source_hash: Some(H256::from_str("0xa8157ccf61bcdfbcb74a84ec1262e62644dd1e7e3614abcbd8db0c99a60049fc").unwrap()),
+            source_hash: H256::from_str("0xa8157ccf61bcdfbcb74a84ec1262e62644dd1e7e3614abcbd8db0c99a60049fc").unwrap(),
             mint: Some(0.into()),
-            is_system_tx: None,
+            is_system_tx: false,
             transaction_type: Some(U64::from(0x7E)),
             access_list: None,
             max_priority_fee_per_gas: None,
