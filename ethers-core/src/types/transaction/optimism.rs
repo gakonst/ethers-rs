@@ -163,10 +163,18 @@ mod test {
     }
 
     #[test]
-    fn test_rlp_encode_deposit_transaction_go_conformance() {
+    fn test_rlp_encode_deposit_transaction_no_data_go_conformance() {
         // result generated from op-geth
         let expected = hex::decode("f860a07113be8bbb6ff4bb99fae05639cf76cdecf5a1afbc033b9a01d8bb16b00b9a8094a0ee7a142d267c1f36714e4a8f75612f20a7972094a0ee7a142d267c1f36714e4a8f75612f20a79720872386f26fc10000872386f26fc100008252088080").unwrap();
         assert_eq!(get_test_deposit_transaction().rlp(), expected);
+    }
+
+    #[test]
+    fn test_rlp_encode_deposit_transaction_with_data_go_conformance() {
+        let expected = hex::decode("f86ba07113be8bbb6ff4bb99fae05639cf76cdecf5a1afbc033b9a01d8bb16b00b9a8094a0ee7a142d267c1f36714e4a8f75612f20a7972094a0ee7a142d267c1f36714e4a8f75612f20a79720872386f26fc10000872386f26fc10000825208808b6e6f6f7477617368657265").unwrap();
+        let mut tx = get_test_deposit_transaction();
+        tx.tx.data = Some(Bytes::from(b"nootwashere".to_vec()));
+        assert_eq!(tx.rlp(), expected);
     }
 
     #[test]
