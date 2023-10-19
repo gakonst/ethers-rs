@@ -48,14 +48,14 @@ impl DepositTransaction {
         let mut rlp = RlpStream::new();
         rlp.begin_list(NUM_TX_FIELDS);
 
-        rlp_opt(&mut rlp, &self.source_hash);
-        rlp.append(&self.tx.from);
+        rlp.append(&self.source_hash.unwrap_or_default());
+        rlp.append(&self.tx.from.unwrap_or_default());
         rlp_opt(&mut rlp, &self.tx.to);
-        rlp_opt(&mut rlp, &self.mint);
-        rlp.append(&self.tx.value);
-        rlp.append(&self.tx.gas);
-        rlp_opt(&mut rlp, &self.is_system_tx);
-        rlp_opt(&mut rlp, &self.tx.data.as_deref());
+        rlp.append(&self.mint.unwrap_or_default());
+        rlp.append(&self.tx.value.unwrap_or_default());
+        rlp.append(&self.tx.gas.unwrap_or_default().as_u64());
+        rlp.append(&self.is_system_tx.unwrap_or_default());
+        rlp.append(&self.tx.data.as_deref().unwrap_or_default());
 
         rlp.out().freeze().into()
     }
@@ -122,13 +122,60 @@ impl From<&Transaction> for DepositTransaction {
 #[cfg(not(feature = "celo"))]
 #[cfg(test)]
 mod test {
+    use super::DepositTransaction;
 
     use crate::types::{
-        transaction::eip2718::TypedTransaction, Address, Bytes, NameOrAddress, Transaction, H256,
-        U256, U64,
+        transaction::eip2718::TypedTransaction, Address, Bytes, NameOrAddress, Transaction,
+        TransactionRequest, H256, U256, U64,
     };
     use rlp::Decodable;
     use std::str::FromStr;
+
+    fn get_test_deposit_transaction() -> DepositTransaction {
+        let from: Address = TryInto::<[u8; 20]>::try_into(
+            hex::decode("a0Ee7A142d267C1f36714E4a8F75612F20a79720").unwrap(),
+        )
+        .unwrap()
+        .try_into()
+        .unwrap();
+        let to: Option<Address> = Some(from.into());
+        let value: U256 = 10_000_000_000_000_000u64.into();
+        let source_hash: [u8; 32] =
+            hex::decode("7113be8bbb6ff4bb99fae05639cf76cdecf5a1afbc033b9a01d8bb16b00b9a80")
+                .unwrap()
+                .try_into()
+                .unwrap();
+        DepositTransaction {
+            tx: TransactionRequest {
+                from: Some(from.into()),
+                to: to.map(std::convert::Into::into),
+                gas: Some(21000.into()),
+                gas_price: None,
+                value: Some(value),
+                data: None,
+                nonce: None,
+                chain_id: None,
+            },
+            source_hash: Some(source_hash.into()),
+            mint: Some(value),
+            is_system_tx: Some(false),
+        }
+    }
+
+    #[test]
+    fn test_rlp_encode_deposit_transaction_go_conformance() {
+        // result generated from op-geth
+        let expected = hex::decode("f860a07113be8bbb6ff4bb99fae05639cf76cdecf5a1afbc033b9a01d8bb16b00b9a8094a0ee7a142d267c1f36714e4a8f75612f20a7972094a0ee7a142d267c1f36714e4a8f75612f20a79720872386f26fc10000872386f26fc100008252088080").unwrap();
+        assert_eq!(get_test_deposit_transaction().rlp(), expected);
+    }
+
+    #[test]
+    fn test_rlp_decode_deposit_transaction_go_conformance() {
+        let encoded_tx = hex::decode("f860a07113be8bbb6ff4bb99fae05639cf76cdecf5a1afbc033b9a01d8bb16b00b9a8094a0ee7a142d267c1f36714e4a8f75612f20a7972094a0ee7a142d267c1f36714e4a8f75612f20a79720872386f26fc10000872386f26fc100008252088080").unwrap();
+        let rlp = rlp::Rlp::new(&encoded_tx);
+        let (decoded, _) = DepositTransaction::decode_signed_rlp(&rlp).unwrap();
+        assert_eq!(get_test_deposit_transaction(), decoded);
+    }
 
     #[test]
     fn test_rlp_encode_deposited_tx() {
