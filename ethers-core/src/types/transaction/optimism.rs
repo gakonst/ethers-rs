@@ -138,7 +138,6 @@ mod test {
         .unwrap()
         .try_into()
         .unwrap();
-        let to: Option<Address> = Some(from.into());
         let value: U256 = 10_000_000_000_000_000u64.into();
         let source_hash: [u8; 32] =
             hex::decode("7113be8bbb6ff4bb99fae05639cf76cdecf5a1afbc033b9a01d8bb16b00b9a80")
@@ -148,7 +147,7 @@ mod test {
         DepositTransaction {
             tx: TransactionRequest {
                 from: Some(from.into()),
-                to: to.map(std::convert::Into::into),
+                to: Some(from.into()),
                 gas: Some(21000.into()),
                 gas_price: None,
                 value: Some(value),
