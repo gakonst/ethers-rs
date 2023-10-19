@@ -21,8 +21,8 @@ pub struct DepositTransaction {
     pub tx: TransactionRequest,
 
     /// The source hash which uniquely identifies the origin of the deposit
-    #[serde(rename = "sourceHash", skip_serializing_if = "Option::is_none")]
-    pub source_hash: Option<H256>,
+    #[serde(rename = "sourceHash")]
+    pub source_hash: H256,
 
     /// The ETH value to mint on L2
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -30,16 +30,15 @@ pub struct DepositTransaction {
 
     /// If true, the transaction does not interact with the L2 block gas pool.
     /// Note: boolean is disabled (enforced to be false) starting from the Regolith upgrade.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub is_system_tx: Option<bool>,
+    pub is_system_tx: bool,
 }
 
 impl DepositTransaction {
     pub fn new(
         tx: TransactionRequest,
-        source_hash: Option<H256>,
+        source_hash: H256,
         mint: Option<U256>,
-        is_system_tx: Option<bool>,
+        is_system_tx: bool,
     ) -> Self {
         Self { tx, source_hash, mint, is_system_tx }
     }
@@ -48,13 +47,13 @@ impl DepositTransaction {
         let mut rlp = RlpStream::new();
         rlp.begin_list(NUM_TX_FIELDS);
 
-        rlp.append(&self.source_hash.unwrap_or_default());
+        rlp.append(&self.source_hash);
         rlp.append(&self.tx.from.unwrap_or_default());
         rlp_opt(&mut rlp, &self.tx.to);
         rlp_opt(&mut rlp, &self.mint);
         rlp.append(&self.tx.value.unwrap_or_default());
         rlp.append(&self.tx.gas.unwrap_or_default().as_u64());
-        rlp.append(&self.is_system_tx.unwrap_or_default());
+        rlp.append(&self.is_system_tx);
         rlp.append(&self.tx.data.as_deref().unwrap_or_default());
 
         rlp.out().freeze().into()
@@ -64,7 +63,7 @@ impl DepositTransaction {
     fn decode_base_rlp(rlp: &rlp::Rlp, offset: &mut usize) -> Result<Self, rlp::DecoderError> {
         let mut tx = TransactionRequest::new();
 
-        let source_hash: Option<H256> = Some(rlp.val_at(*offset)?);
+        let source_hash: H256 = rlp.val_at(*offset)?;
         *offset += 1;
         tx.from = Some(rlp.val_at(*offset)?);
         *offset += 1;
@@ -76,7 +75,7 @@ impl DepositTransaction {
         *offset += 1;
         tx.gas = Some(rlp.val_at(*offset)?);
         *offset += 1;
-        let is_system_tx: Option<bool> = Some(rlp.val_at(*offset)?);
+        let is_system_tx: bool = rlp.val_at(*offset)?;
         *offset += 1;
         let data = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
         tx.data = match data.len() {
