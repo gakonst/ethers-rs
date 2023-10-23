@@ -2033,7 +2033,7 @@ mod tests {
         // check that the second peer is in the list (it uses an enr so the enr should be Some)
         assert_eq!(peers.len(), 1);
 
-        let peer = peers.get(0).unwrap();
+        let peer = peers.first().unwrap();
         assert_eq!(H256::from_str(&peer.id).unwrap(), second_info.id);
 
         // remove directories
