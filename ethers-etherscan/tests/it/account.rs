@@ -95,7 +95,7 @@ async fn get_erc20_transfer_events_success() {
             )
             .await
             .unwrap();
-        let tx = txs.get(0).unwrap();
+        let tx = txs.first().unwrap();
         assert_eq!(tx.gas_used, 93657u64.into());
         assert_eq!(tx.nonce, 10u64.into());
         assert_eq!(tx.block_number, 2228258u64.into());

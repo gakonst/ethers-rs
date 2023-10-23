@@ -148,7 +148,7 @@ impl<T: ArtifactOutput> TempProject<T> {
     fn get_lib(&self) -> Result<PathBuf> {
         self.paths()
             .libraries
-            .get(0)
+            .first()
             .cloned()
             .ok_or_else(|| SolcError::msg("No libraries folders configured"))
     }

@@ -73,7 +73,7 @@ impl MockProjectGenerator {
         // stores libs and their files
         let libs = get_libs(
             &edges,
-            &paths.libraries.get(0).cloned().unwrap_or_else(|| paths.root.join("lib")),
+            &paths.libraries.first().cloned().unwrap_or_else(|| paths.root.join("lib")),
         )
         .ok_or_else(|| SolcError::msg("Failed to detect libs"))?;
 

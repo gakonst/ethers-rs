@@ -367,7 +367,7 @@ impl<T> Artifacts<T> {
     pub fn find_first(&self, contract_name: impl AsRef<str>) -> Option<&T> {
         let contract_name = contract_name.as_ref();
         self.0.iter().find_map(|(_file, contracts)| {
-            contracts.get(contract_name).and_then(|c| c.get(0).map(|a| &a.artifact))
+            contracts.get(contract_name).and_then(|c| c.first().map(|a| &a.artifact))
         })
     }
 
@@ -377,7 +377,7 @@ impl<T> Artifacts<T> {
         let contract_name = contract.as_ref();
         self.0.iter().filter(|(path, _)| path.as_str() == contract_path).find_map(
             |(_file, contracts)| {
-                contracts.get(contract_name).and_then(|c| c.get(0).map(|a| &a.artifact))
+                contracts.get(contract_name).and_then(|c| c.first().map(|a| &a.artifact))
             },
         )
     }
