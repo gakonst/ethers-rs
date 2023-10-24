@@ -15,8 +15,6 @@ use crate::{
 use crate::{HttpRateLimitRetryPolicy, RetryClient};
 use std::net::Ipv4Addr;
 
-#[cfg(feature = "celo")]
-pub use crate::CeloMiddleware;
 pub use crate::Middleware;
 
 use async_trait::async_trait;
@@ -1717,7 +1715,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(feature = "celo", ignore)]
+    #[ignore]
     async fn debug_trace_block() {
         let provider = Provider::<Http>::try_from("https://eth.llamarpc.com").unwrap();
 

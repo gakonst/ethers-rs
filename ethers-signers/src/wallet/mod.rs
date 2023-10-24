@@ -1,5 +1,5 @@
 mod mnemonic;
-pub use mnemonic::{MnemonicBuilder, MnemonicBuilderError};
+pub use mnemonic::MnemonicBuilder;
 
 mod private_key;
 pub use private_key::WalletError;
