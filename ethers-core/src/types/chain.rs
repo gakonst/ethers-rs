@@ -88,6 +88,7 @@ pub enum Chain {
     Poa = 99,
     Sokol = 77,
 
+    Scroll = 534352,
     ScrollAlphaTestnet = 534353,
 
     Metis = 1088,
@@ -303,7 +304,7 @@ impl Chain {
             Dev | AnvilHardhat => 200,
             Celo | CeloAlfajores | CeloBaklava => 5_000,
             FilecoinCalibrationTestnet | FilecoinMainnet => 30_000,
-            ScrollAlphaTestnet => 3_000,
+            Scroll | ScrollAlphaTestnet => 3_000,
             Gnosis | Chiado => 5_000,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | Sepolia | Holesky | Moonbase |
@@ -349,7 +350,8 @@ impl Chain {
             Mantle |
             MantleTestnet |
             PolygonZkEvm |
-            PolygonZkEvmTestnet => true,
+            PolygonZkEvmTestnet |
+            Scroll => true,
 
             // Known EIP-1559 chains
             Mainnet |
@@ -480,6 +482,7 @@ impl Chain {
 
             Gnosis => ("https://api.gnosisscan.io/api", "https://gnosisscan.io"),
 
+            Scroll => ("https://scrollscan.com/api", "https://scrollscan.com"),
             ScrollAlphaTestnet => {
                 ("https://blockscout.scroll.io/api", "https://blockscout.scroll.io/")
             }
@@ -609,7 +612,8 @@ impl Chain {
             Mantle |
             MantleTestnet |
             BaseGoerli |
-            Gnosis => "ETHERSCAN_API_KEY",
+            Gnosis |
+            Scroll => "ETHERSCAN_API_KEY",
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
