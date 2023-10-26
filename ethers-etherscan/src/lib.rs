@@ -28,6 +28,7 @@ pub mod contract;
 pub mod errors;
 pub mod gas;
 pub mod source_tree;
+pub mod stats;
 mod transaction;
 pub mod utils;
 pub mod verify;
