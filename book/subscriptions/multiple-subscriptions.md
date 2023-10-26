@@ -1,4 +1,4 @@
-# Mulitple Multiple Subscriptions
+# Multiple Subscriptions
 
 You may need to handle multiple subscriptions simultaneously in your application. To manage multiple SubscriptionStreams, you can use the futures crate to efficiently process updates from all streams concurrently:
 

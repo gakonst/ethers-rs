@@ -68,7 +68,7 @@ async fn example() -> Result<()> {
     println!("Approving the transaction!");
     let receipt =
         pair.approve(router.address(), liquidity).send().await?.await?.expect("no receipt found");
-    println!("contract approved succesfully!");
+    println!("contract approved successfully!");
     println!("{receipt:?}");
 
     println!("Removing {liquidity} liquidity!");
@@ -90,7 +90,7 @@ async fn example() -> Result<()> {
         .await?
         .await?
         .expect("no receipt for remove_liquidity");
-    println!("liquidity removed succesfully!");
+    println!("liquidity removed successfully!");
     println!("{receipt:?}");
 
     Ok(())

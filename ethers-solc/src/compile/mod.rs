@@ -148,7 +148,7 @@ pub struct Solc {
     pub solc: PathBuf,
     /// The base path to set when invoking solc, see also <https://docs.soliditylang.org/en/v0.8.11/path-resolution.html#base-path-and-include-paths>
     pub base_path: Option<PathBuf>,
-    /// Additional arguments passed to the `solc` exectuable
+    /// Additional arguments passed to the `solc` executable
     pub args: Vec<String>,
 }
 
