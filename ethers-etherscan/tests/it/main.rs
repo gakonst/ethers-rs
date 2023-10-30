@@ -13,6 +13,7 @@ mod account;
 mod blocks;
 mod contract;
 mod gas;
+mod stats;
 mod transaction;
 mod verify;
 mod version;

@@ -15,6 +15,8 @@ pub enum EtherscanError {
     TransactionReceiptFailed,
     #[error("Gas estimation failed")]
     GasEstimationFailed,
+    #[error("Eth supply failed")]
+    EthSupplyFailed,
     #[error("Bad status code: {0}")]
     BadStatusCode(String),
     #[error(transparent)]
