@@ -71,6 +71,7 @@ pub enum Chain {
     Arbitrum = 42161,
     ArbitrumTestnet = 421611,
     ArbitrumGoerli = 421613,
+    ArbitrumSepolia = 421614,
     ArbitrumNova = 42170,
 
     Cronos = 25,
@@ -289,7 +290,7 @@ impl Chain {
 
         let ms = match self {
             Mainnet => 12_000,
-            Arbitrum | ArbitrumTestnet | ArbitrumGoerli | ArbitrumNova => 1_300,
+            Arbitrum | ArbitrumTestnet | ArbitrumGoerli | ArbitrumSepolia | ArbitrumNova => 1_300,
             Optimism | OptimismGoerli => 2_000,
             Polygon | PolygonMumbai => 2_100,
             Moonbeam | Moonriver => 12_500,
@@ -368,6 +369,7 @@ impl Chain {
             AvalancheFuji |
             Arbitrum |
             ArbitrumGoerli |
+            ArbitrumSepolia |
             ArbitrumNova |
             FilecoinMainnet |
             Linea |
@@ -469,6 +471,9 @@ impl Chain {
                 ("https://api-testnet.arbiscan.io/api", "https://testnet.arbiscan.io")
             }
             ArbitrumGoerli => ("https://api-goerli.arbiscan.io/api", "https://goerli.arbiscan.io"),
+            ArbitrumSepolia => {
+                ("https://api-sepolia.arbiscan.io/api", "https://sepolia.arbiscan.io")
+            }
             ArbitrumNova => ("https://api-nova.arbiscan.io/api", "https://nova.arbiscan.io/"),
 
             Cronos => ("https://api.cronoscan.com/api", "https://cronoscan.com"),
@@ -599,6 +604,7 @@ impl Chain {
             Arbitrum |
             ArbitrumTestnet |
             ArbitrumGoerli |
+            ArbitrumSepolia |
             ArbitrumNova |
             Cronos |
             CronosTestnet |
