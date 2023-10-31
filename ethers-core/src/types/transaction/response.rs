@@ -418,7 +418,7 @@ impl Decodable for Transaction {
             txn.chain_id = extract_chain_id(sig.v).map(|id| id.as_u64().into());
         } else {
             // if it is not enveloped then we need to use rlp.as_raw instead of rlp.data
-            let first_byte = rlp.as_raw()[0];
+            let first_byte = *rlp.as_raw().first().ok_or(DecoderError::Custom("empty slice"))?;
             let (first, data) = if first_byte <= 0x7f {
                 (first_byte, rlp.as_raw())
             } else {
