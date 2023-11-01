@@ -487,7 +487,7 @@ impl Chain {
 
             Gnosis => ("https://api.gnosisscan.io/api", "https://gnosisscan.io"),
 
-            Scroll => ("https://scrollscan.com/api", "https://scrollscan.com"),
+            Scroll => ("https://api.scrollscan.com", "https://scrollscan.com"),
             ScrollAlphaTestnet => {
                 ("https://blockscout.scroll.io/api", "https://blockscout.scroll.io/")
             }
