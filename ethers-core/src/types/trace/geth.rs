@@ -28,7 +28,8 @@ pub struct DefaultFrame {
     pub struct_logs: Vec<StructLog>,
 }
 
-// https://github.com/ethereum/go-ethereum/blob/e91cdb49beb4b2a3872b5f2548bf2d6559e4f561/eth/tracers/logger/logger.go#L65#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+// https://github.com/ethereum/go-ethereum/blob/e91cdb49beb4b2a3872b5f2548bf2d6559e4f561/eth/tracers/logger/logger.go#L65
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StructLog {
     pub depth: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
