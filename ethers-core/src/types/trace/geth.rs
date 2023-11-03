@@ -49,7 +49,7 @@ pub struct StructLog {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub storage: Option<BTreeMap<H256, H256>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub mem_size: Option<i32>,
+    pub mem_size: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub return_data: Option<String>,
 }
