@@ -39,7 +39,7 @@ rand.workspace = true
 # misc
 chrono.workspace = true
 serde.workspace = true
-serde_json = { workspace = true, features = ["arbitrary_precision"] }
+serde_json.workspace = true
 thiserror.workspace = true
 bytes = { workspace = true, features = ["serde"] }
 hex.workspace = true

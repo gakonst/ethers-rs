@@ -8,7 +8,7 @@ use std::{
 };
 
 /// Helper type to parse both `u64` and `U256`
-#[derive(Copy, Clone, Deserialize)]
+#[derive(Debug, Copy, Clone, Deserialize)]
 #[serde(untagged)]
 pub enum Numeric {
     U256(U256),
@@ -43,7 +43,7 @@ impl FromStr for Numeric {
 #[serde(untagged)]
 pub enum StringifiedNumeric {
     String(String),
-    U256(U256),
+    U256(Numeric),
     Num(serde_json::Number),
 }
 
@@ -52,7 +52,7 @@ impl TryFrom<StringifiedNumeric> for U256 {
 
     fn try_from(value: StringifiedNumeric) -> Result<Self, Self::Error> {
         match value {
-            StringifiedNumeric::U256(n) => Ok(n),
+            StringifiedNumeric::U256(n) => Ok(n.into()),
             StringifiedNumeric::Num(n) => {
                 Ok(U256::from_dec_str(&n.to_string()).map_err(|err| err.to_string())?)
             }
