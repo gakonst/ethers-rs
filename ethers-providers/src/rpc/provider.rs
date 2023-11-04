@@ -15,8 +15,6 @@ use crate::{
 use crate::{HttpRateLimitRetryPolicy, RetryClient};
 use std::net::Ipv4Addr;
 
-#[cfg(feature = "celo")]
-pub use crate::CeloMiddleware;
 pub use crate::Middleware;
 
 use async_trait::async_trait;
@@ -598,7 +596,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         _tx: &TypedTransaction,
         _from: Address,
     ) -> Result<Signature, Self::Error> {
-        Err(ProviderError::SignerUnavailable).map_err(MiddlewareError::from_err)
+        Err(MiddlewareError::from_err(ProviderError::SignerUnavailable))
     }
 
     ////// Contract state
@@ -1501,6 +1499,7 @@ impl ProviderExt for Provider<HttpProvider> {
 /// ```
 /// use ethers_providers::is_local_endpoint;
 /// assert!(is_local_endpoint("http://localhost:8545"));
+/// assert!(is_local_endpoint("http://test.localdev.me"));
 /// assert!(is_local_endpoint("http://169.254.0.0:8545"));
 /// assert!(is_local_endpoint("http://127.0.0.1:8545"));
 /// assert!(!is_local_endpoint("http://206.71.50.230:8545"));
@@ -1513,7 +1512,9 @@ pub fn is_local_endpoint(endpoint: &str) -> bool {
     if let Ok(url) = Url::parse(endpoint) {
         if let Some(host) = url.host() {
             match host {
-                Host::Domain(domain) => return domain.contains("localhost"),
+                Host::Domain(domain) => {
+                    return domain.contains("localhost") || domain.contains("localdev.me")
+                }
                 Host::Ipv4(ipv4) => {
                     return ipv4 == Ipv4Addr::LOCALHOST ||
                         ipv4.is_link_local() ||
@@ -1714,7 +1715,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(feature = "celo", ignore)]
+    #[ignore]
     async fn debug_trace_block() {
         let provider = Provider::<Http>::try_from("https://eth.llamarpc.com").unwrap();
 
@@ -2030,7 +2031,7 @@ mod tests {
         // check that the second peer is in the list (it uses an enr so the enr should be Some)
         assert_eq!(peers.len(), 1);
 
-        let peer = peers.get(0).unwrap();
+        let peer = peers.first().unwrap();
         assert_eq!(H256::from_str(&peer.id).unwrap(), second_info.id);
 
         // remove directories

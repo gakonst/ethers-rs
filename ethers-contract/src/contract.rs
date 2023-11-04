@@ -125,7 +125,7 @@ pub type Contract<M> = ContractInstance<std::sync::Arc<M>, M>;
 /// use ethers_core::abi::{Detokenize, Token, InvalidOutputType};
 /// # // this is a fake address used just for this example
 /// # let address = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse::<Address>()?;
-/// # let abi: Abi = serde_json::from_str(r#"[]"#)?;
+/// # let abi: Abi = serde_json::from_str("[]")?;
 /// # let client = Provider::<Http>::try_from("http://localhost:8545").unwrap();
 /// # let contract = Contract::new(address, abi, Arc::new(client));
 ///

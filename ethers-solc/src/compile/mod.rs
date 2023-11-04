@@ -148,7 +148,7 @@ pub struct Solc {
     pub solc: PathBuf,
     /// The base path to set when invoking solc, see also <https://docs.soliditylang.org/en/v0.8.11/path-resolution.html#base-path-and-include-paths>
     pub base_path: Option<PathBuf>,
-    /// Additional arguments passed to the `solc` exectuable
+    /// Additional arguments passed to the `solc` executable
     pub args: Vec<String>,
 }
 
@@ -874,7 +874,7 @@ mod tests {
             (">=0.4.0 <0.5.0", "0.4.26"),
             // latest - this has to be updated every time a new version is released.
             // Requires the SVM version list to be updated as well.
-            (">=0.5.0", "0.8.21"),
+            (">=0.5.0", "0.8.22"),
         ] {
             let source = source(pragma);
             let res = Solc::detect_version(&source).unwrap();

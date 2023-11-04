@@ -178,14 +178,28 @@ impl open_fastrlp::Encodable for Signature {
     }
 }
 
+/// Normalize a V value, respecting raw, legacy, and EIP-155 values.
+///
+/// This function covers the entire u64 range, producing v-values as follows:
+/// - 0-26 - raw/bare. 0-3 are legal. In order to ensure that all values are covered, we also handle
+///   4-26 here by returning v % 4.
+/// - 27-34 - legacy. 27-30 are legal. By legacy bitcoin convention range 27-30 signals uncompressed
+///   pubkeys, while 31-34 signals compressed pubkeys. We do not respect the compression convention.
+///   All Ethereum keys are uncompressed.
+/// - 35+ - EIP-155. By EIP-155 convention, `v = 35 + CHAIN_ID * 2 + 0/1` We return (v-1 % 2) here.
+///
+/// NB: raw and legacy support values 2, and 3, while EIP-155 does not.
+/// Recovery values of 2 and 3 are unlikely to occur in practice. In the vanishingly unlikely event
+/// that you encounter an EIP-155 signature with a recovery value of 2 or 3, you should normalize
+/// out of band.
 fn normalize_recovery_id(v: u64) -> u8 {
     match v {
-        0 => 0,
-        1 => 1,
-        27 => 0,
-        28 => 1,
-        v if v >= 35 => ((v - 1) % 2) as _,
-        _ => 4,
+        // Case 0: raw/bare
+        v @ 0..=26 => (v % 4) as u8,
+        // Case 2: non-eip155 v value
+        v @ 27..=34 => ((v - 27) % 4) as u8,
+        // Case 3: eip155 V value
+        v @ 35.. => ((v - 1) % 2) as _,
     }
 }
 

@@ -144,7 +144,11 @@ impl MultiAbigen {
     /// Build the contract bindings and prepare for writing
     pub fn build(self) -> Result<MultiBindings> {
         let format = self.abigens.iter().any(|gen| gen.format);
-        Ok(MultiBindings { expansion: MultiExpansion::from_abigen(self.abigens)?.expand(), format })
+        Ok(MultiBindings {
+            expansion: MultiExpansion::from_abigen(self.abigens)?.expand(),
+            format,
+            dependencies: vec![],
+        })
     }
 }
 
@@ -299,7 +303,12 @@ impl MultiExpansionResult {
     }
 
     /// Converts this result into [`MultiBindingsInner`]
-    fn into_bindings(mut self, single_file: bool, format: bool) -> MultiBindingsInner {
+    fn into_bindings(
+        mut self,
+        single_file: bool,
+        format: bool,
+        dependencies: Vec<String>,
+    ) -> MultiBindingsInner {
         self.set_shared_import_path(single_file);
         let Self { contracts, shared_types, root, .. } = self;
         let bindings = contracts
@@ -333,7 +342,7 @@ impl MultiExpansionResult {
             None
         };
 
-        MultiBindingsInner { root, bindings, shared_types }
+        MultiBindingsInner { root, bindings, shared_types, dependencies }
     }
 }
 
@@ -366,6 +375,7 @@ impl MultiExpansionResult {
 pub struct MultiBindings {
     expansion: MultiExpansionResult,
     format: bool,
+    dependencies: Vec<String>,
 }
 
 impl MultiBindings {
@@ -396,8 +406,19 @@ impl MultiBindings {
         self
     }
 
+    /// Specify a set of dependencies to use for the generated crate.
+    ///
+    /// By default, this is empty and only the `ethers` dependency is added.
+    pub fn dependencies(
+        mut self,
+        dependencies: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
+        self.dependencies = dependencies.into_iter().map(|dep| dep.into()).collect();
+        self
+    }
+
     fn into_inner(self, single_file: bool) -> MultiBindingsInner {
-        self.expansion.into_bindings(single_file, self.format)
+        self.expansion.into_bindings(single_file, self.format, self.dependencies)
     }
 
     /// Generates all the bindings and writes them to the given module
@@ -581,6 +602,9 @@ struct MultiBindingsInner {
     bindings: BTreeMap<String, ContractBindings>,
     /// contains the content of the shared types if any
     shared_types: Option<ContractBindings>,
+    /// Dependencies other than `ethers-rs` to add to the `Cargo.toml` for bindings generated as a
+    /// crate.
+    dependencies: Vec<String>,
 }
 
 // deref allows for inspection without modification
@@ -611,6 +635,9 @@ impl MultiBindingsInner {
         writeln!(toml)?;
         writeln!(toml, "[dependencies]")?;
         writeln!(toml, r#"{crate_version}"#)?;
+        for dependency in self.dependencies.clone() {
+            writeln!(toml, "{}", dependency)?;
+        }
         Ok(toml)
     }
 
@@ -881,12 +908,12 @@ mod tests {
 
         let human_readable = Abigen::new(
             "HrContract",
-            r#"[
+            r"[
         struct Foo { uint256 x; }
         function foo(Foo memory x)
         function bar(uint256 x, uint256 y, address addr)
         yeet(uint256,uint256,address)
-    ]"#,
+    ]",
         )
         .unwrap();
 
@@ -1001,9 +1028,9 @@ mod tests {
             multi_gen.push(
                 Abigen::new(
                     "AdditionalContract",
-                    r#"[
+                    r"[
                         getValue() (uint256)
-                    ]"#,
+                    ]",
                 )
                 .unwrap(),
             );
@@ -1028,9 +1055,9 @@ mod tests {
             multi_gen.push(
                 Abigen::new(
                     "AdditionalContract",
-                    r#"[
+                    r"[
                         getValue() (uint256)
-                    ]"#,
+                    ]",
                 )
                 .unwrap(),
             );
@@ -1062,9 +1089,9 @@ mod tests {
             multi_gen.push(
                 Abigen::new(
                     "AdditionalContract",
-                    r#"[
+                    r"[
                             getValue() (uint256)
-                        ]"#,
+                        ]",
                 )
                 .unwrap(),
             );
@@ -1099,9 +1126,9 @@ mod tests {
             multi_gen.push(
                 Abigen::new(
                     "AdditionalContract",
-                    r#"[
+                    r"[
                             getValue() (uint256)
-                        ]"#,
+                        ]",
                 )
                 .unwrap(),
             );
@@ -1121,11 +1148,11 @@ mod tests {
     fn does_not_generate_shared_types_if_empty() {
         let gen = Abigen::new(
             "Greeter",
-            r#"[
+            r"[
                         struct Inner {bool a;}
                         greet1() (uint256)
                         greet2(Inner inner) (string)
-                    ]"#,
+                    ]",
         )
         .unwrap();
 
@@ -1137,9 +1164,9 @@ mod tests {
     fn can_filter_abigen() {
         let abi = Abigen::new(
             "MyGreeter",
-            r#"[
+            r"[
                         greet() (string)
-                    ]"#,
+                    ]",
         )
         .unwrap();
         let mut gen = MultiAbigen::from_abigens(vec![abi]).with_filter(ContractFilter::All);
@@ -1167,9 +1194,9 @@ mod tests {
         gen.push(
             Abigen::new(
                 "MyGreeterTest",
-                r#"[
+                r"[
                         greet() (string)
-                    ]"#,
+                    ]",
             )
             .unwrap(),
         );

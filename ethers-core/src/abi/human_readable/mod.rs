@@ -34,11 +34,11 @@ impl AbiParser {
     ///
     /// ```
     ///  # use ethers_core::abi::AbiParser;
-    /// let abi = AbiParser::default().parse_str(r#"[
+    /// let abi = AbiParser::default().parse_str("[
     ///         function setValue(string)
     ///         function getValue() external view returns (string)
     ///         event ValueChanged(address indexed author, string oldValue, string newValue)
-    ///     ]"#).unwrap();
+    ///     ]").unwrap();
     /// ```
     pub fn parse_str(&mut self, s: &str) -> Result<Abi> {
         self.parse(

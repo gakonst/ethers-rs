@@ -180,7 +180,7 @@ where
 
         match this.state {
             // In the initial state we're simply waiting on the first
-            // transaction braodcast to complete.
+            // transaction broadcast to complete.
             Initial(fut) => {
                 poll_broadcast_fut!(cx, this, fut);
             }

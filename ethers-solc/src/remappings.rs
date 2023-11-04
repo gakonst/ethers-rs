@@ -406,7 +406,7 @@ impl RelativeRemappingPathBuf {
         &self.path
     }
 
-    /// Returns this path relative to the file it was delcared in, if any.
+    /// Returns this path relative to the file it was declared in, if any.
     /// Returns the original if this path was not declared in a file or if the
     /// path has a root.
     pub fn relative(&self) -> PathBuf {

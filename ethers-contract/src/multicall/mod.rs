@@ -7,7 +7,7 @@ pub mod constants;
 
 if_providers! {
     mod middleware;
-    pub use middleware::{Call, Multicall, MulticallContract, Result};
+    pub use middleware::{Call, Multicall, MulticallContract};
 
     pub mod error;
 }

@@ -45,7 +45,7 @@
   - [Watch blocks](./subscriptions/watch-blocks.md)
   - [Subscribe events by type](./subscriptions/events-by-type.md)
   - [Subscribe logs](./subscriptions/logs.md)
-  - [Mulitple subscriptions](./subscriptions/multiple-subscriptions.md)
+  - [Multiple subscriptions](./subscriptions/multiple-subscriptions.md)
 - [Queries]()
   - [Blocks]()
   - [Contracts]()

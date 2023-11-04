@@ -95,7 +95,7 @@ async fn get_erc20_transfer_events_success() {
             )
             .await
             .unwrap();
-        let tx = txs.get(0).unwrap();
+        let tx = txs.first().unwrap();
         assert_eq!(tx.gas_used, 93657u64.into());
         assert_eq!(tx.nonce, 10u64.into());
         assert_eq!(tx.block_number, 2228258u64.into());
@@ -155,6 +155,20 @@ async fn get_mined_blocks_success() {
     .await
 }
 
+#[tokio::test]
+#[serial]
+async fn get_beacon_withdrawal_transactions_success() {
+    run_with_client(Chain::Mainnet, |client| async move {
+        let txs = client
+            .get_beacon_withdrawal_transactions(
+                &"0xB9D7934878B5FB9610B3fE8A5e441e8fad7E293f".parse().unwrap(),
+                None,
+            )
+            .await;
+        txs.unwrap();
+    })
+    .await
+}
 #[tokio::test]
 #[serial]
 async fn get_avalanche_transactions() {
