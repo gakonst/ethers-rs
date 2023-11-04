@@ -1,11 +1,9 @@
-use std::fmt;
-
+use crate::{common::Request, JsonRpcError};
 use ethers_core::types::U256;
 use futures_channel::{mpsc, oneshot};
 use serde::{de, Deserialize};
 use serde_json::value::{to_raw_value, RawValue};
-
-use crate::{common::Request, JsonRpcError};
+use std::fmt;
 
 // Normal JSON-RPC response
 pub type Response = Result<Box<RawValue>, JsonRpcError>;
@@ -261,7 +259,7 @@ mod aliases {
 mod aliases {
     pub use tokio_tungstenite::{
         connect_async, connect_async_with_config,
-        tungstenite::{self, protocol::CloseFrame},
+        tungstenite::{self},
     };
     use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
     pub type WebSocketConfig = tungstenite::protocol::WebSocketConfig;
@@ -270,10 +268,8 @@ mod aliases {
     pub type WsStreamItem = Result<Message, WsError>;
 
     pub use http::Request as HttpRequest;
-    pub use tracing::{debug, error, trace, warn};
-    pub use tungstenite::client::IntoClientRequest;
 
-    pub use tokio::time::sleep;
+    pub use tungstenite::client::IntoClientRequest;
 
     pub type InternalStream =
         futures_util::stream::Fuse<WebSocketStream<MaybeTlsStream<tokio::net::TcpStream>>>;
