@@ -301,10 +301,7 @@ pub struct ChainConfig {
     pub cancun_time: Option<u64>,
 
     /// Total difficulty reached that triggers the merge consensus upgrade.
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "deserialize_stringified_numeric_opt"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_ttd")]
     pub terminal_total_difficulty: Option<U256>,
 
     /// A flag specifying that the network already passed the terminal total difficulty. Its
@@ -348,6 +345,31 @@ pub struct CliqueConfig {
         deserialize_with = "deserialize_stringified_u64_opt"
     )]
     pub epoch: Option<u64>,
+}
+
+fn deserialize_ttd<'de, D>(deserializer: D) -> Result<Option<U256>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match Option::<serde_json::Value>::deserialize(deserializer)? {
+        None => Ok(None),
+        Some(val) => {
+            if let serde_json::Value::Number(num) = val {
+                // mainnet ttd is serialized as number, which serde is unable to deserialize as
+                // integer
+                if num.as_f64() == Some(5.875e22) {
+                    Ok(Some(U256::from(58750000000000000000000u128)))
+                } else {
+                    num.as_u64()
+                        .map(U256::from)
+                        .ok_or_else(|| serde::de::Error::custom("expected a number"))
+                        .map(Some)
+                }
+            } else {
+                Err(serde::de::Error::custom("expected a number"))
+            }
+        }
+    }
 }
 
 #[cfg(test)]
