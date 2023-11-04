@@ -767,7 +767,27 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     }
 
     async fn node_info(&self) -> Result<NodeInfo, Self::Error> {
-        self.request("admin_nodeInfo", ()).await
+        let mut raw: String = self.request("admin_nodeInfo", ()).await?;
+        // The ethereum mainnet TTD is 58750000000000000000000, and geth serializes this
+        // without quotes, because that is how golang `big.Int`s marshal in JSON. Numbers
+        // are arbitrary precision in JSON, so this is valid JSON. This number is also
+        // greater than a `u64`.
+        //
+        // Unfortunately, serde_json only supports parsing up to `u64`, resorting to `f64`
+        // once `u64` overflows:
+        // <https://github.com/serde-rs/json/blob/4bc1eaa03a6160593575bc9bc60c94dba4cab1e3/src/de.rs#L1411-L1415>
+        // <https://github.com/serde-rs/json/blob/4bc1eaa03a6160593575bc9bc60c94dba4cab1e3/src/de.rs#L479-L484>
+        // <https://github.com/serde-rs/json/blob/4bc1eaa03a6160593575bc9bc60c94dba4cab1e3/src/de.rs#L102-L108>
+        //
+        // serde_json does have an arbitrary precision feature, but this breaks untagged
+        // enums in serde:
+        // <https://github.com/serde-rs/serde/issues/2230>
+        // <https://github.com/serde-rs/serde/issues/1183>
+        //
+        // To solve this, we surround the mainnet TTD with quotes, which our custom Visitor
+        // accepts.
+        raw = raw.replacen(":58750000000000000000000", ":\\\"58750000000000000000000\\\"", 1);
+        serde_json::from_str(&raw).map_err(Into::into)
     }
 
     async fn peers(&self) -> Result<Vec<PeerInfo>, Self::Error> {
