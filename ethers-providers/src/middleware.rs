@@ -719,8 +719,10 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().txpool_status().await.map_err(MiddlewareError::from_err)
     }
 
-    /// Executes given calls and returns a number of possible traces for each
-    /// call
+    /// Simulates a set of bundles
+    /// Implementation:
+    /// Ref:
+    /// [Here](https://github.com/ledgerwatch/erigon/issues/4471)
     async fn eth_call_many<T: Into<TypedTransaction> + Send + Sync>(
         &self,
         req: Vec<EthCallManyBundle<T>>,
