@@ -75,7 +75,7 @@ impl SubscriptionManager {
                 // result in the server sending us notifications we ignore
                 let unsub_request = InFlight {
                     method: "eth_unsubscribe".to_string(),
-                    params: SubId(server_id).serialize_raw().ok()?,
+                    params: to_raw_value(&[server_id]).ok()?,
                     channel,
                 };
                 // reuse the RPC ID. this is somewhat dirty.
