@@ -929,7 +929,6 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         });
         let state_diff_options = utils::serialize(&state_diff);
         let req = utils::serialize(&req);
-        println!("{:#?} {:#?} {:#?}", req, options, state_diff_options);
         self.request("eth_callMany", [req, options, state_diff_options]).await
     }
 
