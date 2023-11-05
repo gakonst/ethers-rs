@@ -1,5 +1,3 @@
-use ethers_core::types::SyncingStatus;
-
 use crate::{
     call_raw::CallBuilder,
     errors::ProviderError,
@@ -13,7 +11,7 @@ use crate::{
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{HttpRateLimitRetryPolicy, RetryClient};
-use std::net::Ipv4Addr;
+use std::{collections::HashMap, net::Ipv4Addr};
 
 pub use crate::Middleware;
 
@@ -24,10 +22,11 @@ use ethers_core::{
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Chain, EIP1186ProofResponse,
+        EthCallManyBalanceDiff, EthCallManyBundle, EthCallManyOptions, EthCallManyResponse,
         FeeHistory, Filter, FilterBlockOption, GethDebugTracingCallOptions,
-        GethDebugTracingOptions, GethTrace, Log, NameOrAddress, Selector, Signature, Trace,
-        TraceFilter, TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash,
-        TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
+        GethDebugTracingOptions, GethTrace, Log, NameOrAddress, Selector, Signature, SyncingStatus,
+        Trace, TraceFilter, TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash,
+        TxpoolContent, TxpoolInspect, TxpoolStatus, H160, H256, U256, U64,
     },
     utils,
 };
@@ -829,7 +828,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                         };
                         let data = self.call(&tx.into(), None).await?;
                         if decode_bytes::<Address>(ParamType::Address, data) != owner {
-                            return Err(ProviderError::CustomError("Incorrect owner.".to_string()))
+                            return Err(ProviderError::CustomError("Incorrect owner.".to_string()));
                         }
                     }
                     erc::ERCNFTType::ERC1155 => {
@@ -849,7 +848,9 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                         };
                         let data = self.call(&tx.into(), None).await?;
                         if decode_bytes::<u64>(ParamType::Uint(64), data) == 0 {
-                            return Err(ProviderError::CustomError("Incorrect balance.".to_string()))
+                            return Err(ProviderError::CustomError(
+                                "Incorrect balance.".to_string(),
+                            ));
                         }
                     }
                 }
@@ -910,6 +911,28 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
     async fn txpool_status(&self) -> Result<TxpoolStatus, ProviderError> {
         self.request("txpool_status", ()).await
+    }
+
+    async fn eth_call_many<T: Into<TypedTransaction> + Send + Sync>(
+        &self,
+        req: Vec<EthCallManyBundle<T>>,
+        state_diff: Option<HashMap<H160, EthCallManyBalanceDiff>>,
+        block: Option<BlockNumber>,
+    ) -> Result<Vec<Vec<EthCallManyResponse>>, ProviderError> {
+        let req: Vec<EthCallManyBundle<_>> = req
+            .into_iter()
+            .map(|tx_bundle| EthCallManyBundle {
+                transactions: tx_bundle.transactions.into_iter().map(|tx| tx.into()).collect(),
+                block_override: tx_bundle.block_override,
+            })
+            .collect();
+        let options = utils::serialize(&EthCallManyOptions {
+            block_number: &block.unwrap_or(BlockNumber::Latest),
+        });
+        let state_diff_options = utils::serialize(&state_diff);
+        let req = utils::serialize(&req);
+        println!("{:#?} {:#?} {:#?}", req, options, state_diff_options);
+        self.request("eth_callMany", [req, options, state_diff_options]).await
     }
 
     async fn debug_trace_transaction(
@@ -1143,7 +1166,7 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
                 if fallback.is_err() {
                     // if the older fallback also resulted in an error, we return the error from the
                     // initial attempt
-                    return err
+                    return err;
                 }
                 fallback
             }
@@ -1177,12 +1200,12 @@ impl<P: JsonRpcClient> Provider<P> {
 
         // otherwise, decode_bytes panics
         if data.0.is_empty() {
-            return Err(ProviderError::EnsError(ens_name.to_string()))
+            return Err(ProviderError::EnsError(ens_name.to_string()));
         }
 
         let resolver_address: Address = decode_bytes(ParamType::Address, data);
         if resolver_address == Address::zero() {
-            return Err(ProviderError::EnsError(ens_name.to_string()))
+            return Err(ProviderError::EnsError(ens_name.to_string()));
         }
 
         if let ParamType::Address = param {
@@ -1211,7 +1234,7 @@ impl<P: JsonRpcClient> Provider<P> {
         if data.is_empty() {
             return Err(ProviderError::EnsError(format!(
                 "`{ens_name}` resolver ({resolver_address:?}) is invalid."
-            )))
+            )));
         }
 
         let supports_selector = abi::decode(&[ParamType::Bool], data.as_ref())
@@ -1224,7 +1247,7 @@ impl<P: JsonRpcClient> Provider<P> {
                 ens_name,
                 resolver_address,
                 hex::encode(selector)
-            )))
+            )));
         }
 
         Ok(())
@@ -1516,10 +1539,10 @@ pub fn is_local_endpoint(endpoint: &str) -> bool {
                     return domain.contains("localhost") || domain.contains("localdev.me")
                 }
                 Host::Ipv4(ipv4) => {
-                    return ipv4 == Ipv4Addr::LOCALHOST ||
-                        ipv4.is_link_local() ||
-                        ipv4.is_loopback() ||
-                        ipv4.is_private()
+                    return ipv4 == Ipv4Addr::LOCALHOST
+                        || ipv4.is_link_local()
+                        || ipv4.is_loopback()
+                        || ipv4.is_private()
                 }
                 Host::Ipv6(ipv6) => return ipv6.is_loopback(),
             }

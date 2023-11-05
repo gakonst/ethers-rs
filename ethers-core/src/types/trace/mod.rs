@@ -12,6 +12,9 @@ pub use filter::*;
 mod geth;
 pub use geth::*;
 
+mod erigon;
+pub use erigon::*;
+
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 /// Description of the type of trace to make
 pub enum TraceType {
