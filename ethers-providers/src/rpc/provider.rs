@@ -22,7 +22,7 @@ use ethers_core::{
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Chain, EIP1186ProofResponse,
-        EthCallManyBalanceDiff, EthCallManyBundle, EthCallManyOptions, EthCallManyResponse,
+        EthCallManyBalanceDiff, EthCallManyBundle, EthCallManyStateContext, EthCallManyOutput,
         FeeHistory, Filter, FilterBlockOption, GethDebugTracingCallOptions,
         GethDebugTracingOptions, GethTrace, Log, NameOrAddress, Selector, Signature, SyncingStatus,
         Trace, TraceFilter, TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash,
@@ -911,25 +911,23 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("txpool_status", ()).await
     }
 
-    async fn eth_call_many<T: Into<TypedTransaction> + Send + Sync>(
+    async fn eth_call_many(
         &self,
-        req: Vec<EthCallManyBundle<T>>,
-        state_diff: Option<HashMap<H160, EthCallManyBalanceDiff>>,
-        block: Option<BlockNumber>,
-    ) -> Result<Vec<Vec<EthCallManyResponse>>, ProviderError> {
-        let req: Vec<EthCallManyBundle<_>> = req
+        bundles: Vec<EthCallManyBundle>,
+        state_context: EthCallManyStateContext,
+        state_override: Option<HashMap<H160, Option<EthCallManyBalanceDiff>>>,
+    ) -> Result<Vec<Vec<EthCallManyOutput>>, ProviderError> {
+        let bundles: Vec<EthCallManyBundle> = bundles
             .into_iter()
             .map(|tx_bundle| EthCallManyBundle {
                 transactions: tx_bundle.transactions.into_iter().map(|tx| tx.into()).collect(),
                 block_override: tx_bundle.block_override,
             })
             .collect();
-        let options = utils::serialize(&EthCallManyOptions {
-            block_number: &block.unwrap_or(BlockNumber::Latest),
-        });
-        let state_diff_options = utils::serialize(&state_diff);
-        let req = utils::serialize(&req);
-        self.request("eth_callMany", [req, options, state_diff_options]).await
+        let bundles = utils::serialize(&bundles);
+        let options_state_context = utils::serialize(&state_context);
+        let options_state_override = utils::serialize(&state_override);
+        self.request("eth_callMany", [bundles, options_state_context, options_state_override]).await
     }
 
     async fn debug_trace_transaction(

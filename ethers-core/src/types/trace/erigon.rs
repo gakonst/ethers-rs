@@ -1,7 +1,7 @@
 use ethabi::ethereum_types::U256;
 use serde::{Deserialize, Serialize};
 
-use crate::types::{transaction::eip2718::TypedTransaction, BlockNumber};
+use crate::types::{transaction::eip2718::TypedTransaction, BlockNumber, Bytes};
 
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -10,9 +10,18 @@ pub struct EthCallManyBlockOverride {
 }
 
 #[derive(Serialize, Debug, Clone)]
+pub struct EthCallManyBundle {
+    pub transactions: Vec<TypedTransaction>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub block_override: Option<EthCallManyBlockOverride>,
+}
+
+#[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct EthCallManyOptions<'a> {
-    pub block_number: &'a BlockNumber,
+pub struct EthCallManyStateContext {
+    pub block_number: BlockNumber,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub transaction_index: Option<i32>,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -21,14 +30,10 @@ pub struct EthCallManyBalanceDiff {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct EthCallManyResponse {
-    pub value: Option<String>,
-    pub error: Option<String>,
-}
+pub struct EthCallManyOutputEmpty {}
 
-#[derive(Serialize, Debug, Clone)]
-pub struct EthCallManyBundle<T: Into<TypedTransaction> + Send + Sync> {
-    pub transactions: Vec<T>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub block_override: Option<EthCallManyBlockOverride>,
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EthCallManyOutput {
+    pub value: Option<Bytes>,
+    pub error: Option<EthCallManyOutputEmpty>,
 }

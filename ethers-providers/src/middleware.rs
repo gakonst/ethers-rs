@@ -722,14 +722,14 @@ pub trait Middleware: Sync + Send + Debug {
     /// Simulates a set of bundles
     /// Implementation:
     /// Ref:
-    /// [Here](https://github.com/ledgerwatch/erigon/issues/4471)
-    async fn eth_call_many<T: Into<TypedTransaction> + Send + Sync>(
+    /// [Here](https://github.com/ledgerwatch/erigon/blob/513fd50fa501ab6385dc3f58b18079d806d6ff5a/turbo/jsonrpc/eth_callMany.go#L72-L72)
+    async fn eth_call_many(
         &self,
-        req: Vec<EthCallManyBundle<T>>,
-        state_diff: Option<HashMap<H160, EthCallManyBalanceDiff>>,
-        block: Option<BlockNumber>,
-    ) -> Result<Vec<Vec<EthCallManyResponse>>, Self::Error> {
-        self.inner().eth_call_many(req, state_diff, block).await.map_err(MiddlewareError::from_err)
+        bundles: Vec<EthCallManyBundle>,
+        state_context: EthCallManyStateContext,
+        state_override: Option<HashMap<H160, Option<EthCallManyBalanceDiff>>>,
+    ) -> Result<Vec<Vec<EthCallManyOutput>>, Self::Error> {
+        self.inner().eth_call_many(bundles, state_context, state_override).await.map_err(MiddlewareError::from_err)
     }
 
     // Geth `trace` support
