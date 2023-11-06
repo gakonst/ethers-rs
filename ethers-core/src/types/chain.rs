@@ -67,6 +67,7 @@ pub enum Chain {
     Optimism = 10,
     OptimismKovan = 69,
     OptimismGoerli = 420,
+    OptimismSepolia = 11155420,
 
     Arbitrum = 42161,
     ArbitrumTestnet = 421611,
@@ -291,7 +292,7 @@ impl Chain {
         let ms = match self {
             Mainnet => 12_000,
             Arbitrum | ArbitrumTestnet | ArbitrumGoerli | ArbitrumSepolia | ArbitrumNova => 1_300,
-            Optimism | OptimismGoerli => 2_000,
+            Optimism | OptimismGoerli | OptimismSepolia => 2_000,
             Polygon | PolygonMumbai => 2_100,
             Moonbeam | Moonriver => 12_500,
             BinanceSmartChain | BinanceSmartChainTestnet => 3_000,
@@ -363,6 +364,7 @@ impl Chain {
             BaseGoerli |
             Optimism |
             OptimismGoerli |
+            OptimismSepolia |
             Polygon |
             PolygonMumbai |
             Avalanche |
@@ -456,6 +458,10 @@ impl Chain {
             OptimismKovan => (
                 "https://api-kovan-optimistic.etherscan.io/api",
                 "https://kovan-optimistic.etherscan.io",
+            ),
+            OptimismSepolia => (
+                "https://api-sepolia-optimistic.etherscan.io/api",
+                "https://sepolia-optimism.etherscan.io",
             ),
 
             Fantom => ("https://api.ftmscan.com/api", "https://ftmscan.com"),
@@ -599,6 +605,7 @@ impl Chain {
             Optimism |
             OptimismGoerli |
             OptimismKovan |
+            OptimismSepolia |
             BinanceSmartChain |
             BinanceSmartChainTestnet |
             Arbitrum |
