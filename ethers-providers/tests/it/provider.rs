@@ -96,6 +96,38 @@ mod eth_tests {
     }
 
     #[tokio::test]
+    #[cfg(feature = "ws")]
+    async fn unsubscribe_blocks_ws() {
+        let (provider, _anvil) = crate::spawn_anvil_ws().await;
+        generic_unsubscribe_blocks_test(provider).await;
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "ipc")]
+    async fn unsubscribe_blocks_ipc() {
+        let (provider, _anvil, _ipc) = crate::spawn_anvil_ipc().await;
+        generic_unsubscribe_blocks_test(provider).await;
+    }
+
+    #[cfg(any(feature = "ws", feature = "ipc"))]
+    async fn generic_unsubscribe_blocks_test<M>(provider: M)
+    where
+        M: Middleware,
+        M::Provider: ethers_providers::PubsubClient,
+    {
+        {
+            let stream = provider.subscribe_blocks().await.unwrap();
+            stream.unsubscribe().await.unwrap();
+        }
+        {
+            let _stream = provider.subscribe_blocks().await.unwrap();
+            // stream will be unsubscribed automatically here on drop
+        }
+        // Sleep to give the unsubscription messages time to propagate
+        tokio::time::sleep(crate::Duration::from_millis(200)).await;
+    }
+
+    #[tokio::test]
     async fn send_tx_http() {
         let (provider, anvil) = spawn_anvil();
         generic_send_tx_test(provider, anvil.addresses()[0]).await;
