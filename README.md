@@ -9,6 +9,10 @@
 [crates-badge]: https://img.shields.io/crates/v/ethers.svg
 [crates-url]: https://crates.io/crates/ethers
 
+> **Warning**
+>
+> This library is in the process of being deprecated. See [#2667](https://github.com/gakonst/ethers-rs/issues/2667) for more information.
+
 ## Quickstart
 
 Add this to your Cargo.toml:
