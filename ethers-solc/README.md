@@ -2,6 +2,10 @@
 
 Utilities for working with native `solc` and compiling projects.
 
+> **Warning**
+> 
+> This crate is deprecated in favor of [`foundry-compilers`](https://crates.io/foundry-compilers) ([foundry-rs/compilers](https://github.com/foundry-rs/compilers)). See [#2667](https://github.com/gakonst/ethers-rs/issues/2667) for more information.
+
 To also compile contracts during `cargo build` (so that ethers `abigen!` can pull in updated abi automatically) you can configure a `ethers_solc::Project` in your `build.rs` file
 
 First add `ethers-solc` to your cargo build-dependencies.

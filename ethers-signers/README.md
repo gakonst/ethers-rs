@@ -2,6 +2,10 @@
 
 A unified interface for locally signing Ethereum transactions.
 
+> **Warning**
+>
+> This library is in the process of being deprecated. See [#2667](https://github.com/gakonst/ethers-rs/issues/2667) for more information.
+
 You can implement the `Signer` trait to extend functionality to other signers
 such as Hardware Security Modules, KMS etc.
 

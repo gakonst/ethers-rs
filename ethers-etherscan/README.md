@@ -4,6 +4,10 @@ Bindings for the [etherscan.io web API](https://docs.etherscan.io).
 
 For more information, please refer to the [book](https://gakonst.com/ethers-rs).
 
+> **Warning**
+> 
+> This crate is deprecated in favor of [`foundry-block-explorers`](https://crates.io/foundry-block-explorers) ([foundry-rs/block-explorers](https://github.com/foundry-rs/block-explorers)). See [#2667](https://github.com/gakonst/ethers-rs/issues/2667) for more information.
+
 ## Examples
 
 ```rust,no_run
