@@ -96,14 +96,17 @@ pub use ethers_contract as contract;
 #[doc(inline)]
 pub use ethers_core as core;
 #[doc(inline)]
-pub use ethers_etherscan as etherscan;
-#[doc(inline)]
 pub use ethers_middleware as middleware;
 #[doc(inline)]
 pub use ethers_providers as providers;
 #[doc(inline)]
 pub use ethers_signers as signers;
-#[cfg(feature = "ethers-solc")]
+
+#[cfg(feature = "etherscan")]
+#[doc(inline)]
+pub use ethers_etherscan as etherscan;
+
+#[cfg(feature = "solc")]
 #[doc(inline)]
 pub use ethers_solc as solc;
 
@@ -120,15 +123,16 @@ pub mod prelude {
 
     pub use super::core::{types::*, *};
 
-    pub use super::etherscan::*;
-
     pub use super::middleware::*;
 
     pub use super::providers::*;
 
     pub use super::signers::*;
 
-    #[cfg(feature = "ethers-solc")]
+    #[cfg(feature = "etherscan")]
+    pub use super::etherscan::*;
+
+    #[cfg(feature = "solc")]
     pub use super::solc::*;
 }
 
