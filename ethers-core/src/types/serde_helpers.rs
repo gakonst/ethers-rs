@@ -76,8 +76,7 @@ impl TryFrom<StringifiedNumeric> for U64 {
         let value = U256::try_from(value)?;
         let mut be_bytes = [0u8; 32];
         value.to_big_endian(&mut be_bytes);
-        U64::try_from(&be_bytes[value.leading_zeros() as usize / 8..])
-            .map_err(|err| err.to_string())
+        Ok(U64::from(&be_bytes[value.leading_zeros() as usize / 8..]))
     }
 }
 
