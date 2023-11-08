@@ -1,7 +1,7 @@
 //! # ethers-rs
 //!
 //! A complete Ethereum and Celo Rust library.
-//! 
+//!
 //! <div class="warning">
 //! This crate is in the process of being deprecated.
 //! See <a href="https://github.com/gakonst/ethers-rs/issues/2667">#2667</a> for more information.
