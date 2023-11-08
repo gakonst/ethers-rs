@@ -8,7 +8,9 @@ pub use eth_gas_station::EthGasStation;
 pub mod etherchain;
 pub use etherchain::Etherchain;
 
+#[cfg(feature = "etherscan")]
 pub mod etherscan;
+#[cfg(feature = "etherscan")]
 pub use etherscan::Etherscan;
 
 pub mod middleware;
