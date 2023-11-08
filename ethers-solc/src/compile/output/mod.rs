@@ -28,7 +28,7 @@ pub struct ProjectCompileOutput<T: ArtifactOutput = ConfigurableArtifacts> {
     /// contains the aggregated `CompilerOutput`
     pub(crate) compiler_output: AggregatedCompilerOutput,
     /// all artifact files from `output` that were freshly compiled and written
-    pub(crate) compiled_artifacts: Artifacts<T::Artifact>,
+    pub compiled_artifacts: Artifacts<T::Artifact>,
     /// All artifacts that were read from cache
     pub(crate) cached_artifacts: Artifacts<T::Artifact>,
     /// errors that should be omitted
