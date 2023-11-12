@@ -874,7 +874,7 @@ mod tests {
             (">=0.4.0 <0.5.0", "0.4.26"),
             // latest - this has to be updated every time a new version is released.
             // Requires the SVM version list to be updated as well.
-            (">=0.5.0", "0.8.22"),
+            (">=0.5.0", "0.8.23"),
         ] {
             let source = source(pragma);
             let res = Solc::detect_version(&source).unwrap();
