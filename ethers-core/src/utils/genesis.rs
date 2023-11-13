@@ -358,7 +358,7 @@ where
                 return Numeric::from_str(num)
                     .map(U256::from)
                     .map(Some)
-                    .map_err(serde::de::Error::custom);
+                    .map_err(serde::de::Error::custom)
             }
 
             if let serde_json::Value::Number(num) = val {
