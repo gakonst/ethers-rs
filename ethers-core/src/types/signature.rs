@@ -92,20 +92,19 @@ impl Signature {
     where
         M: Into<RecoveryMessage>,
     {
-        let message = message.into();
-        let message_hash = match message {
+        let message_hash = match message.into() {
             RecoveryMessage::Data(ref message) => hash_message(message),
             RecoveryMessage::Hash(hash) => hash,
         };
 
         let (recoverable_sig, recovery_id) = self.as_signature()?;
-        let verify_key = VerifyingKey::recover_from_prehash(
+        let verifying_key = VerifyingKey::recover_from_prehash(
             message_hash.as_ref(),
             &recoverable_sig,
             recovery_id,
         )?;
 
-        let public_key = K256PublicKey::from(&verify_key);
+        let public_key = K256PublicKey::from(&verifying_key);
         let public_key = public_key.to_encoded_point(/* compress = */ false);
         let public_key = public_key.as_bytes();
         debug_assert_eq!(public_key[0], 0x04);
@@ -199,7 +198,7 @@ fn normalize_recovery_id(v: u64) -> u8 {
         // Case 2: non-eip155 v value
         v @ 27..=34 => ((v - 27) % 4) as u8,
         // Case 3: eip155 V value
-        v @ 35.. => ((v - 1) % 2) as _,
+        v @ 35.. => ((v - 1) % 2) as u8,
     }
 }
 
@@ -308,6 +307,22 @@ impl From<H256> for RecoveryMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::Transaction;
+
+    #[test]
+    fn can_recover_tx_sender() {
+        // random mainnet tx: https://etherscan.io/tx/0x86718885c4b4218c6af87d3d0b0d83e3cc465df2a05c048aa4db9f1a6f9de91f
+        let tx_rlp = hex::decode("02f872018307910d808507204d2cb1827d0094388c818ca8b9251b393131c08a736a67ccb19297880320d04823e2701c80c001a0cf024f4815304df2867a1a74e9d2707b6abda0337d2d54a4438d453f4160f190a07ac0e6b3bc9395b5b9c8b9e6d77204a236577a5b18467b9175c01de4faa208d9").unwrap();
+        let tx: Transaction = rlp::decode(&tx_rlp).unwrap();
+        assert_eq!(tx.rlp(), tx_rlp);
+        assert_eq!(
+            tx.hash,
+            "0x86718885c4b4218c6af87d3d0b0d83e3cc465df2a05c048aa4db9f1a6f9de91f".parse().unwrap()
+        );
+        assert_eq!(tx.transaction_type, Some(2.into()));
+        let expected = Address::from_str("0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5").unwrap();
+        assert_eq!(tx.recover_from().unwrap(), expected);
+    }
 
     #[test]
     fn recover_web3_signature() {
