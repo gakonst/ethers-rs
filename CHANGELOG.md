@@ -10,6 +10,88 @@ which is configured [here](./cliff.toml).
 
 Please do not manually edit this file.
 
+## [2.0.11] - 2023-11-16
+
+### Bug Fixes
+
+- Empty input in transaction rlp decoding ([#2656](https://github.com/gakonst/ethers-rs/issues/2656))
+- Fix typos ([#2651](https://github.com/gakonst/ethers-rs/issues/2651))
+- Fix `DepositTransaction::rlp()` to match op-geth ([#2644](https://github.com/gakonst/ethers-rs/issues/2644))
+- Hardcoded import remapping fix ([#2626](https://github.com/gakonst/ethers-rs/issues/2626))
+- Normalize v always returns a valid value ([#2642](https://github.com/gakonst/ethers-rs/issues/2642))
+- Rlp decode deposit tx ([#2616](https://github.com/gakonst/ethers-rs/issues/2616))
+- Deserialize methodId as bytes ([#2614](https://github.com/gakonst/ethers-rs/issues/2614))
+- Use Solc::version_req to parse version req ([#2607](https://github.com/gakonst/ethers-rs/issues/2607))
+- Update helper function to use correct converion maths ([#2602](https://github.com/gakonst/ethers-rs/issues/2602))
+
+### Depedencies
+
+- Apply WebSocketConfig to initial WS provider connection ([#2668](https://github.com/gakonst/ethers-rs/issues/2668))
+- Bump solc ([#2654](https://github.com/gakonst/ethers-rs/issues/2654))
+- Pin protobuf to 3.2.0 ([#2623](https://github.com/gakonst/ethers-rs/issues/2623))
+- Update toml requirement from 0.7 to 0.8 ([#2596](https://github.com/gakonst/ethers-rs/issues/2596))
+- Update serde-wasm-bindgen requirement from 0.5.0 to 0.6.0 ([#2598](https://github.com/gakonst/ethers-rs/issues/2598))
+- Update cargo_metadata requirement from 0.17.0 to 0.18.0 ([#2593](https://github.com/gakonst/ethers-rs/issues/2593))
+- Remove ethers-signers from ethers-contract dev-dependencies ([#2589](https://github.com/gakonst/ethers-rs/issues/2589))
+
+### Documentation
+
+- Add deprecation notices ([#2666](https://github.com/gakonst/ethers-rs/issues/2666))
+- Dedup docs for `ethers::{abi,types,utils}` ([#2601](https://github.com/gakonst/ethers-rs/issues/2601))
+
+### Features
+
+- Add zora networks ([#2677](https://github.com/gakonst/ethers-rs/issues/2677))
+- Add Optimism Sepolia ([#2665](https://github.com/gakonst/ethers-rs/issues/2665))
+- Add fields to debug_trace_call ([#2662](https://github.com/gakonst/ethers-rs/issues/2662))
+- Add arbitrum sepolia to chain definitions ([#2657](https://github.com/gakonst/ethers-rs/issues/2657))
+- Add cancun fields to Block ([#2655](https://github.com/gakonst/ethers-rs/issues/2655))
+- Implemented Some APIs for `stats` ([#2653](https://github.com/gakonst/ethers-rs/issues/2653))
+- Improve gnosis chain configuration ([#2640](https://github.com/gakonst/ethers-rs/issues/2640))
+- Support Etherscan beacon withdrawal transactions ([#2621](https://github.com/gakonst/ethers-rs/issues/2621))
+- Add ws subscribe ([#2638](https://github.com/gakonst/ethers-rs/issues/2638))
+- Add `dependencies` to `MultiBindingsInner` ([#2606](https://github.com/gakonst/ethers-rs/issues/2606))
+- Add error for new security challenge ([#2630](https://github.com/gakonst/ethers-rs/issues/2630))
+- Add mantle, mantle-testnet ([#2627](https://github.com/gakonst/ethers-rs/issues/2627))
+- Add new holesky etherscan urls ([#2620](https://github.com/gakonst/ethers-rs/issues/2620))
+- Optimism Hydrated RPC Receipt Fields ([#2591](https://github.com/gakonst/ethers-rs/issues/2591))
+
+### Miscellaneous Tasks
+
+- Make clippy happy ([#2663](https://github.com/gakonst/ethers-rs/issues/2663))
+- Make CI green again ([#2650](https://github.com/gakonst/ethers-rs/issues/2650))
+- Make clippy happy ([#2647](https://github.com/gakonst/ethers-rs/issues/2647))
+- Make clippy happy ([#2618](https://github.com/gakonst/ethers-rs/issues/2618))
+- Replace Filecoin Hyperspace testnet with Calibration ([#2584](https://github.com/gakonst/ethers-rs/issues/2584))
+- Slightly improve resolution error msg ([#2600](https://github.com/gakonst/ethers-rs/issues/2600))
+
+### Other
+
+- Re-enable the other field for optimism feature ([#2622](https://github.com/gakonst/ethers-rs/issues/2622))
+- Adds zkSync Era Withdrawal Finalizer to list of users in README.md ([#2673](https://github.com/gakonst/ethers-rs/issues/2673))
+- Remove arbitrary precision feature ([#2617](https://github.com/gakonst/ethers-rs/issues/2617))
+- Use https://api.scrollscan.com/ instead ([#2659](https://github.com/gakonst/ethers-rs/issues/2659))
+- Update solang-parser to v0.3.3 ([#2649](https://github.com/gakonst/ethers-rs/issues/2649))
+- Add Scroll mainnet to chain.rs ([#2648](https://github.com/gakonst/ethers-rs/issues/2648))
+- Generate structs for constructor arguments ([#2631](https://github.com/gakonst/ethers-rs/issues/2631))
+- Add Holesky to the Multicall supported chain id's ([#2641](https://github.com/gakonst/ethers-rs/issues/2641))
+- Fix ContractRevert::decode_with_selector ([#2637](https://github.com/gakonst/ethers-rs/issues/2637))
+- More address conversion util methods  ([#2635](https://github.com/gakonst/ethers-rs/issues/2635))
+- Recognize localdev.me as "local" domain ([#2619](https://github.com/gakonst/ethers-rs/issues/2619))
+- Added blockoverride field in geth tracing call options ([#2603](https://github.com/gakonst/ethers-rs/issues/2603))
+- Add USDT token address ([#2611](https://github.com/gakonst/ethers-rs/issues/2611))
+- Correctly parse null values in 0.7.0 asts ([#2608](https://github.com/gakonst/ethers-rs/issues/2608))
+- Update optimism type names to be inline with reth. ([#2590](https://github.com/gakonst/ethers-rs/issues/2590))
+- Revert "chore: disable signers"
+
+### Styling
+
+- Make ethers-ethercan optional in ethers-middleware ([#2672](https://github.com/gakonst/ethers-rs/issues/2672))
+
+### Testing
+
+- Add recover test ([#2675](https://github.com/gakonst/ethers-rs/issues/2675))
+
 ## [2.0.10] - 2023-09-07
 
 ### Bug Fixes
