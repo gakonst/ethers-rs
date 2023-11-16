@@ -178,7 +178,6 @@ pub enum Chain {
     Zora = 7777777,
     ZoraGoerli = 999,
     ZoraSepolia = 999999999,
-
 }
 
 // === impl Chain ===
@@ -317,8 +316,9 @@ impl Chain {
             Morden | Ropsten | Rinkeby | Goerli | Kovan | Sepolia | Holesky | Moonbase |
             MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
             BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm | PolygonZkEvmTestnet | Metis |
-            Linea | LineaTestnet | Mantle | MantleTestnet | Zora | ZoraGoerli | ZoraSepolia
-            => return None,
+            Linea | LineaTestnet | Mantle | MantleTestnet | Zora | ZoraGoerli | ZoraSepolia => {
+                return None
+            }
         };
 
         Some(Duration::from_millis(ms))
@@ -581,14 +581,12 @@ impl Chain {
             }
 
             Zora => ("https://explorer.zora.energy/api", "https://explorer.zora.energy"),
-            ZoraGoerli => (
-                "https://testnet.explorer.zora.energy/api",
-                "https://testnet.explorer.zora.energy",
-            ),
-            ZoraSepolia => (
-                "https://sepolia.explorer.zora.energy/api",
-                "https://sepolia.explorer.zora.energy"
-            ),
+            ZoraGoerli => {
+                ("https://testnet.explorer.zora.energy/api", "https://testnet.explorer.zora.energy")
+            }
+            ZoraSepolia => {
+                ("https://sepolia.explorer.zora.energy/api", "https://sepolia.explorer.zora.energy")
+            }
 
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
