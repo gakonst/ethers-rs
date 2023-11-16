@@ -4,6 +4,10 @@ Your ethers application interacts with the blockchain through a [`Provider`](eth
 
 For more information, please refer to the [book](https://gakonst.com/ethers-rs).
 
+> **Warning**
+>
+> This library is in the process of being deprecated. See [#2667](https://github.com/gakonst/ethers-rs/issues/2667) for more information.
+
 ## Available Middleware
 
 -   [`Signer`](./signer/struct.SignerMiddleware.html): Signs transactions locally, with a private key or a hardware wallet.

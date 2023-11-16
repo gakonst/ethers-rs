@@ -320,8 +320,8 @@ impl ProjectPathsConfig {
     ///
     /// There is no strict rule behind this, but because [`crate::remappings::Remapping::find_many`]
     /// returns `'@openzeppelin/=node_modules/@openzeppelin/contracts/'` we should handle the
-    /// case if the remapping path ends with `contracts` and the import path starts with
-    /// `<remapping name>/contracts`. Otherwise we can end up with a resolved path that has a
+    /// case if the remapping path ends with `/contracts/` and the import path starts with
+    /// `<remapping name>/contracts/`. Otherwise we can end up with a resolved path that has a
     /// duplicate `contracts` segment:
     /// `@openzeppelin/contracts/contracts/token/ERC20/IERC20.sol` we check for this edge case
     /// here so that both styles work out of the box.
@@ -344,11 +344,13 @@ impl ProjectPathsConfig {
                 import.strip_prefix(&r.name).ok().map(|stripped_import| {
                     let lib_path = Path::new(&r.path).join(stripped_import);
 
-                    // we handle the edge case where the path of a remapping ends with "contracts"
-                    // (`<name>/=.../contracts`) and the stripped import also starts with
-                    // `contracts`
+                    // we handle the edge case where the path of a remapping ends with "/contracts/"
+                    // (`<name>/=.../contracts/`) and the stripped import also starts with
+                    // `contracts/`
                     if let Ok(adjusted_import) = stripped_import.strip_prefix("contracts/") {
-                        if r.path.ends_with("contracts/") && !lib_path.exists() {
+                        // Wrap suffix check in `/` so this prevents matching remapping paths that
+                        // end with '-contracts/', '_contracts/', '.contracts/' etc.
+                        if r.path.ends_with("/contracts/") && !lib_path.exists() {
                             return Path::new(&r.path).join(adjusted_import)
                         }
                     }

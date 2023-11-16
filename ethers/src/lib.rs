@@ -2,6 +2,11 @@
 //!
 //! A complete Ethereum and Celo Rust library.
 //!
+//! <div class="warning">
+//! This crate is in the process of being deprecated.
+//! See <a href="https://github.com/gakonst/ethers-rs/issues/2667">#2667</a> for more information.
+//! </div>
+//!
 //! ## Quickstart: `prelude`
 //!
 //! A prelude is provided which imports all the important data types and traits for you. Use this
@@ -91,14 +96,17 @@ pub use ethers_contract as contract;
 #[doc(inline)]
 pub use ethers_core as core;
 #[doc(inline)]
-pub use ethers_etherscan as etherscan;
-#[doc(inline)]
 pub use ethers_middleware as middleware;
 #[doc(inline)]
 pub use ethers_providers as providers;
 #[doc(inline)]
 pub use ethers_signers as signers;
-#[cfg(feature = "ethers-solc")]
+
+#[cfg(feature = "etherscan")]
+#[doc(inline)]
+pub use ethers_etherscan as etherscan;
+
+#[cfg(feature = "solc")]
 #[doc(inline)]
 pub use ethers_solc as solc;
 
@@ -115,15 +123,16 @@ pub mod prelude {
 
     pub use super::core::{types::*, *};
 
-    pub use super::etherscan::*;
-
     pub use super::middleware::*;
 
     pub use super::providers::*;
 
     pub use super::signers::*;
 
-    #[cfg(feature = "ethers-solc")]
+    #[cfg(feature = "etherscan")]
+    pub use super::etherscan::*;
+
+    #[cfg(feature = "solc")]
     pub use super::solc::*;
 }
 

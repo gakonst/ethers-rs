@@ -23,7 +23,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 all-features = true
 
 [features]
-default = ["abigen", "rustls"]
+default = ["abigen", "rustls", "etherscan"]
 
 # workspace-wide features
 legacy = ["ethers-core/legacy", "ethers-contract/legacy"]
@@ -46,14 +46,14 @@ optimism = [
 
 rustls = [
     "ethers-contract/rustls",
-    "ethers-etherscan/rustls",
+    "ethers-etherscan?/rustls",
     "ethers-middleware/rustls",
     "ethers-providers/rustls",
     "ethers-solc?/rustls",
 ]
 openssl = [
     "ethers-contract/openssl",
-    "ethers-etherscan/openssl",
+    "ethers-etherscan?/openssl",
     "ethers-middleware/openssl",
     "ethers-providers/openssl",
     "ethers-solc?/openssl",
@@ -75,23 +75,27 @@ yubi = ["ethers-signers/yubi"]
 abigen = ["ethers-contract/abigen"]
 abigen-online = ["ethers-contract/abigen-online"]
 
+# ethers-etherscan
+etherscan = ["dep:ethers-etherscan", "ethers-middleware/etherscan"]
+
 # ethers-solc
-ethers-solc = ["dep:ethers-solc", "ethers-etherscan/ethers-solc"]
+solc = ["dep:ethers-solc", "ethers-etherscan?/ethers-solc"]
 solc-full = ["ethers-solc?/full"]
 solc-tests = ["ethers-solc?/tests"]
 
 # Deprecated
 abigen-offline = ["abigen"]
 eip712 = []
+ethers-solc = ["solc"]
 solc-sha2-asm = []
 
 [dependencies]
 ethers-addressbook.workspace = true
 ethers-contract = { workspace = true, features = ["providers"] }
 ethers-core.workspace = true
-ethers-etherscan.workspace = true
 ethers-middleware.workspace = true
 ethers-providers.workspace = true
 ethers-signers.workspace = true
 
+ethers-etherscan = { workspace = true, optional = true }
 ethers-solc = { workspace = true, optional = true }

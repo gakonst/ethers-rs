@@ -25,7 +25,6 @@ all-features = true
 [dependencies]
 ethers-contract = { workspace = true, features = ["abigen", "providers"] }
 ethers-core.workspace = true
-ethers-etherscan.workspace = true
 ethers-providers.workspace = true
 ethers-signers.workspace = true
 
@@ -46,6 +45,8 @@ url.workspace = true
 
 serde_json.workspace = true
 
+ethers-etherscan = { workspace = true, optional = true }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio.workspace = true
 
@@ -62,8 +63,9 @@ reqwest = { workspace = true, features = ["json", "rustls"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
 
 [features]
-default = ["rustls"]
+default = ["rustls", "etherscan"]
 celo = ["ethers-core/celo", "ethers-providers/celo", "ethers-signers/celo", "ethers-contract/celo"]
+etherscan = ["dep:ethers-etherscan"]
 optimism = ["ethers-core/optimism", "ethers-providers/optimism", "ethers-contract/optimism"]
 rustls = ["reqwest/rustls-tls"]
 openssl = ["reqwest/native-tls"]

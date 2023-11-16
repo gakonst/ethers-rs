@@ -2,7 +2,10 @@
 #![deny(unsafe_code, rustdoc::broken_intra_doc_links)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-use crate::errors::{is_blocked_by_cloudflare_response, is_cloudflare_security_challenge};
+use crate::errors::{
+    is_blocked_by_cloudflare_response, is_cloudflare_security_challenge,
+    is_security_challenge_prompt,
+};
 use contract::ContractMetadata;
 use errors::EtherscanError;
 use ethers_core::{
@@ -25,6 +28,7 @@ pub mod contract;
 pub mod errors;
 pub mod gas;
 pub mod source_tree;
+pub mod stats;
 mod transaction;
 pub mod utils;
 pub mod verify;
@@ -89,7 +93,6 @@ impl Client {
                 .map_err(Into::into),
 
             // Backwards compatibility, ideally these should return an error.
-            Chain::XDai |
             Chain::Chiado |
             Chain::Sepolia |
             Chain::Rsk |
@@ -210,6 +213,8 @@ impl Client {
                 EtherscanError::BlockedByCloudflare
             } else if is_cloudflare_security_challenge(res) {
                 EtherscanError::CloudFlareSecurityChallenge
+            } else if is_security_challenge_prompt(res) {
+                EtherscanError::SecurityChallenge(self.etherscan_api_url.clone())
             } else {
                 EtherscanError::Serde(err)
             }

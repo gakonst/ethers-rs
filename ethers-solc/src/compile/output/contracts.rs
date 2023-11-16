@@ -208,7 +208,7 @@ impl VersionedContracts {
         self.0
             .get(path.as_ref())
             .and_then(|contracts| {
-                contracts.get(contract).and_then(|c| c.get(0).map(|c| &c.contract))
+                contracts.get(contract).and_then(|c| c.first().map(|c| &c.contract))
             })
             .map(CompactContractRef::from)
     }

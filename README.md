@@ -9,6 +9,10 @@
 [crates-badge]: https://img.shields.io/crates/v/ethers.svg
 [crates-url]: https://crates.io/crates/ethers
 
+> **Warning**
+>
+> This library is in the process of being deprecated. See [#2667](https://github.com/gakonst/ethers-rs/issues/2667) for more information.
+
 ## Quickstart
 
 Add this to your Cargo.toml:
@@ -205,6 +209,7 @@ You can get one [here](https://etherscan.io/apis).
 -   [Celo Plumo Prover](https://github.com/celo-org/plumo-prover): Creates Celo's ultralight client proof from on-chain data
 -   [Celo SNARK Setup Coordinator](https://github.com/celo-org/snark-setup-operator): Coordinator for executing a pipelined Groth16 SNARK setup
 -   [ERC-4337 Bundler](https://github.com/Vid201/aa-bundler/): Account Abstraction (ERC-4337) bundler
+-   [zkSync Withdrawal Finalizer](https://github.com/matter-labs/zksync-withdrawal-finalizer): Finalizer of withdrawals from zkSync Era to L1.
 
 ## Credits
 

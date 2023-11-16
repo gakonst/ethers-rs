@@ -68,8 +68,8 @@ pub struct Transaction {
     ///////////////// Optimism-specific transaction fields //////////////
     /// The source-hash that uniquely identifies the origin of the deposit
     #[cfg(feature = "optimism")]
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "sourceHash")]
-    pub source_hash: Option<H256>,
+    #[serde(default, rename = "sourceHash")]
+    pub source_hash: H256,
 
     /// The ETH value to mint on L2
     #[cfg(feature = "optimism")]
@@ -78,8 +78,8 @@ pub struct Transaction {
 
     /// True if the transaction does not interact with the L2 block gas pool
     #[cfg(feature = "optimism")]
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "isSystemTx")]
-    pub is_system_tx: Option<bool>,
+    #[serde(default, rename = "isSystemTx")]
+    pub is_system_tx: bool,
 
     /////////////////  Celo-specific transaction fields /////////////////
     /// The currency fees are paid in (None for native currency)
@@ -197,13 +197,13 @@ impl Transaction {
             // Optimism Deposited Transaction
             #[cfg(feature = "optimism")]
             Some(x) if x == U64::from(0x7E) => {
-                rlp_opt(&mut rlp, &self.source_hash);
+                rlp.append(&self.source_hash);
                 rlp.append(&self.from);
                 rlp_opt(&mut rlp, &self.to);
                 rlp_opt(&mut rlp, &self.mint);
                 rlp.append(&self.value);
-                rlp.append(&self.gas);
-                rlp_opt(&mut rlp, &self.is_system_tx);
+                rlp.append(&self.gas.as_u64());
+                rlp.append(&self.is_system_tx);
                 rlp.append(&self.input.as_ref());
             }
             // Legacy (0x00)
@@ -363,7 +363,7 @@ impl Transaction {
         rlp: &rlp::Rlp,
         offset: &mut usize,
     ) -> Result<(), DecoderError> {
-        self.source_hash = Some(rlp.val_at(*offset)?);
+        self.source_hash = rlp.val_at(*offset)?;
         *offset += 1;
         self.from = rlp.val_at(*offset)?;
         *offset += 1;
@@ -375,7 +375,7 @@ impl Transaction {
         *offset += 1;
         self.gas = rlp.val_at(*offset)?;
         *offset += 1;
-        self.is_system_tx = Some(rlp.val_at(*offset)?);
+        self.is_system_tx = rlp.val_at(*offset)?;
         *offset += 1;
         let input = rlp::Rlp::new(rlp.at(*offset)?.as_raw()).data()?;
         self.input = Bytes::from(input.to_vec());
@@ -418,7 +418,7 @@ impl Decodable for Transaction {
             txn.chain_id = extract_chain_id(sig.v).map(|id| id.as_u64().into());
         } else {
             // if it is not enveloped then we need to use rlp.as_raw instead of rlp.data
-            let first_byte = rlp.as_raw()[0];
+            let first_byte = *rlp.as_raw().first().ok_or(DecoderError::Custom("empty slice"))?;
             let (first, data) = if first_byte <= 0x7f {
                 (first_byte, rlp.as_raw())
             } else {
@@ -641,9 +641,9 @@ mod tests {
             v: U64::zero(),
             r: U256::zero(),
             s: U256::zero(),
-            source_hash: Some(H256::from_str("0xa8157ccf61bcdfbcb74a84ec1262e62644dd1e7e3614abcbd8db0c99a60049fc").unwrap()),
+            source_hash: H256::from_str("0xa8157ccf61bcdfbcb74a84ec1262e62644dd1e7e3614abcbd8db0c99a60049fc").unwrap(),
             mint: Some(0.into()),
-            is_system_tx: Some(false),
+            is_system_tx: false,
             transaction_type: Some(U64::from(126)),
             access_list: None,
             max_priority_fee_per_gas: None,

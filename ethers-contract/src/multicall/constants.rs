@@ -14,6 +14,7 @@ pub const MULTICALL_SUPPORTED_CHAIN_IDS: &[u64] = {
     use Chain::*;
     &[
         Mainnet as u64,                  // Mainnet
+        Holesky as u64,                  // Holesky
         Kovan as u64,                    // Kovan
         Rinkeby as u64,                  // Rinkeby
         Goerli as u64,                   // Görli
@@ -30,7 +31,7 @@ pub const MULTICALL_SUPPORTED_CHAIN_IDS: &[u64] = {
         ArbitrumTestnet as u64,          // Arbitrum Rinkeby
         Polygon as u64,                  // Polygon
         PolygonMumbai as u64,            // Polygon Mumbai
-        XDai as u64,                     // Gnosis Chain
+        Gnosis as u64,                   // Gnosis Chain
         Avalanche as u64,                // Avalanche
         AvalancheFuji as u64,            // Avalanche Fuji
         FantomTestnet as u64,            // Fantom Testnet
