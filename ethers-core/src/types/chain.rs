@@ -359,6 +359,7 @@ impl Chain {
             MantleTestnet |
             PolygonZkEvm |
             PolygonZkEvmTestnet |
+            Metis |
             Scroll => true,
 
             // Known EIP-1559 chains
@@ -392,8 +393,7 @@ impl Chain {
             // Unknown / not applicable, default to false for backwards compatibility
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
             Sokol | Poa | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
-            EvmosTestnet | Aurora | AuroraTestnet | Canto | CantoTestnet | ScrollAlphaTestnet |
-            Metis => false,
+            EvmosTestnet | Aurora | AuroraTestnet | Canto | CantoTestnet | ScrollAlphaTestnet => false,
         }
     }
 
