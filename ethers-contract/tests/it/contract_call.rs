@@ -16,5 +16,5 @@ fn _contract_call_into_future_is_send() {
         future
     }
 
-    is_send(contract.cache().into_future());
+    drop(is_send(contract.cache().into_future()));
 }
