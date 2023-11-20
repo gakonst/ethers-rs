@@ -127,8 +127,8 @@ impl Signature {
 
     /// Retrieves the recovery signature.
     fn as_signature(&self) -> Result<(RecoverableSignature, RecoveryId), SignatureError> {
-        let recovery_id = self.recovery_id()?;
-        let signature = {
+        let mut recovery_id = self.recovery_id()?;
+        let mut signature = {
             let mut r_bytes = [0u8; 32];
             let mut s_bytes = [0u8; 32];
             self.r.to_big_endian(&mut r_bytes);
@@ -137,6 +137,14 @@ impl Signature {
             let gas: &GenericArray<u8, U32> = GenericArray::from_slice(&s_bytes);
             K256Signature::from_scalars(*gar, *gas)?
         };
+
+        // Normalize into "low S" form. See:
+        // - https://github.com/RustCrypto/elliptic-curves/issues/988
+        // - https://github.com/bluealloy/revm/pull/870
+        if let Some(normalized) = signature.normalize_s() {
+            signature = normalized;
+            recovery_id = RecoveryId::from_byte(recovery_id.to_byte() ^ 1).unwrap();
+        }
 
         Ok((signature, recovery_id))
     }
@@ -322,6 +330,16 @@ mod tests {
         assert_eq!(tx.transaction_type, Some(2.into()));
         let expected = Address::from_str("0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe5").unwrap();
         assert_eq!(tx.recover_from().unwrap(), expected);
+    }
+
+    #[test]
+    fn can_recover_tx_sender_not_normalized() {
+        let sig = Signature::from_str("48b55bfa915ac795c431978d8a6a992b628d557da5ff759b307d495a36649353efffd310ac743f371de3b9f7f9cb56c0b28ad43601b4ab949f53faa07bd2c8041b").unwrap();
+        let hash =
+            H256::from_str("5eb4f5a33c621f32a8622d5f943b6b102994dfe4e5aebbefe69bb1b2aa0fc93e")
+                .unwrap();
+        let expected = Address::from_str("0f65fe9276bc9a24ae7083ae28e2660ef72df99e").unwrap();
+        assert_eq!(sig.recover(hash).unwrap(), expected);
     }
 
     #[test]
