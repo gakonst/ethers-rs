@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct FeeHistory {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub base_fee_per_gas: Vec<U256>,
     pub gas_used_ratio: Vec<f64>,
     #[serde(deserialize_with = "deserialize_stringified_numeric")]
@@ -14,6 +15,6 @@ pub struct FeeHistory {
     pub oldest_block: U256,
     /// An (optional) array of effective priority fee per gas data points from a single block. All
     /// zeroes are returned if the block is empty.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub reward: Vec<Vec<U256>>,
 }
