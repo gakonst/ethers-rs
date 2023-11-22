@@ -13,17 +13,19 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
-type MulticallTx<M: Middleware> = (ContractCall<M, Bytes>, oneshot::Sender<Result<Bytes, MulticallError<M>>>);
+type MulticallTx<M: Middleware> =
+    (ContractCall<M, Bytes>, oneshot::Sender<Result<Bytes, MulticallError<M>>>);
 
 /// Middleware used for transparently leveraging multicall functionality
 pub struct MulticallMiddleware<M: Middleware> {
     inner: Arc<M>,
     contract: BaseContract,
     multicall: Multicall<M>,
+    callbacks: Vec<oneshot::Sender<Result<Bytes, MulticallError<M>>>>,
     rx: mpsc::UnboundedReceiver<MulticallTx<M>>,
     tx: mpsc::UnboundedSender<MulticallTx<M>>,
     checkpoint: instant::Instant,
-    frequency: Duration
+    frequency: Duration,
 }
 
 impl<M> MulticallMiddleware<M>
@@ -32,20 +34,36 @@ where
 {
     /// Instantiates the nonce manager with a 0 nonce. The `address` should be the
     /// address which you'll be sending transactions from
-    pub async fn new(inner: M, contract: BaseContract, frequency: Duration) -> Result<Self, MulticallError<M>> {
+    pub async fn new(
+        inner: M,
+        contract: BaseContract,
+        frequency: Duration,
+    ) -> Result<Self, MulticallError<M>> {
         // TODO: support custom multicall address
         let multicall = Multicall::new(inner, None).await?;
+        let callbacks = Vec::new();
 
         let (tx, rx) = mpsc::unbounded_channel();
 
         let timestamp = instant::now();
 
-        Ok(Self { inner: Arc::new(inner), multicall, contract, tx, rx, checkpoint: timestamp, frequency })
+        Ok(Self {
+            inner: Arc::new(inner),
+            multicall,
+            callbacks,
+            contract,
+            tx,
+            rx,
+            checkpoint: timestamp,
+            frequency,
+        })
     }
 
     pub async fn run(&mut self) {
+        // TODO: prevent deadlock
         while let Some((call, callback)) = self.rx.recv().await {
             self.multicall.add_call(call, false);
+            self.callbacks.push(callback);
 
             let timestamp = instant::now();
             if timestamp.duration_since(self.checkpoint) > self.frequency {
@@ -54,12 +72,18 @@ where
                 let results = self.multicall.call_raw().await?;
                 self.multicall.clear_calls();
 
-                callback.send(results.pop());
+                for (result, callback) in results.into_iter().zip(self.callbacks.drain(..)) {
+                    callback.send(result);
+                }
             }
         }
     }
 
-    fn call_from_tx<D: Tokenizable>(&self, tx: &TypedTransaction, block: Option<BlockId>) -> Option<ContractCall<M, D>> {
+    fn call_from_tx<D: Tokenizable>(
+        &self,
+        tx: &TypedTransaction,
+        block: Option<BlockId>,
+    ) -> Option<ContractCall<M, D>> {
         if let Some(data) = tx.data() {
             if let Ok(function) = self.contract.get_fn_from_input(data) {
                 return Some(FunctionCall::new(*tx, *function, self.inner, block));
