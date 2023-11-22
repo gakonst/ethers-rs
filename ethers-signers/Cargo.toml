@@ -43,8 +43,8 @@ futures-util = { workspace = true, optional = true }
 futures-executor = { workspace = true, optional = true }
 
 # aws
-rusoto_core = { version = "0.48.0", default-features = false, optional = true }
-rusoto_kms = { version = "0.48.0", default-features = false, optional = true }
+aws-config = { version = "1.0", default-features = false, optional = true }
+aws-sdk-kms = { version = "0.39", default-features = false, optional = true }
 spki = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -82,5 +82,5 @@ optimism = ["ethers-core/optimism"]
 
 ledger = ["coins-ledger", "futures", "semver"]
 trezor = ["trezor-client", "futures", "semver", "home", "protobuf"]
-aws = ["rusoto_core/rustls", "rusoto_kms/rustls", "spki"]
+aws = ["aws-config", "aws-sdk-kms", "spki"]
 yubi = ["yubihsm"]
