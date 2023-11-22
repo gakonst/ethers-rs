@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use std::{cmp::Ordering, sync::Arc, time::Instant};
 
 use async_trait::async_trait;
-use ethers_contract::{multicall::Multicall, BaseContract, ContractCall, FunctionCall};
+use ethers_contract::{multicall::Multicall, BaseContract, ContractCall, MulticallError};
 use ethers_core::{
-    abi::{Bytes, Tokenizable},
+    abi::{Bytes, Token, Tokenizable},
     types::{transaction::eip2718::TypedTransaction, BlockId},
 };
 use ethers_providers::{Middleware, MiddlewareError};
@@ -13,17 +13,18 @@ use thiserror::Error;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
-type MulticallTx<M: Middleware> =
-    (ContractCall<M, Bytes>, oneshot::Sender<Result<Bytes, MulticallError<M>>>);
+type MulticallResult = Result<Token, Bytes>;
+type MulticallRequest<M: Middleware> = (ContractCall<M, Bytes>, oneshot::Sender<MulticallResult>);
 
+#[derive(Debug)]
 /// Middleware used for transparently leveraging multicall functionality
 pub struct MulticallMiddleware<M: Middleware> {
     inner: Arc<M>,
-    contract: BaseContract,
+    contracts: Vec<BaseContract>,
     multicall: Multicall<M>,
-    callbacks: Vec<oneshot::Sender<Result<Bytes, MulticallError<M>>>>,
-    rx: mpsc::UnboundedReceiver<MulticallTx<M>>,
-    tx: mpsc::UnboundedSender<MulticallTx<M>>,
+    callbacks: Vec<oneshot::Sender<MulticallResult>>,
+    rx: mpsc::UnboundedReceiver<MulticallRequest<M>>,
+    tx: mpsc::UnboundedSender<MulticallRequest<M>>,
     checkpoint: instant::Instant,
     frequency: Duration,
 }
@@ -37,8 +38,8 @@ where
     /// TODO: support multiple contract ABIs // 4byte DB
     pub async fn new(
         inner: M,
-        contract: BaseContract,
-        frequency: Duration,
+        contracts: Vec<BaseContract>,
+        batch_frequency: Duration,
     ) -> Result<Self, MulticallError<M>> {
         // TODO: support custom multicall address
         let multicall = Multicall::new(inner, None).await?;
@@ -46,35 +47,63 @@ where
 
         let (tx, rx) = mpsc::unbounded_channel();
 
-        let timestamp = instant::now();
+        let timestamp = Instant::now();
 
         Ok(Self {
-            inner: Arc::new(inner),
+            inner,
             multicall,
             callbacks,
-            contract,
+            contracts,
             tx,
             rx,
             checkpoint: timestamp,
-            frequency,
+            frequency: batch_frequency,
         })
     }
 
-    pub async fn run(&mut self) {
-        // TODO: prevent deadlock
-        while let Some((call, callback)) = self.rx.recv().await {
-            self.multicall.add_call(call, false);
-            self.callbacks.push(callback);
+    pub async fn run(&mut self) -> Result<(), MulticallMiddlewareError<M>> {
+        loop {
+            let maybe_request = self.rx.try_recv();
+            match maybe_request {
+                Ok((call, callback)) => {
+                    self.multicall.add_call(call, true);
+                    self.callbacks.push(callback);
+                    // keep filling batch until channel is empty (or closed)
+                    continue;
+                }
+                Err(mpsc::error::TryRecvError::Disconnected) => {
+                    // TODO: exit?
+                }
+                Err(mpsc::error::TryRecvError::Empty) => {
+                    // TODO: consider sleeping here?
+                }
+            }
 
-            let timestamp = instant::now();
-            if timestamp.duration_since(self.checkpoint) > self.frequency {
-                self.checkpoint = timestamp;
+            // check if batch is non-empty and frequency has elapsed since last batch was sent
+            if self.callbacks.len() > 0
+                && self.checkpoint.elapsed().cmp(&self.frequency) == Ordering::Greater
+            {
+                let maybe_results = self.multicall.call_raw().await;
+                match maybe_results {
+                    Ok(results) => {
+                        self.multicall.clear_calls();
 
-                let results = self.multicall.call_raw().await?;
-                self.multicall.clear_calls();
+                        for (result, callback) in results.into_iter().zip(self.callbacks.drain(..))
+                        {
+                            callback.send(result);
+                        }
 
-                for (result, callback) in results.into_iter().zip(self.callbacks.drain(..)) {
-                    callback.send(result);
+                        self.checkpoint = Instant::now();
+                    }
+                    Err(MulticallError::ContractError(ce)) => {
+                        // TODO: bubble up to callback?
+                    }
+                    Err(MulticallError::InvalidChainId(id)) => {
+                        // TODO: exit?
+                    }
+                    Err(MulticallError::IllegalRevert) => {
+                        // TODO: idk
+                    }
                 }
             }
         }
@@ -86,8 +115,10 @@ where
         block: Option<BlockId>,
     ) -> Option<ContractCall<M, D>> {
         if let Some(data) = tx.data() {
-            if let Ok(function) = self.contract.get_fn_from_input(data) {
-                return Some(FunctionCall::new(*tx, *function, self.inner, block));
+            for contract in self.contracts.iter() {
+                if let Ok(function) = contract.get_fn_from_input(data) {
+                    return Some(ContractCall::new(*tx, *function, self.inner, block));
+                }
             }
         }
 
@@ -97,22 +128,22 @@ where
 
 #[derive(Error, Debug)]
 /// Thrown when an error happens at the Multicall middleware
-pub enum MulticallError<M: Middleware> {
+pub enum MulticallMiddlewareError<M: Middleware> {
     /// Thrown when the internal middleware errors
     #[error("{0}")]
     MiddlewareError(M::Error),
 }
 
-impl<M: Middleware> MiddlewareError for MulticallError<M> {
+impl<M: Middleware> MiddlewareError for MulticallMiddlewareError<M> {
     type Inner = M::Error;
 
     fn from_err(src: M::Error) -> Self {
-        MulticallError::MiddlewareError(src)
+        MulticallMiddlewareError::MiddlewareError(src)
     }
 
     fn as_inner(&self) -> Option<&Self::Inner> {
         match self {
-            MulticallError::MiddlewareError(e) => Some(e),
+            MulticallMiddlewareError::MiddlewareError(e) => Some(e),
         }
     }
 }
@@ -123,7 +154,7 @@ impl<M> Middleware for MulticallMiddleware<M>
 where
     M: Middleware,
 {
-    type Error = MulticallError<M>;
+    type Error = MulticallMiddlewareError<M>;
     type Provider = M::Provider;
     type Inner = M;
 
@@ -139,7 +170,7 @@ where
         if let Some(call) = self.call_from_tx(tx, block) {
             let (tx, rx) = oneshot::channel();
 
-            self.tx.send((call, tx));
+            self.tx.send((call, tx))?;
 
             return rx.await;
         }
