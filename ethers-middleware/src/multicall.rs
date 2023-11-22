@@ -34,6 +34,7 @@ where
 {
     /// Instantiates the nonce manager with a 0 nonce. The `address` should be the
     /// address which you'll be sending transactions from
+    /// TODO: support multiple contract ABIs // 4byte DB
     pub async fn new(
         inner: M,
         contract: BaseContract,
