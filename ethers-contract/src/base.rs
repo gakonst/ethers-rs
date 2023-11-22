@@ -200,7 +200,8 @@ impl BaseContract {
         decode_function_data_raw(function, bytes, false)
     }
 
-    fn get_fn_from_input(&self, input: &[u8]) -> Result<&Function, AbiError> {
+    /// Returns the function from the input bytes (useful for going from tx.data to function)
+    pub fn get_fn_from_input(&self, input: &[u8]) -> Result<&Function, AbiError> {
         let sig: [u8; 4] = input
             .get(0..4)
             .ok_or(AbiError::WrongSelector)?
