@@ -82,7 +82,7 @@ where
                     continue;
                 }
                 Err(mpsc::error::TryRecvError::Disconnected) => {
-                    panic!("multicall channel disconnected");
+                    return Ok(());
                 }
                 Ok((call, callback)) => {
                     multicall.add_call(call, true);
@@ -93,18 +93,18 @@ where
             // check if batch is non-empty and frequency has elapsed since last batch was sent
             if callbacks.len() > 0 && checkpoint.elapsed().cmp(&self.frequency) == Ordering::Greater
             {
+                checkpoint = Instant::now();
+
                 let results = multicall.call_raw().await?;
                 multicall.clear_calls();
 
                 for (result, callback) in results.into_iter().zip(callbacks.drain(..)) {
                     let response =
                         result.map_err(|e| MulticallError::ContractError(ContractError::Revert(e)));
-                    if let Err(e) = callback.send(response) {
-                        panic!("oneshot channel closed: {:?}", e);
-                    }
-                }
 
-                checkpoint = Instant::now();
+                    // ignore send errors, as the receiver may have dropped
+                    let _ = callback.send(response);
+                }
             }
         }
     }
