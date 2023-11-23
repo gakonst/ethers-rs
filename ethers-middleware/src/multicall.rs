@@ -2,31 +2,37 @@ use std::{cmp::Ordering, sync::Arc, time::Instant};
 
 use async_trait::async_trait;
 use ethers_contract::{
-    multicall::Multicall, BaseContract, ContractCall, ContractError, MulticallError,
+    multicall::Multicall, BaseContract, ContractCall, ContractError, ContractRevert, EthError,
+    MulticallError,
 };
 use ethers_core::{
     abi::{encode, Token, Tokenizable},
-    types::{transaction::eip2718::TypedTransaction, BlockId, Address},
+    types::{transaction::eip2718::TypedTransaction, Address, BlockId, Bytes},
 };
 use ethers_providers::{Middleware, MiddlewareError};
 use instant::Duration;
 use thiserror::Error;
 
-use tokio::sync::mpsc;
 use tokio::sync::oneshot;
+use tokio::{sync::mpsc, time::sleep};
 
 type MulticallResult<M> = Result<Token, MulticallError<M>>;
 type MulticallRequest<M> = (ContractCall<M, Token>, oneshot::Sender<MulticallResult<M>>);
 
 #[derive(Debug)]
 /// Middleware used for transparently leveraging multicall functionality
-pub struct MulticallMiddleware<M: Middleware> {
+pub struct MulticallProcessor<M: Middleware> {
     inner: Arc<M>,
     multicall_address: Option<Address>,
-    contracts: Vec<BaseContract>,
-    rx: mpsc::UnboundedReceiver<MulticallRequest<M>>,
-    tx: mpsc::UnboundedSender<MulticallRequest<M>>,
     frequency: Duration,
+    rx: mpsc::UnboundedReceiver<MulticallRequest<M>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MulticallMiddleware<M: Middleware> {
+    inner: Arc<M>,
+    contracts: Vec<BaseContract>,
+    tx: mpsc::UnboundedSender<MulticallRequest<M>>,
 }
 
 #[derive(Error, Debug)]
@@ -36,8 +42,11 @@ pub enum MulticallMiddlewareError<M: Middleware> {
     #[error("{0}")]
     MiddlewareError(M::Error),
     /// Thrown when the internal multicall errors
+    #[error(transparent)]
+    MulticallError(#[from] MulticallError<M>),
+    /// Thrown when a revert reason is decoded from the contract
     #[error("{0}")]
-    MulticallError(MulticallError<M>),
+    RevertReason(String),
 }
 
 impl<M: Middleware> MiddlewareError for MulticallMiddlewareError<M> {
@@ -51,52 +60,33 @@ impl<M: Middleware> MiddlewareError for MulticallMiddlewareError<M> {
         match self {
             MulticallMiddlewareError::MiddlewareError(e) => Some(e),
             MulticallMiddlewareError::MulticallError(e) => e.as_middleware_error(),
+            MulticallMiddlewareError::RevertReason(_) => None,
         }
     }
 }
 
-impl<M: Middleware> From<MulticallError<M>> for MulticallMiddlewareError<M> {
-    fn from(value: MulticallError<M>) -> Self {
-        MulticallMiddlewareError::MulticallError(value)
-    }
-}
-
-impl<M> MulticallMiddleware<M>
+impl<M> MulticallProcessor<M>
 where
     M: Middleware,
 {
-    /// Instantiates the multicall middleware to recognize the given `contracts` selectors
-    /// and batch calls in a single inner call every `frequency` interval
-    pub fn new(
-        inner: M,
-        contracts: Vec<BaseContract>,
-        frequency: Duration,
-        multicall_address: Option<Address>,
-    ) -> Result<Self, MulticallError<M>> {
-        let (tx, rx) = mpsc::unbounded_channel();
-
-        Ok(Self { inner: Arc::new(inner), contracts, tx, rx, frequency, multicall_address })
-    }
-
-    pub async fn run(&mut self) -> Result<(), MulticallMiddlewareError<M>> {
-        let mut multicall = Multicall::new(self.inner.clone(), self.multicall_address).await?;
+    pub async fn run(mut self) -> Result<(), MulticallMiddlewareError<M>> {
+        let mut multicall = Multicall::new(self.inner, self.multicall_address).await?;
         let mut callbacks = Vec::new();
         let mut checkpoint = Instant::now();
 
         loop {
             let maybe_request = self.rx.try_recv();
             match maybe_request {
-                Ok((call, callback)) => {
-                    multicall.add_call(call, true);
-                    callbacks.push(callback);
-                    // keep filling batch until channel is empty (or disconnected)
+                Err(mpsc::error::TryRecvError::Empty) => {
+                    sleep(self.frequency).await;
                     continue;
                 }
                 Err(mpsc::error::TryRecvError::Disconnected) => {
                     panic!("multicall channel disconnected");
                 }
-                Err(mpsc::error::TryRecvError::Empty) => {
-                    // TODO: consider sleeping here
+                Ok((call, callback)) => {
+                    multicall.add_call(call, true);
+                    callbacks.push(callback);
                 }
             }
 
@@ -118,6 +108,28 @@ where
             }
         }
     }
+}
+
+impl<M> MulticallMiddleware<M>
+where
+    M: Middleware,
+{
+    /// Instantiates the multicall middleware to recognize the given `contracts` selectors
+    /// and batch calls in a single inner call every `frequency` interval
+    pub fn new(
+        inner: M,
+        contracts: Vec<BaseContract>,
+        frequency: Duration,
+        multicall_address: Option<Address>,
+    ) -> (Self, MulticallProcessor<M>) {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let client = Arc::new(inner);
+
+        (
+            Self { inner: client.clone(), tx, contracts },
+            MulticallProcessor { inner: client, rx, frequency, multicall_address },
+        )
+    }
 
     fn call_from_tx<D: Tokenizable>(
         &self,
@@ -136,7 +148,6 @@ where
                 }
             }
         }
-
         None
     }
 }
@@ -170,11 +181,19 @@ where
             match rx.await {
                 Err(e) => panic!("multicall channel disconnected: {:?}", e),
                 Ok(response) => {
-                    return response.map(|token| encode(&[token]).into()).map_err(|e| e.into());
+                    return response.map(|token| encode(&[token]).into()).map_err(|e| {
+                        if let Some(reason) = e.decode_revert::<String>() {
+                            MulticallMiddlewareError::RevertReason(reason)
+                        } else {
+                            MulticallMiddlewareError::MulticallError(e)
+                        }
+                    });
                 }
             }
         }
 
         return self.inner.call(tx, block).await.map_err(MulticallMiddlewareError::from_err);
     }
+
+    // TODO: support other Multicall methods (blocknumber, balance, etc)
 }
