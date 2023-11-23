@@ -6,7 +6,7 @@ use ethers_contract::{
 };
 use ethers_core::{
     abi::{encode, Token, Tokenizable},
-    types::{transaction::eip2718::TypedTransaction, BlockId},
+    types::{transaction::eip2718::TypedTransaction, BlockId, Address},
 };
 use ethers_providers::{Middleware, MiddlewareError};
 use instant::Duration;
@@ -22,6 +22,7 @@ type MulticallRequest<M> = (ContractCall<M, Token>, oneshot::Sender<MulticallRes
 /// Middleware used for transparently leveraging multicall functionality
 pub struct MulticallMiddleware<M: Middleware> {
     inner: Arc<M>,
+    multicall_address: Option<Address>,
     contracts: Vec<BaseContract>,
     rx: mpsc::UnboundedReceiver<MulticallRequest<M>>,
     tx: mpsc::UnboundedSender<MulticallRequest<M>>,
@@ -70,15 +71,15 @@ where
         inner: M,
         contracts: Vec<BaseContract>,
         frequency: Duration,
+        multicall_address: Option<Address>,
     ) -> Result<Self, MulticallError<M>> {
         let (tx, rx) = mpsc::unbounded_channel();
 
-        Ok(Self { inner: Arc::new(inner), contracts, tx, rx, frequency })
+        Ok(Self { inner: Arc::new(inner), contracts, tx, rx, frequency, multicall_address })
     }
 
     pub async fn run(&mut self) -> Result<(), MulticallMiddlewareError<M>> {
-        // TODO: support custom multicall address
-        let mut multicall = Multicall::new(self.inner.clone(), None).await?;
+        let mut multicall = Multicall::new(self.inner.clone(), self.multicall_address).await?;
         let mut callbacks = Vec::new();
         let mut checkpoint = Instant::now();
 
