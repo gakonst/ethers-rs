@@ -2,12 +2,12 @@ use std::{cmp::Ordering, sync::Arc, time::Instant};
 
 use async_trait::async_trait;
 use ethers_contract::{
-    multicall::Multicall, BaseContract, ContractCall, ContractError, ContractRevert, EthError,
+    multicall::Multicall, BaseContract, ContractCall, ContractError,
     MulticallError,
 };
 use ethers_core::{
     abi::{encode, Token, Tokenizable},
-    types::{transaction::eip2718::TypedTransaction, Address, BlockId, Bytes},
+    types::{transaction::eip2718::TypedTransaction, Address, BlockId},
 };
 use ethers_providers::{Middleware, MiddlewareError};
 use instant::Duration;
