@@ -130,7 +130,7 @@ impl<T: TokenizableItem + AbiArrayType> AbiDecode for Vec<T> {
 }
 
 macro_rules! impl_abi_codec_tuple {
-    ($num: expr, $( $ty: ident),+) => {
+    ($( $ty: ident),+) => {
         impl<$($ty, )+> AbiEncode for ($($ty,)+) where
             $(
                 $ty: Tokenizable,
@@ -159,26 +159,27 @@ macro_rules! impl_abi_codec_tuple {
     }
 }
 
-impl_abi_codec_tuple!(1, A);
-impl_abi_codec_tuple!(2, A, B);
-impl_abi_codec_tuple!(3, A, B, C);
-impl_abi_codec_tuple!(4, A, B, C, D);
-impl_abi_codec_tuple!(5, A, B, C, D, E);
-impl_abi_codec_tuple!(6, A, B, C, D, E, F);
-impl_abi_codec_tuple!(7, A, B, C, D, E, F, G);
-impl_abi_codec_tuple!(8, A, B, C, D, E, F, G, H);
-impl_abi_codec_tuple!(9, A, B, C, D, E, F, G, H, I);
-impl_abi_codec_tuple!(10, A, B, C, D, E, F, G, H, I, J);
-impl_abi_codec_tuple!(11, A, B, C, D, E, F, G, H, I, J, K);
-impl_abi_codec_tuple!(12, A, B, C, D, E, F, G, H, I, J, K, L);
-impl_abi_codec_tuple!(13, A, B, C, D, E, F, G, H, I, J, K, L, M);
-impl_abi_codec_tuple!(14, A, B, C, D, E, F, G, H, I, J, K, L, M, N);
-impl_abi_codec_tuple!(15, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O);
-impl_abi_codec_tuple!(16, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q);
-impl_abi_codec_tuple!(17, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R);
-impl_abi_codec_tuple!(18, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S);
-impl_abi_codec_tuple!(19, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T);
-impl_abi_codec_tuple!(20, A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U);
+impl_abi_codec_tuple!(A);
+impl_abi_codec_tuple!(A, B);
+impl_abi_codec_tuple!(A, B, C);
+impl_abi_codec_tuple!(A, B, C, D);
+impl_abi_codec_tuple!(A, B, C, D, E);
+impl_abi_codec_tuple!(A, B, C, D, E, F);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J, K);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J, K, L);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T);
+impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U);
 
 #[cfg(test)]
 mod tests {
