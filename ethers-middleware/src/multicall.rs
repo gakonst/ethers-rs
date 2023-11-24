@@ -224,13 +224,8 @@ where
         let get_block_fn =
             self.multicall.get_fn_from_selector(GetBlockNumberCall::selector()).unwrap();
         let data = get_block_fn.encode_input(&vec![]).unwrap();
-        let call =
-            ContractCall::new(
-                TypedTransaction::Legacy(TransactionRequest::new().data(data)),
-                get_block_fn.to_owned(),
-                self.inner.clone(),
-                None,
-            );
+        let tx = TypedTransaction::Legacy(TransactionRequest::new().data(data.clone()));
+        let call = self.call_from_tx(&tx, None).unwrap();
         return self
             .batch_call(call)
             .await
@@ -256,12 +251,8 @@ where
         let get_balance_fn =
             self.multicall.get_fn_from_selector(GetEthBalanceCall::selector()).unwrap();
         let data = get_balance_fn.encode_input(&vec![Token::Address(address)]).unwrap();
-        let call = ContractCall::new(
-            TypedTransaction::Legacy(TransactionRequest::new().data(data)),
-            get_balance_fn.to_owned(),
-            self.inner.clone(),
-            block,
-        );
+        let tx = TypedTransaction::Legacy(TransactionRequest::new().data(data.clone()));
+        let call = self.call_from_tx(&tx, block).unwrap();
         return self
             .batch_call(call)
             .await
