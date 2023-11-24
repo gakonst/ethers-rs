@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, ops::Deref, sync::Arc, time::Instant};
+use std::{ops::Deref, sync::Arc};
 
 use async_trait::async_trait;
 use ethers_contract::{
@@ -19,13 +19,9 @@ use ethers_core::{
     },
 };
 use ethers_providers::{Middleware, MiddlewareError};
-use instant::Duration;
 use thiserror::Error;
 
-use tokio::{
-    sync::{mpsc, oneshot},
-    time::sleep,
-};
+use tokio::sync::{mpsc, oneshot};
 
 type MulticallResult<M> = Result<Token, MulticallError<M>>;
 type MulticallRequest<M> = (ContractCall<M, Token>, oneshot::Sender<MulticallResult<M>>);
@@ -35,7 +31,7 @@ type MulticallRequest<M> = (ContractCall<M, Token>, oneshot::Sender<MulticallRes
 pub struct MulticallProcessor<M: Middleware> {
     inner: Arc<M>,
     multicall_address: Option<Address>,
-    frequency: Duration,
+    max_batch_size: usize,
     rx: mpsc::UnboundedReceiver<MulticallRequest<M>>,
 }
 
@@ -81,50 +77,54 @@ impl<M> MulticallProcessor<M>
 where
     M: Middleware,
 {
-    pub async fn run(mut self) -> Result<(), MulticallMiddlewareError<M>> {
-        let mut multicall = Multicall::new(self.inner, self.multicall_address).await?;
-        let mut callbacks = Vec::new();
-        let mut checkpoint = Instant::now();
+    pub async fn run(mut self) -> () {
+        let mut multicall: Multicall<M> =
+            Multicall::new(self.inner, self.multicall_address).await.unwrap();
+        let mut requests: Vec<MulticallRequest<M>> = Vec::with_capacity(self.max_batch_size);
 
         loop {
-            let maybe_request = self.rx.try_recv();
-            match maybe_request {
-                Err(mpsc::error::TryRecvError::Empty) => {}
-                Err(mpsc::error::TryRecvError::Disconnected) => {
-                    return Ok(());
-                }
-                Ok((mut call, callback)) => {
-                    // use to: None as sentinel for system calls to get block number, etc
-                    if call.tx.to().is_none() {
-                        call.tx.set_to(multicall.contract.address());
-                        multicall.add_call(call, false);
-                    } else {
-                        multicall.add_call(call, true);
-                    }
+            match self.rx.recv().await {
+                Some(request) => requests.push(request),
+                None => break,
+            }
 
-                    callbacks.push(callback);
+            while requests.len() < self.max_batch_size {
+                match self.rx.try_recv() {
+                    Ok(request) => requests.push(request),
 
-                    // keep filling up the batch until channel is empty
-                    continue;
+                    // For both errors (Disconnected and Empty), the correct action
+                    // is to process the items.  If the error was Disconnected, on
+                    // the next iteration rx.recv().await will be None and we'll
+                    // break from the outer loop anyway.
+                    Err(_) => break,
                 }
             }
 
-            // check if batch is non-empty and frequency has elapsed since last batch was sent
-            if callbacks.len() > 0 && checkpoint.elapsed().cmp(&self.frequency) == Ordering::Greater
-            {
-                checkpoint = Instant::now();
+            for (call, _) in &requests {
+                let mut call = call.to_owned();
 
-                let results = multicall.call_raw().await?;
-                multicall.clear_calls();
-
-                for (result, callback) in results.into_iter().zip(callbacks.drain(..)) {
-                    let response =
-                        result.map_err(|e| MulticallError::ContractError(ContractError::Revert(e)));
-
-                    // ignore send errors, as the receiver may have dropped
-                    let _ = callback.send(response);
+                // use `to: None` as sentinel for system calls to get block number, etc
+                if call.tx.to().is_none() {
+                    call.tx.set_to(multicall.contract.address());
+                    multicall.add_call(call, false);
+                } else {
+                    multicall.add_call(call, true);
                 }
             }
+
+            println!("sending batch of {} calls", requests.len());
+
+            let results = multicall.call_raw().await.unwrap();
+            for (result, (_, callback)) in results.into_iter().zip(requests.drain(..)) {
+                let response =
+                    result.map_err(|e| MulticallError::ContractError(ContractError::Revert(e)));
+
+                // ignore send errors, as the receiver may have dropped
+                let _ = callback.send(response);
+            }
+
+            multicall.clear_calls();
+            requests.clear(); // just to be safe
         }
     }
 }
@@ -138,7 +138,7 @@ where
     pub fn new(
         inner: M,
         match_abis: Vec<Abi>,
-        frequency: Duration,
+        max_batch_size: usize,
         multicall_address: Option<Address>,
     ) -> (Self, MulticallProcessor<M>) {
         let (tx, rx) = mpsc::unbounded_channel();
@@ -150,7 +150,7 @@ where
 
         (
             Self { inner: client.clone(), tx, contracts, multicall },
-            MulticallProcessor { inner: client, rx, frequency, multicall_address },
+            MulticallProcessor { inner: client, rx, multicall_address, max_batch_size },
         )
     }
 
@@ -240,10 +240,19 @@ where
 
     async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
         &self,
-        address_or_name: T,
+        address: T,
         block: Option<BlockId>,
     ) -> Result<ethers_core::types::U256, Self::Error> {
-        let address = *address_or_name.into().as_address().unwrap();
+        let address_or_name = address.into();
+        if address_or_name.as_name().is_some() {
+            return self
+                .inner
+                .get_balance(address_or_name, block)
+                .await
+                .map_err(MulticallMiddlewareError::from_err);
+        }
+
+        let address = *address_or_name.as_address().unwrap();
         let get_balance_fn =
             self.multicall.get_fn_from_selector(GetEthBalanceCall::selector()).unwrap();
         let data = get_balance_fn.encode_input(&vec![Token::Address(address)]).unwrap();
