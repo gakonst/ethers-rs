@@ -1,25 +1,30 @@
 use std::sync::Arc;
 
 use crate::spawn_anvil;
-use ethers_core::{types::*, abi::AbiEncode};
-use ethers_middleware::{MulticallMiddleware, SignerMiddleware, multicall::MulticallMiddlewareError};
+use ethers_core::types::*;
+use ethers_middleware::{MulticallMiddleware, SignerMiddleware};
 
 use ethers_contract::{
     abigen,
-    multicall::constants::{DEPLOYER_ADDRESS, MULTICALL_ADDRESS, SIGNED_DEPLOY_MULTICALL_TX}, ContractError, EthError,
+    multicall::constants::{DEPLOYER_ADDRESS, MULTICALL_ADDRESS, SIGNED_DEPLOY_MULTICALL_TX},
 };
+use ethers_providers::Middleware;
 use ethers_signers::{LocalWallet, Signer};
-use instant::Duration;
 
 abigen!(
     SimpleRevertingStorage,
     "../ethers-contract/tests/solidity-contracts/SimpleRevertingStorage.json"
 );
-abigen!(SimpleStorage, "../ethers-contract/tests/solidity-contracts/SimpleStorage.json");
+abigen!(
+    SimpleStorage,
+    "../ethers-contract/tests/solidity-contracts/SimpleStorage.json"
+);
 
 #[tokio::test]
 async fn multicall() {
     let (provider, anvil) = spawn_anvil();
+    let wallet: LocalWallet = anvil.keys()[0].clone().into();
+    let client = Arc::new(SignerMiddleware::new(provider.clone(), wallet.with_chain_id(anvil.chain_id())));
 
     // 1. deploy multicall contract (if not already)
     provider
@@ -37,47 +42,42 @@ async fn multicall() {
         .await
         .unwrap();
 
-    // 2. deploy some contracts to interact with
-    let wallet: LocalWallet = anvil.keys()[0].clone().into();
-    let client = Arc::new(SignerMiddleware::new(provider, wallet.with_chain_id(anvil.chain_id())));
-
-    let value = "multicall!".to_string();
-    let simple =
-        SimpleStorage::deploy(client.clone(), value.clone()).unwrap().send().await.unwrap();
-    let simple_reverting =
-        SimpleRevertingStorage::deploy(client.clone(), value.clone()).unwrap().send().await.unwrap();
-
-    // 3. instantiate the multicall middleware
-    // TODO: get BaseContracts before deploying?
-    let contracts = vec![simple.abi().clone().into(), simple_reverting.abi().to_owned().into()];
+    // 2. instantiate the multicall middleware
     let (multicall_provider, multicall_processor) = MulticallMiddleware::new(
         client,
-        contracts,
-        Duration::from_secs(1),
+        vec![SIMPLEREVERTINGSTORAGE_ABI.to_owned(), SIMPLESTORAGE_ABI.to_owned()],
+        10,
         Some(MULTICALL_ADDRESS),
     );
-
     let multicall_client = Arc::new(multicall_provider);
 
-    // 4. reconnect contracts to the multicall provider
-    let simple = SimpleStorage::new(simple.address(), multicall_client.clone());
-    let simple_reverting =
-        SimpleRevertingStorage::new(simple_reverting.address(), multicall_client);
+    // 3. deploy a contract to interact with
+    let value = "multicall!".to_string();
+    let simple = SimpleStorage::deploy(multicall_client.clone(), value.clone()).unwrap().send().await.unwrap();
+    let simple_reverting = SimpleRevertingStorage::deploy(multicall_client.clone(), value.clone()).unwrap().send().await.unwrap();
 
-    // 5. spawn the multicall processor
+    // 4. spawn the multicall processor
     tokio::spawn(async move {
         let _ = multicall_processor.run().await;
     });
 
-    // 6. perform some calls in parallel
-    tokio::spawn(async move {
-        let simple_result = simple.get_value().call().await.unwrap();
-        assert_eq!(simple_result, value);
-    });
-
-    let reverting_result = simple_reverting.get_value(true).call().await.unwrap_err().to_string();
-    assert_eq!(
-        reverting_result,
-        "getValue revert"
+    // 5. make some calls in parallel
+    tokio::join!(
+        async {
+            let val: String = simple.get_value().call().await.unwrap();
+            assert_eq!(val, value);
+        },
+        async {
+            let val = simple_reverting.get_value(true).call().await.unwrap_err().to_string();
+            assert_eq!(val, "getValue revert");
+        },
+        async {
+            let bal = multicall_client.get_balance(DEPLOYER_ADDRESS, None).await.unwrap();
+            assert!(bal > U256::zero());
+        },
+        async {
+            let block = multicall_client.get_block_number().await.unwrap();
+            assert!(block > U64::zero());
+        }
     );
 }
