@@ -1,20 +1,31 @@
-use std::{cmp::Ordering, sync::Arc, time::Instant};
+use std::{cmp::Ordering, ops::Deref, sync::Arc, time::Instant};
 
 use async_trait::async_trait;
 use ethers_contract::{
-    multicall::Multicall, BaseContract, ContractCall, ContractError,
-    MulticallError,
+    multicall::{
+        contract::{
+            GetBlockNumberCall, GetBlockNumberReturn, GetEthBalanceCall, GetEthBalanceReturn,
+            MULTICALL3_ABI,
+        },
+        Multicall,
+    },
+    BaseContract, ContractCall, ContractError, EthCall, MulticallError,
 };
 use ethers_core::{
-    abi::{encode, Token, Tokenizable},
-    types::{transaction::eip2718::TypedTransaction, Address, BlockId},
+    abi::{encode, Abi, AbiDecode, Token, Tokenizable},
+    types::{
+        transaction::eip2718::TypedTransaction, Address, BlockId, Bytes, NameOrAddress,
+        TransactionRequest,
+    },
 };
 use ethers_providers::{Middleware, MiddlewareError};
 use instant::Duration;
 use thiserror::Error;
 
-use tokio::sync::oneshot;
-use tokio::{sync::mpsc, time::sleep};
+use tokio::{
+    sync::{mpsc, oneshot},
+    time::sleep,
+};
 
 type MulticallResult<M> = Result<Token, MulticallError<M>>;
 type MulticallRequest<M> = (ContractCall<M, Token>, oneshot::Sender<MulticallResult<M>>);
@@ -31,6 +42,7 @@ pub struct MulticallProcessor<M: Middleware> {
 #[derive(Debug, Clone)]
 pub struct MulticallMiddleware<M: Middleware> {
     inner: Arc<M>,
+    multicall: BaseContract,
     contracts: Vec<BaseContract>,
     tx: mpsc::UnboundedSender<MulticallRequest<M>>,
 }
@@ -77,16 +89,23 @@ where
         loop {
             let maybe_request = self.rx.try_recv();
             match maybe_request {
-                Err(mpsc::error::TryRecvError::Empty) => {
-                    sleep(self.frequency).await;
-                    continue;
-                }
+                Err(mpsc::error::TryRecvError::Empty) => {}
                 Err(mpsc::error::TryRecvError::Disconnected) => {
                     return Ok(());
                 }
-                Ok((call, callback)) => {
-                    multicall.add_call(call, true);
+                Ok((mut call, callback)) => {
+                    // use to: None as sentinel for system calls to get block number, etc
+                    if call.tx.to().is_none() {
+                        call.tx.set_to(multicall.contract.address());
+                        multicall.add_call(call, false);
+                    } else {
+                        multicall.add_call(call, true);
+                    }
+
                     callbacks.push(callback);
+
+                    // keep filling up the batch until channel is empty
+                    continue;
                 }
             }
 
@@ -114,19 +133,23 @@ impl<M> MulticallMiddleware<M>
 where
     M: Middleware,
 {
-    /// Instantiates the multicall middleware to recognize the given `contracts` selectors
+    /// Instantiates the multicall middleware to recognize the given `match_abis`
     /// and batch calls in a single inner call every `frequency` interval
     pub fn new(
         inner: M,
-        contracts: Vec<BaseContract>,
+        match_abis: Vec<Abi>,
         frequency: Duration,
         multicall_address: Option<Address>,
     ) -> (Self, MulticallProcessor<M>) {
         let (tx, rx) = mpsc::unbounded_channel();
         let client = Arc::new(inner);
 
+        let contracts = match_abis.iter().map(|abi| abi.clone().into()).collect();
+
+        let multicall: BaseContract = MULTICALL3_ABI.clone().into();
+
         (
-            Self { inner: client.clone(), tx, contracts },
+            Self { inner: client.clone(), tx, contracts, multicall },
             MulticallProcessor { inner: client, rx, frequency, multicall_address },
         )
     }
@@ -150,6 +173,19 @@ where
         }
         None
     }
+
+    async fn batch_call(&self, call: ContractCall<M, Token>) -> Result<Bytes, MulticallError<M>> {
+        let (tx, rx) = oneshot::channel();
+
+        if let Err(e) = self.tx.send((call, tx)) {
+            panic!("multicall processor disconnected: {:?}", e);
+        };
+
+        match rx.await {
+            Err(e) => panic!("multicall processor disconnected: {:?}", e),
+            Ok(response) => response.map(|token| encode(&[token]).into()),
+        }
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
@@ -172,28 +208,57 @@ where
         block: Option<BlockId>,
     ) -> Result<ethers_core::types::Bytes, Self::Error> {
         if let Some(call) = self.call_from_tx(tx, block) {
-            let (tx, rx) = oneshot::channel();
-
-            if let Err(e) = self.tx.send((call, tx)) {
-                panic!("multicall channel disconnected: {:?}", e);
-            };
-
-            match rx.await {
-                Err(e) => panic!("multicall channel disconnected: {:?}", e),
-                Ok(response) => {
-                    return response.map(|token| encode(&[token]).into()).map_err(|e| {
-                        if let Some(reason) = e.decode_revert::<String>() {
-                            MulticallMiddlewareError::RevertReason(reason)
-                        } else {
-                            MulticallMiddlewareError::MulticallError(e)
-                        }
-                    });
+            return self.batch_call(call).await.map_err(|e| {
+                if let Some(reason) = e.decode_revert::<String>() {
+                    MulticallMiddlewareError::RevertReason(reason)
+                } else {
+                    MulticallMiddlewareError::MulticallError(e)
                 }
-            }
+            });
         }
 
         return self.inner.call(tx, block).await.map_err(MulticallMiddlewareError::from_err);
     }
 
-    // TODO: support other Multicall methods (blocknumber, balance, etc)
+    async fn get_block_number(&self) -> Result<ethers_core::types::U64, Self::Error> {
+        let get_block_fn =
+            self.multicall.get_fn_from_selector(GetBlockNumberCall::selector()).unwrap();
+        let data = get_block_fn.encode_input(&vec![]).unwrap();
+        let call =
+            ContractCall::new(
+                TypedTransaction::Legacy(TransactionRequest::new().data(data)),
+                get_block_fn.to_owned(),
+                self.inner.clone(),
+                None,
+            );
+        return self
+            .batch_call(call)
+            .await
+            .map(|b| GetBlockNumberReturn::decode(b.deref()).unwrap().block_number.as_u64().into())
+            .map_err(MulticallMiddlewareError::MulticallError);
+    }
+
+    async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
+        &self,
+        address_or_name: T,
+        block: Option<BlockId>,
+    ) -> Result<ethers_core::types::U256, Self::Error> {
+        let address = *address_or_name.into().as_address().unwrap();
+        let get_balance_fn =
+            self.multicall.get_fn_from_selector(GetEthBalanceCall::selector()).unwrap();
+        let data = get_balance_fn.encode_input(&vec![Token::Address(address)]).unwrap();
+        let call = ContractCall::new(
+            TypedTransaction::Legacy(TransactionRequest::new().data(data)),
+            get_balance_fn.to_owned(),
+            self.inner.clone(),
+            block,
+        );
+        return self
+            .batch_call(call)
+            .await
+            .map(|b| GetEthBalanceReturn::decode(b.deref()).unwrap().balance)
+            .map_err(MulticallMiddlewareError::MulticallError);
+    }
+
+    // TODO: implement more middleware functions?
 }
