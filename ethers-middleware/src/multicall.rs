@@ -224,12 +224,9 @@ where
     async fn get_block_number(&self) -> Result<ethers_core::types::U64, Self::Error> {
         let data = (GetBlockNumberCall {}).encode();
         let tx = TypedTransaction::Legacy(TransactionRequest::new().data(data.clone()));
-        let call = self.call_from_tx(&tx, None).unwrap();
-        return self
-            .batch_call(call)
+        self.call(&tx, None)
             .await
             .map(|b| GetBlockNumberReturn::decode(b.deref()).unwrap().block_number.as_u64().into())
-            .map_err(MulticallMiddlewareError::MulticallError);
     }
 
     async fn get_balance<T: Into<NameOrAddress> + Send + Sync>(
@@ -249,12 +246,7 @@ where
         let address = *address_or_name.as_address().unwrap();
         let data = (GetEthBalanceCall { addr: address }).encode();
         let tx = TypedTransaction::Legacy(TransactionRequest::new().data(data.clone()));
-        let call = self.call_from_tx(&tx, block).unwrap();
-        return self
-            .batch_call(call)
-            .await
-            .map(|b| GetEthBalanceReturn::decode(b.deref()).unwrap().balance)
-            .map_err(MulticallMiddlewareError::MulticallError);
+        self.call(&tx, block).await.map(|b| GetEthBalanceReturn::decode(b.deref()).unwrap().balance)
     }
 
     // TODO: implement more middleware functions?
