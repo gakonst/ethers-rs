@@ -12,7 +12,7 @@ use ethers_contract::{
     BaseContract, ContractCall, ContractError, EthCall, MulticallError,
 };
 use ethers_core::{
-    abi::{encode, Abi, AbiDecode, Token, Tokenizable},
+    abi::{encode, Abi, AbiDecode, AbiEncode, Token, Tokenizable},
     types::{
         transaction::eip2718::TypedTransaction, Address, BlockId, Bytes, NameOrAddress,
         TransactionRequest,
@@ -38,7 +38,6 @@ pub struct MulticallProcessor<M: Middleware> {
 #[derive(Debug, Clone)]
 pub struct MulticallMiddleware<M: Middleware> {
     inner: Arc<M>,
-    multicall: BaseContract,
     contracts: Vec<BaseContract>,
     tx: mpsc::UnboundedSender<MulticallRequest<M>>,
 }
@@ -144,12 +143,14 @@ where
         let (tx, rx) = mpsc::unbounded_channel();
         let client = Arc::new(inner);
 
-        let contracts = match_abis.iter().map(|abi| abi.clone().into()).collect();
-
-        let multicall: BaseContract = MULTICALL3_ABI.clone().into();
+        let contracts = match_abis
+            .iter()
+            .map(|abi| abi.clone().into())
+            .chain(vec![MULTICALL3_ABI.to_owned().into()])
+            .collect();
 
         (
-            Self { inner: client.clone(), tx, contracts, multicall },
+            Self { inner: client.clone(), tx, contracts },
             MulticallProcessor { inner: client, rx, multicall_address, max_batch_size },
         )
     }
@@ -221,9 +222,7 @@ where
     }
 
     async fn get_block_number(&self) -> Result<ethers_core::types::U64, Self::Error> {
-        let get_block_fn =
-            self.multicall.get_fn_from_selector(GetBlockNumberCall::selector()).unwrap();
-        let data = get_block_fn.encode_input(&vec![]).unwrap();
+        let data = (GetBlockNumberCall {}).encode();
         let tx = TypedTransaction::Legacy(TransactionRequest::new().data(data.clone()));
         let call = self.call_from_tx(&tx, None).unwrap();
         return self
@@ -248,9 +247,7 @@ where
         }
 
         let address = *address_or_name.as_address().unwrap();
-        let get_balance_fn =
-            self.multicall.get_fn_from_selector(GetEthBalanceCall::selector()).unwrap();
-        let data = get_balance_fn.encode_input(&vec![Token::Address(address)]).unwrap();
+        let data = (GetEthBalanceCall { addr: address }).encode();
         let tx = TypedTransaction::Legacy(TransactionRequest::new().data(data.clone()));
         let call = self.call_from_tx(&tx, block).unwrap();
         return self
