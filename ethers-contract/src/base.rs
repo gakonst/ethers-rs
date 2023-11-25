@@ -53,7 +53,7 @@ impl BaseContract {
         signature: Selector,
         args: T,
     ) -> Result<Bytes, AbiError> {
-        let function = self.get_fn_from_selector(signature)?;
+        let function = self.get_from_signature(signature)?;
         encode_function_data(function, args)
     }
 
@@ -147,7 +147,7 @@ impl BaseContract {
         signature: Selector,
         bytes: T,
     ) -> Result<Vec<Token>, AbiError> {
-        let function = self.get_fn_from_selector(signature)?;
+        let function = self.get_from_signature(signature)?;
         decode_function_data_raw(function, bytes, true)
     }
 
@@ -157,7 +157,7 @@ impl BaseContract {
         signature: Selector,
         bytes: T,
     ) -> Result<D, AbiError> {
-        let function = self.get_fn_from_selector(signature)?;
+        let function = self.get_from_signature(signature)?;
         decode_function_data(function, bytes, true)
     }
 
@@ -183,7 +183,7 @@ impl BaseContract {
         signature: Selector,
         bytes: T,
     ) -> Result<D, AbiError> {
-        let function = self.get_fn_from_selector(signature)?;
+        let function = self.get_from_signature(signature)?;
         decode_function_data(function, bytes, false)
     }
 
@@ -196,7 +196,7 @@ impl BaseContract {
         signature: Selector,
         bytes: T,
     ) -> Result<Vec<Token>, AbiError> {
-        let function = self.get_fn_from_selector(signature)?;
+        let function = self.get_from_signature(signature)?;
         decode_function_data_raw(function, bytes, false)
     }
 
@@ -207,11 +207,10 @@ impl BaseContract {
             .ok_or(AbiError::WrongSelector)?
             .try_into()
             .map_err(|_e| AbiError::WrongSelector)?;
-        self.get_fn_from_selector(sig)
+        self.get_from_signature(sig)
     }
 
-    /// Returns the function from the selector
-    pub fn get_fn_from_selector(&self, signature: Selector) -> Result<&Function, AbiError> {
+    fn get_from_signature(&self, signature: Selector) -> Result<&Function, AbiError> {
         Ok(self
             .methods
             .get(&signature)
