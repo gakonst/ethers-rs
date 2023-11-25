@@ -77,9 +77,6 @@ pub enum Chain {
     Poa = 99,
     Sokol = 77,
 
-    #[strum(serialize = "gnosis", serialize = "xdai", serialize = "gnosis-chain")]
-    XDai = 100,
-
     Polygon = 137,
     #[strum(serialize = "mumbai", serialize = "polygon-mumbai")]
     PolygonMumbai = 80001,
@@ -256,7 +253,7 @@ impl Chain {
             FilecoinHyperspaceTestnet | FilecoinMainnet => 30_000,
 
             // Explicitly exhaustive. See NB above.
-            Morden | Ropsten | Rinkeby | Goerli | Kovan | XDai | Chiado | Sepolia | Moonbase |
+            Morden | Ropsten | Rinkeby | Goerli | Kovan | Chiado | Sepolia | Moonbase |
             MoonbeamDev | Optimism | OptimismGoerli | OptimismKovan | Poa | Sokol | Rsk |
             EmeraldTestnet | Boba => return None,
         };
@@ -312,7 +309,7 @@ impl Chain {
 
             // Unknown / not applicable, default to false for backwards compatibility
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
-            Sokol | Poa | XDai | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
+            Sokol | Poa | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
             EvmosTestnet | Chiado | Aurora | AuroraTestnet | Canto | CantoTestnet |
             FilecoinMainnet => false,
         }
@@ -393,11 +390,6 @@ impl Chain {
             Moonbeam => ("https://api-moonbeam.moonscan.io/api", "https://moonbeam.moonscan.io/"),
             Moonbase => ("https://api-moonbase.moonscan.io/api", "https://moonbase.moonscan.io/"),
             Moonriver => ("https://api-moonriver.moonscan.io/api", "https://moonriver.moonscan.io"),
-
-            // blockscout API is etherscan compatible
-            XDai => {
-                ("https://blockscout.com/xdai/mainnet/api", "https://blockscout.com/xdai/mainnet")
-            }
 
             Chiado => {
                 ("https://blockscout.chiadochain.net/api", "https://blockscout.chiadochain.net")
@@ -507,7 +499,6 @@ impl Chain {
             Boba => "BOBASCAN_API_KEY",
 
             // Explicitly exhaustive. See NB above.
-            XDai |
             Chiado |
             Sepolia |
             Rsk |
