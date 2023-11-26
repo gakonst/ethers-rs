@@ -1,14 +1,18 @@
+//! Contains the `Multicall` contract which enables batching `eth_call` RPC requests
+
 use std::result::Result as StdResult;
 
 /// The Multicall contract bindings. Auto-generated with `abigen`.
 pub mod contract;
 
+/// vendored constants from Multicall https://github.com/mds1/multicall#new-deployments
 pub mod constants;
 
 if_providers! {
     mod middleware;
     pub use middleware::{Call, Multicall, MulticallContract};
 
+    /// The Multicall error types.
     pub mod error;
 }
 

@@ -1,4 +1,4 @@
-use std::{iter::repeat, ops::Deref, rc::Rc, sync::Arc};
+use std::{ops::Deref, sync::Arc};
 
 use async_trait::async_trait;
 use ethers_contract::{
@@ -9,7 +9,7 @@ use ethers_contract::{
         },
         Multicall,
     },
-    BaseContract, ContractCall, ContractError, EthCall, EthError, MulticallError,
+    BaseContract, ContractCall, ContractError, MulticallError,
 };
 use ethers_core::{
     abi::{encode, Abi, AbiDecode, AbiEncode, Token, Tokenizable},
