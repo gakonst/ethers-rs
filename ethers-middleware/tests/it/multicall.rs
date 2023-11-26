@@ -68,8 +68,8 @@ async fn multicall() {
             assert_eq!(val, value);
         },
         async {
-            let val = simple_reverting.get_value(true).call().await.unwrap_err().to_string();
-            assert_eq!(val, "getValue revert");
+            let e = simple_reverting.get_value(true).call().await.unwrap_err();
+            assert!(e.to_string().contains("call reverted"));
         },
         async {
             let bal = multicall_client.get_balance(DEPLOYER_ADDRESS, None).await.unwrap();

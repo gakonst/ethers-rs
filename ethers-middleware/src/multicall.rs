@@ -1,4 +1,4 @@
-use std::{ops::Deref, sync::Arc};
+use std::{iter::repeat, ops::Deref, rc::Rc, sync::Arc};
 
 use async_trait::async_trait;
 use ethers_contract::{
@@ -9,7 +9,7 @@ use ethers_contract::{
         },
         Multicall,
     },
-    BaseContract, ContractCall, ContractError, EthCall, MulticallError,
+    BaseContract, ContractCall, ContractError, EthCall, EthError, MulticallError,
 };
 use ethers_core::{
     abi::{encode, Abi, AbiDecode, AbiEncode, Token, Tokenizable},
@@ -23,7 +23,7 @@ use thiserror::Error;
 
 use tokio::sync::{mpsc, oneshot};
 
-type MulticallResult<M> = Result<Token, MulticallError<M>>;
+type MulticallResult<M> = Result<Token, Arc<MulticallError<M>>>;
 type MulticallRequest<M> = (ContractCall<M, Token>, oneshot::Sender<MulticallResult<M>>);
 
 #[derive(Debug)]
@@ -32,14 +32,14 @@ pub struct MulticallProcessor<M: Middleware> {
     inner: Arc<M>,
     multicall_address: Option<Address>,
     max_batch_size: usize,
-    rx: mpsc::UnboundedReceiver<MulticallRequest<M>>,
+    rx: mpsc::Receiver<MulticallRequest<M>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct MulticallMiddleware<M: Middleware> {
     inner: Arc<M>,
     contracts: Vec<BaseContract>,
-    tx: mpsc::UnboundedSender<MulticallRequest<M>>,
+    tx: mpsc::Sender<MulticallRequest<M>>,
 }
 
 #[derive(Error, Debug)]
@@ -50,10 +50,10 @@ pub enum MulticallMiddlewareError<M: Middleware> {
     MiddlewareError(M::Error),
     /// Thrown when the internal multicall errors
     #[error(transparent)]
-    MulticallError(#[from] MulticallError<M>),
-    /// Thrown when a revert reason is decoded from the contract
-    #[error("{0}")]
-    RevertReason(String),
+    MulticallError(#[from] Arc<MulticallError<M>>),
+    /// Thrown when the processor isn't running
+    #[error("Processor is not running")]
+    ProcessorNotRunning,
 }
 
 impl<M: Middleware> MiddlewareError for MulticallMiddlewareError<M> {
@@ -67,7 +67,7 @@ impl<M: Middleware> MiddlewareError for MulticallMiddlewareError<M> {
         match self {
             MulticallMiddlewareError::MiddlewareError(e) => Some(e),
             MulticallMiddlewareError::MulticallError(e) => e.as_middleware_error(),
-            MulticallMiddlewareError::RevertReason(_) => None,
+            MulticallMiddlewareError::ProcessorNotRunning => None,
         }
     }
 }
@@ -79,14 +79,17 @@ where
     pub async fn run(mut self) -> () {
         let mut multicall: Multicall<M> =
             Multicall::new(self.inner, self.multicall_address).await.unwrap();
-        let mut requests: Vec<MulticallRequest<M>> = Vec::with_capacity(self.max_batch_size);
 
         loop {
+            let mut requests = Vec::new();
+
+            // wait for the first request
             match self.rx.recv().await {
                 Some(request) => requests.push(request),
                 None => break,
             }
 
+            // attempt to batch more requests, up to the max batch size
             while requests.len() < self.max_batch_size {
                 match self.rx.try_recv() {
                     Ok(request) => requests.push(request),
@@ -99,31 +102,38 @@ where
                 }
             }
 
-            for (call, _) in &requests {
-                let mut call = call.to_owned();
+            let (calls, callbacks): (Vec<_>, Vec<_>) = requests.into_iter().unzip();
 
+            multicall.clear_calls();
+            for mut call in calls.into_iter() {
                 // use `to: None` as sentinel for system calls to get block number, etc
                 if call.tx.to().is_none() {
                     call.tx.set_to(multicall.contract.address());
+                    // do not allow reverts for system calls
                     multicall.add_call(call, false);
                 } else {
+                    // allow reverts for user calls
                     multicall.add_call(call, true);
                 }
             }
+            let results = multicall.call_raw().await;
 
-            println!("sending batch of {} calls", requests.len());
+            let responses = match results {
+                Ok(results) => results
+                    .into_iter()
+                    .map(|result| {
+                        result.map_err(
+                            |e| Arc::new(MulticallError::ContractError(ContractError::Revert(e)))
+                        )
+                    })
+                    .collect(),
+                Err(e) => vec![Err(Arc::new(e)); callbacks.len()],
+            };
 
-            let results = multicall.call_raw().await.unwrap();
-            for (result, (_, callback)) in results.into_iter().zip(requests.drain(..)) {
-                let response =
-                    result.map_err(|e| MulticallError::ContractError(ContractError::Revert(e)));
-
-                // ignore send errors, as the receiver may have dropped
+            for (callback, response) in callbacks.into_iter().zip(responses) {
+                // ignore errors, the receiver may have dropped
                 let _ = callback.send(response);
             }
-
-            multicall.clear_calls();
-            requests.clear(); // just to be safe
         }
     }
 }
@@ -133,19 +143,22 @@ where
     M: Middleware,
 {
     /// Instantiates the multicall middleware to recognize the given `match_abis`
-    /// and batch calls in a single inner call every `frequency` interval
     pub fn new(
         inner: M,
         match_abis: Vec<Abi>,
         max_batch_size: usize,
         multicall_address: Option<Address>,
     ) -> (Self, MulticallProcessor<M>) {
-        let (tx, rx) = mpsc::unbounded_channel();
+        if max_batch_size < 2 {
+            panic!("batches must be at least 2 calls to justify the overhead of multicall");
+        }
+
+        let (tx, rx) = mpsc::channel(max_batch_size);
         let client = Arc::new(inner);
 
         let contracts = match_abis
             .iter()
-            .map(|abi| abi.clone().into())
+            .map(|abi| abi.to_owned().into())
             .chain(vec![MULTICALL3_ABI.to_owned().into()])
             .collect();
 
@@ -175,16 +188,21 @@ where
         None
     }
 
-    async fn batch_call(&self, call: ContractCall<M, Token>) -> Result<Bytes, MulticallError<M>> {
+    async fn batch_call(
+        &self,
+        call: ContractCall<M, Token>,
+    ) -> Result<Bytes, MulticallMiddlewareError<M>> {
         let (tx, rx) = oneshot::channel();
 
-        if let Err(e) = self.tx.send((call, tx)) {
-            panic!("multicall processor disconnected: {:?}", e);
+        if let Err(_) = self.tx.send((call, tx)).await {
+            return Err(MulticallMiddlewareError::ProcessorNotRunning);
         };
 
         match rx.await {
-            Err(e) => panic!("multicall processor disconnected: {:?}", e),
-            Ok(response) => response.map(|token| encode(&[token]).into()),
+            Err(_) => Err(MulticallMiddlewareError::ProcessorNotRunning),
+            Ok(response) => response
+                .map(|token| encode(&[token]).into())
+                .map_err(MulticallMiddlewareError::MulticallError),
         }
     }
 }
@@ -209,13 +227,7 @@ where
         block: Option<BlockId>,
     ) -> Result<ethers_core::types::Bytes, Self::Error> {
         if let Some(call) = self.call_from_tx(tx, block) {
-            return self.batch_call(call).await.map_err(|e| {
-                if let Some(reason) = e.decode_revert::<String>() {
-                    MulticallMiddlewareError::RevertReason(reason)
-                } else {
-                    MulticallMiddlewareError::MulticallError(e)
-                }
-            });
+            return self.batch_call(call).await;
         }
 
         return self.inner.call(tx, block).await.map_err(MulticallMiddlewareError::from_err);
@@ -250,4 +262,122 @@ where
     }
 
     // TODO: implement more middleware functions?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ethers_contract::abigen;
+    use ethers_providers::{MockProvider, Provider};
+
+    abigen!(Test, r#"[read(string) view returns (bytes4)]"#);
+
+    #[tokio::test]
+    #[should_panic(
+        expected = "batches must be at least 2 calls to justify the overhead of multicall"
+    )]
+    async fn needs_min_batch() {
+        // will panic if batch size is less than 2
+        let _ = MulticallMiddleware::new(Provider::new(MockProvider::new()), vec![], 1, None);
+    }
+
+    #[tokio::test]
+    async fn needs_processor() {
+        let (provider, _) =
+            MulticallMiddleware::new(Provider::new(MockProvider::new()), vec![], 2, None);
+        let e = provider.get_block_number().await.unwrap_err();
+        assert!(matches!(e, MulticallMiddlewareError::ProcessorNotRunning));
+    }
+
+    #[tokio::test]
+    async fn matches_multicall_signatures() {
+        let (provider1, mock1) = Provider::mocked();
+        let (provider2, mock2) = Provider::mocked();
+        let mock_multicall = Address::random();
+
+        let (provider, processor) =
+            MulticallMiddleware::new(provider1.clone(), vec![], 2, Some(mock_multicall));
+
+        let mut multicall = Multicall::new(provider2.clone(), Some(mock_multicall)).await.unwrap();
+
+        tokio::spawn(async move {
+            let _ = processor.run().await;
+        });
+
+        let address = Address::zero();
+
+        let _ = tokio::join!(provider.get_block_number(), provider.get_balance(address, None));
+
+        let _ =
+            multicall.add_get_block_number().add_get_eth_balance(address, false).call_raw().await;
+
+        assert!(mock1.requests_match(&mock2));
+    }
+
+    #[tokio::test]
+    async fn uses_batch_size() {
+        let (provider1, mock1) = Provider::mocked();
+        let (provider2, mock2) = Provider::mocked();
+        let mock_multicall = Address::random();
+
+        let (provider, processor) =
+            MulticallMiddleware::new(provider1.clone(), vec![], 2, Some(mock_multicall));
+
+        let mut multicall = Multicall::new(provider2.clone(), Some(mock_multicall)).await.unwrap();
+
+        tokio::spawn(async move {
+            let _ = processor.run().await;
+        });
+
+        let _ = tokio::join!(
+            provider.get_block_number(),
+            provider.get_block_number(),
+            provider.get_block_number()
+        );
+
+        let _ = multicall.add_get_block_number().add_get_block_number().call_raw().await;
+        multicall.clear_calls();
+
+        let _ = multicall.add_get_block_number().call_raw().await;
+
+        assert!(mock1.requests_match(&mock2));
+    }
+
+    #[tokio::test]
+    async fn matches_provided_signatures() {
+        let (provider1, mock1) = Provider::mocked();
+        let (provider2, mock2) = Provider::mocked();
+        let mock_multicall = Address::random();
+
+        let (provider, processor) = MulticallMiddleware::new(
+            provider1.clone(),
+            vec![TEST_ABI.clone()],
+            2,
+            Some(mock_multicall),
+        );
+
+        let mut multicall = Multicall::new(provider2.clone(), Some(mock_multicall)).await.unwrap();
+
+        let mock_test = Address::random();
+        let test1 = Test::new(mock_test, Arc::new(provider.clone()));
+        let test2 = Test::new(mock_test, Arc::new(provider2.clone()));
+
+        tokio::spawn(async move {
+            let _ = processor.run().await;
+        });
+
+        let call1 = test1.read("call1".to_string());
+        let call2 = test1.read("call2".to_string());
+
+        let _ = tokio::join!(call1.call(), call2.call());
+
+        let _ =
+            multicall
+            .add_call(test2.read("call1".to_string()), true)
+            .add_call(test2.read("call2".to_string()), true)
+                .call_raw()
+                .await;
+
+        assert!(mock1.requests_match(&mock2));
+    }
 }
