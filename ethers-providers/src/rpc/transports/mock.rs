@@ -5,7 +5,8 @@ use serde_json::Value;
 use std::{
     borrow::Borrow,
     collections::VecDeque,
-    sync::{Arc, Mutex}, ops::Deref,
+    ops::Deref,
+    sync::{Arc, Mutex},
 };
 use thiserror::Error;
 

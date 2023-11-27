@@ -126,9 +126,9 @@ where
                 Ok(results) => results
                     .into_iter()
                     .map(|result| {
-                        result.map_err(
-                            |e| Arc::new(MulticallError::ContractError(ContractError::Revert(e)))
-                        )
+                        result.map_err(|e| {
+                            Arc::new(MulticallError::ContractError(ContractError::Revert(e)))
+                        })
                     })
                     .collect(),
                 Err(e) => vec![Err(Arc::new(e)); callbacks.len()],

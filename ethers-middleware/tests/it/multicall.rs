@@ -41,13 +41,12 @@ async fn multicall() {
         .unwrap();
 
     // 2. instantiate the multicall middleware
-    let (multicall_provider, multicall_processor) =
-        MulticallMiddleware::new(
-            client,
-            vec![SIMPLEREVERTINGSTORAGE_ABI.to_owned(), SIMPLESTORAGE_ABI.to_owned()],
-            10,
-            Some(MULTICALL_ADDRESS),
-        );
+    let (multicall_provider, multicall_processor) = MulticallMiddleware::new(
+        client,
+        vec![SIMPLEREVERTINGSTORAGE_ABI.to_owned(), SIMPLESTORAGE_ABI.to_owned()],
+        10,
+        Some(MULTICALL_ADDRESS),
+    );
     let multicall_client = Arc::new(multicall_provider);
 
     // 3. deploy a contract to interact with
