@@ -15,16 +15,14 @@ abigen!(
     SimpleRevertingStorage,
     "../ethers-contract/tests/solidity-contracts/SimpleRevertingStorage.json"
 );
-abigen!(
-    SimpleStorage,
-    "../ethers-contract/tests/solidity-contracts/SimpleStorage.json"
-);
+abigen!(SimpleStorage, "../ethers-contract/tests/solidity-contracts/SimpleStorage.json");
 
 #[tokio::test]
 async fn multicall() {
     let (provider, anvil) = spawn_anvil();
     let wallet: LocalWallet = anvil.keys()[0].clone().into();
-    let client = Arc::new(SignerMiddleware::new(provider.clone(), wallet.with_chain_id(anvil.chain_id())));
+    let client =
+        Arc::new(SignerMiddleware::new(provider.clone(), wallet.with_chain_id(anvil.chain_id())));
 
     // 1. deploy multicall contract (if not already)
     provider
@@ -43,18 +41,27 @@ async fn multicall() {
         .unwrap();
 
     // 2. instantiate the multicall middleware
-    let (multicall_provider, multicall_processor) = MulticallMiddleware::new(
-        client,
-        vec![SIMPLEREVERTINGSTORAGE_ABI.to_owned(), SIMPLESTORAGE_ABI.to_owned()],
-        10,
-        Some(MULTICALL_ADDRESS),
-    );
+    let (multicall_provider, multicall_processor) =
+        MulticallMiddleware::new(
+            client,
+            vec![SIMPLEREVERTINGSTORAGE_ABI.to_owned(), SIMPLESTORAGE_ABI.to_owned()],
+            10,
+            Some(MULTICALL_ADDRESS),
+        );
     let multicall_client = Arc::new(multicall_provider);
 
     // 3. deploy a contract to interact with
     let value = "multicall!".to_string();
-    let simple = SimpleStorage::deploy(multicall_client.clone(), value.clone()).unwrap().send().await.unwrap();
-    let simple_reverting = SimpleRevertingStorage::deploy(multicall_client.clone(), value.clone()).unwrap().send().await.unwrap();
+    let simple = SimpleStorage::deploy(multicall_client.clone(), value.clone())
+        .unwrap()
+        .send()
+        .await
+        .unwrap();
+    let simple_reverting = SimpleRevertingStorage::deploy(multicall_client.clone(), value.clone())
+        .unwrap()
+        .send()
+        .await
+        .unwrap();
 
     // 4. spawn the multicall processor
     tokio::spawn(async move {

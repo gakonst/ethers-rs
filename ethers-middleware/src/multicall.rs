@@ -373,12 +373,11 @@ mod tests {
 
         let _ = tokio::join!(call1.call(), call2.call());
 
-        let _ =
-            multicall
+        let _ = multicall
             .add_call(test2.read("call1".to_string()), true)
             .add_call(test2.read("call2".to_string()), true)
-                .call_raw()
-                .await;
+            .call_raw()
+            .await;
 
         assert!(mock1.requests_match(&mock2));
     }
