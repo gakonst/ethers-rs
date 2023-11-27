@@ -76,7 +76,7 @@ impl<M> MulticallProcessor<M>
 where
     M: Middleware,
 {
-    pub async fn run(mut self) -> () {
+    pub async fn run(mut self) {
         let mut multicall: Multicall<M> =
             Multicall::new(self.inner, self.multicall_address).await.unwrap();
 
@@ -194,7 +194,7 @@ where
     ) -> Result<Bytes, MulticallMiddlewareError<M>> {
         let (tx, rx) = oneshot::channel();
 
-        if let Err(_) = self.tx.send((call, tx)).await {
+        if self.tx.send((call, tx)).await.is_err() {
             return Err(MulticallMiddlewareError::ProcessorNotRunning);
         };
 
