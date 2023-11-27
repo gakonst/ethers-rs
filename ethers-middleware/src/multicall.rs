@@ -27,7 +27,7 @@ type MulticallResult<M> = Result<Token, Arc<MulticallError<M>>>;
 type MulticallRequest<M> = (ContractCall<M, Token>, oneshot::Sender<MulticallResult<M>>);
 
 #[derive(Debug)]
-/// Middleware used for transparently leveraging multicall functionality
+/// Processor for multicall middleware requests
 pub struct MulticallProcessor<M: Middleware> {
     inner: Arc<M>,
     multicall_address: Option<Address>,
@@ -36,6 +36,7 @@ pub struct MulticallProcessor<M: Middleware> {
 }
 
 #[derive(Debug, Clone)]
+/// Middleware used for transparently leveraging multicall functionality
 pub struct MulticallMiddleware<M: Middleware> {
     inner: Arc<M>,
     contracts: Vec<BaseContract>,
@@ -76,6 +77,7 @@ impl<M> MulticallProcessor<M>
 where
     M: Middleware,
 {
+    /// Should be run in a separate task to process requests
     pub async fn run(mut self) {
         let mut multicall: Multicall<M> =
             Multicall::new(self.inner, self.multicall_address).await.unwrap();

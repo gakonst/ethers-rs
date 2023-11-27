@@ -5,7 +5,7 @@ use std::result::Result as StdResult;
 /// The Multicall contract bindings. Auto-generated with `abigen`.
 pub mod contract;
 
-/// vendored constants from Multicall https://github.com/mds1/multicall#new-deployments
+/// vendored constants from [Multicall repo](https://github.com/mds1/multicall#new-deployments)
 pub mod constants;
 
 if_providers! {

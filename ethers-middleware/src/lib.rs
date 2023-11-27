@@ -41,7 +41,7 @@ pub use policy::{
 pub mod timelag;
 pub use timelag::TimeLag;
 
-/// The [MultiCall] middleware provides a way to batch multiple calls into a single call
+/// The [MulticallMiddleware] provides a way to batch multiple calls into a single call
 pub mod multicall;
 pub use multicall::MulticallMiddleware;
 
