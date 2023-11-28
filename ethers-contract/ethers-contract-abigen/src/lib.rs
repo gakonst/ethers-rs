@@ -37,7 +37,7 @@ mod verbatim;
 pub use ethers_core::types::Address;
 
 use contract::{Context, ExpandedContract};
-use eyre::Result;
+use eyre::{Result, WrapErr};
 use proc_macro2::{Ident, TokenStream};
 use quote::ToTokens;
 use std::{collections::HashMap, fmt, fs, io, path::Path};
@@ -146,7 +146,16 @@ impl Abigen {
         let name = source.as_local().unwrap().file_name().unwrap().to_str().unwrap();
         // name is an absolute path and not empty
         let name = name.split('.').next().unwrap();
-        Ok(Self::new_raw(syn::parse_str(name)?, source))
+
+        // best effort ident cleanup
+        let name = name.replace('-', "_").replace(|c: char| c.is_whitespace(), "");
+
+        Ok(Self::new_raw(
+            syn::parse_str(&util::safe_identifier_name(name)).wrap_err_with(|| {
+                format!("failed convert file name to contract identifier {}", path)
+            })?,
+            source,
+        ))
     }
 
     /// Manually adds a solidity event alias to specify what the event struct and function name will
@@ -428,5 +437,14 @@ mod tests {
         let gen = abigen.generate().unwrap();
         let out = gen.tokens.to_string();
         assert!(out.contains("pub struct ConstructorParams"));
+    }
+
+    // <https://github.com/foundry-rs/foundry/issues/6010>
+    #[test]
+    fn parse_empty_abigen() {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../tests/solidity-contracts/draft-IERCPermit.json");
+        let abigen = Abigen::from_file(path).unwrap();
+        assert_eq!(abigen.name().to_string(), "draft_IERCPermit");
     }
 }
