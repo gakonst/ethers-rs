@@ -1,5 +1,5 @@
 use crate::*;
-use ethers_etherscan::account::{InternalTxQueryOption, TokenQueryOption};
+use ethers_etherscan::account::{InternalTxQueryOption, TokenQueryOption, TxListParams};
 use serial_test::serial;
 
 #[tokio::test]
@@ -174,7 +174,10 @@ async fn get_beacon_withdrawal_transactions_success() {
 async fn get_avalanche_transactions() {
     run_with_client(Chain::Avalanche, |client| async move {
         let txs = client
-            .get_transactions(&"0x1549ea9b546ba9ffb306d78a1e1f304760cc4abf".parse().unwrap(), None)
+            .get_transactions(
+                &"0x1549ea9b546ba9ffb306d78a1e1f304760cc4abf".parse().unwrap(),
+                Some(TxListParams { end_block: 1000, offset: 10, ..Default::default() }),
+            )
             .await;
         txs.unwrap();
     })
