@@ -684,12 +684,17 @@ impl<M: Middleware> Multicall<M> {
 
                 Err(return_data)
             } else {
-                let mut res_tokens = call.function.decode_output(return_data.as_ref())?;
-                Ok(if res_tokens.len() == 1 {
-                    res_tokens.pop().unwrap()
-                } else {
-                    Token::Tuple(res_tokens)
-                })
+                let res_tokens = call.function.decode_output(return_data.as_ref());
+                match res_tokens {
+                    Ok(mut tokens) => {
+                        Ok(if tokens.len() == 1 {
+                            tokens.pop().unwrap()
+                        } else {
+                            Token::Tuple(tokens)
+                        })
+                    },
+                    Err(_) => Err(return_data),
+                }
             };
             results.push(result);
         }
