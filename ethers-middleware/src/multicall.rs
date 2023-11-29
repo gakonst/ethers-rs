@@ -28,35 +28,21 @@ use tokio::sync::{mpsc, oneshot};
 type MulticallResult<M> = Result<Token, Arc<MulticallError<M>>>;
 type MulticallRequest<M> = (ContractCall<M, Token>, oneshot::Sender<MulticallResult<M>>);
 
-#[derive(Debug)]
 /// Processor for multicall middleware requests
+#[derive(Debug)]
 pub struct MulticallProcessor<M: Middleware> {
     inner: Arc<M>,
     multicall_address: Option<Address>,
     max_batch_size: usize,
-    rx: mpsc::Receiver<MulticallRequest<M>>,
+    rx: mpsc::UnboundedReceiver<MulticallRequest<M>>,
 }
 
-#[derive(Debug, Clone)]
 /// Middleware used for transparently leveraging multicall functionality
+#[derive(Debug, Clone)]
 pub struct MulticallMiddleware<M: Middleware> {
     inner: Arc<M>,
-    contracts: Vec<BaseContract>,
-    tx: mpsc::Sender<MulticallRequest<M>>,
-}
-
-#[derive(Error, Debug)]
-/// Thrown when an error happens at the Multicall middleware
-pub enum MulticallMiddlewareError<M: Middleware> {
-    /// Thrown when the internal middleware errors
-    #[error("{0}")]
-    MiddlewareError(M::Error),
-    /// Thrown when the internal multicall errors
-    #[error(transparent)]
-    MulticallError(#[from] Arc<MulticallError<M>>),
-    /// Thrown when the processor isn't running
-    #[error("Processor is not running")]
-    ProcessorNotRunning,
+    contracts: Arc<Vec<BaseContract>>,
+    tx: mpsc::UnboundedSender<MulticallRequest<M>>,
 }
 
 impl<M: Middleware> MiddlewareError for MulticallMiddlewareError<M> {
@@ -75,14 +61,28 @@ impl<M: Middleware> MiddlewareError for MulticallMiddlewareError<M> {
     }
 }
 
+/// Thrown when an error happens at the Multicall middleware
+#[derive(Error, Debug)]
+pub enum MulticallMiddlewareError<M: Middleware> {
+    /// Thrown when the internal middleware errors
+    #[error("{0}")]
+    MiddlewareError(M::Error),
+    /// Thrown when the internal multicall errors
+    #[error(transparent)]
+    MulticallError(#[from] Arc<MulticallError<M>>),
+    /// Thrown when the processor isn't running
+    #[error("Processor is not running")]
+    ProcessorNotRunning,
+}
+
 impl<M> MulticallProcessor<M>
 where
     M: Middleware,
 {
     /// Should be run in a separate task to process requests
-    pub async fn run(mut self) {
+    pub async fn run(mut self) -> Result<(), MulticallError<M>> {
         let mut multicall: Multicall<M> =
-            Multicall::new(self.inner, self.multicall_address).await.unwrap();
+            Multicall::new(self.inner.clone(), self.multicall_address).await?;
 
         loop {
             let mut requests = Vec::new();
@@ -139,6 +139,8 @@ where
                 let _ = callback.send(response);
             }
         }
+
+        Ok(())
     }
 }
 
@@ -147,6 +149,8 @@ where
     M: Middleware,
 {
     /// Instantiates the multicall middleware to recognize the given `match_abis`
+    /// # Panics
+    /// Panics if `max_batch_size` is less than 2
     pub fn new(
         inner: M,
         match_abis: Vec<Abi>,
@@ -157,14 +161,16 @@ where
             panic!("batches must be at least 2 calls to justify the overhead of multicall");
         }
 
-        let (tx, rx) = mpsc::channel(max_batch_size);
+        let (tx, rx) = mpsc::unbounded_channel();
         let client = Arc::new(inner);
 
-        let contracts = match_abis
-            .iter()
-            .map(|abi| abi.to_owned().into())
-            .chain(vec![MULTICALL3_ABI.to_owned().into()])
-            .collect();
+        let contracts = Arc::new(
+            match_abis
+                .iter()
+                .map(|abi| abi.to_owned().into())
+                .chain(vec![MULTICALL3_ABI.to_owned().into()])
+                .collect(),
+        );
 
         (
             Self { inner: client.clone(), tx, contracts },
@@ -198,7 +204,7 @@ where
     ) -> Result<Bytes, MulticallMiddlewareError<M>> {
         let (tx, rx) = oneshot::channel();
 
-        if self.tx.send((call, tx)).await.is_err() {
+        if self.tx.send((call, tx)).is_err() {
             return Err(MulticallMiddlewareError::ProcessorNotRunning);
         };
 
