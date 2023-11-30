@@ -17,6 +17,7 @@ abigen!(
 );
 abigen!(SimpleStorage, "../ethers-contract/tests/solidity-contracts/SimpleStorage.json");
 
+#[cfg(not(feature = "celo"))]
 #[tokio::test]
 async fn multicall() {
     let (provider, anvil) = spawn_anvil();
