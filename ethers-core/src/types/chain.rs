@@ -90,7 +90,6 @@ pub enum Chain {
     Poa = 99,
     Sokol = 77,
 
-    #[strum(to_string = "scroll-sepolia")]
     #[serde(alias = "scroll_sepolia", alias = "scroll_sepolia_testnet")]
     ScrollSepolia = 534351,
     Scroll = 534352,
@@ -653,7 +652,7 @@ impl Chain {
             BaseGoerli |
             Gnosis |
             Scroll |
-            ScrollSepolia=> "ETHERSCAN_API_KEY",
+            ScrollSepolia => "ETHERSCAN_API_KEY",
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
