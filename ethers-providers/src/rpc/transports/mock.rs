@@ -13,7 +13,7 @@ use thiserror::Error;
 /// Helper type that can be used to pass through the `params` value.
 /// This is necessary because the wrapper provider is supposed to skip the `params` if it's of
 /// size 0, see `crate::transports::common::Request`
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 enum MockParams {
     Value(Value),
     Zst,
