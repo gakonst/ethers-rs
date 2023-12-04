@@ -1,7 +1,6 @@
 #![cfg(not(target_arch = "wasm32"))]
 
 use std::{ops::Deref, sync::Arc};
-
 use async_trait::async_trait;
 use ethers_contract::{
     multicall::{
