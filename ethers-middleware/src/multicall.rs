@@ -22,7 +22,6 @@ use ethers_core::{
 };
 use ethers_providers::{Middleware, MiddlewareError};
 use thiserror::Error;
-
 use tokio::sync::{mpsc, oneshot};
 
 type MulticallResult<M> = Result<Token, Arc<MulticallError<M>>>;
