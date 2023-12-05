@@ -416,34 +416,29 @@ impl TypedTransaction {
 /// Get a TypedTransaction directly from a rlp encoded byte stream
 impl Decodable for TypedTransaction {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
-        let tx_type: Option<U64> = match rlp.is_data() {
-            true => Some(U64::decode(rlp)?),
-            false => None,
-        };
-        let rest = rlp::Rlp::new(
+        // We check for the transaction type based on the encoding format described in
+        // <https://eips.ethereum.org/EIPS/eip-2718/>.
+        // We expect the format to be `TransactionType || TransactionPayload`, where
+        // TransactionType is a raw single byte, and the TransactionPayload is RLP encoded.
+        let tx_type =
+            rlp.data()?.first().ok_or(rlp::DecoderError::Custom("no transaction type byte"))?;
+
+        // Typed tx range: 0..=0x7f
+        let tx_payload = rlp::Rlp::new(
             rlp.as_raw().get(1..).ok_or(rlp::DecoderError::Custom("no transaction payload"))?,
         );
 
-        match tx_type {
-            Some(x) if x == U64::from(1) => {
-                // EIP-2930 (0x01)
-                Ok(Self::Eip2930(Eip2930TransactionRequest::decode(&rest)?))
-            }
-            Some(x) if x == U64::from(2) => {
-                // EIP-1559 (0x02)
-                Ok(Self::Eip1559(Eip1559TransactionRequest::decode(&rest)?))
-            }
+        let typed_tx = match tx_type {
+            0x01 => Self::Eip2930(Eip2930TransactionRequest::decode(&tx_payload)?),
+            0x02 => Self::Eip1559(Eip1559TransactionRequest::decode(&tx_payload)?),
             #[cfg(feature = "optimism")]
-            Some(x) if x == U64::from(0x7E) => {
-                // Optimism Deposited (0x7E)
-                Ok(Self::DepositTransaction(DepositTransaction::decode(&rest)?))
-            }
-            _ => {
-                // Legacy (0x00)
-                // use the original rlp
-                Ok(Self::Legacy(TransactionRequest::decode(rlp)?))
-            }
-        }
+            0x7e => Self::DepositTransaction(DepositTransaction::decode(&tx_payload)?),
+            // this must be a legacy tx so we expect the first byte to be part of the rlp encoding
+            _ if rlp.is_list() => Self::Legacy(TransactionRequest::decode(rlp)?),
+            _ => return Err(rlp::DecoderError::Custom("invalid tx type")),
+        };
+
+        Ok(typed_tx)
     }
 }
 
