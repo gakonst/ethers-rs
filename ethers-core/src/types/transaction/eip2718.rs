@@ -419,11 +419,11 @@ impl Decodable for TypedTransaction {
         // We check for the transaction type based on the encoding format described in
         // <https://eips.ethereum.org/EIPS/eip-2718/>.
         // We expect the format to be `TransactionType || TransactionPayload`, where
-        // TransactionType is a raw single byte, and the TransactionPayload is RLP encoded.
+        // TransactionType is a raw single byte, and the TransactionPayload is assumed to be rlp
+        // encoded.
         let tx_type =
             rlp.data()?.first().ok_or(rlp::DecoderError::Custom("no transaction type byte"))?;
 
-        // Typed tx range: 0..=0x7f
         let tx_payload = rlp::Rlp::new(
             rlp.as_raw().get(1..).ok_or(rlp::DecoderError::Custom("no transaction payload"))?,
         );
