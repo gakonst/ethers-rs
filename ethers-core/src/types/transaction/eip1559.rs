@@ -8,7 +8,7 @@ use thiserror::Error;
 /// EIP-1559 transactions have 9 fields
 const NUM_TX_FIELDS: usize = 9;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// An error involving an EIP1559 transaction request.
 #[derive(Debug, Error)]
@@ -42,7 +42,11 @@ pub struct Eip1559TransactionRequest {
 
     /// The compiled code of a contract OR the first 4 bytes of the hash of the
     /// invoked method signature and encoded parameters. For details see Ethereum Contract ABI
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_input_or_data",
+        flatten
+    )]
     pub data: Option<Bytes>,
 
     /// Transaction nonce (None for next available nonce)
@@ -280,6 +284,53 @@ impl From<&Transaction> for Eip1559TransactionRequest {
             max_priority_fee_per_gas: tx.max_priority_fee_per_gas,
             max_fee_per_gas: tx.max_fee_per_gas,
             chain_id: tx.chain_id.map(|x| U64::from(x.as_u64())),
+        }
+    }
+}
+
+/// Deserialize either the `input` or the `data` field, preferring the former.
+///
+/// See https://github.com/ethereum/go-ethereum/pull/28078
+fn deserialize_input_or_data<'d, D: Deserializer<'d>>(d: D) -> Result<Option<Bytes>, D::Error> {
+    #[derive(Deserialize)]
+    struct InputOrData {
+        input: Option<Bytes>,
+        data: Option<Bytes>,
+    }
+
+    let InputOrData { input, data } = InputOrData::deserialize(d)?;
+
+    Ok(input.or(data))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::Eip1559TransactionRequest;
+
+    #[test]
+    fn test_tx_with_input_or_data() {
+        for fragment in
+            [r#" "input":"0x01" "#, r#" "data":"0x01" "#, r#" "data":"0x02", "input":"0x01" "#]
+        {
+            let json = format!(
+                "{{ \"gas\": \"0x186a0\",
+                    \"maxFeePerGas\": \"0x77359400\",
+                    \"maxPriorityFeePerGas\": \"0x77359400\",
+                    \"nonce\": \"0x2\",
+                    \"to\": \"0x96216849c49358B10257cb55b28eA603c874b05E\",
+                    \"value\": \"0x5af3107a4000\",
+                    \"chainId\": \"0x539\",
+                    \"accessList\": [],
+                    {fragment}
+                }}"
+            );
+
+            let request = serde_json::from_str::<Eip1559TransactionRequest>(&json)
+                .unwrap_or_else(|e| panic!("failed to parse request {json}: {e}"));
+
+            let data = request.data.expect("data was empty");
+
+            assert_eq!(data.to_string(), "0x01");
         }
     }
 }
