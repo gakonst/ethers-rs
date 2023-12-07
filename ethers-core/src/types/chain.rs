@@ -515,9 +515,10 @@ impl Chain {
                 ("https://alpha-blockscout.scroll.io/api", "https://alpha-blockscout.scroll.io/")
             }
 
-            Metis => {
-                ("https://api.routescan.io/v2/network/mainnet/evm/1088/etherscan/api", "https://explorer.metis.io/")
-            }
+            Metis => (
+                "https://api.routescan.io/v2/network/mainnet/evm/1088/etherscan/api",
+                "https://explorer.metis.io/",
+            ),
 
             Chiado => {
                 ("https://blockscout.chiadochain.net/api", "https://blockscout.chiadochain.net")
@@ -599,7 +600,7 @@ impl Chain {
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
-                return None;
+                return None
             }
         };
 
