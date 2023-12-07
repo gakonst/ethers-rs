@@ -8,7 +8,7 @@ use thiserror::Error;
 /// EIP-1559 transactions have 9 fields
 const NUM_TX_FIELDS: usize = 9;
 
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 /// An error involving an EIP1559 transaction request.
 #[derive(Debug, Error)]
@@ -45,6 +45,7 @@ pub struct Eip1559TransactionRequest {
     #[serde(
         skip_serializing_if = "Option::is_none",
         deserialize_with = "deserialize_input_or_data",
+        serialize_with = "serialize_input_or_data",
         flatten
     )]
     pub data: Option<Bytes>,
@@ -290,7 +291,7 @@ impl From<&Transaction> for Eip1559TransactionRequest {
 
 /// Deserialize either the `input` or the `data` field, preferring the former.
 ///
-/// See https://github.com/ethereum/go-ethereum/pull/28078
+/// See <https://github.com/ethereum/go-ethereum/pull/28078>
 fn deserialize_input_or_data<'d, D: Deserializer<'d>>(d: D) -> Result<Option<Bytes>, D::Error> {
     #[derive(Deserialize)]
     struct InputOrData {
@@ -301,6 +302,15 @@ fn deserialize_input_or_data<'d, D: Deserializer<'d>>(d: D) -> Result<Option<Byt
     let InputOrData { input, data } = InputOrData::deserialize(d)?;
 
     Ok(input.or(data))
+}
+
+fn serialize_input_or_data<S: Serializer>(data: &Option<Bytes>, s: S) -> Result<S::Ok, S::Error> {
+    #[derive(Serialize)]
+    struct InputOrData<'a> {
+        data: &'a Option<Bytes>,
+    }
+
+    InputOrData { data }.serialize(s)
 }
 
 #[cfg(test)]
@@ -328,9 +338,13 @@ mod tests {
             let request = serde_json::from_str::<Eip1559TransactionRequest>(&json)
                 .unwrap_or_else(|e| panic!("failed to parse request {json}: {e}"));
 
-            let data = request.data.expect("data was empty");
+            let data = request.data.clone().expect("data was empty");
 
             assert_eq!(data.to_string(), "0x01");
+
+            let json = serde_json::to_string(&request).expect("failed to serialize request");
+
+            assert!(json.contains("\"data\":"), "uses data in serialization");
         }
     }
 }
