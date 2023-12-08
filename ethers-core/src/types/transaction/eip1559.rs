@@ -42,7 +42,7 @@ pub struct Eip1559TransactionRequest {
 
     /// The compiled code of a contract OR the first 4 bytes of the hash of the
     /// invoked method signature and encoded parameters. For details see Ethereum Contract ABI
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", alias = "input")]
     pub data: Option<Bytes>,
 
     /// Transaction nonce (None for next available nonce)
@@ -280,6 +280,50 @@ impl From<&Transaction> for Eip1559TransactionRequest {
             max_priority_fee_per_gas: tx.max_priority_fee_per_gas,
             max_fee_per_gas: tx.max_fee_per_gas,
             chain_id: tx.chain_id.map(|x| U64::from(x.as_u64())),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::Eip1559TransactionRequest;
+
+    #[test]
+    fn test_tx_with_input_or_data() {
+        for fragment in [
+            r#" "input":"0x01" "#,
+            r#" "data":"0x01" "#,
+            // Note that the `alias` method doesn't support both `data` and `input` appearing
+            // at the same time, but https://github.com/web3/web3.js/issues/6301 shows that
+            // there is a recognition doing so should be avoided. Supporting it is possible
+            // but awkward, and would have to be done for all transaction types with a `data`
+            // field which is a bit of an overkill.
+            //
+            // r#" "data":"0x02", "input":"0x01" "#,
+        ] {
+            let json = format!(
+                "{{ \"gas\": \"0x186a0\",
+                    \"maxFeePerGas\": \"0x77359400\",
+                    \"maxPriorityFeePerGas\": \"0x77359400\",
+                    \"nonce\": \"0x2\",
+                    \"to\": \"0x96216849c49358B10257cb55b28eA603c874b05E\",
+                    \"value\": \"0x5af3107a4000\",
+                    \"chainId\": \"0x539\",
+                    \"accessList\": [],
+                    {fragment}
+                }}"
+            );
+
+            let request = serde_json::from_str::<Eip1559TransactionRequest>(&json)
+                .unwrap_or_else(|e| panic!("failed to parse request {json}: {e}"));
+
+            let data = request.data.clone().expect("data was empty");
+
+            assert_eq!(data.to_string(), "0x01");
+
+            let json = serde_json::to_string(&request).expect("failed to serialize request");
+
+            assert!(json.contains("\"data\":"), "uses data in serialization");
         }
     }
 }
