@@ -48,7 +48,7 @@ pub struct TransactionRequest {
 
     /// The compiled code of a contract OR the first 4 bytes of the hash of the
     /// invoked method signature and encoded parameters. For details see Ethereum Contract ABI
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", alias = "input")]
     pub data: Option<Bytes>,
 
     /// Transaction nonce (None for next available nonce)
