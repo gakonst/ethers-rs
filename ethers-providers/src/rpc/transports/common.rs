@@ -13,6 +13,7 @@ use serde::{
 use serde_json::{value::RawValue, Value};
 use std::fmt;
 use thiserror::Error;
+use std::marker::PhantomData;
 
 /// A JSON-RPC 2.0 error
 #[derive(Deserialize, Debug, Clone, Error)]
@@ -97,7 +98,7 @@ impl<'a, T> Request<'a, T> {
 
 /// A JSON-RPC response
 #[derive(Debug)]
-pub enum Response<'a> {
+pub enum Response<'a, const RELAXED: bool> {
     Success { id: u64, result: &'a RawValue },
     Error { id: u64, error: JsonRpcError },
     Notification { method: &'a str, params: Params<'a> },
@@ -110,121 +111,122 @@ pub struct Params<'a> {
     pub result: &'a RawValue,
 }
 
-// FIXME: ideally, this could be auto-derived as an untagged enum, but due to
-// https://github.com/serde-rs/serde/issues/1183 this currently fails
-impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+struct ResponseVisitor<'b, const RELAXED: bool>(PhantomData<&'b ()>);
+
+impl<'de: 'a, 'a, const RELAXED: bool> Visitor<'de> for ResponseVisitor<'a, RELAXED> {
+    type Value = Response<'a, RELAXED>;
+    
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a valid jsonrpc 2.0 response object")
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
     where
-        D: serde::Deserializer<'de>,
+        A: MapAccess<'de>,
     {
-        struct ResponseVisitor<'a>(&'a ());
-        impl<'de: 'a, 'a> Visitor<'de> for ResponseVisitor<'a> {
-            type Value = Response<'a>;
+        let mut jsonrpc = false;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a valid jsonrpc 2.0 response object")
-            }
+        // response & error
+        let mut id = None;
+        // only response
+        let mut result = None;
+        // only error
+        let mut error = None;
+        // only notification
+        let mut method = None;
+        let mut params = None;
 
-            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-            where
-                A: MapAccess<'de>,
-            {
-                let mut jsonrpc = false;
-
-                // response & error
-                let mut id = None;
-                // only response
-                let mut result = None;
-                // only error
-                let mut error = None;
-                // only notification
-                let mut method = None;
-                let mut params = None;
-
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        "jsonrpc" => {
-                            if jsonrpc {
-                                return Err(de::Error::duplicate_field("jsonrpc"))
-                            }
-
-                            let value = map.next_value()?;
-                            if value != "2.0" {
-                                return Err(de::Error::invalid_value(Unexpected::Str(value), &"2.0"))
-                            }
-
-                            jsonrpc = true;
-                        }
-                        "id" => {
-                            if id.is_some() {
-                                return Err(de::Error::duplicate_field("id"))
-                            }
-
-                            let value: u64 = map.next_value()?;
-                            id = Some(value);
-                        }
-                        "result" => {
-                            if result.is_some() {
-                                return Err(de::Error::duplicate_field("result"))
-                            }
-
-                            let value: &RawValue = map.next_value()?;
-                            result = Some(value);
-                        }
-                        "error" => {
-                            if error.is_some() {
-                                return Err(de::Error::duplicate_field("error"))
-                            }
-
-                            let value: JsonRpcError = map.next_value()?;
-                            error = Some(value);
-                        }
-                        "method" => {
-                            if method.is_some() {
-                                return Err(de::Error::duplicate_field("method"))
-                            }
-
-                            let value: &str = map.next_value()?;
-                            method = Some(value);
-                        }
-                        "params" => {
-                            if params.is_some() {
-                                return Err(de::Error::duplicate_field("params"))
-                            }
-
-                            let value: Params = map.next_value()?;
-                            params = Some(value);
-                        }
-                        key => {
-                            return Err(de::Error::unknown_field(
-                                key,
-                                &["id", "jsonrpc", "result", "error", "params", "method"],
-                            ))
-                        }
+        while let Some(key) = map.next_key()? {
+            match key {
+                "jsonrpc" => {
+                    if jsonrpc {
+                        return Err(de::Error::duplicate_field("jsonrpc"))
                     }
+
+                    let value = map.next_value()?;
+                    if value != "2.0" {
+                        return Err(de::Error::invalid_value(Unexpected::Str(value), &"2.0"))
+                    }
+
+                    jsonrpc = true;
                 }
+                "id" => {
+                    if id.is_some() {
+                        return Err(de::Error::duplicate_field("id"))
+                    }
 
-                // jsonrpc version must be present in all responses
-                if !jsonrpc {
-                    return Err(de::Error::missing_field("jsonrpc"))
+                    let value: u64 = map.next_value()?;
+                    id = Some(value);
                 }
+                "result" => {
+                    if result.is_some() {
+                        return Err(de::Error::duplicate_field("result"))
+                    }
 
-                match (id, result, error, method, params) {
-                    (Some(id), Some(result), None, None, None) => {
-                        Ok(Response::Success { id, result })
+                    let value: &RawValue = map.next_value()?;
+                    result = Some(value);
+                }
+                "error" => {
+                    if error.is_some() {
+                        return Err(de::Error::duplicate_field("error"))
                     }
-                    (Some(id), None, Some(error), None, None) => Ok(Response::Error { id, error }),
-                    (None, None, None, Some(method), Some(params)) => {
-                        Ok(Response::Notification { method, params })
+
+                    let value: JsonRpcError = map.next_value()?;
+                    error = Some(value);
+                }
+                "method" => {
+                    if method.is_some() {
+                        return Err(de::Error::duplicate_field("method"))
                     }
-                    _ => Err(de::Error::custom(
-                        "response must be either a success/error or notification object",
-                    )),
+
+                    let value: &str = map.next_value()?;
+                    method = Some(value);
+                }
+                "params" => {
+                    if params.is_some() {
+                        return Err(de::Error::duplicate_field("params"))
+                    }
+
+                    let value: Params = map.next_value()?;
+                    params = Some(value);
+                }
+                key => {
+                    return Err(de::Error::unknown_field(
+                        key,
+                        &["id", "jsonrpc", "result", "error", "params", "method"],
+                    ))
                 }
             }
         }
 
-        deserializer.deserialize_map(ResponseVisitor(&()))
+        // jsonrpc version must be present in all responses
+        if !jsonrpc {
+            return Err(de::Error::missing_field("jsonrpc"))
+        }
+
+        match (id, result, error, method, params) {
+            (Some(id), Some(result), None, None, None) if !RELAXED => {
+                Ok(Response::Success { id, result })
+            }
+            (Some(id), Some(result), None, _, _) if RELAXED => {
+                Ok(Response::Success { id, result })
+            }
+            (Some(id), None, Some(error), None, None) => Ok(Response::Error { id, error }),
+            (None, None, None, Some(method), Some(params)) => {
+                Ok(Response::Notification { method, params })
+            }
+            _ => Err(de::Error::custom(
+                "response must be either a success/error or notification object",
+            )),
+        }
+    }
+}
+
+// FIXME: ideally, this could be auto-derived as an untagged enum, but due to
+// https://github.com/serde-rs/serde/issues/1183 this currently fails
+impl<'a, const RELAXED: bool> Deserialize<'a> for Response<'a, RELAXED> {
+    fn deserialize<D: serde::Deserializer<'a>>(deserializer: D) -> Result<Self, D::Error> {
+        deserializer.deserialize_map(ResponseVisitor(PhantomData::<&()>))
     }
 }
 
@@ -379,12 +381,13 @@ mod tests {
 
     #[test]
     fn deser_response() {
+        let _ = serde_json::from_str::<Response<'_, true>>(r#"{"jsonrpc":"2.0","result":19}"#)
+            .unwrap_err();
         let _ =
-            serde_json::from_str::<Response<'_>>(r#"{"jsonrpc":"2.0","result":19}"#).unwrap_err();
-        let _ = serde_json::from_str::<Response<'_>>(r#"{"jsonrpc":"3.0","result":19,"id":1}"#)
+            serde_json::from_str::<Response<'_, true>>(r#"{"jsonrpc":"3.0","result":19,"id":1}"#)
             .unwrap_err();
 
-        let response: Response<'_> =
+        let response: Response<'_, true> =
             serde_json::from_str(r#"{"jsonrpc":"2.0","result":19,"id":1}"#).unwrap();
 
         match response {
@@ -396,7 +399,7 @@ mod tests {
             _ => panic!("expected `Success` response"),
         }
 
-        let response: Response<'_> = serde_json::from_str(
+        let response: Response<'_, true> = serde_json::from_str(
             r#"{"jsonrpc":"2.0","error":{"code":-32000,"message":"error occurred"},"id":2}"#,
         )
         .unwrap();
@@ -411,7 +414,7 @@ mod tests {
             _ => panic!("expected `Error` response"),
         }
 
-        let response: Response<'_> =
+        let response: Response<'_, true> =
             serde_json::from_str(r#"{"jsonrpc":"2.0","result":"0xfa","id":0}"#).unwrap();
 
         match response {

@@ -1,7 +1,8 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
 use super::common::{Authorization, JsonRpcError, Request, Response};
-use crate::{errors::ProviderError, JsonRpcClient};
+use crate::errors::ProviderError;
+pub use crate::JsonRpcClient;
 use async_trait::async_trait;
 use reqwest::{header::HeaderValue, Client, Error as ReqwestError};
 use serde::{de::DeserializeOwned, Serialize};
@@ -28,7 +29,7 @@ use url::Url;
 /// # }
 /// ```
 #[derive(Debug)]
-pub struct Provider {
+pub struct Provider<const RELAXED: bool> {
     id: AtomicU64,
     client: Client,
     url: Url,
@@ -82,7 +83,7 @@ impl crate::RpcError for ClientError {
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl JsonRpcClient for Provider {
+impl<const RELAXED: bool> JsonRpcClient for Provider<RELAXED> {
     type Error = ClientError;
 
     async fn request<T: Serialize + Send + Sync, R: DeserializeOwned>(
@@ -96,9 +97,11 @@ impl JsonRpcClient for Provider {
         let res = self.client.post(self.url.as_ref()).json(&payload).send().await?;
         let body = res.bytes().await?;
 
-        let raw = match serde_json::from_slice(&body) {
+        let raw = match serde_json::from_slice::<'_, Response<'_, RELAXED>>(&body) {
             Ok(Response::Success { result, .. }) => result.to_owned(),
-            Ok(Response::Error { error, .. }) => return Err(error.into()),
+            Ok(Response::Error { error, .. }) => {
+                return Err(error.into())
+            }
             Ok(_) => {
                 let err = ClientError::SerdeJson {
                     err: serde::de::Error::custom("unexpected notification over HTTP transport"),
@@ -121,7 +124,7 @@ impl JsonRpcClient for Provider {
     }
 }
 
-impl Provider {
+impl<const RELAXED: bool> Provider<RELAXED> {
     /// Initializes a new HTTP Client
     ///
     /// # Example
@@ -190,7 +193,7 @@ impl Provider {
     }
 }
 
-impl FromStr for Provider {
+impl<const RELAXED: bool> FromStr for Provider<RELAXED> {
     type Err = url::ParseError;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
@@ -199,7 +202,7 @@ impl FromStr for Provider {
     }
 }
 
-impl Clone for Provider {
+impl<const RELAXED: bool> Clone for Provider<RELAXED> {
     fn clone(&self) -> Self {
         Self { id: AtomicU64::new(1), client: self.client.clone(), url: self.url.clone() }
     }
