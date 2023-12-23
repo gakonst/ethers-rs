@@ -10,6 +10,7 @@ use ethers_core::{
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::Path};
+use ethers_core::types::H256;
 
 #[cfg(feature = "ethers-solc")]
 use ethers_solc::{artifacts::Settings, EvmVersion, Project, ProjectBuilder, SolcConfig};
@@ -316,6 +317,61 @@ impl ContractMetadata {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContractCreationItem {
+    pub contract_address: Address,
+    pub contract_creator: Address,
+    pub tx_hash: H256,
+}
+
+impl ContractCreationItem {
+    pub fn contract_address(&self) -> Address {
+        self.contract_address
+    }
+
+    pub fn contract_creator(&self) -> Address {
+        self.contract_creator
+    }
+
+    pub fn tx_hash(&self) -> H256 {
+        self.tx_hash
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ContractCreation {
+    items: Vec<ContractCreationItem>
+}
+
+impl IntoIterator for ContractCreation {
+    type Item = ContractCreationItem;
+    type IntoIter = std::vec::IntoIter<ContractCreationItem>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.into_iter()
+    }
+}
+
+impl ContractCreation {
+    pub fn items(&self) -> Vec<ContractCreationItem> {
+        self.items.clone()
+    }
+
+    pub fn contract_addresses(&self) -> Vec<Address> {
+        self.items.iter().map(|c| c.contract_address()).collect()
+    }
+
+    pub fn contract_creators(&self) -> Vec<Address> {
+        self.items.iter().map(|c| c.contract_creator()).collect()
+    }
+
+    pub fn tx_hashes(&self) -> Vec<H256> {
+        self.items.iter().map(|c| c.tx_hash()).collect()
+    }
+}
+
 impl Client {
     /// Fetches a verified contract's ABI.
     ///
@@ -421,5 +477,35 @@ impl Client {
         }
 
         Ok(result)
+    }
+
+    /// Get Contract Creator and Creation Tx Hash, up to 5 at a time.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # async fn foo(client: ethers_etherscan::Client) -> Result<(), Box<dyn std::error::Error>> {
+    ///  let addresses = vec!["0xB83c27805aAcA5C7082eB45C868d955Cf04C337F".parse()?];
+    ///  let metadata = client.contract_creation(addresses).await?;
+    ///  assert_eq!(metadata.items()[0].contract_address, "0xB83c27805aAcA5C7082eB45C868d955Cf04C337F".parse()?);
+    /// # Ok(()) }
+    /// ```
+    pub async fn contract_creation(&self, addresses: Vec<Address>) -> Result<ContractCreation> {
+        if addresses.len() > 5 {
+            return Err(EtherscanError::ExecutionFailed("to many addresses, max - 5".to_string()));
+        }
+
+        let addresses = addresses.iter().map(|a| format!("{:?}", a)).collect::<Vec<_>>().join(",");
+        let query = self.create_query(
+            "contract",
+            "getcontractcreation",
+            HashMap::from([("contractaddresses", addresses)])
+        );
+        let response: Response<ContractCreation> = self.get_json(&query).await?;
+        if response.result.items.len() == 0 {
+            return Err(EtherscanError::ExecutionFailed("no contracts found".to_string()));
+        }
+
+        Ok(response.result)
     }
 }
