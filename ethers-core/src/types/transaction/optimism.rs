@@ -30,6 +30,7 @@ pub struct DepositTransaction {
 
     /// If true, the transaction does not interact with the L2 block gas pool.
     /// Note: boolean is disabled (enforced to be false) starting from the Regolith upgrade.
+    #[serde(rename = "isSystemTx")]
     pub is_system_tx: bool,
 }
 
@@ -210,6 +211,7 @@ mod test {
             max_priority_fee_per_gas: None,
             max_fee_per_gas: None,
             chain_id: None,
+            other: crate::types::OtherFields::default(),
         };
 
         let rlp = deposited_tx.rlp();

@@ -2,6 +2,10 @@
 
 Type-safe abstractions for interacting with Ethereum smart contracts.
 
+> **Warning**
+>
+> This library is in the process of being deprecated. See [#2667](https://github.com/gakonst/ethers-rs/issues/2667) for more information.
+
 Interacting with a smart contract requires broadcasting carefully crafted
 [transactions](ethers_core::types::TransactionRequest) where the `data` field
 contains the

@@ -67,6 +67,7 @@ pub enum Chain {
     Optimism = 10,
     OptimismKovan = 69,
     OptimismGoerli = 420,
+    OptimismSepolia = 11155420,
 
     Arbitrum = 42161,
     ArbitrumTestnet = 421611,
@@ -89,6 +90,8 @@ pub enum Chain {
     Poa = 99,
     Sokol = 77,
 
+    #[serde(alias = "scroll_sepolia", alias = "scroll_sepolia_testnet")]
+    ScrollSepolia = 534351,
     Scroll = 534352,
     ScrollAlphaTestnet = 534353,
 
@@ -173,6 +176,10 @@ pub enum Chain {
     #[strum(to_string = "mantle-testnet")]
     #[serde(alias = "mantle_testnet")]
     MantleTestnet = 5001,
+
+    Zora = 7777777,
+    ZoraGoerli = 999,
+    ZoraSepolia = 999999999,
 }
 
 // === impl Chain ===
@@ -291,7 +298,7 @@ impl Chain {
         let ms = match self {
             Mainnet => 12_000,
             Arbitrum | ArbitrumTestnet | ArbitrumGoerli | ArbitrumSepolia | ArbitrumNova => 1_300,
-            Optimism | OptimismGoerli => 2_000,
+            Optimism | OptimismGoerli | OptimismSepolia => 2_000,
             Polygon | PolygonMumbai => 2_100,
             Moonbeam | Moonriver => 12_500,
             BinanceSmartChain | BinanceSmartChainTestnet => 3_000,
@@ -305,13 +312,15 @@ impl Chain {
             Dev | AnvilHardhat => 200,
             Celo | CeloAlfajores | CeloBaklava => 5_000,
             FilecoinCalibrationTestnet | FilecoinMainnet => 30_000,
-            Scroll | ScrollAlphaTestnet => 3_000,
+            Scroll | ScrollSepolia | ScrollAlphaTestnet => 3_000,
             Gnosis | Chiado => 5_000,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | Sepolia | Holesky | Moonbase |
             MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
             BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm | PolygonZkEvmTestnet | Metis |
-            Linea | LineaTestnet | Mantle | MantleTestnet => return None,
+            Linea | LineaTestnet | Mantle | MantleTestnet | Zora | ZoraGoerli | ZoraSepolia => {
+                return None
+            }
         };
 
         Some(Duration::from_millis(ms))
@@ -352,7 +361,9 @@ impl Chain {
             MantleTestnet |
             PolygonZkEvm |
             PolygonZkEvmTestnet |
-            Scroll => true,
+            Metis |
+            Scroll |
+            ScrollSepolia => true,
 
             // Known EIP-1559 chains
             Mainnet |
@@ -363,6 +374,7 @@ impl Chain {
             BaseGoerli |
             Optimism |
             OptimismGoerli |
+            OptimismSepolia |
             Polygon |
             PolygonMumbai |
             Avalanche |
@@ -376,13 +388,17 @@ impl Chain {
             LineaTestnet |
             FilecoinCalibrationTestnet |
             Gnosis |
-            Chiado => false,
+            Chiado |
+            Zora |
+            ZoraGoerli |
+            ZoraSepolia => false,
 
             // Unknown / not applicable, default to false for backwards compatibility
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
             Sokol | Poa | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
-            EvmosTestnet | Aurora | AuroraTestnet | Canto | CantoTestnet | ScrollAlphaTestnet |
-            Metis => false,
+            EvmosTestnet | Aurora | AuroraTestnet | Canto | CantoTestnet | ScrollAlphaTestnet => {
+                false
+            }
         }
     }
 
@@ -457,6 +473,10 @@ impl Chain {
                 "https://api-kovan-optimistic.etherscan.io/api",
                 "https://kovan-optimistic.etherscan.io",
             ),
+            OptimismSepolia => (
+                "https://api-sepolia-optimistic.etherscan.io/api",
+                "https://sepolia-optimism.etherscan.io",
+            ),
 
             Fantom => ("https://api.ftmscan.com/api", "https://ftmscan.com"),
             FantomTestnet => ("https://api-testnet.ftmscan.com/api", "https://testnet.ftmscan.com"),
@@ -487,14 +507,18 @@ impl Chain {
 
             Gnosis => ("https://api.gnosisscan.io/api", "https://gnosisscan.io"),
 
-            Scroll => ("https://api.scrollscan.com", "https://scrollscan.com"),
+            Scroll => ("https://api.scrollscan.com/api", "https://scrollscan.com"),
+            ScrollSepolia => {
+                ("https://api-sepolia.scrollscan.com/api", "https://sepolia.scrollscan.com")
+            }
             ScrollAlphaTestnet => {
-                ("https://blockscout.scroll.io/api", "https://blockscout.scroll.io/")
+                ("https://alpha-blockscout.scroll.io/api", "https://alpha-blockscout.scroll.io/")
             }
 
-            Metis => {
-                ("https://andromeda-explorer.metis.io/api", "https://andromeda-explorer.metis.io/")
-            }
+            Metis => (
+                "https://api.routescan.io/v2/network/mainnet/evm/1088/etherscan/api",
+                "https://explorer.metis.io/",
+            ),
 
             Chiado => {
                 ("https://blockscout.chiadochain.net/api", "https://blockscout.chiadochain.net")
@@ -565,6 +589,14 @@ impl Chain {
                 ("https://explorer.testnet.mantle.xyz/api", "https://explorer.testnet.mantle.xyz")
             }
 
+            Zora => ("https://explorer.zora.energy/api", "https://explorer.zora.energy"),
+            ZoraGoerli => {
+                ("https://testnet.explorer.zora.energy/api", "https://testnet.explorer.zora.energy")
+            }
+            ZoraSepolia => {
+                ("https://sepolia.explorer.zora.energy/api", "https://sepolia.explorer.zora.energy")
+            }
+
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
@@ -599,6 +631,7 @@ impl Chain {
             Optimism |
             OptimismGoerli |
             OptimismKovan |
+            OptimismSepolia |
             BinanceSmartChain |
             BinanceSmartChainTestnet |
             Arbitrum |
@@ -619,7 +652,8 @@ impl Chain {
             MantleTestnet |
             BaseGoerli |
             Gnosis |
-            Scroll => "ETHERSCAN_API_KEY",
+            Scroll |
+            ScrollSepolia => "ETHERSCAN_API_KEY",
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
@@ -629,7 +663,7 @@ impl Chain {
 
             Moonbeam | Moonbase | MoonbeamDev | Moonriver => "MOONSCAN_API_KEY",
 
-            Canto | CantoTestnet => "BLOCKSCOUT_API_KEY",
+            Canto | CantoTestnet | Zora | ZoraGoerli | ZoraSepolia => "BLOCKSCOUT_API_KEY",
 
             Boba => "BOBASCAN_API_KEY",
 

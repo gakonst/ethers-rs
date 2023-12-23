@@ -321,7 +321,7 @@ mod tests {
                     "config":{
                         "chainId":0,
                         "eip150Hash":"0x0000000000000000000000000000000000000000000000000000000000000000",
-                        "terminalTotalDifficulty":58750000000000000000000,
+                        "terminalTotalDifficulty": "0xC70D808A128D7380000",
                         "terminalTotalDifficultyPassed":true,
                         "ethash":{}
                     },
@@ -370,7 +370,7 @@ mod tests {
                         "londonBlock": 12965000,
                         "arrowGlacierBlock": 13773000,
                         "grayGlacierBlock": 15050000,
-                        "terminalTotalDifficulty": 58750000000000000000000,
+                        "terminalTotalDifficulty": "0xC70D808A128D7380000",
                         "terminalTotalDifficultyPassed": true,
                         "ethash": {}
                     },

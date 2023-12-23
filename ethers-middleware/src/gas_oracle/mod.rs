@@ -8,7 +8,9 @@ pub use eth_gas_station::EthGasStation;
 pub mod etherchain;
 pub use etherchain::Etherchain;
 
+#[cfg(feature = "etherscan")]
 pub mod etherscan;
+#[cfg(feature = "etherscan")]
 pub use etherscan::Etherscan;
 
 pub mod middleware;
@@ -70,6 +72,7 @@ pub enum GasOracleError {
     /// An internal error in the Etherscan client request made from the underlying
     /// gas oracle
     #[error(transparent)]
+    #[cfg(feature = "etherscan")]
     EtherscanError(#[from] ethers_etherscan::errors::EtherscanError),
 
     /// An internal error thrown when the required gas category is not

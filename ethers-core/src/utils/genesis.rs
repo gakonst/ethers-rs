@@ -1,11 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use crate::{
     types::{
         serde_helpers::{
             deserialize_stringified_eth_u64, deserialize_stringified_eth_u64_opt,
             deserialize_stringified_numeric, deserialize_stringified_numeric_opt,
-            deserialize_stringified_u64_opt,
+            deserialize_stringified_u64_opt, Numeric,
         },
         Address, Bytes, H256, U256, U64,
     },
@@ -301,10 +301,7 @@ pub struct ChainConfig {
     pub cancun_time: Option<u64>,
 
     /// Total difficulty reached that triggers the merge consensus upgrade.
-    #[serde(
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "deserialize_stringified_numeric_opt"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_ttd")]
     pub terminal_total_difficulty: Option<U256>,
 
     /// A flag specifying that the network already passed the terminal total difficulty. Its
@@ -348,6 +345,40 @@ pub struct CliqueConfig {
         deserialize_with = "deserialize_stringified_u64_opt"
     )]
     pub epoch: Option<u64>,
+}
+
+fn deserialize_ttd<'de, D>(deserializer: D) -> Result<Option<U256>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match Option::<serde_json::Value>::deserialize(deserializer)? {
+        None => Ok(None),
+        Some(val) => {
+            if let Some(num) = val.as_str() {
+                return Numeric::from_str(num)
+                    .map(U256::from)
+                    .map(Some)
+                    .map_err(serde::de::Error::custom)
+            }
+
+            if let serde_json::Value::Number(num) = val {
+                // geth serializes ttd as number, for mainnet this exceeds u64 which serde is unable
+                // to deserialize as integer
+                if num.as_f64() == Some(5.875e22) {
+                    Ok(Some(U256::from(58750000000000000000000u128)))
+                } else {
+                    num.as_u64()
+                        .map(U256::from)
+                        .ok_or_else(|| {
+                            serde::de::Error::custom(format!("expected a number got {num}"))
+                        })
+                        .map(Some)
+                }
+            } else {
+                Err(serde::de::Error::custom(format!("expected a number, got {:?}", val)))
+            }
+        }
+    }
 }
 
 #[cfg(test)]
