@@ -8,8 +8,10 @@ use ethers_core::{
     types::{serde_helpers::deserialize_stringified_u64, Bytes},
 };
 use semver::Version;
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::Path};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::{collections::HashMap, fmt, path::Path};
+use std::str::FromStr;
+use serde::de::Visitor;
 use ethers_core::types::H256;
 
 #[cfg(feature = "ethers-solc")]
@@ -317,12 +319,73 @@ impl ContractMetadata {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum AddressOrGenesis {
+    Address(Address),
+    Genesis
+}
+
+impl Serialize for AddressOrGenesis {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer
+    {
+        match self {
+            AddressOrGenesis::Address(address) => address.serialize(serializer),
+            AddressOrGenesis::Genesis => serializer.serialize_str("GENESIS")
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for AddressOrGenesis {
+    fn deserialize<D>(deserializer: D) -> Result<AddressOrGenesis, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct AddressOrGenesisVisitor;
+
+        impl<'de> Visitor<'de> for AddressOrGenesisVisitor {
+            type Value = AddressOrGenesis;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("an address or 'GENESIS'")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<AddressOrGenesis, E>
+            where
+                E: de::Error,
+            {
+                if value == "GENESIS" {
+                    Ok(AddressOrGenesis::Genesis)
+                } else {
+                    Ok(AddressOrGenesis::Address(Address::from_str(value).map_err(serde::de::Error::custom)?))
+                }
+            }
+        }
+
+        deserializer.deserialize_any(AddressOrGenesisVisitor)
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ContractCreationItem {
     pub contract_address: Address,
-    pub contract_creator: Address,
+    pub contract_creator: AddressOrGenesis,
+    #[serde(deserialize_with = "deserialize_hash_genesis")]
     pub tx_hash: H256,
+}
+
+fn deserialize_hash_genesis<'de, D>(deserializer: D) -> Result<H256, D::Error>
+    where
+        D: Deserializer<'de>,
+{
+    let hash_string = String::deserialize(deserializer)?;
+    if hash_string.starts_with("GENESIS") {
+        Ok(H256::zero())
+    } else {
+        Ok(H256::from_str(&hash_string).map_err(serde::de::Error::custom)?)
+    }
 }
 
 impl ContractCreationItem {
@@ -330,8 +393,8 @@ impl ContractCreationItem {
         self.contract_address
     }
 
-    pub fn contract_creator(&self) -> Address {
-        self.contract_creator
+    pub fn contract_creator(&self) -> AddressOrGenesis {
+        self.contract_creator.clone()
     }
 
     pub fn tx_hash(&self) -> H256 {
@@ -363,7 +426,7 @@ impl ContractCreation {
         self.items.iter().map(|c| c.contract_address()).collect()
     }
 
-    pub fn contract_creators(&self) -> Vec<Address> {
+    pub fn contract_creators(&self) -> Vec<AddressOrGenesis> {
         self.items.iter().map(|c| c.contract_creator()).collect()
     }
 

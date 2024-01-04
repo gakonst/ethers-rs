@@ -131,3 +131,18 @@ async fn can_fetch_contract_creation() {
         println!("{:#?}", creation);
     }).await
 }
+
+#[tokio::test]
+#[serial]
+async fn can_fetch_contract_creation_genesis() {
+    run_with_client(Chain::Optimism, |client| async move {
+         let addresses = vec![
+            Address::from_str("0x4200000000000000000000000000000000000006").unwrap(),
+        ];
+        let creation = client
+            .contract_creation(addresses)
+            .await
+            .unwrap();
+        println!("{:#?}", creation);
+    }).await
+}
