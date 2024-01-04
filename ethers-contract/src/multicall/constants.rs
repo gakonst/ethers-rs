@@ -29,6 +29,7 @@ pub const MULTICALL_SUPPORTED_CHAIN_IDS: &[u64] = {
         ArbitrumNova as u64,             // Arbitrum Nova
         ArbitrumGoerli as u64,           // Arbitrum Görli
         ArbitrumTestnet as u64,          // Arbitrum Rinkeby
+        ArbitrumSepolia as u64,          // Arbitrum Sepolia
         Polygon as u64,                  // Polygon
         PolygonMumbai as u64,            // Polygon Mumbai
         Gnosis as u64,                   // Gnosis Chain
