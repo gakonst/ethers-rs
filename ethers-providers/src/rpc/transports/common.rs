@@ -20,6 +20,7 @@ pub struct JsonRpcError {
     /// The error code
     pub code: i64,
     /// The error message
+    #[serde(alias = "details")]
     pub message: String,
     /// Additional data
     pub data: Option<Value>,
