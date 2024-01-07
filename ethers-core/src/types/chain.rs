@@ -159,6 +159,7 @@ pub enum Chain {
 
     Base = 8453,
     BaseGoerli = 84531,
+    BaseSepolia = 84532,
 
     Linea = 59144,
     LineaTestnet = 59140,
@@ -317,10 +318,9 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | Sepolia | Holesky | Moonbase |
             MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
-            BaseGoerli | ZkSync | ZkSyncTestnet | PolygonZkEvm | PolygonZkEvmTestnet | Metis |
-            Linea | LineaTestnet | Mantle | MantleTestnet | Zora | ZoraGoerli | ZoraSepolia => {
-                return None
-            }
+            BaseGoerli | BaseSepolia | ZkSync | ZkSyncTestnet | PolygonZkEvm |
+            PolygonZkEvmTestnet | Metis | Linea | LineaTestnet | Mantle | MantleTestnet |
+            Zora | ZoraGoerli | ZoraSepolia => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -372,6 +372,7 @@ impl Chain {
             Holesky |
             Base |
             BaseGoerli |
+            BaseSepolia |
             Optimism |
             OptimismGoerli |
             OptimismSepolia |
@@ -572,6 +573,7 @@ impl Chain {
             Base => ("https://api.basescan.org/api", "https://basescan.org"),
 
             BaseGoerli => ("https://api-goerli.basescan.org/api", "https://goerli.basescan.org"),
+            BaseSepolia => ("https://api-sepolia.basescan.org/api", "https://sepolia.basescan.org"),
 
             ZkSync => {
                 ("https://zksync2-mainnet-explorer.zksync.io/", "https://explorer.zksync.io/")
@@ -651,6 +653,7 @@ impl Chain {
             Mantle |
             MantleTestnet |
             BaseGoerli |
+            BaseSepolia |
             Gnosis |
             Scroll |
             ScrollSepolia => "ETHERSCAN_API_KEY",
