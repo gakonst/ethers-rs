@@ -177,6 +177,8 @@ pub enum Chain {
     #[serde(alias = "mantle_testnet")]
     MantleTestnet = 5001,
 
+    Viction = 88,
+
     Zora = 7777777,
     ZoraGoerli = 999,
     ZoraSepolia = 999999999,
@@ -314,6 +316,7 @@ impl Chain {
             FilecoinCalibrationTestnet | FilecoinMainnet => 30_000,
             Scroll | ScrollSepolia | ScrollAlphaTestnet => 3_000,
             Gnosis | Chiado => 5_000,
+            Viction => 2_000,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | Sepolia | Holesky | Moonbase |
             MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
@@ -362,6 +365,7 @@ impl Chain {
             PolygonZkEvm |
             PolygonZkEvmTestnet |
             Metis |
+            Viction |
             Scroll |
             ScrollSepolia => true,
 
@@ -602,6 +606,7 @@ impl Chain {
                 // new chain
                 return None
             }
+            Viction => ("https://www.vicscan.xyz/api", "https://www.vicscan.xyz"),
         };
 
         Some(urls)
@@ -686,6 +691,7 @@ impl Chain {
             ZkSyncTestnet |
             FilecoinMainnet |
             LineaTestnet |
+            Viction |
             FilecoinCalibrationTestnet => return None,
         };
 
@@ -763,6 +769,7 @@ mod tests {
             (ZkSync, &["zksync"]),
             (Mantle, &["mantle"]),
             (MantleTestnet, &["mantle-testnet"]),
+            (Viction, &["viction"]),
         ];
 
         for &(chain, aliases) in ALIASES {
