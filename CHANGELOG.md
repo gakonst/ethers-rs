@@ -10,6 +10,41 @@ which is configured [here](./cliff.toml).
 
 Please do not manually edit this file.
 
+## [2.0.12] - 2024-01-11
+
+### Bug Fixes
+
+- Update api url ([#2693](https://github.com/gakonst/ethers-rs/issues/2693))
+- Better file name to ident conversion ([#2688](https://github.com/gakonst/ethers-rs/issues/2688))
+- Missing `AbiEncode` implem for tuples of length 16 ([#2685](https://github.com/gakonst/ethers-rs/issues/2685))
+- Allow missing base fee and reward vecs ([#2683](https://github.com/gakonst/ethers-rs/issues/2683))
+- Metis is no 1559 ([#2680](https://github.com/gakonst/ethers-rs/issues/2680))
+- Normalize signature S ([#2679](https://github.com/gakonst/ethers-rs/issues/2679))
+
+### Depedencies
+
+- Update coins-ledger requirement from 0.8.3 to 0.9.0 ([#2687](https://github.com/gakonst/ethers-rs/issues/2687))
+
+### Features
+
+- Add Base Sepolia as a chain ([#2708](https://github.com/gakonst/ethers-rs/issues/2708))
+- Add viction ([#2710](https://github.com/gakonst/ethers-rs/issues/2710))
+- Add support for Arbitrum Sepolia ([#2705](https://github.com/gakonst/ethers-rs/issues/2705))
+
+### Other
+
+- Accept 'input' or 'data', (but not both), in transaction request ([#2697](https://github.com/gakonst/ethers-rs/issues/2697))
+- Rename field camelCase ([#2682](https://github.com/gakonst/ethers-rs/issues/2682))
+
+### Styling
+
+- Add Scroll Sepolia and update Scroll and Scroll Alpha Testnets ([#2692](https://github.com/gakonst/ethers-rs/issues/2692))
+- Rustfmt ([#2681](https://github.com/gakonst/ethers-rs/issues/2681))
+
+### Testing
+
+- Saner tx list params ([#2689](https://github.com/gakonst/ethers-rs/issues/2689))
+
 ## [2.0.11] - 2023-11-16
 
 ### Bug Fixes
