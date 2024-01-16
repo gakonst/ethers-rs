@@ -30,7 +30,7 @@ pub enum TraceType {
 /// Ad-Hoc trace API type
 pub struct BlockTrace {
     /// Output Bytes
-    pub output: Bytes,
+    pub output: Option<Bytes>,
     /// Transaction Trace
     pub trace: Option<Vec<TransactionTrace>>,
     /// Virtual Machine Execution Trace
