@@ -7,6 +7,8 @@ pub use ens::*;
 
 pub mod erc;
 
+pub mod user_operation;
+pub use user_operation::{UserOperation, UserOperationGasEstimation, UserOperationHash};
 #[cfg(feature = "dev-rpc")]
 pub mod dev_rpc;
 #[cfg(feature = "dev-rpc")]

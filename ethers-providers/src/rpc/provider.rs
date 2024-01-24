@@ -6,9 +6,11 @@ use crate::{
     ext::{ens, erc},
     rpc::pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
+    user_operation::{UserOperationByHash, UserOperationGasEstimation, UserOperationReceipt},
     utils::maybe,
     Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MiddlewareError,
-    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient,
+    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient, UserOperation,
+    UserOperationHash,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -389,6 +391,13 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_getTransactionByHash", [hash]).await
     }
 
+    async fn get_user_operation(
+        &self,
+        user_operation_hash: UserOperationHash,
+    ) -> Result<Option<UserOperationByHash>, ProviderError> {
+        self.request("eth_getUserOperationByHash", [user_operation_hash]).await
+    }
+
     async fn get_transaction_by_block_and_index<T: Into<BlockId> + Send + Sync>(
         &self,
         block_hash_or_number: T,
@@ -414,6 +423,13 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     ) -> Result<Option<TransactionReceipt>, ProviderError> {
         let hash = transaction_hash.into();
         self.request("eth_getTransactionReceipt", [hash]).await
+    }
+
+    async fn get_user_operation_receipt(
+        &self,
+        user_operation_hash: UserOperationHash,
+    ) -> Result<Option<UserOperationReceipt>, ProviderError> {
+        self.request("eth_getUserOperationReceipt", [user_operation_hash]).await
     }
 
     async fn get_block_receipts<T: Into<BlockNumber> + Send + Sync>(
@@ -535,6 +551,16 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.request("eth_estimateGas", params).await
     }
 
+    async fn estimate_user_operation_gas(
+        &self,
+        user_operation: UserOperation,
+        entry_point: Address,
+    ) -> Result<UserOperationGasEstimation, ProviderError> {
+        let serialized_user_operation = utils::serialize(&user_operation);
+        let params = vec![serialized_user_operation, utils::serialize(&entry_point)];
+        self.request("eth_estimateUserOperationGas", params).await
+    }
+
     async fn create_access_list(
         &self,
         tx: &TypedTransaction,
@@ -564,6 +590,20 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         let rlp = utils::serialize(&tx);
         let tx_hash = self.request("eth_sendRawTransaction", [rlp]).await?;
         Ok(PendingTransaction::new(tx_hash, self))
+    }
+
+    async fn send_user_operation(
+        &self,
+        user_operation: UserOperation,
+        entry_point: Address,
+    ) -> Result<UserOperationHash, ProviderError> {
+        let serialized_user_operation = utils::serialize(&user_operation);
+        let params = vec![serialized_user_operation, utils::serialize(&entry_point)];
+        self.request("eth_sendUserOperation", params).await
+    }
+
+    async fn get_supported_entry_points(&self) -> Result<Vec<Address>, ProviderError> {
+        self.request("eth_supportedEntryPoints", Vec::<Address>::new()).await
     }
 
     async fn is_signer(&self) -> bool {
