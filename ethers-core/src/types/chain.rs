@@ -157,8 +157,14 @@ pub enum Chain {
 
     Boba = 288,
 
+    #[strum(to_string = "base")]
+    #[serde(alias = "base")]
     Base = 8453,
+    #[strum(to_string = "base-goerli")]
+    #[serde(alias = "base_goerli")]
     BaseGoerli = 84531,
+    #[strum(to_string = "base-sepolia")]
+    #[serde(alias = "base_sepolia")]
     BaseSepolia = 84532,
 
     Linea = 59144,
