@@ -779,6 +779,9 @@ mod tests {
             (Mantle, &["mantle"]),
             (MantleTestnet, &["mantle-testnet"]),
             (Viction, &["viction"]),
+            (Base, &["base"]),
+            (BaseGoerli, &["base-goerli"]),
+            (BaseSepolia, &["base-sepolia"]),
         ];
 
         for &(chain, aliases) in ALIASES {
