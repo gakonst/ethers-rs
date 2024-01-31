@@ -76,5 +76,6 @@ pub const MULTICALL_SUPPORTED_CHAIN_IDS: &[u64] = {
         321,                             // KCC
         106,                             // Velas
         40,                              // Telos
+        Mode as u64,                     // Mode Mainnet
     ]
 };
