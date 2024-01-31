@@ -183,6 +183,9 @@ pub enum Chain {
     Zora = 7777777,
     ZoraGoerli = 999,
     ZoraSepolia = 999999999,
+
+    Mode = 34443,
+    ModeSepolia = 919,
 }
 
 // === impl Chain ===
@@ -318,6 +321,7 @@ impl Chain {
             Scroll | ScrollSepolia | ScrollAlphaTestnet => 3_000,
             Gnosis | Chiado => 5_000,
             Viction => 2_000,
+            Mode | ModeSepolia => 2_000,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | Sepolia | Holesky | Moonbase |
             MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
@@ -394,6 +398,8 @@ impl Chain {
             FilecoinCalibrationTestnet |
             Gnosis |
             Chiado |
+            Mode |
+            ModeSepolia |
             Zora |
             ZoraGoerli |
             ZoraSepolia => false,
@@ -609,6 +615,12 @@ impl Chain {
                 return None
             }
             Viction => ("https://www.vicscan.xyz/api", "https://www.vicscan.xyz"),
+
+            Mode => ("https://explorer.mode.network/api", "https://explorer.mode.network"),
+            ModeSepolia => (
+                "https://sepolia.explorer.mode.network/api",
+                "https://sepolia.explorer.mode.network",
+            ),
         };
 
         Some(urls)
@@ -671,7 +683,9 @@ impl Chain {
 
             Moonbeam | Moonbase | MoonbeamDev | Moonriver => "MOONSCAN_API_KEY",
 
-            Canto | CantoTestnet | Zora | ZoraGoerli | ZoraSepolia => "BLOCKSCOUT_API_KEY",
+            Canto | CantoTestnet | Zora | ZoraGoerli | ZoraSepolia | Mode | ModeSepolia => {
+                "BLOCKSCOUT_API_KEY"
+            }
 
             Boba => "BOBASCAN_API_KEY",
 
