@@ -1,6 +1,6 @@
 use num_enum::TryFromPrimitive;
 use serde::{Deserialize, Serialize};
-use strum::{AsRefStr, Display, EnumCount, EnumIter, EnumString, EnumVariantNames};
+use strum::{AsRefStr, Display, EnumCount, EnumIter, EnumString, VariantNames};
 
 // opcode descriptions taken from evm.codes https://github.com/comitylabs/evm.codes/blob/bc7f102808055d88365559d40c190c5bd6d164c3/opcodes.json
 // https://github.com/ethereum/go-ethereum/blob/2b1299b1c006077c56ecbad32e79fc16febe3dd6/core/vm/opcodes.go
@@ -18,7 +18,7 @@ use strum::{AsRefStr, Display, EnumCount, EnumIter, EnumString, EnumVariantNames
     AsRefStr,
     Display,
     EnumString,
-    EnumVariantNames,
+    VariantNames,
     EnumIter,
     EnumCount,
     TryFromPrimitive,
