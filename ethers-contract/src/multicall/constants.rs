@@ -27,6 +27,7 @@ pub const MULTICALL_SUPPORTED_CHAIN_IDS: &[u64] = {
         Base as u64,                     // Base
         BaseGoerli as u64,               // Base Görli
         BaseSepolia as u64,              // Base Sepolia
+        BlastSepolia as u64,             // Blast Sepolia
         Arbitrum as u64,                 // Arbitrum
         ArbitrumNova as u64,             // Arbitrum Nova
         ArbitrumGoerli as u64,           // Arbitrum Görli
