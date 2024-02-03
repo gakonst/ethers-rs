@@ -325,11 +325,11 @@ impl Chain {
             Viction => 2_000,
             Mode | ModeSepolia => 2_000,
             // Explicitly exhaustive. See NB above.
-            Morden | Ropsten | Rinkeby | Goerli | Kovan | Sepolia | Holesky | Moonbase
-            | MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base
-            | BaseGoerli | BaseSepolia | BlastSepolia | ZkSync | ZkSyncTestnet | PolygonZkEvm
-            | PolygonZkEvmTestnet | Metis | Linea | LineaTestnet | Mantle | MantleTestnet
-            | Zora | ZoraGoerli | ZoraSepolia => return None,
+            Morden | Ropsten | Rinkeby | Goerli | Kovan | Sepolia | Holesky | Moonbase |
+            MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
+            BaseGoerli | BaseSepolia | BlastSepolia | ZkSync | ZkSyncTestnet | PolygonZkEvm |
+            PolygonZkEvmTestnet | Metis | Linea | LineaTestnet | Mantle | MantleTestnet |
+            Zora | ZoraGoerli | ZoraSepolia => return None,
         };
 
         Some(Duration::from_millis(ms))
@@ -350,67 +350,67 @@ impl Chain {
 
         match self {
             // Known legacy chains / non EIP-1559 compliant
-            OptimismKovan
-            | Fantom
-            | FantomTestnet
-            | BinanceSmartChain
-            | BinanceSmartChainTestnet
-            | ArbitrumTestnet
-            | Rsk
-            | Oasis
-            | Emerald
-            | EmeraldTestnet
-            | Celo
-            | CeloAlfajores
-            | CeloBaklava
-            | Boba
-            | ZkSync
-            | ZkSyncTestnet
-            | Mantle
-            | MantleTestnet
-            | PolygonZkEvm
-            | PolygonZkEvmTestnet
-            | Metis
-            | Viction
-            | Scroll
-            | ScrollSepolia => true,
+            OptimismKovan |
+            Fantom |
+            FantomTestnet |
+            BinanceSmartChain |
+            BinanceSmartChainTestnet |
+            ArbitrumTestnet |
+            Rsk |
+            Oasis |
+            Emerald |
+            EmeraldTestnet |
+            Celo |
+            CeloAlfajores |
+            CeloBaklava |
+            Boba |
+            ZkSync |
+            ZkSyncTestnet |
+            Mantle |
+            MantleTestnet |
+            PolygonZkEvm |
+            PolygonZkEvmTestnet |
+            Metis |
+            Viction |
+            Scroll |
+            ScrollSepolia => true,
 
             // Known EIP-1559 chains
-            Mainnet
-            | Goerli
-            | Sepolia
-            | Holesky
-            | Base
-            | BaseGoerli
-            | BaseSepolia
-            | BlastSepolia
-            | Optimism
-            | OptimismGoerli
-            | OptimismSepolia
-            | Polygon
-            | PolygonMumbai
-            | Avalanche
-            | AvalancheFuji
-            | Arbitrum
-            | ArbitrumGoerli
-            | ArbitrumSepolia
-            | ArbitrumNova
-            | FilecoinMainnet
-            | Linea
-            | LineaTestnet
-            | FilecoinCalibrationTestnet
-            | Gnosis
-            | Chiado
-            | Mode
-            | ModeSepolia
-            | Zora
-            | ZoraGoerli
-            | ZoraSepolia => false,
+            Mainnet |
+            Goerli |
+            Sepolia |
+            Holesky |
+            Base |
+            BaseGoerli |
+            BaseSepolia |
+            BlastSepolia |
+            Optimism |
+            OptimismGoerli |
+            OptimismSepolia |
+            Polygon |
+            PolygonMumbai |
+            Avalanche |
+            AvalancheFuji |
+            Arbitrum |
+            ArbitrumGoerli |
+            ArbitrumSepolia |
+            ArbitrumNova |
+            FilecoinMainnet |
+            Linea |
+            LineaTestnet |
+            FilecoinCalibrationTestnet |
+            Gnosis |
+            Chiado |
+            Mode |
+            ModeSepolia |
+            Zora |
+            ZoraGoerli |
+            ZoraSepolia => false,
 
             // Unknown / not applicable, default to false for backwards compatibility
-            Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan
-            | Sokol | Poa | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos
-            | EvmosTestnet | Aurora | AuroraTestnet | Canto | CantoTestnet | ScrollAlphaTestnet => {
+            Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
+            Sokol | Poa | Moonbeam | MoonbeamDev | Moonriver | Moonbase | Evmos |
+            EvmosTestnet | Aurora | AuroraTestnet | Canto | CantoTestnet | ScrollAlphaTestnet => {
                 false
             }
         }
@@ -648,41 +648,41 @@ impl Chain {
         use Chain::*;
 
         let api_key_name = match self {
-            Mainnet
-            | Morden
-            | Ropsten
-            | Kovan
-            | Rinkeby
-            | Goerli
-            | Holesky
-            | Optimism
-            | OptimismGoerli
-            | OptimismKovan
-            | OptimismSepolia
-            | BinanceSmartChain
-            | BinanceSmartChainTestnet
-            | Arbitrum
-            | ArbitrumTestnet
-            | ArbitrumGoerli
-            | ArbitrumSepolia
-            | ArbitrumNova
-            | Cronos
-            | CronosTestnet
-            | Aurora
-            | AuroraTestnet
-            | Celo
-            | CeloAlfajores
-            | CeloBaklava
-            | Base
-            | Linea
-            | Mantle
-            | MantleTestnet
-            | BaseGoerli
-            | BaseSepolia
-            | BlastSepolia
-            | Gnosis
-            | Scroll
-            | ScrollSepolia => "ETHERSCAN_API_KEY",
+            Mainnet |
+            Morden |
+            Ropsten |
+            Kovan |
+            Rinkeby |
+            Goerli |
+            Holesky |
+            Optimism |
+            OptimismGoerli |
+            OptimismKovan |
+            OptimismSepolia |
+            BinanceSmartChain |
+            BinanceSmartChainTestnet |
+            Arbitrum |
+            ArbitrumTestnet |
+            ArbitrumGoerli |
+            ArbitrumSepolia |
+            ArbitrumNova |
+            Cronos |
+            CronosTestnet |
+            Aurora |
+            AuroraTestnet |
+            Celo |
+            CeloAlfajores |
+            CeloBaklava |
+            Base |
+            Linea |
+            Mantle |
+            MantleTestnet |
+            BaseGoerli |
+            BaseSepolia |
+            BlastSepolia |
+            Gnosis |
+            Scroll |
+            ScrollSepolia => "ETHERSCAN_API_KEY",
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
