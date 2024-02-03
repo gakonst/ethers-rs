@@ -223,6 +223,7 @@ impl super::Signer for AwsSigner {
     type Error = AwsSignerError;
 
     #[instrument(err, skip(message))]
+    #[allow(clippy::blocks_in_conditions)]
     async fn sign_message<S: Send + Sync + AsRef<[u8]>>(
         &self,
         message: S,
@@ -236,6 +237,7 @@ impl super::Signer for AwsSigner {
     }
 
     #[instrument(err)]
+    #[allow(clippy::blocks_in_conditions)]
     async fn sign_transaction(&self, tx: &TypedTransaction) -> Result<EthSig, Self::Error> {
         let mut tx_with_chain = tx.clone();
         let chain_id = tx_with_chain.chain_id().map(|id| id.as_u64()).unwrap_or(self.chain_id);
