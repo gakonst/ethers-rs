@@ -161,6 +161,8 @@ pub enum Chain {
     BaseGoerli = 84531,
     BaseSepolia = 84532,
 
+    BlastSepolia = 168587773,
+
     Linea = 59144,
     LineaTestnet = 59140,
 
@@ -325,7 +327,7 @@ impl Chain {
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | Sepolia | Holesky | Moonbase |
             MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
-            BaseGoerli | BaseSepolia | ZkSync | ZkSyncTestnet | PolygonZkEvm |
+            BaseGoerli | BaseSepolia | BlastSepolia | ZkSync | ZkSyncTestnet | PolygonZkEvm |
             PolygonZkEvmTestnet | Metis | Linea | LineaTestnet | Mantle | MantleTestnet |
             Zora | ZoraGoerli | ZoraSepolia => return None,
         };
@@ -381,6 +383,7 @@ impl Chain {
             Base |
             BaseGoerli |
             BaseSepolia |
+            BlastSepolia |
             Optimism |
             OptimismGoerli |
             OptimismSepolia |
@@ -585,6 +588,11 @@ impl Chain {
             BaseGoerli => ("https://api-goerli.basescan.org/api", "https://goerli.basescan.org"),
             BaseSepolia => ("https://api-sepolia.basescan.org/api", "https://sepolia.basescan.org"),
 
+            BlastSepolia => (
+                "https://api.routescan.io/v2/network/testnet/evm/168587773/etherscan",
+                "https://testnet.blastscan.io",
+            ),
+
             ZkSync => {
                 ("https://zksync2-mainnet-explorer.zksync.io/", "https://explorer.zksync.io/")
             }
@@ -671,6 +679,7 @@ impl Chain {
             MantleTestnet |
             BaseGoerli |
             BaseSepolia |
+            BlastSepolia |
             Gnosis |
             Scroll |
             ScrollSepolia => "ETHERSCAN_API_KEY",
