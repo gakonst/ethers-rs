@@ -11,12 +11,6 @@ pub type Response = Result<Box<RawValue>, JsonRpcError>;
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct SubId(pub U256);
 
-impl SubId {
-    pub(super) fn serialize_raw(&self) -> Result<Box<RawValue>, serde_json::Error> {
-        to_raw_value(&self)
-    }
-}
-
 #[derive(Deserialize, Debug, Clone)]
 pub struct Notification {
     pub subscription: U256,

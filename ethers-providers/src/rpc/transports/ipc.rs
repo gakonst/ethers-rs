@@ -247,6 +247,21 @@ impl Ipc {
 
         Ok(())
     }
+
+    fn format_request<T: Serialize>(
+        &self,
+        method: &str,
+        params: T,
+        sender: Pending,
+    ) -> Result<TransportMessage, IpcError> {
+        let next_id = self.id.fetch_add(1, Ordering::SeqCst);
+
+        Ok(TransportMessage::Request {
+            id: next_id,
+            request: serde_json::to_vec(&Request::new(next_id, method, params))?.into_boxed_slice(),
+            sender,
+        })
+    }
 }
 
 #[async_trait]
@@ -258,18 +273,11 @@ impl JsonRpcClient for Ipc {
         method: &str,
         params: T,
     ) -> Result<R, IpcError> {
-        let next_id = self.id.fetch_add(1, Ordering::SeqCst);
-
         // Create the request and initialize the response channel
         let (sender, receiver) = oneshot::channel();
-        let payload = TransportMessage::Request {
-            id: next_id,
-            request: serde_json::to_vec(&Request::new(next_id, method, params))?.into_boxed_slice(),
-            sender,
-        };
 
         // Send the request to the IPC server to be handled.
-        self.send(payload)?;
+        self.send(self.format_request(method, params, sender)?)?;
 
         // Wait for the response from the IPC server.
         let res = receiver.await??;
@@ -289,7 +297,14 @@ impl PubsubClient for Ipc {
     }
 
     fn unsubscribe<T: Into<U256>>(&self, id: T) -> Result<(), IpcError> {
-        self.send(TransportMessage::Unsubscribe { id: id.into() })
+        let id = id.into();
+
+        // Unsubscribe from the server, but don't wait for the response:
+        let (sender, _) = oneshot::channel();
+        self.send(self.format_request("eth_unsubscribe", [id], sender)?)?;
+
+        // Clean up local subscription state:
+        self.send(TransportMessage::Unsubscribe { id })
     }
 }
 

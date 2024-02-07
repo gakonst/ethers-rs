@@ -170,6 +170,22 @@ impl Ws {
     fn send(&self, msg: Instruction) -> Result<(), ClientError> {
         self.instructions.unbounded_send(msg).map_err(to_client_error)
     }
+
+    fn format_request<T: Serialize>(
+        &self,
+        method: &str,
+        params: T,
+        sender: Pending,
+    ) -> Result<Instruction, ClientError> {
+        let next_id = self.id.fetch_add(1, Ordering::SeqCst);
+
+        let req = Instruction::Request {
+            id: next_id,
+            request: serde_json::to_string(&Request::new(next_id, method, params))?,
+            sender,
+        };
+        Ok(req)
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
@@ -182,18 +198,9 @@ impl JsonRpcClient for Ws {
         method: &str,
         params: T,
     ) -> Result<R, ClientError> {
-        let next_id = self.id.fetch_add(1, Ordering::SeqCst);
-
         // send the message
         let (sender, receiver) = oneshot::channel();
-        let payload = Instruction::Request {
-            id: next_id,
-            request: serde_json::to_string(&Request::new(next_id, method, params))?,
-            sender,
-        };
-
-        // send the data
-        self.send(payload)?;
+        self.send(self.format_request(method, params, sender)?)?;
 
         // wait for the response (the request itself may have errors as well)
         let res = receiver.await??;
@@ -213,7 +220,11 @@ impl PubsubClient for Ws {
     }
 
     fn unsubscribe<T: Into<U256>>(&self, id: T) -> Result<(), ClientError> {
-        self.send(Instruction::Unsubscribe { id: id.into() })
+        let id: U256 = id.into();
+        let (sender, _receiver) = oneshot::channel();
+        self.send(self.format_request("eth_unsubscribe", [id], sender)?)?;
+
+        self.send(Instruction::Unsubscribe { id })
     }
 }
 

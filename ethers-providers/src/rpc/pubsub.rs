@@ -1,4 +1,4 @@
-use crate::{JsonRpcClient, Middleware, Provider};
+use crate::{JsonRpcClient, Provider};
 
 use ethers_core::types::U256;
 
@@ -30,7 +30,8 @@ pub trait PubsubClient: JsonRpcClient {
 #[pin_project(PinnedDrop)]
 /// Streams data from an installed filter via `eth_subscribe`
 pub struct SubscriptionStream<'a, P: PubsubClient, R: DeserializeOwned> {
-    /// The subscription's installed id on the ethereum node
+    /// A client-side ID for the subscription. This may not be the same
+    /// as the server-side ID for this subscription on the ethereum node.
     pub id: U256,
 
     loaded_elements: VecDeque<R>,
@@ -63,7 +64,10 @@ where
 
     /// Unsubscribes from the subscription.
     pub async fn unsubscribe(&self) -> Result<bool, crate::ProviderError> {
-        self.provider.unsubscribe(self.id).await
+        // Make sure to use PubSubClient unsubscribe() rather than Provider unsubscribe()
+        // Only the former handles mappings between client- and server-side subscription IDs
+        P::unsubscribe((*self.provider).as_ref(), self.id).map_err(Into::into)?;
+        Ok(true)
     }
 
     /// Set the loaded elements buffer. This buffer contains logs waiting for
