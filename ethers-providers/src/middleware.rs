@@ -395,7 +395,7 @@ pub trait Middleware: Sync + Send + Debug {
         &self,
         block_hash_or_number: T,
         idx: U64,
-    ) -> Result<Option<Transaction>, ProviderError> {
+    ) -> Result<Option<Transaction>, Self::Error> {
         self.inner()
             .get_transaction_by_block_and_index(block_hash_or_number, idx)
             .await
