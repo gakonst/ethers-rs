@@ -5,6 +5,10 @@ on:
         branches: [master]
     pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 # Yeah I know it's bad practice to have API keys, this is a read-only API key
 # so that we do not get rate limited by Etherscan (and it's free to generate as
 # many as you want)
