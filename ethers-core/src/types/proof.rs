@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct StorageProof {
-    pub key: H256,
+    pub key: U256,
     pub proof: Vec<Bytes>,
     pub value: U256,
 }
@@ -28,5 +28,13 @@ mod tests {
     fn can_deserialize_proof() {
         serde_json::from_str::<EIP1186ProofResponse>(include_str!("../../testdata/proof.json"))
             .unwrap();
+    }
+
+    #[test]
+    fn can_deserialize_proof_uint_key() {
+        serde_json::from_str::<EIP1186ProofResponse>(include_str!(
+            "../../testdata/proof_uint_key.json"
+        ))
+        .unwrap();
     }
 }
