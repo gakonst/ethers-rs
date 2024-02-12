@@ -981,7 +981,7 @@ pub trait Middleware: Sync + Send + Debug {
             .map_err(MiddlewareError::from_err)
     }
 
-    /// Querty the node for an EIP-2930 Access List.
+    /// Query the node for an EIP-2930 Access List.
     ///
     /// See the
     /// [EIP-2930 documentation](https://eips.ethereum.org/EIPS/eip-2930) for
