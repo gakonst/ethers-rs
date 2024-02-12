@@ -86,7 +86,7 @@
 
 #![warn(missing_debug_implementations, missing_docs, rust_2018_idioms, unreachable_pub)]
 #![deny(rustdoc::broken_intra_doc_links)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 #![doc(test(no_crate_inject, attr(deny(rust_2018_idioms), allow(dead_code, unused_variables))))]
 
 #[doc(inline)]

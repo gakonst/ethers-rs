@@ -9,7 +9,7 @@
 
 #![deny(rustdoc::broken_intra_doc_links, missing_docs, unsafe_code)]
 #![warn(unreachable_pub)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
 #[cfg(test)]
 #[allow(missing_docs)]
