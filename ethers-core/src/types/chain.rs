@@ -5,7 +5,7 @@ use std::{
     fmt,
     time::Duration,
 };
-use strum::{AsRefStr, EnumCount, EnumIter, EnumString, EnumVariantNames};
+use strum::{AsRefStr, EnumCount, EnumIter, EnumString, VariantNames};
 
 // compatibility re-export
 #[doc(hidden)]
@@ -42,7 +42,7 @@ pub type ParseChainError = TryFromPrimitiveError<Chain>;
     Ord,
     Hash,
     AsRefStr,         // AsRef<str>, fmt::Display and serde::Serialize
-    EnumVariantNames, // Chain::VARIANTS
+    VariantNames,     // Chain::VARIANTS
     EnumString,       // FromStr, TryFrom<&str>
     EnumIter,         // Chain::iter
     EnumCount,        // Chain::COUNT
