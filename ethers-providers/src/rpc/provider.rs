@@ -338,6 +338,23 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         self.get_block_gen(block_hash_or_number.into(), false).await
     }
 
+    async fn get_header<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<Option<Block<Transaction>>, Self::Error> {
+        let id = block_hash_or_number.into();
+        Ok(match id {
+            BlockId::Number(num) => {
+                let num = utils::serialize(&num);
+                self.request("eth_getHeaderByNumber", [num]).await?
+            }
+            BlockId::Hash(hash) => {
+                let hash = utils::serialize(&hash);
+                self.request("eth_getHeaderByHash", [hash]).await?
+            }
+        })
+    }
+
     async fn get_block_with_txs<T: Into<BlockId> + Send + Sync>(
         &self,
         block_hash_or_number: T,

@@ -148,6 +148,14 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().get_block_number().await.map_err(MiddlewareError::from_err)
     }
 
+    /// Get the block header by number or hash
+    async fn get_header<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<Option<Block<Transaction>>, Self::Error> {
+        self.inner().get_header(block_hash_or_number).await.map_err(MiddlewareError::from_err)
+    }
+
     /// Sends the transaction to the entire Ethereum network and returns the
     /// transaction's hash. This will consume gas from the account that signed
     /// the transaction. This call will fail if no signer is available, and the
