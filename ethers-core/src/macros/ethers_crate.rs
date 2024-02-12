@@ -5,7 +5,7 @@ use std::{
     env, fmt, fs,
     path::{Path, PathBuf},
 };
-use strum::{EnumCount, EnumIter, EnumString, VariantNames, IntoEnumIterator};
+use strum::{EnumCount, EnumIter, EnumString, IntoEnumIterator, VariantNames};
 
 /// `ethers_crate => name`
 type CrateNames = HashMap<EthersCrate, &'static str>;

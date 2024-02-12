@@ -42,7 +42,7 @@ pub type ParseChainError = TryFromPrimitiveError<Chain>;
     Ord,
     Hash,
     AsRefStr,         // AsRef<str>, fmt::Display and serde::Serialize
-    VariantNames, // Chain::VARIANTS
+    VariantNames,     // Chain::VARIANTS
     EnumString,       // FromStr, TryFrom<&str>
     EnumIter,         // Chain::iter
     EnumCount,        // Chain::COUNT
