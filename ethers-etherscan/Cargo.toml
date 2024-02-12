@@ -43,7 +43,7 @@ ethers-solc.workspace = true
 
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
-serial_test = "2.0.0"
+serial_test = "3.0.0"
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
 
 [features]
