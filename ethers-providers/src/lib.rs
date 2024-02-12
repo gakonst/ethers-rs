@@ -2,7 +2,7 @@
 #![allow(clippy::type_complexity)]
 #![warn(missing_docs)]
 #![deny(unsafe_code, rustdoc::broken_intra_doc_links)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
 mod ext;
 pub use ext::*;

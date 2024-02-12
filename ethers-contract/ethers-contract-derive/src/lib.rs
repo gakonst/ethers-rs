@@ -2,7 +2,7 @@
 
 #![deny(missing_docs, unsafe_code, unused_crate_dependencies)]
 #![deny(rustdoc::broken_intra_doc_links)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
 use abigen::Contracts;
 use proc_macro::TokenStream;
