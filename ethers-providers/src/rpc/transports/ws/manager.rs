@@ -310,7 +310,7 @@ impl RequestManager {
         reconnects: usize,
     ) -> Result<(Self, WsClient), WsClientError> {
         let (backend, (instructions_tx, instructions_rx), channel_map) =
-            Self::connect_with_config_internal(conn.clone(), config.clone()).await?;
+            Self::connect_with_config_internal(conn.clone(), config).await?;
 
         Ok((
             Self {

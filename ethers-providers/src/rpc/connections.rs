@@ -25,6 +25,7 @@ pub trait JsonRpcClient: Debug + Send + Sync {
 }
 
 /// A transport implementation supporting pub sub subscriptions.
+#[allow(dead_code)]
 pub trait PubsubClient: JsonRpcClient {
     /// The type of stream this transport returns
     type NotificationStream: futures_core::Stream<Item = Box<RawValue>> + Send + Unpin;
