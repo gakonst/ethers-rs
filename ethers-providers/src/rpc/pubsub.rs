@@ -1,7 +1,5 @@
 use crate::{JsonRpcClient, Middleware, Provider};
-
 use ethers_core::types::U256;
-
 use futures_util::stream::Stream;
 use pin_project::{pin_project, pinned_drop};
 use serde::de::DeserializeOwned;

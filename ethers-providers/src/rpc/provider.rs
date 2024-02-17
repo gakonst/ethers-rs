@@ -4,11 +4,11 @@ use crate::{
     call_raw::CallBuilder,
     errors::ProviderError,
     ext::{ens, erc},
-    rpc::pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
     utils::maybe,
     Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MiddlewareError,
-    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient,
+    MockProvider, NodeInfo, PeerInfo, PendingTransaction, PubsubClient, QuorumProvider, RwClient,
+    SubscriptionStream,
 };
 
 #[cfg(not(target_arch = "wasm32"))]

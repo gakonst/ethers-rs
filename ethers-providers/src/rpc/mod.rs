@@ -8,4 +8,4 @@ mod connections;
 pub use connections::*;
 
 mod pubsub;
-pub use pubsub::{PubsubClient, SubscriptionStream};
+pub use pubsub::*;
