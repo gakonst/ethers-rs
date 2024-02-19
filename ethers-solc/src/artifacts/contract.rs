@@ -9,7 +9,7 @@ use crate::artifacts::{
 };
 use ethers_core::{abi::Contract as Abi, types::Bytes};
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, collections::BTreeMap, convert::TryFrom};
+use std::{borrow::Cow, collections::BTreeMap};
 
 /// Represents a compiled solidity contract
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

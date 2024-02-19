@@ -681,8 +681,6 @@ mod tests {
     use super::*;
     use crate::{project_util::TempProject, MinimalCombinedArtifacts};
 
-    use std::path::PathBuf;
-
     #[allow(unused)]
     fn init_tracing() {
         let _ = tracing_subscriber::fmt()

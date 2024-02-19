@@ -10,7 +10,6 @@ use semver::Version;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::BTreeMap,
-    iter::FromIterator,
     ops::{Deref, DerefMut},
     path::Path,
 };

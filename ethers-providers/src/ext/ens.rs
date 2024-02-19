@@ -1,11 +1,10 @@
 //! [Ethereum Name Service](https://docs.ens.domains/) support
 //! Adapted from <https://github.com/hhatto/rust-ens/blob/master/src/lib.rs>
+
 use ethers_core::{
     types::{Address, NameOrAddress, Selector, TransactionRequest, H160, H256},
     utils::keccak256,
 };
-
-use std::convert::TryInto;
 
 /// ENS registry address (`0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e`)
 pub const ENS_ADDRESS: Address = H160([

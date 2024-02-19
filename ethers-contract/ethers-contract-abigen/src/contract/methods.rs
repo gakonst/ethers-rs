@@ -637,8 +637,6 @@ fn expand_call_struct_variant_name(function: &Function, alias: Option<&MethodAli
 
 #[cfg(test)]
 mod tests {
-    use ethers_core::abi::ParamType;
-
     use super::*;
 
     fn expand_fn_outputs(outputs: &[Param]) -> Result<TokenStream> {

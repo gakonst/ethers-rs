@@ -5,7 +5,6 @@ use ethers::{
     signers::{LocalWallet, Signer},
 };
 use eyre::Result;
-use std::convert::TryFrom;
 
 #[tokio::main]
 async fn main() -> Result<()> {

@@ -658,10 +658,7 @@ impl From<TypedTransaction> for Eip2930TransactionRequest {
 
 #[cfg(test)]
 mod tests {
-    use rlp::Decodable;
-
     use super::*;
-    use crate::types::{Address, U256};
     use std::str::FromStr;
 
     #[test]

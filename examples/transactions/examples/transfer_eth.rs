@@ -3,7 +3,6 @@ use ethers::{
     providers::{Http, Middleware, Provider},
 };
 use eyre::Result;
-use std::convert::TryFrom;
 
 #[tokio::main]
 async fn main() -> Result<()> {

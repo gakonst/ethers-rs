@@ -43,11 +43,7 @@ use k256::{
     ecdsa::{SigningKey, VerifyingKey},
     AffinePoint,
 };
-use std::{
-    collections::HashMap,
-    convert::{TryFrom, TryInto},
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 use thiserror::Error;
 
 /// I256 overflows for numbers wider than 77 units.

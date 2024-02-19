@@ -7,7 +7,7 @@ use ethers::{
     solc::Solc,
 };
 use eyre::Result;
-use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
+use std::{path::Path, sync::Arc, time::Duration};
 
 // Generate the type-safe contract bindings by providing the ABI
 // definition

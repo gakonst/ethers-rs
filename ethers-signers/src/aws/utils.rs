@@ -2,8 +2,7 @@
 //! within this module. They DO NOT perform basic safety checks and may panic
 //! if used incorrectly.
 
-use std::convert::TryFrom;
-
+use crate::aws::AwsSignerError;
 use ethers_core::{
     k256::{
         ecdsa::{RecoveryId, Signature as RSig, Signature as KSig, VerifyingKey},
@@ -13,8 +12,6 @@ use ethers_core::{
     utils::keccak256,
 };
 use rusoto_kms::{GetPublicKeyResponse, SignResponse};
-
-use crate::aws::AwsSignerError;
 
 /// Makes a trial recovery to check whether an RSig corresponds to a known
 /// `VerifyingKey`

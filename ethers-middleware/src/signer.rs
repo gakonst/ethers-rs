@@ -1,12 +1,10 @@
+use async_trait::async_trait;
 use ethers_core::types::{
     transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
     Address, BlockId, Bytes, Chain, Signature, TransactionRequest, U256,
 };
 use ethers_providers::{maybe, Middleware, MiddlewareError, PendingTransaction};
 use ethers_signers::Signer;
-use std::convert::TryFrom;
-
-use async_trait::async_trait;
 use thiserror::Error;
 
 #[derive(Clone, Debug)]

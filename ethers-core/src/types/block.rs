@@ -958,7 +958,6 @@ mod tests {
 #[cfg(feature = "celo")]
 mod celo_tests {
     use super::*;
-    use crate::types::Transaction;
 
     #[test]
     fn block_without_snark_data() {

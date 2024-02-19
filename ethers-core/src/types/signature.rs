@@ -14,7 +14,7 @@ use k256::{
 };
 use open_fastrlp::Decodable;
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, fmt, str::FromStr};
+use std::{fmt, str::FromStr};
 use thiserror::Error;
 
 /// An error involving a signature.

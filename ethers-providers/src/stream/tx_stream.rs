@@ -1,21 +1,17 @@
+use crate::{
+    FilterWatcher, JsonRpcClient, Middleware, Provider, ProviderError, PubsubClient,
+    SubscriptionStream,
+};
+use ethers_core::types::{Transaction, TxHash};
+use futures_core::{stream::Stream, Future};
+use futures_util::{
+    stream::{FuturesUnordered, StreamExt},
+    FutureExt,
+};
 use std::{
     collections::VecDeque,
     pin::Pin,
     task::{Context, Poll},
-};
-
-use futures_core::{stream::Stream, Future};
-use futures_util::{
-    self,
-    stream::{FuturesUnordered, StreamExt},
-    FutureExt,
-};
-
-use ethers_core::types::{Transaction, TxHash};
-
-use crate::{
-    FilterWatcher, JsonRpcClient, Middleware, Provider, ProviderError, PubsubClient,
-    SubscriptionStream,
 };
 
 /// Errors `TransactionStream` can throw

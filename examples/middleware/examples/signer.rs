@@ -5,7 +5,6 @@ use ethers::{
     signers::{LocalWallet, Signer},
 };
 use eyre::Result;
-use std::convert::TryFrom;
 
 /// In Ethereum, transactions must be signed with a private key before they can be broadcast to the
 /// network. Ethers-rs provides a way to customize this process by allowing

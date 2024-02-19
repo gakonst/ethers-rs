@@ -2271,7 +2271,6 @@ mod tests {
     use super::*;
     use crate::AggregatedCompilerOutput;
     use ethers_core::types::Address;
-    use std::{fs, path::PathBuf};
 
     #[test]
     fn can_parse_declaration_error() {
