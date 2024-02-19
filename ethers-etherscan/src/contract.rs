@@ -8,8 +8,11 @@ use ethers_core::{
     types::{serde_helpers::deserialize_stringified_u64, Bytes},
 };
 use semver::Version;
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::Path};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::{collections::HashMap, fmt, path::Path};
+use std::str::FromStr;
+use serde::de::Visitor;
+use ethers_core::types::H256;
 
 #[cfg(feature = "ethers-solc")]
 use ethers_solc::{artifacts::Settings, EvmVersion, Project, ProjectBuilder, SolcConfig};
@@ -316,6 +319,122 @@ impl ContractMetadata {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum AddressOrGenesis {
+    Address(Address),
+    Genesis
+}
+
+impl Serialize for AddressOrGenesis {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer
+    {
+        match self {
+            AddressOrGenesis::Address(address) => address.serialize(serializer),
+            AddressOrGenesis::Genesis => serializer.serialize_str("GENESIS")
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for AddressOrGenesis {
+    fn deserialize<D>(deserializer: D) -> Result<AddressOrGenesis, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct AddressOrGenesisVisitor;
+
+        impl<'de> Visitor<'de> for AddressOrGenesisVisitor {
+            type Value = AddressOrGenesis;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("an address or 'GENESIS'")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<AddressOrGenesis, E>
+            where
+                E: de::Error,
+            {
+                if value == "GENESIS" {
+                    Ok(AddressOrGenesis::Genesis)
+                } else {
+                    Ok(AddressOrGenesis::Address(Address::from_str(value).map_err(serde::de::Error::custom)?))
+                }
+            }
+        }
+
+        deserializer.deserialize_any(AddressOrGenesisVisitor)
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContractCreationItem {
+    pub contract_address: Address,
+    pub contract_creator: AddressOrGenesis,
+    #[serde(deserialize_with = "deserialize_hash_genesis")]
+    pub tx_hash: H256,
+}
+
+fn deserialize_hash_genesis<'de, D>(deserializer: D) -> Result<H256, D::Error>
+    where
+        D: Deserializer<'de>,
+{
+    let hash_string = String::deserialize(deserializer)?;
+    if hash_string.starts_with("GENESIS") {
+        Ok(H256::zero())
+    } else {
+        Ok(H256::from_str(&hash_string).map_err(serde::de::Error::custom)?)
+    }
+}
+
+impl ContractCreationItem {
+    pub fn contract_address(&self) -> Address {
+        self.contract_address
+    }
+
+    pub fn contract_creator(&self) -> AddressOrGenesis {
+        self.contract_creator.clone()
+    }
+
+    pub fn tx_hash(&self) -> H256 {
+        self.tx_hash
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ContractCreation {
+    items: Vec<ContractCreationItem>
+}
+
+impl IntoIterator for ContractCreation {
+    type Item = ContractCreationItem;
+    type IntoIter = std::vec::IntoIter<ContractCreationItem>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.into_iter()
+    }
+}
+
+impl ContractCreation {
+    pub fn items(&self) -> Vec<ContractCreationItem> {
+        self.items.clone()
+    }
+
+    pub fn contract_addresses(&self) -> Vec<Address> {
+        self.items.iter().map(|c| c.contract_address()).collect()
+    }
+
+    pub fn contract_creators(&self) -> Vec<AddressOrGenesis> {
+        self.items.iter().map(|c| c.contract_creator()).collect()
+    }
+
+    pub fn tx_hashes(&self) -> Vec<H256> {
+        self.items.iter().map(|c| c.tx_hash()).collect()
+    }
+}
+
 impl Client {
     /// Fetches a verified contract's ABI.
     ///
@@ -421,5 +540,35 @@ impl Client {
         }
 
         Ok(result)
+    }
+
+    /// Get Contract Creator and Creation Tx Hash, up to 5 at a time.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # async fn foo(client: ethers_etherscan::Client) -> Result<(), Box<dyn std::error::Error>> {
+    ///  let addresses = vec!["0xB83c27805aAcA5C7082eB45C868d955Cf04C337F".parse()?];
+    ///  let metadata = client.contract_creation(addresses).await?;
+    ///  assert_eq!(metadata.items()[0].contract_address, "0xB83c27805aAcA5C7082eB45C868d955Cf04C337F".parse()?);
+    /// # Ok(()) }
+    /// ```
+    pub async fn contract_creation(&self, addresses: Vec<Address>) -> Result<ContractCreation> {
+        if addresses.len() > 5 {
+            return Err(EtherscanError::ExecutionFailed("to many addresses, max - 5".to_string()));
+        }
+
+        let addresses = addresses.iter().map(|a| format!("{:?}", a)).collect::<Vec<_>>().join(",");
+        let query = self.create_query(
+            "contract",
+            "getcontractcreation",
+            HashMap::from([("contractaddresses", addresses)])
+        );
+        let response: Response<ContractCreation> = self.get_json(&query).await?;
+        if response.result.items.len() == 0 {
+            return Err(EtherscanError::ExecutionFailed("no contracts found".to_string()));
+        }
+
+        Ok(response.result)
     }
 }

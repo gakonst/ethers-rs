@@ -1,5 +1,6 @@
+use std::str::FromStr;
 use crate::*;
-use ethers_core::types::Chain;
+use ethers_core::types::{Address, Chain};
 use ethers_etherscan::contract::SourceCodeMetadata;
 use serial_test::serial;
 
@@ -112,4 +113,36 @@ async fn can_fetch_contract_source_tree_for_plain_source_code_mapping() {
         assert_eq!(meta.source_tree().entries.len(), 6);
     })
     .await
+}
+
+#[tokio::test]
+#[serial]
+async fn can_fetch_contract_creation() {
+    run_with_client(Chain::Mainnet, |client| async move {
+         let addresses = vec![
+            Address::from_str("0xB83c27805aAcA5C7082eB45C868d955Cf04C337F").unwrap(),
+            Address::from_str("0xdAC17F958D2ee523a2206206994597C13D831ec7").unwrap(),
+            Address::from_str("0xf5b969064b91869fBF676ecAbcCd1c5563F591d0").unwrap(),
+        ];
+        let creation = client
+            .contract_creation(addresses)
+            .await
+            .unwrap();
+        println!("{:#?}", creation);
+    }).await
+}
+
+#[tokio::test]
+#[serial]
+async fn can_fetch_contract_creation_genesis() {
+    run_with_client(Chain::Optimism, |client| async move {
+         let addresses = vec![
+            Address::from_str("0x4200000000000000000000000000000000000006").unwrap(),
+        ];
+        let creation = client
+            .contract_creation(addresses)
+            .await
+            .unwrap();
+        println!("{:#?}", creation);
+    }).await
 }
