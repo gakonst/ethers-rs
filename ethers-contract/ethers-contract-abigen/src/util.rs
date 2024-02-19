@@ -195,8 +195,8 @@ pub(crate) fn derive_builtin_traits<'a>(
     mut derive_others: bool,
 ) {
     for param in params {
-        derive_default &= can_derive_default(param);
-        derive_others &= can_derive_builtin_traits(param);
+        derive_default = derive_default && can_derive_default(param);
+        derive_others = derive_others && can_derive_builtin_traits(param);
     }
     extend_derives(stream, derive_default, derive_others);
 }
@@ -255,8 +255,8 @@ fn _derive_builtin_traits_struct(
 
             FieldType::Elementary(ty1) => {
                 debug_assert_eq!(ty, ty1);
-                *def &= can_derive_default(ty);
-                *others &= can_derive_builtin_traits(ty);
+                *def = *def && can_derive_default(ty);
+                *others = *others && can_derive_builtin_traits(ty);
             }
 
             FieldType::Mapping(_) => unreachable!(),
