@@ -1618,7 +1618,6 @@ fn handle_overflow((result, overflow): (I256, bool)) -> I256 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::abi::Tokenizable;
     use once_cell::sync::Lazy;
     use serde_json::json;
     use std::ops::Neg;

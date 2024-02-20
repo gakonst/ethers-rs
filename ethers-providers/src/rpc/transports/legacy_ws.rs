@@ -524,7 +524,7 @@ impl From<ClientError> for ProviderError {
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use super::*;
-    use ethers_core::{types::U256, utils::Anvil};
+    use ethers_core::utils::Anvil;
 
     #[tokio::test]
     async fn request() {

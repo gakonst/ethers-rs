@@ -5,7 +5,6 @@ use crate::{
     SolcError,
 };
 use rand::{
-    self,
     distributions::{Distribution, Uniform},
     seq::SliceRandom,
     Rng,

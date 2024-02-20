@@ -343,7 +343,7 @@ mod tests {
     };
     use std::{
         collections::{BTreeMap, HashSet},
-        env, fs,
+        env,
     };
     use tempfile::TempDir;
 

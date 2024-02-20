@@ -33,9 +33,7 @@ use ethers_core::{
 };
 use futures_util::{lock::Mutex, try_join};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{
-    collections::VecDeque, convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration,
-};
+use std::{collections::VecDeque, fmt::Debug, str::FromStr, sync::Arc, time::Duration};
 use tracing::trace;
 use tracing_futures::Instrument;
 use url::{Host, ParseError, Url};
@@ -1553,7 +1551,7 @@ mod tests {
         types::{
             transaction::eip2930::AccessList, Eip1559TransactionRequest,
             GethDebugBuiltInTracerConfig, GethDebugBuiltInTracerType, GethDebugTracerConfig,
-            GethDebugTracerType, PreStateConfig, TransactionRequest, H256,
+            GethDebugTracerType, PreStateConfig,
         },
         utils::{Anvil, Genesis, Geth, GethInstance},
     };

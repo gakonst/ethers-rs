@@ -8,7 +8,6 @@ use ethers::{
     providers::{Http, Middleware, Provider},
     signers::{LocalWallet, Signer},
 };
-use std::convert::TryFrom;
 
 const RPC_URL: &str = "https://eth.llamarpc.com";
 const SIGNING_KEY: &str = "fdb33e2105f08abe41a8ee3b758726a31abdd57b7a443f470f23efce853af169";

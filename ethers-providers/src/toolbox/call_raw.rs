@@ -230,13 +230,12 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Http, Provider};
+    use crate::Http;
     use ethers_core::{
         types::{Address, TransactionRequest, H256, U256},
         utils::{get_contract_address, keccak256, parse_ether, Geth},
     };
     use serde::Deserialize;
-    use std::convert::TryFrom;
 
     // Deserializes eth_call parameters as owned data for testing serialization
     #[derive(Debug, Deserialize)]

@@ -3,7 +3,6 @@ use ethers_core::{
     utils::Anvil,
 };
 use ethers_providers::{Http, Middleware, Provider};
-use std::convert::TryFrom;
 
 #[tokio::test]
 async fn txpool() {

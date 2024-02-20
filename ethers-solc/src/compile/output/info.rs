@@ -1,5 +1,5 @@
 //! Commonly used identifiers for contracts in the compiled output
-use std::{borrow::Cow, convert::TryFrom, fmt, str::FromStr};
+use std::{borrow::Cow, fmt, str::FromStr};
 
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 #[error("{0}")]

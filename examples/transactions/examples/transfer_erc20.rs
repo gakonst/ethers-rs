@@ -9,7 +9,7 @@ use ethers::{
     utils::AnvilInstance,
 };
 use eyre::Result;
-use std::{convert::TryFrom, path::Path, sync::Arc, time::Duration};
+use std::{path::Path, sync::Arc, time::Duration};
 
 #[tokio::main]
 async fn main() -> Result<()> {

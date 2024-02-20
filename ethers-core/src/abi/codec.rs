@@ -184,13 +184,11 @@ impl_abi_codec_tuple!(A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fmt::Debug;
-
-    use crate::abi::{AbiArrayType, TokenizableItem};
     use rand::{
         distributions::{Alphanumeric, Distribution, Standard},
         random, thread_rng, Rng,
     };
+    use std::fmt::Debug;
 
     fn assert_codec<T>(val: T)
     where
