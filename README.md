@@ -55,7 +55,7 @@ ethers = { version = "2.0", features = ["legacy"] }
 ### Polygon support
 
 There is abigen support for Polygon and the Mumbai test network. It is recommended that you set the `POLYGONSCAN_API_KEY` environment variable.
-You can get one [here](https://polygonscan.io/apis).
+You can get one [here](https://polygonscan.com/apis).
 
 ### Avalanche support
 
