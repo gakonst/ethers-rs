@@ -167,7 +167,7 @@ impl TrezorEthereum {
 
         let transaction = TrezorTransaction::load(tx)?;
 
-        let chain_id = tx.chain_id().map(|id| id.as_u64()).unwrap_or(self.chain_id);
+        let chain_id = Some(tx.chain_id().map(|id| id.as_u64()).unwrap_or(self.chain_id));
 
         let signature = match tx {
             TypedTransaction::Eip2930(_) | TypedTransaction::Legacy(_) => client.ethereum_sign_tx(
@@ -194,11 +194,15 @@ impl TrezorEthereum {
             )?,
             #[cfg(feature = "optimism")]
             TypedTransaction::DepositTransaction(tx) => {
-                trezor_client::client::Signature { r: 0.into(), s: 0.into(), v: 0 }
+                trezor_client::client::Signature { r: [0; 32], s: [0; 32], v: 0 }
             }
         };
 
-        Ok(Signature { r: signature.r, s: signature.s, v: signature.v })
+        Ok(Signature {
+            r: U256::from_big_endian(&signature.r),
+            s: U256::from_big_endian(&signature.s),
+            v: signature.v,
+        })
     }
 
     /// Signs an ethereum personal message
@@ -209,7 +213,11 @@ impl TrezorEthereum {
 
         let signature = client.ethereum_sign_message(message.into(), apath)?;
 
-        Ok(Signature { r: signature.r, s: signature.s, v: signature.v })
+        Ok(Signature {
+            r: U256::from_big_endian(&signature.r),
+            s: U256::from_big_endian(&signature.s),
+            v: signature.v,
+        })
     }
 
     /// Signs an EIP712 encoded domain separator and message
