@@ -193,6 +193,8 @@ pub enum Chain {
 
     Mode = 34443,
     ModeSepolia = 919,
+
+    Elastos = 20,
 }
 
 // === impl Chain ===
@@ -329,6 +331,7 @@ impl Chain {
             Gnosis | Chiado => 5_000,
             Viction => 2_000,
             Mode | ModeSepolia => 2_000,
+            Elastos => 5_000,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | Sepolia | Holesky | Moonbase |
             MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
@@ -378,7 +381,8 @@ impl Chain {
             Metis |
             Viction |
             Scroll |
-            ScrollSepolia => true,
+            ScrollSepolia |
+            Elastos => true,
 
             // Known EIP-1559 chains
             Mainnet |
@@ -636,6 +640,7 @@ impl Chain {
                 "https://sepolia.explorer.mode.network/api",
                 "https://sepolia.explorer.mode.network",
             ),
+            Elastos => ("https://api.elastos.io/eth", "https://esc.elastos.io/"),
         };
 
         Some(urls)
@@ -727,7 +732,8 @@ impl Chain {
             FilecoinMainnet |
             LineaTestnet |
             Viction |
-            FilecoinCalibrationTestnet => return None,
+            FilecoinCalibrationTestnet |
+            Elastos => return None,
         };
 
         Some(api_key_name)
