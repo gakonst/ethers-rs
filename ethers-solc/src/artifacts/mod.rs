@@ -159,7 +159,11 @@ impl CompilerInput {
         if self.is_yul() {
             warn!("omitting remappings supplied for the yul sources");
         } else {
-            self.settings.remappings = remappings;
+            if self.settings.remappings.is_empty() {
+                self.settings.remappings = remappings;
+            } else {
+                warn!("remappings in settings conflicts with path configurations");
+            }
         }
         self
     }
