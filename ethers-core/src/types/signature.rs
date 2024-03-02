@@ -62,9 +62,25 @@ pub struct Signature {
     pub v: u64,
 }
 
+/// An ERC-2098 Compact Signature Representation
+/// [ERC-2098](https://eips.ethereum.org/EIPS/eip-2098)
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Copy, Hash)]
+pub struct CompactSignature {
+    /// R value
+    pub r: U256,
+    /// yParity and s value
+    pub y_parity_and_s: U256,
+}
+
 impl fmt::Display for Signature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(hex::Buffer::<65, false>::new().format(&self.into()))
+    }
+}
+
+impl fmt::Display for CompactSignature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(hex::Buffer::<64, false>::new().format(&self.into()))
     }
 }
 
@@ -237,6 +253,50 @@ impl FromStr for Signature {
     }
 }
 
+impl<'a> TryFrom<&'a [u8]> for CompactSignature {
+    type Error = SignatureError;
+
+    /// Parses a raw compact signature which is expected to be 64 bytes long where
+    /// the first 32 bytes is the `r` value, the second 32 bytes the `y_parity_and_s` value
+    fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
+        if value.len() != 64 {
+            return Err(SignatureError::InvalidLength(value.len()))
+        }
+
+        let r = U256::from_big_endian(&value[0..32]);
+        let y_parity_and_s = U256::from_big_endian(&value[32..64]);
+
+        Ok(CompactSignature { r, y_parity_and_s })
+    }
+}
+
+impl FromStr for CompactSignature {
+    type Err = SignatureError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        CompactSignature::try_from(&hex::decode(s)?[..])
+    }
+}
+
+impl From<&CompactSignature> for [u8; 64] {
+    fn from(src: &CompactSignature) -> [u8; 64] {
+        let mut sig: [u8; 64] = [0u8; 64];
+        let mut r_bytes = [0u8; 32];
+        let mut y_parity_and_s_bytes = [0u8; 32];
+        src.r.to_big_endian(&mut r_bytes);
+        src.y_parity_and_s.to_big_endian(&mut y_parity_and_s_bytes);
+        sig[..32].copy_from_slice(&r_bytes);
+        sig[32..64].copy_from_slice(&y_parity_and_s_bytes);
+        sig
+    }
+}
+
+impl From<CompactSignature> for [u8; 64] {
+    fn from(src: CompactSignature) -> [u8; 64] {
+        <[u8; 64]>::from(&src)
+    }
+}
+
 impl From<&Signature> for [u8; 65] {
     fn from(src: &Signature) -> [u8; 65] {
         let mut sig = [0u8; 65];
@@ -273,6 +333,45 @@ impl From<&Signature> for Vec<u8> {
 impl From<Signature> for Vec<u8> {
     fn from(src: Signature) -> Vec<u8> {
         <[u8; 65]>::from(&src).to_vec()
+    }
+}
+
+impl From<Signature> for CompactSignature {
+    fn from(src: Signature) -> CompactSignature {
+        let mut r_bytes: [u8; 32] = [0u8; 32];
+        let mut y_parity_and_s_bytes: [u8; 32] = [0u8; 32];
+
+        src.r.to_big_endian(&mut r_bytes);
+        src.s.to_big_endian(&mut y_parity_and_s_bytes);
+
+        if src.v == 28 {
+            y_parity_and_s_bytes[0] |= 0x80;
+        }
+
+        CompactSignature {
+            r: U256::from_big_endian(&r_bytes),
+            y_parity_and_s: U256::from_big_endian(&y_parity_and_s_bytes),
+        }
+    }
+}
+
+impl From<CompactSignature> for Signature {
+    fn from(src: CompactSignature) -> Signature {
+        let mut s_bytes: [u8; 32] = [0u8; 32];
+        let mut r_bytes: [u8; 32] = [0u8; 32];
+
+        src.y_parity_and_s.to_big_endian(&mut s_bytes);
+        src.r.to_big_endian(&mut r_bytes);
+
+        let v: U256 = src.y_parity_and_s >> 255;
+        if v == U256::one() {
+            s_bytes[0] &= 0x7f;
+        }
+        Signature {
+            r: U256::from_big_endian(&r_bytes),
+            s: U256::from_big_endian(&s_bytes),
+            v: 27 + v.as_u64(),
+        }
     }
 }
 
@@ -366,5 +465,84 @@ mod tests {
         ).expect("could not parse non-prefixed signature");
 
         assert_eq!(s1, s2);
+    }
+
+    #[test]
+    fn compact_signature_from_str() {
+        let compact1 = CompactSignature::from_str(
+            "0x68a020a209d3d56c46f38cc50a33f704f4a9a10a59377f8dd762ac66910e9b907e865ad05c4035ab5792787d4a0297a43617ae897930a6fe4d822b8faea52064"
+        ).expect("could not parse 0x-prefixed compact signature");
+
+        let compact2 = CompactSignature::from_str(
+            "68a020a209d3d56c46f38cc50a33f704f4a9a10a59377f8dd762ac66910e9b907e865ad05c4035ab5792787d4a0297a43617ae897930a6fe4d822b8faea52064"
+        ).expect("could not parse non-prefixed compact signature");
+
+        assert_eq!(compact1, compact2);
+    }
+
+    #[test]
+    fn compact_signature_from_signature() {
+        let s0 = Signature {
+            r: U256::from_str("0x68a020a209d3d56c46f38cc50a33f704f4a9a10a59377f8dd762ac66910e9b90")
+                .unwrap(),
+            s: U256::from_str("0x7e865ad05c4035ab5792787d4a0297a43617ae897930a6fe4d822b8faea52064")
+                .unwrap(),
+            v: 27,
+        };
+        let s1 = Signature {
+            r: U256::from_str("0x9328da16089fcba9bececa81663203989f2df5fe1faa6291a45381c81bd17f76")
+                .unwrap(),
+            s: U256::from_str("0x139c6d6b623b42da56557e5e734a43dc83345ddfadec52cbe24d0cc64f550793")
+                .unwrap(),
+            v: 28,
+        };
+
+        let c0 = CompactSignature::from(s0);
+        let c1 = CompactSignature::from(s1);
+
+        assert_eq!(c0.r, s0.r);
+        assert_eq!(c0.y_parity_and_s, s0.s);
+
+        assert_eq!(c1.r, s1.r);
+        assert_eq!(
+            c1.y_parity_and_s,
+            U256::from_str("0x939c6d6b623b42da56557e5e734a43dc83345ddfadec52cbe24d0cc64f550793")
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn signature_from_compact_signature() {
+        let c0 = CompactSignature {
+            r: U256::from_str("0x68a020a209d3d56c46f38cc50a33f704f4a9a10a59377f8dd762ac66910e9b90")
+                .unwrap(),
+            y_parity_and_s: U256::from_str(
+                "0x7e865ad05c4035ab5792787d4a0297a43617ae897930a6fe4d822b8faea52064",
+            )
+            .unwrap(),
+        };
+        let c1 = CompactSignature {
+            r: U256::from_str("0x9328da16089fcba9bececa81663203989f2df5fe1faa6291a45381c81bd17f76")
+                .unwrap(),
+            y_parity_and_s: U256::from_str(
+                "0x939c6d6b623b42da56557e5e734a43dc83345ddfadec52cbe24d0cc64f550793",
+            )
+            .unwrap(),
+        };
+
+        let s0 = Signature::from(c0);
+        let s1 = Signature::from(c1);
+
+        assert_eq!(s0.r, c0.r);
+        assert_eq!(s0.s, c0.y_parity_and_s);
+        assert_eq!(s0.v, 27);
+
+        assert_eq!(s1.r, c1.r);
+        assert_eq!(
+            s1.s,
+            U256::from_str("0x139c6d6b623b42da56557e5e734a43dc83345ddfadec52cbe24d0cc64f550793")
+                .unwrap()
+        );
+        assert_eq!(s1.v, 28);
     }
 }
