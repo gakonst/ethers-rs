@@ -1351,6 +1351,52 @@ impl Provider<MockProvider> {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// Can also be used to setup subscriptions. Similar to how you use
+    /// non-subscription mocks, you have to push the data that you want to
+    /// be returned in a LIFO order, and then you need to call `setup_subscription`
+    /// like so:
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # async fn bar() {
+    /// use ethers_core::types::{Transaction};
+    /// use ethers_providers::{Middleware, Provider, StreamExt};
+    ///
+    /// let tx_json = r#"[{
+    ///        "hash": "0xd95178efd41bf911a49590193b754de5aec1a2a89105a770a3ec11f395b30c6b",
+    ///        "nonce": "0x10f7d",
+    ///        "blockHash": "0xae541fc4dc35d1d8bc2a018160e5ac8876d51ad76539d0b134ac5b82d64e7bda",
+    ///        "blockNumber": "0x10fa231",
+    ///        "transactionIndex": "0x2",
+    ///        "from": "0xe9f82f15910e161999777036e20cb4108f4df800",
+    ///        "to": "0x5050e08626c499411b5d0e0b5af0e83d3fd82edf",
+    ///        "value": "0xc100",
+    ///        "gasPrice": "0x5cc1b8224",
+    ///        "gas": "0x39414",
+    ///        "input": "0x78e111f60000000000000000000000007af98c047dbe5221c317cd404273714aa653917a00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000144c22b6075000000000000000000000000cf6daab95c476106eca715d48de4b13287ffdeaa00000000000000000000000095ad61b0a150d79219dcf64e1e6cc01f0b64c4ce000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000000000000000000000000000003634481b27f114000000000000000000000000000000000000000000000008455a40a4c83980000000000000000000000000000000000000000a53a7b608b7eb800000000000000000000000000000000000000000000000000000000000000000000111c579d90000000000000000000000000000000000000000000000000000000111c579d90000000000000000000000000000000000000000000000000000000064c597887f0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    ///        "v": "0x1",
+    ///        "r": "0x6d6aa7218ee0d3e0c707e327bf7b1d02a1d4d202c63815943930d93748635e73",
+    ///        "s": "0xc7a27b9813287947c4b62acd505fc05553197f58c417be20d25a09099ebc9fc",
+    ///        "type": "0x2",
+    ///        "accessList": [],
+    ///        "maxPriorityFeePerGas": "0x0",
+    ///        "maxFeePerGas": "0x8b2294336",
+    ///        "chainId": "0x1"
+    ///    }]"#;
+    ///
+    /// let (pr, mut mock) = Provider::mocked();
+    /// let vec_tx: Vec<Transaction> = serde_json::from_str(tx_json).unwrap();
+    /// mock.push(vec_tx[0].clone().hash).unwrap();
+    ///
+    /// mock.setup_subscription().await;
+    ///
+    /// let mut subs = pr.subscribe_pending_txs().await.unwrap();
+    ///
+    /// assert_eq!(subs.next().await.unwrap(), vec_tx[0].hash);
+    /// }
+    /// ```
     pub fn mocked() -> (Self, MockProvider) {
         let mock = MockProvider::new();
         let mock_clone = mock.clone();
