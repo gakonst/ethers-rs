@@ -40,4 +40,12 @@ mod tests {
         ))
         .unwrap();
     }
+
+    #[test]
+    fn can_deserialize_proof_empty_key() {
+        serde_json::from_str::<EIP1186ProofResponse>(include_str!(
+            "../../testdata/proof_empty_key.json"
+        ))
+        .unwrap();
+    }
 }
