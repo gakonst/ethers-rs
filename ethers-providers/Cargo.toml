@@ -28,7 +28,7 @@ ethers-core.workspace = true
 serde.workspace = true
 serde_json = { workspace = true, features = ["raw_value"] }
 
-http = "0.2"
+http = "1.1"
 reqwest = { workspace = true, features = ["json"] }
 url.workspace = true
 base64 = "0.21"
