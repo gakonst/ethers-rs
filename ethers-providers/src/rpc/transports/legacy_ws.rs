@@ -121,9 +121,9 @@ impl Debug for Ws {
 impl Ws {
     /// Initializes a new WebSocket Client, given a Stream/Sink Websocket implementer.
     /// The websocket connection must be initiated separately.
-    pub fn new<S: 'static>(ws: S) -> Self
+    pub fn new<S>(ws: S) -> Self
     where
-        S: Send + Sync + Stream<Item = WsStreamItem> + Sink<Message, Error = WsError> + Unpin,
+        S: Send + Sync + Stream<Item = WsStreamItem> + Sink<Message, Error = WsError> + Unpin + 'static,
     {
         let (sink, stream) = mpsc::unbounded();
         // Spawn the server
