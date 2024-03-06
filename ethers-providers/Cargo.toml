@@ -31,7 +31,7 @@ serde_json = { workspace = true, features = ["raw_value"] }
 http = "0.2"
 reqwest = { workspace = true, features = ["json"] }
 url.workspace = true
-base64 = "0.21"
+base64 = "0.22"
 jsonwebtoken = "8"
 
 async-trait.workspace = true
