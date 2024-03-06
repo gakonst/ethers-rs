@@ -69,11 +69,11 @@ commit_parsers = [
 protect_breaking_commits = true
 # filter out the commits that are not matched by commit parsers
 filter_commits = false
-# *glob pattern* for matching git tags
-tag_pattern = "*"
-# *regex* for skipping tagged commits entirely
+# regex for matching git tags
+tag_pattern = ".*"
+# regex for skipping tagged commits entirely
 # skip_tags = "v0.1.0-beta.1"
-# *regex* for ignoring tags, but including the commits into the next one
+# regex for ignoring tags, but including the commits into the next one
 ignore_tags = "^ethers-.*-.*"
 # sort the tags topologically
 topo_order = false
