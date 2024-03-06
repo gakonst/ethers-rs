@@ -123,7 +123,12 @@ impl Ws {
     /// The websocket connection must be initiated separately.
     pub fn new<S>(ws: S) -> Self
     where
-        S: Send + Sync + Stream<Item = WsStreamItem> + Sink<Message, Error = WsError> + Unpin + 'static,
+        S: Send
+            + Sync
+            + Stream<Item = WsStreamItem>
+            + Sink<Message, Error = WsError>
+            + Unpin
+            + 'static,
     {
         let (sink, stream) = mpsc::unbounded();
         // Spawn the server
