@@ -746,13 +746,13 @@ fn can_generate_large_tuple_types() {
 fn can_generate_large_tuple_array() {
     abigen!(LargeArray, "./tests/solidity-contracts/large-array.json");
 
+    #[allow(unknown_lints, non_local_definitions)]
     impl Default for CallWithLongArrayCall {
         fn default() -> Self {
             Self { long_array: [0; 128] }
         }
     }
 
-    let _call = CallWithLongArrayCall::default();
     assert_call::<CallWithLongArrayCall>();
 }
 
