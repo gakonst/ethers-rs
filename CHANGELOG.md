@@ -10,6 +10,61 @@ which is configured [here](./cliff.toml).
 
 Please do not manually edit this file.
 
+## [2.0.14] - 2024-03-07
+
+### Bug Fixes
+
+- Make the empty key of storage proof in `EIP1186ProofResponse` could be deserialized ([#2754](https://github.com/gakonst/ethers-rs/issues/2754))
+- Correctly calculate return derives ([#2743](https://github.com/gakonst/ethers-rs/issues/2743))
+- Fix EthError decode_with_selector ([#2698](https://github.com/gakonst/ethers-rs/issues/2698))
+- StorageProof key should be U256 ([#2699](https://github.com/gakonst/ethers-rs/issues/2699))
+- Fix typo ([#2716](https://github.com/gakonst/ethers-rs/issues/2716))
+- Fix return value of get_transaction_by_block_and_index ([#2732](https://github.com/gakonst/ethers-rs/issues/2732))
+- Cleanup build info path ([#2730](https://github.com/gakonst/ethers-rs/issues/2730))
+
+### Depedencies
+
+- Update base64 requirement from 0.21 to 0.22 ([#2755](https://github.com/gakonst/ethers-rs/issues/2755))
+- Bump trezor-client ([#2749](https://github.com/gakonst/ethers-rs/issues/2749))
+- Bump enr version ([#2741](https://github.com/gakonst/ethers-rs/issues/2741))
+- Update serial_test requirement from 2.0.0 to 3.0.0 ([#2709](https://github.com/gakonst/ethers-rs/issues/2709))
+- Update env_logger requirement from 0.10.0 to 0.11.1 ([#2717](https://github.com/gakonst/ethers-rs/issues/2717))
+- Update coins-ledger requirement from 0.9.0 to 0.10.1 ([#2725](https://github.com/gakonst/ethers-rs/issues/2725))
+- Bump solc check ([#2721](https://github.com/gakonst/ethers-rs/issues/2721))
+
+### Features
+
+- Add blast mainnet ([#2751](https://github.com/gakonst/ethers-rs/issues/2751))
+- Add elastos networks ([#2750](https://github.com/gakonst/ethers-rs/issues/2750))
+- Add getHeader by number+hash ([#2701](https://github.com/gakonst/ethers-rs/issues/2701))
+- Add Mode & Mode Sepolia ([#2720](https://github.com/gakonst/ethers-rs/issues/2720))
+
+### Miscellaneous Tasks
+
+- Clippy ([#2761](https://github.com/gakonst/ethers-rs/issues/2761))
+- Fix git-cliff tag_pattern ([#2759](https://github.com/gakonst/ethers-rs/issues/2759))
+- Remove unused imports ([#2744](https://github.com/gakonst/ethers-rs/issues/2744))
+- Clippy ([#2736](https://github.com/gakonst/ethers-rs/issues/2736))
+- Enable `doc_auto_cfg` ([#2735](https://github.com/gakonst/ethers-rs/issues/2735))
+- Make clippy happy ([#2727](https://github.com/gakonst/ethers-rs/issues/2727))
+
+### Other
+
+- Remove concurrency from individual jobs, remove if always ([#2763](https://github.com/gakonst/ethers-rs/issues/2763))
+- Update README.md ([#2747](https://github.com/gakonst/ethers-rs/issues/2747))
+- Update mod.rs Bytes to Option<Bytes> ([#2712](https://github.com/gakonst/ethers-rs/issues/2712))
+- Add aliases for Base, BaseSepolia and BaseGoerli ([#2715](https://github.com/gakonst/ethers-rs/issues/2715))
+- Add polygon amoy to chain definitions ([#2723](https://github.com/gakonst/ethers-rs/issues/2723))
+- Add concurrency to main GHA workflow ([#2737](https://github.com/gakonst/ethers-rs/issues/2737))
+- Add Hash to BlockId ([#2731](https://github.com/gakonst/ethers-rs/issues/2731))
+
+### Styling
+
+- Rustfmt 2 ([#2762](https://github.com/gakonst/ethers-rs/issues/2762))
+- Rustfmt ([#2760](https://github.com/gakonst/ethers-rs/issues/2760))
+- Update strum ([#2724](https://github.com/gakonst/ethers-rs/issues/2724))
+- Add Blast Sepolia as a chain ([#2726](https://github.com/gakonst/ethers-rs/issues/2726))
+
 ## [2.0.13] - 2024-01-30
 
 ### Bug Fixes
