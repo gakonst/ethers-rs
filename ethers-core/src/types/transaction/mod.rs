@@ -5,6 +5,8 @@ pub mod eip1559;
 pub mod eip2718;
 pub mod eip2930;
 
+pub mod conditional;
+
 #[cfg(feature = "optimism")]
 pub mod optimism;
 

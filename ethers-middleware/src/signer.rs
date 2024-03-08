@@ -132,7 +132,7 @@ where
     /// If the transaction does not have a chain id set, it sets it to the signer's chain id.
     /// Returns an error if the transaction's existing chain id does not match the signer's chain
     /// id.
-    async fn sign_transaction(
+    pub async fn sign_transaction(
         &self,
         mut tx: TypedTransaction,
     ) -> Result<Bytes, SignerMiddlewareError<M, S>> {
