@@ -176,6 +176,30 @@ pub struct FunctionCall<B, M, D> {
     pub(crate) _m: PhantomData<M>,
 }
 
+impl<B, M, D> FunctionCall<B, M, D>
+where
+    B: Borrow<M>,
+    M: Middleware,
+    D: Detokenize,
+{
+    /// Creates a new function call object
+    pub fn new(
+        tx: TypedTransaction,
+        function: Function,
+        client: B,
+        block: Option<BlockId>,
+    ) -> Self {
+        Self {
+            tx,
+            function,
+            client,
+            block,
+            datatype: PhantomData,
+            _m: PhantomData,
+        }
+    }
+}
+
 impl<B, M, D> Clone for FunctionCall<B, M, D>
 where
     B: Clone,

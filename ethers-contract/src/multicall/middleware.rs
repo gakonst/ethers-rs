@@ -202,6 +202,7 @@ impl<M: Middleware> Multicall<M> {
         let address: Address = match address {
             Some(addr) => addr,
             None => {
+                // TODO: replace with eth_getCode?
                 let chain_id = client
                     .get_chainid()
                     .await

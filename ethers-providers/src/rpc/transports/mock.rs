@@ -5,6 +5,7 @@ use serde_json::Value;
 use std::{
     borrow::Borrow,
     collections::VecDeque,
+    ops::Deref,
     sync::{Arc, Mutex},
 };
 use thiserror::Error;
@@ -12,7 +13,7 @@ use thiserror::Error;
 /// Helper type that can be used to pass through the `params` value.
 /// This is necessary because the wrapper provider is supposed to skip the `params` if it's of
 /// size 0, see `crate::transports::common::Request`
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum MockParams {
     Value(Value),
     Zst,
@@ -73,6 +74,11 @@ impl JsonRpcClient for MockProvider {
 }
 
 impl MockProvider {
+    /// Checks that the provided requests match
+    pub fn requests_match(&self, other: &Self) -> bool {
+        self.requests.lock().unwrap().deref() == other.requests.lock().unwrap().deref()
+    }
+
     /// Checks that the provided request was submitted by the client
     pub fn assert_request<T: Serialize + Send + Sync>(
         &self,
