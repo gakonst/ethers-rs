@@ -263,7 +263,7 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().resolve_avatar(ens_name).await.map_err(MiddlewareError::from_err)
     }
 
-    /// Returns the URL (not necesserily HTTP) of the image behind a token.
+    /// Returns the URL (not necessarily HTTP) of the image behind a token.
     ///
     /// # Example
     /// ```no_run

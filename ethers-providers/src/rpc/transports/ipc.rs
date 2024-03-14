@@ -322,7 +322,7 @@ async fn run_ipc_server(mut stream: Stream, request_rx: mpsc::UnboundedReceiver<
     };
 
     // split the stream and run two independent concurrently (local), thereby
-    // allowing reads and writes to occurr concurrently
+    // allowing reads and writes to occur concurrently
     let (reader, writer) = stream.split();
     let read = shared.handle_ipc_reads(reader);
     let write = shared.handle_ipc_writes(writer, request_rx);

@@ -27,7 +27,7 @@ pub(crate) fn derive_eth_event_impl(input: DeriveInput) -> Result<TokenStream> {
                         // elementary types in their abi because the parser
                         // doesn't know how to substitute the types.
                         // This could be mitigated by getting the ABI of each non elementary type
-                        // at runtime and computing the the signature as a Lazy static.
+                        // at runtime and computing the signature as a Lazy static.
                         match HumanReadableParser::parse_event(&abi) {
                             Ok(event) => Ok(event),
                             // Ignore parse_err since this is a valid [Source]
