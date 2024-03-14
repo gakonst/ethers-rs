@@ -286,7 +286,7 @@ pub mod spoof {
         }
     }
 
-    /// Wraps a map from storage slot to the overriden value.
+    /// Wraps a map from storage slot to the overridden value.
     ///
     /// Storage overrides can either replace the existing state of an account or they can be treated
     /// as a diff on the existing state.

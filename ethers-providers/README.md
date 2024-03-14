@@ -37,7 +37,7 @@ ethers-providers = { version = "2.0", features = ["ipc"] }
 The provider may also be used to resolve [Ethereum Name Service](https://ens.domains) (ENS) names
 to addresses (and vice versa).
 The default ENS address is [`0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e`][ens]
-and can be overriden with the [`ens`](./struct.Provider.html#method.ens) method on the provider.
+and can be overridden with the [`ens`](./struct.Provider.html#method.ens) method on the provider.
 
 [ens]: https://etherscan.io/address/0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e
 
