@@ -169,7 +169,11 @@ pub struct CreateResult {
     #[serde(rename = "gasUsed")]
     pub gas_used: U256,
     /// Code
-    pub code: Bytes,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code: Option<Bytes>,
+    /// Revert data
+    #[serde(rename = "revertData", skip_serializing_if = "Option::is_none")]
+    pub revert_data: Option<Bytes>,
     /// Assigned address
     pub address: Address,
 }
