@@ -105,8 +105,8 @@ pub struct SyncProgress {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct SyncStage {
-    stage_name: String,
-    block_number: U64,
+    pub stage_name: String,
+    pub block_number: U64,
 }
 
 #[cfg(test)]
