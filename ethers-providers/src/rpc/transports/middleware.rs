@@ -65,16 +65,33 @@ impl Chainer for SwitchProviderMiddleware {
 
         match result {
             Ok(response) => {
-                if response.status() == StatusCode::OK {
-                    return Ok(Some(response));
+                let body = response.bytes().await?;
+
+                let raw = match serde_json::from_slice(&body) {
+                    Ok(crate::rpc::common::Response::Success { result, .. }) => {
+                        return Ok(None)
+                    },
+                    Ok(crate::rpc::common::Response::Error { error, .. }) => {
+                        let _ = next_state(Some(ClientError::JsonRpcError(error)))?;
+                    },
+                    Ok(_) => {
+                        let err = ClientError::SerdeJson {
+                            err: serde::de::Error::custom("unexpected notification over HTTP transport"),
+                            text: String::from_utf8_lossy(&body).to_string(),
+                        };
+                        let _ = next_state(Some(err))?;
+                        //return Err(err)
+                    }
+                    Err(err) => {
+                       let error =   ClientError::SerdeJson {
+                            err,
+                            text: String::from_utf8_lossy(&body).to_string(),
+                        };
+
+                        let _ = next_state(Some(error))?;
+                    }
                 };
 
-                match response.error_for_status() {
-                    Ok(_) => {}
-                    Err(err) => {
-                        let _ = next_state(Some(ReqwestError(err)))?;
-                    }
-                }
             },
             Err(e) => {
                 log::trace!(target:"ethers-providers", "Possibly encountered an os error submitting request, switching provider {e:?}");
