@@ -651,7 +651,7 @@ impl Chain {
                 "https://sepolia.explorer.mode.network",
             ),
             Elastos => ("https://api.elastos.io/eth", "https://esc.elastos.io/"),
-            Degen => ("https://explorer.degen.tips/api", "https://explorer.degen.tips/"),
+            Degen => ("https://explorer.degen.tips/api", "https://explorer.degen.tips"),
         };
 
         Some(urls)
