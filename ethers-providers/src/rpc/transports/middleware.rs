@@ -11,6 +11,8 @@ use reqwest::{Client, Response, StatusCode, Url};
 use reqwest_chain::{ChainMiddleware, Chainer};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, Error};
 
+const MAX_CHAIN_LENGTH: u32 = 10;
+
 /// Middleware for switching between providers on failures
 pub struct SwitchProviderMiddleware {
     /// Providers for the url
@@ -73,36 +75,44 @@ impl Chainer for SwitchProviderMiddleware {
         };
 
         match result {
-            Ok(response) => {
-                let body = response.bytes().await?;
-                println!("in body {:?}", &body);
+            Ok(mut response) => {
 
-                match serde_json::from_slice(&body) {
-                    Ok(crate::rpc::common::Response::Success { result, .. }) => {
-                        //return Ok(Some(response));
-                        println!("got result {:?}", &result);
-                    }
-                    Ok(crate::rpc::common::Response::Error { error, .. }) => {
-                        let _ = next_state(Some(ClientError::JsonRpcError(error)))?;
-                    }
-                    Ok(_) => {
-                        let err = ClientError::SerdeJson {
-                            err: serde::de::Error::custom(
-                                "unexpected notification over HTTP transport",
-                            ),
-                            text: String::from_utf8_lossy(&body).to_string(),
-                        };
-                        let _ = next_state(Some(err))?;
-                    }
-                    Err(err) => {
-                        let error = ClientError::SerdeJson {
-                            err,
-                            text: String::from_utf8_lossy(&body).to_string(),
-                        };
+                let maybe_body = response.chunk().await?;
 
-                        let _ = next_state(Some(error))?;
-                    }
-                };
+                println!("in body {:?}", &maybe_body);
+
+                if let Some(body) = maybe_body {
+                    match serde_json::from_slice(&body) {
+                        Ok(crate::rpc::common::Response::Success { result, .. }) => {
+                            println!("got a valid result {:?}", &result);
+                            return Ok(Some(response));
+                        }
+                        Ok(crate::rpc::common::Response::Error { error, .. }) => {
+                            let _ = next_state(Some(ClientError::JsonRpcError(error)))?;
+                        }
+                        Ok(_) => {
+                            let err = ClientError::SerdeJson {
+                                err: serde::de::Error::custom(
+                                    "unexpected notification over HTTP transport",
+                                ),
+                                text: String::from_utf8_lossy(&body).to_string(),
+                            };
+                            let _ = next_state(Some(err))?;
+                        }
+                        Err(err) => {
+                            let error = ClientError::SerdeJson {
+                                err,
+                                text: String::from_utf8_lossy(&body).to_string(),
+                            };
+
+                            let _ = next_state(Some(error))?;
+                        }
+                    };
+                } else {
+                    log::trace!(target:"ethers-providers", "Possibly encountered an error reading the body of the response, switching provider {maybe_body:?}");
+                    let _ = next_state(None)?;
+                }
+
             }
             Err(e) => {
                 log::trace!(target:"ethers-providers", "Possibly encountered an os error submitting request, switching provider {e:?}");
@@ -110,11 +120,12 @@ impl Chainer for SwitchProviderMiddleware {
             }
         }
 
+
         Ok(None)
     }
 
     fn max_chain_length(&self) -> u32 {
-        u32::MAX
+        MAX_CHAIN_LENGTH
     }
 }
 
@@ -131,23 +142,22 @@ mod test {
     #[tokio::test]
     async fn test_switch_provider_middleware() {
         let providers = vec![
-            Provider::new(Url::parse("http://localhost:3510").unwrap()),
             Provider::new(Url::parse("http://localhost:3500").unwrap()),
             Provider::new(Url::parse("https://eth.llamarpc.com").unwrap()),
+            Provider::new(Url::parse("https://www.noderpc.xyz/rpc-mainnet/public").unwrap()),
         ];
 
         let client = ClientBuilder::new(Client::new())
             .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(providers.clone())))
             .build();
 
-        // Send a JSON-RPC request for the latest block
-        let block_num = "latest".to_string();
+        let block_num = 100;
         let txn_details = false;
         let params = (block_num, txn_details);
 
         let payload = Request::new(0, "eth_getBlockByNumber", params);
 
-        let res = client.post("http://localhost:3510").json(&payload).send().await.unwrap();
+        let res = client.post("https://eth.llamarpc.com").json(&payload).send().await.unwrap();
 
         println!("{res:?}");
     }
