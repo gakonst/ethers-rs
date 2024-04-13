@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Read};
 
 use crate::{
     rpc::transports::http::{ClientError, Provider},
@@ -11,7 +11,7 @@ use reqwest::{Client, Response, StatusCode, Url};
 use reqwest_chain::{ChainMiddleware, Chainer};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, Error};
 
-const MAX_CHAIN_LENGTH: u32 = 10;
+const MAX_CHAIN_LENGTH: u32 = 4;
 
 /// Middleware for switching between providers on failures
 pub struct SwitchProviderMiddleware {
@@ -41,7 +41,6 @@ impl Chainer for SwitchProviderMiddleware {
         _state: &mut Self::State,
         request: &mut reqwest::Request,
     ) -> Result<Option<reqwest::Response>, Error> {
-        println!("in chain");
         let mut next_state = |client_error: Option<ClientError>| {
             let active_index = _state.active_provider_index;
             _state.prev_stat.insert(active_index, client_error);
@@ -76,15 +75,24 @@ impl Chainer for SwitchProviderMiddleware {
 
         match result {
             Ok(mut response) => {
+                if response.status() != StatusCode::OK {
+                    match response.error_for_status_ref() {
+                        Ok(_res) => (),
+                        Err(err) => {
+                            let _ = next_state(Some(ReqwestError(err)))?;
+                        }
+                    }
+                };
 
                 let maybe_body = response.chunk().await?;
 
-                println!("in body {:?}", &maybe_body);
-
                 if let Some(body) = maybe_body {
+                    if !String::from_utf8_lossy(body.as_ref()).contains("jsonrpc") {
+                        return Ok(Some(response));
+                    }
+
                     match serde_json::from_slice(&body) {
                         Ok(crate::rpc::common::Response::Success { result, .. }) => {
-                            println!("got a valid result {:?}", &result);
                             return Ok(Some(response));
                         }
                         Ok(crate::rpc::common::Response::Error { error, .. }) => {
@@ -110,16 +118,15 @@ impl Chainer for SwitchProviderMiddleware {
                     };
                 } else {
                     log::trace!(target:"ethers-providers", "Possibly encountered an error reading the body of the response, switching provider {maybe_body:?}");
+
                     let _ = next_state(None)?;
                 }
-
             }
             Err(e) => {
                 log::trace!(target:"ethers-providers", "Possibly encountered an os error submitting request, switching provider {e:?}");
                 let _ = next_state(None)?;
             }
         }
-
 
         Ok(None)
     }
@@ -140,10 +147,9 @@ mod test {
     use reqwest_middleware::ClientBuilder;
 
     #[tokio::test]
-    async fn test_switch_provider_middleware() {
+    async fn test_switch_provider_middleware_for_json_rpc_call() {
         let providers = vec![
             Provider::new(Url::parse("http://localhost:3500").unwrap()),
-            Provider::new(Url::parse("https://eth.llamarpc.com").unwrap()),
             Provider::new(Url::parse("https://www.noderpc.xyz/rpc-mainnet/public").unwrap()),
         ];
 
@@ -159,6 +165,27 @@ mod test {
 
         let res = client.post("https://eth.llamarpc.com").json(&payload).send().await.unwrap();
 
-        println!("{res:?}");
+        assert!(res.status() == 200);
+    }
+
+    #[tokio::test]
+    async fn test_switch_provider_middleware_for_json_http_call() {
+        let providers = vec![
+            Provider::new(Url::parse("http://localhost:3500").unwrap()),
+            Provider::new(
+                Url::parse(
+                    "https://docs-demo.quiknode.pro/eth/v1/beacon/states/head/finality_checkpoints",
+                )
+                .unwrap(),
+            ),
+        ];
+
+        let client = ClientBuilder::new(Client::new())
+            .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(providers.clone())))
+            .build();
+
+        let res = client.get("http://localhost:3500").send().await.unwrap();
+
+        assert!(res.status() == 200);
     }
 }
