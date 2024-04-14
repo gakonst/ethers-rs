@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use std::{collections::HashMap, io::Read};
 
 use crate::{
@@ -10,8 +11,6 @@ use ethers_core::types::{transaction::request, Block, H256};
 use reqwest::{Client, Response, StatusCode, Url};
 use reqwest_chain::{ChainMiddleware, Chainer};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, Error};
-
-const MAX_CHAIN_LENGTH: u32 = 4;
 
 /// Middleware for switching between providers on failures
 pub struct SwitchProviderMiddleware {
@@ -80,47 +79,46 @@ impl Chainer for SwitchProviderMiddleware {
                         Ok(_res) => (),
                         Err(err) => {
                             let _ = next_state(Some(ReqwestError(err)))?;
+                            return Ok(None)
                         }
                     }
                 };
+                let mut body_vec = Vec::new();
+                while let Some(chunk) = response.chunk().await? {
+                    body_vec.extend_from_slice(&chunk);
+                }
 
-                let maybe_body = response.chunk().await?;
+                let body = Bytes::from(body_vec);
 
-                if let Some(body) = maybe_body {
-                    if !String::from_utf8_lossy(body.as_ref()).contains("jsonrpc") {
+                if !String::from_utf8_lossy(body.as_ref()).contains("jsonrpc") {
+                    return Ok(Some(response));
+                }
+
+                match serde_json::from_slice(&body) {
+                    Ok(crate::rpc::common::Response::Success { result, .. }) => {
                         return Ok(Some(response));
                     }
+                    Ok(crate::rpc::common::Response::Error { error, .. }) => {
+                        let _ = next_state(Some(ClientError::JsonRpcError(error)))?;
+                    }
+                    Ok(_) => {
+                        let err = ClientError::SerdeJson {
+                            err: serde::de::Error::custom(
+                                "unexpected notification over HTTP transport",
+                            ),
+                            text: String::from_utf8_lossy(&body).to_string(),
+                        };
+                        let _ = next_state(Some(err))?;
+                    }
+                    Err(err) => {
+                        let error = ClientError::SerdeJson {
+                            err,
+                            text: String::from_utf8_lossy(&body).to_string(),
+                        };
 
-                    match serde_json::from_slice(&body) {
-                        Ok(crate::rpc::common::Response::Success { result, .. }) => {
-                            return Ok(Some(response));
-                        }
-                        Ok(crate::rpc::common::Response::Error { error, .. }) => {
-                            let _ = next_state(Some(ClientError::JsonRpcError(error)))?;
-                        }
-                        Ok(_) => {
-                            let err = ClientError::SerdeJson {
-                                err: serde::de::Error::custom(
-                                    "unexpected notification over HTTP transport",
-                                ),
-                                text: String::from_utf8_lossy(&body).to_string(),
-                            };
-                            let _ = next_state(Some(err))?;
-                        }
-                        Err(err) => {
-                            let error = ClientError::SerdeJson {
-                                err,
-                                text: String::from_utf8_lossy(&body).to_string(),
-                            };
-
-                            let _ = next_state(Some(error))?;
-                        }
-                    };
-                } else {
-                    log::trace!(target:"ethers-providers", "Possibly encountered an error reading the body of the response, switching provider {maybe_body:?}");
-
-                    let _ = next_state(None)?;
-                }
+                        let _ = next_state(Some(error))?;
+                    }
+                };
             }
             Err(e) => {
                 log::trace!(target:"ethers-providers", "Possibly encountered an os error submitting request, switching provider {e:?}");
@@ -132,7 +130,8 @@ impl Chainer for SwitchProviderMiddleware {
     }
 
     fn max_chain_length(&self) -> u32 {
-        MAX_CHAIN_LENGTH
+        let provider_len = self.providers.len() as u32;
+        provider_len + 1
     }
 }
 
