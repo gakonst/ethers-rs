@@ -1,9 +1,13 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
 use super::common::{Authorization, JsonRpcError, Request, Response};
-use crate::{errors::ProviderError, JsonRpcClient};
+use crate::{
+    errors::ProviderError, rpc::transports::middleware::SwitchProviderMiddleware, JsonRpcClient,
+};
 use async_trait::async_trait;
 use reqwest::{header::HeaderValue, Client, Error as ReqwestError};
+use reqwest_chain::ChainMiddleware;
+use reqwest_middleware::{ClientBuilder, Error as MiddlewareError};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     str::FromStr,
@@ -52,6 +56,9 @@ pub enum ClientError {
         /// The contents of the HTTP response that could not be deserialized
         text: String,
     },
+    /// Reqwest Middleware Error
+    #[error(transparent)]
+    MiddlewareError(#[from] MiddlewareError),
 }
 
 impl From<ClientError> for ProviderError {
@@ -187,6 +194,52 @@ impl Provider {
     /// ```
     pub fn new_with_client(url: impl Into<Url>, client: reqwest::Client) -> Self {
         Self { id: AtomicU64::new(1), client, url: url.into() }
+    }
+
+    /// Allows you to make a request with multiple providers
+    pub async fn request_with_chain_middleware<T: Serialize + Send + Sync, R: DeserializeOwned>(
+        &self,
+        method: &str,
+        params: T,
+        providers: Vec<Provider>,
+    ) -> Result<R, ClientError> {
+        let next_id = self.id.fetch_add(1, Ordering::SeqCst);
+        let payload = Request::new(next_id, method, params);
+
+        let client = ClientBuilder::new(self.client.clone())
+            .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(providers.clone())))
+            .build();
+
+        let res = client
+            .post(self.url.as_ref())
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|err| ClientError::MiddlewareError(err))?;
+        let body = res.bytes().await?;
+
+        let raw = match serde_json::from_slice(&body) {
+            Ok(Response::Success { result, .. }) => result.to_owned(),
+            Ok(Response::Error { error, .. }) => return Err(error.into()),
+            Ok(_) => {
+                let err = ClientError::SerdeJson {
+                    err: serde::de::Error::custom("unexpected notification over HTTP transport"),
+                    text: String::from_utf8_lossy(&body).to_string(),
+                };
+                return Err(err)
+            }
+            Err(err) => {
+                return Err(ClientError::SerdeJson {
+                    err,
+                    text: String::from_utf8_lossy(&body).to_string(),
+                })
+            }
+        };
+
+        let res = serde_json::from_str(raw.get())
+            .map_err(|err| ClientError::SerdeJson { err, text: raw.to_string() })?;
+
+        Ok(res)
     }
 }
 

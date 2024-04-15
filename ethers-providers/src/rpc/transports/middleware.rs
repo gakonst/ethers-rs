@@ -1,15 +1,13 @@
 use bytes::Bytes;
-use std::{collections::HashMap, io::Read};
+use std::collections::HashMap;
 
 use crate::{
     rpc::transports::http::{ClientError, Provider},
     HttpClientError::ReqwestError,
-    JsonRpcClient, ProviderError,
 };
 use anyhow::anyhow;
-use ethers_core::types::{transaction::request, Block, H256};
-use reqwest::{Client, Response, StatusCode, Url};
-use reqwest_chain::{ChainMiddleware, Chainer};
+use reqwest::StatusCode;
+use reqwest_chain::Chainer;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, Error};
 
 /// Middleware for switching between providers on failures
@@ -83,6 +81,7 @@ impl Chainer for SwitchProviderMiddleware {
                         }
                     }
                 };
+
                 let mut body_vec = Vec::new();
                 while let Some(chunk) = response.chunk().await? {
                     body_vec.extend_from_slice(&chunk);
@@ -90,12 +89,8 @@ impl Chainer for SwitchProviderMiddleware {
 
                 let body = Bytes::from(body_vec);
 
-                if !String::from_utf8_lossy(body.as_ref()).contains("jsonrpc") {
-                    return Ok(Some(response));
-                }
-
                 match serde_json::from_slice(&body) {
-                    Ok(crate::rpc::common::Response::Success { result, .. }) => {
+                    Ok(crate::rpc::common::Response::Success { result: _, .. }) => {
                         return Ok(Some(response));
                     }
                     Ok(crate::rpc::common::Response::Error { error, .. }) => {
@@ -146,7 +141,7 @@ mod test {
     use reqwest_middleware::ClientBuilder;
 
     #[tokio::test]
-    async fn test_switch_provider_middleware_for_json_rpc_call() {
+    async fn test_switch_provider_middleware_for_json_get_block_by_number() {
         let providers = vec![
             Provider::new(Url::parse("http://localhost:3500").unwrap()),
             Provider::new(Url::parse("https://www.noderpc.xyz/rpc-mainnet/public").unwrap()),
@@ -168,22 +163,31 @@ mod test {
     }
 
     #[tokio::test]
-    async fn test_switch_provider_middleware_for_json_http_call() {
+    async fn test_switch_provider_middleware_for_json_rpc_get_proof() {
         let providers = vec![
             Provider::new(Url::parse("http://localhost:3500").unwrap()),
-            Provider::new(
-                Url::parse(
-                    "https://docs-demo.quiknode.pro/eth/v1/beacon/states/head/finality_checkpoints",
-                )
-                .unwrap(),
-            ),
+            Provider::new(Url::parse("https://www.noderpc.xyz/rpc-mainnet/public").unwrap()),
         ];
 
         let client = ClientBuilder::new(Client::new())
             .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(providers.clone())))
             .build();
 
-        let res = client.get("http://localhost:3500").send().await.unwrap();
+        let address = "0x7F0d15C7FAae65896648C8273B6d7E43f58Fa842";
+        let storage_key =
+            vec!["0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"];
+        let block = "latest";
+
+        let params = (address, storage_key, block);
+
+        let payload = Request::new(1, "eth_getProof", params);
+
+        let res = client
+            .post("https://eth-mainnet.g.alchemy.com/v2/docs-demo")
+            .json(&payload)
+            .send()
+            .await
+            .unwrap();
 
         assert!(res.status() == 200);
     }
