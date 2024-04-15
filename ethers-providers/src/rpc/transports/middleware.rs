@@ -9,11 +9,12 @@ use anyhow::anyhow;
 use reqwest::StatusCode;
 use reqwest_chain::Chainer;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, Error};
+use url::Url;
 
 /// Middleware for switching between providers on failures
 pub struct SwitchProviderMiddleware {
     /// Providers for the url
-    pub providers: Vec<Provider>,
+    pub providers: Vec<Url>,
 }
 
 #[derive(Default, Debug)]
@@ -23,7 +24,7 @@ pub struct LocalState {
 }
 
 impl SwitchProviderMiddleware {
-    pub fn _new(providers: Vec<Provider>) -> Self {
+    pub fn _new(providers: Vec<Url>) -> Self {
         Self { providers }
     }
 }
@@ -64,8 +65,7 @@ impl Chainer for SwitchProviderMiddleware {
             _state.active_provider_index = next_index;
             let next_provider = self.providers[next_index].clone();
             let url_ref = request.url_mut();
-            let new_url = next_provider.url();
-            *url_ref = new_url.clone();
+            *url_ref = next_provider.clone();
             log::trace!(target:"ethers-providers", "Retrying request with new provider {next_provider:?}");
             Ok::<_, anyhow::Error>(())
         };
@@ -77,7 +77,7 @@ impl Chainer for SwitchProviderMiddleware {
                         Ok(_res) => (),
                         Err(err) => {
                             let _ = next_state(Some(ReqwestError(err)))?;
-                            return Ok(None)
+                            return Ok(None);
                         }
                     }
                 };
@@ -132,10 +132,7 @@ impl Chainer for SwitchProviderMiddleware {
 
 #[cfg(test)]
 mod test {
-    use crate::rpc::{
-        common::Request,
-        transports::{http::Provider, middleware::SwitchProviderMiddleware},
-    };
+    use crate::rpc::{common::Request, transports::middleware::SwitchProviderMiddleware};
     use reqwest::{Client, Url};
     use reqwest_chain::ChainMiddleware;
     use reqwest_middleware::ClientBuilder;
@@ -143,15 +140,15 @@ mod test {
     #[tokio::test]
     async fn test_switch_provider_middleware_for_json_get_block_by_number() {
         let providers = vec![
-            Provider::new(Url::parse("http://localhost:3500").unwrap()),
-            Provider::new(Url::parse("https://www.noderpc.xyz/rpc-mainnet/public").unwrap()),
+            Url::parse("http://localhost:3500").unwrap(),
+            Url::parse("https://www.noderpc.xyz/rpc-mainnet/public").unwrap(),
         ];
 
         let client = ClientBuilder::new(Client::new())
             .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(providers.clone())))
             .build();
 
-        let block_num = 100;
+        let block_num = "latest";
         let txn_details = false;
         let params = (block_num, txn_details);
 
@@ -165,8 +162,8 @@ mod test {
     #[tokio::test]
     async fn test_switch_provider_middleware_for_json_rpc_get_proof() {
         let providers = vec![
-            Provider::new(Url::parse("http://localhost:3500").unwrap()),
-            Provider::new(Url::parse("https://www.noderpc.xyz/rpc-mainnet/public").unwrap()),
+            Url::parse("http://localhost:3500").unwrap(),
+            Url::parse("https://www.noderpc.xyz/rpc-mainnet/public").unwrap(),
         ];
 
         let client = ClientBuilder::new(Client::new())

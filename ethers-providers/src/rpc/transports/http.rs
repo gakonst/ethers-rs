@@ -36,6 +36,7 @@ pub struct Provider {
     id: AtomicU64,
     client: Client,
     url: Url,
+    retry_urls: Vec<Url>,
 }
 
 #[derive(Error, Debug)]
@@ -193,7 +194,7 @@ impl Provider {
     /// let provider = Http::new_with_client(url, client);
     /// ```
     pub fn new_with_client(url: impl Into<Url>, client: reqwest::Client) -> Self {
-        Self { id: AtomicU64::new(1), client, url: url.into() }
+        Self { id: AtomicU64::new(1), client, url: url.into(), retry_urls: vec![] }
     }
 
     /// Allows you to make a request with multiple providers
@@ -201,13 +202,12 @@ impl Provider {
         &self,
         method: &str,
         params: T,
-        providers: Vec<Provider>,
     ) -> Result<R, ClientError> {
         let next_id = self.id.fetch_add(1, Ordering::SeqCst);
         let payload = Request::new(next_id, method, params);
 
         let client = ClientBuilder::new(self.client.clone())
-            .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(providers.clone())))
+            .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(self.retry_urls.clone())))
             .build();
 
         let res = client
@@ -254,7 +254,12 @@ impl FromStr for Provider {
 
 impl Clone for Provider {
     fn clone(&self) -> Self {
-        Self { id: AtomicU64::new(1), client: self.client.clone(), url: self.url.clone() }
+        Self {
+            id: AtomicU64::new(1),
+            client: self.client.clone(),
+            url: self.url.clone(),
+            retry_urls: vec![],
+        }
     }
 }
 
