@@ -196,6 +196,8 @@ pub enum Chain {
     ModeSepolia = 919,
 
     Elastos = 20,
+
+    Degen = 666666666,
 }
 
 // === impl Chain ===
@@ -333,6 +335,7 @@ impl Chain {
             Viction => 2_000,
             Mode | ModeSepolia => 2_000,
             Elastos => 5_000,
+            Degen => 622,
             // Explicitly exhaustive. See NB above.
             Morden | Ropsten | Rinkeby | Goerli | Kovan | Sepolia | Holesky | Moonbase |
             MoonbeamDev | OptimismKovan | Poa | Sokol | Rsk | EmeraldTestnet | Boba | Base |
@@ -417,7 +420,8 @@ impl Chain {
             ModeSepolia |
             Zora |
             ZoraGoerli |
-            ZoraSepolia => false,
+            ZoraSepolia |
+            Degen => false,
 
             // Unknown / not applicable, default to false for backwards compatibility
             Dev | AnvilHardhat | Morden | Ropsten | Rinkeby | Cronos | CronosTestnet | Kovan |
@@ -647,6 +651,7 @@ impl Chain {
                 "https://sepolia.explorer.mode.network",
             ),
             Elastos => ("https://api.elastos.io/eth", "https://esc.elastos.io/"),
+            Degen => ("https://explorer.degen.tips/api", "https://explorer.degen.tips"),
         };
 
         Some(urls)
@@ -740,7 +745,8 @@ impl Chain {
             LineaTestnet |
             Viction |
             FilecoinCalibrationTestnet |
-            Elastos => return None,
+            Elastos |
+            Degen => return None,
         };
 
         Some(api_key_name)
