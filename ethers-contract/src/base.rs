@@ -319,7 +319,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethers_core::{abi::parse_abi, types::U256};
+    use ethers_core::{abi::parse_abi, types::U256, types::Address};
 
     #[test]
     fn can_parse_function_inputs() {
