@@ -7,7 +7,7 @@ use crate::{
 use async_trait::async_trait;
 use reqwest::{header::HeaderValue, Client, Error as ReqwestError};
 use reqwest_chain::ChainMiddleware;
-use reqwest_middleware::{ClientBuilder, Error as MiddlewareError};
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, Error as MiddlewareError};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     str::FromStr,
@@ -34,7 +34,7 @@ use url::Url;
 #[derive(Debug)]
 pub struct Provider {
     id: AtomicU64,
-    client: Client,
+    client: ClientWithMiddleware,
     url: Url,
     retry_urls: Vec<Url>,
 }
@@ -102,30 +102,9 @@ impl JsonRpcClient for Provider {
         let payload = Request::new(next_id, method, params);
 
         let res = self.client.post(self.url.as_ref()).json(&payload).send().await?;
-        let body = res.bytes().await?;
 
-        let raw = match serde_json::from_slice(&body) {
-            Ok(Response::Success { result, .. }) => result.to_owned(),
-            Ok(Response::Error { error, .. }) => return Err(error.into()),
-            Ok(_) => {
-                let err = ClientError::SerdeJson {
-                    err: serde::de::Error::custom("unexpected notification over HTTP transport"),
-                    text: String::from_utf8_lossy(&body).to_string(),
-                };
-                return Err(err)
-            }
-            Err(err) => {
-                return Err(ClientError::SerdeJson {
-                    err,
-                    text: String::from_utf8_lossy(&body).to_string(),
-                })
-            }
-        };
-
-        let res = serde_json::from_str(raw.get())
-            .map_err(|err| ClientError::SerdeJson { err, text: raw.to_string() })?;
-
-        Ok(res)
+        let raw = self.process_response(res).await?;
+        Ok(raw)
     }
 }
 
@@ -141,7 +120,7 @@ impl Provider {
     /// let url = Url::parse("http://localhost:8545").unwrap();
     /// let provider = Http::new(url);
     /// ```
-    pub fn new(url: impl Into<Url>) -> Self {
+    pub fn new(url: impl Into<Url> + Clone) -> Self {
         Self::new_with_client(url, Client::new())
     }
 
@@ -167,7 +146,7 @@ impl Provider {
     /// let provider = Http::new_with_auth(url, Authorization::basic("admin", "good_password"));
     /// ```
     pub fn new_with_auth(
-        url: impl Into<Url>,
+        url: impl Into<Url> + Clone,
         auth: Authorization,
     ) -> Result<Self, HttpClientError> {
         let mut auth_value = HeaderValue::from_str(&auth.to_string())?;
@@ -193,8 +172,36 @@ impl Provider {
     /// let client = reqwest::Client::builder().build().unwrap();
     /// let provider = Http::new_with_client(url, client);
     /// ```
-    pub fn new_with_client(url: impl Into<Url>, client: reqwest::Client) -> Self {
-        Self { id: AtomicU64::new(1), client, url: url.into(), retry_urls: vec![] }
+    pub fn new_with_client(url: impl Into<Url> + Clone, client: reqwest::Client) -> Self {
+        let retry_urls = vec![url.clone().into()];
+        let client_with_middleware = ClientBuilder::new(client)
+            .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(retry_urls.clone())))
+            .build();
+        Self { id: AtomicU64::new(1), client: client_with_middleware, url: url.into(), retry_urls }
+    }
+
+    /// Allows to customize the provider by providing your own http client and retry urls
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use reqwest::Client;
+    /// use reqwest_chain::ChainMiddleware;
+    /// use reqwest_middleware::ClientBuilder;
+    /// use ethers_providers::Http;
+    /// use url::Url;
+    ///
+    /// let url = Url::parse("http://localhost:8545").unwrap();
+    /// let provider = Http::new_client_with_chain_middleware(url, vec![url]);
+    /// ```
+    pub fn new_client_with_chain_middleware(
+        url: impl Into<Url> + Clone,
+        retry_urls: Vec<Url>,
+    ) -> Self {
+        let client_with_middleware = ClientBuilder::new(Client::new())
+            .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(retry_urls.clone())))
+            .build();
+        Self { id: AtomicU64::new(1), client: client_with_middleware, url: url.into(), retry_urls }
     }
 
     /// Allows you to make a request with multiple providers
@@ -206,16 +213,23 @@ impl Provider {
         let next_id = self.id.fetch_add(1, Ordering::SeqCst);
         let payload = Request::new(next_id, method, params);
 
-        let client = ClientBuilder::new(self.client.clone())
-            .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(self.retry_urls.clone())))
-            .build();
-
-        let res = client
+        let res = self
+            .client
             .post(self.url.as_ref())
             .json(&payload)
             .send()
             .await
             .map_err(|err| ClientError::MiddlewareError(err))?;
+
+        let raw = self.process_response(res).await?;
+        Ok(raw)
+    }
+
+    /// Processes the response and transform it into a raw data
+    pub async fn process_response<R: DeserializeOwned>(
+        &self,
+        res: reqwest::Response,
+    ) -> Result<R, ClientError> {
         let body = res.bytes().await?;
 
         let raw = match serde_json::from_slice(&body) {
@@ -241,6 +255,11 @@ impl Provider {
 
         Ok(res)
     }
+
+    /// Returns the client middleware
+    pub fn client(self) -> ClientWithMiddleware {
+        self.client
+    }
 }
 
 impl FromStr for Provider {
@@ -258,7 +277,7 @@ impl Clone for Provider {
             id: AtomicU64::new(1),
             client: self.client.clone(),
             url: self.url.clone(),
-            retry_urls: vec![],
+            retry_urls: self.retry_urls.clone(),
         }
     }
 }
