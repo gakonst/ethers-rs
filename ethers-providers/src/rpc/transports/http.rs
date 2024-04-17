@@ -102,9 +102,30 @@ impl JsonRpcClient for Provider {
         let payload = Request::new(next_id, method, params);
 
         let res = self.client.post(self.url.as_ref()).json(&payload).send().await?;
+        let body = res.bytes().await?;
 
-        let raw = self.process_response(res).await?;
-        Ok(raw)
+        let raw = match serde_json::from_slice(&body) {
+            Ok(Response::Success { result, .. }) => result.to_owned(),
+            Ok(Response::Error { error, .. }) => return Err(error.into()),
+            Ok(_) => {
+                let err = ClientError::SerdeJson {
+                    err: serde::de::Error::custom("unexpected notification over HTTP transport"),
+                    text: String::from_utf8_lossy(&body).to_string(),
+                };
+                return Err(err)
+            }
+            Err(err) => {
+                return Err(ClientError::SerdeJson {
+                    err,
+                    text: String::from_utf8_lossy(&body).to_string(),
+                })
+            }
+        };
+
+        let res = serde_json::from_str(raw.get())
+            .map_err(|err| ClientError::SerdeJson { err, text: raw.to_string() })?;
+
+        Ok(res)
     }
 }
 
@@ -174,9 +195,7 @@ impl Provider {
     /// ```
     pub fn new_with_client(url: impl Into<Url> + Clone, client: reqwest::Client) -> Self {
         let retry_urls = vec![url.clone().into()];
-        let client_with_middleware = ClientBuilder::new(client)
-            .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(retry_urls.clone())))
-            .build();
+        let client_with_middleware = ClientBuilder::new(client).build();
         Self { id: AtomicU64::new(1), client: client_with_middleware, url: url.into(), retry_urls }
     }
 
@@ -192,68 +211,19 @@ impl Provider {
     /// use url::Url;
     ///
     /// let url = Url::parse("http://localhost:8545").unwrap();
-    /// let provider = Http::new_client_with_chain_middleware(url, vec![url]);
+    /// let provider = Http::new_client_with_chain_middleware(vec![url]);
     /// ```
-    pub fn new_client_with_chain_middleware(
-        url: impl Into<Url> + Clone,
-        retry_urls: Vec<Url>,
-    ) -> Self {
+    pub fn new_client_with_chain_middleware(urls: Vec<Url>) -> Self {
         let client_with_middleware = ClientBuilder::new(Client::new())
-            .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(retry_urls.clone())))
+            .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(urls.clone())))
             .build();
-        Self { id: AtomicU64::new(1), client: client_with_middleware, url: url.into(), retry_urls }
-    }
-
-    /// Allows you to make a request with multiple providers
-    pub async fn request_with_chain_middleware<T: Serialize + Send + Sync, R: DeserializeOwned>(
-        &self,
-        method: &str,
-        params: T,
-    ) -> Result<R, ClientError> {
-        let next_id = self.id.fetch_add(1, Ordering::SeqCst);
-        let payload = Request::new(next_id, method, params);
-
-        let res = self
-            .client
-            .post(self.url.as_ref())
-            .json(&payload)
-            .send()
-            .await
-            .map_err(|err| ClientError::MiddlewareError(err))?;
-
-        let raw = self.process_response(res).await?;
-        Ok(raw)
-    }
-
-    /// Processes the response and transform it into a raw data
-    pub async fn process_response<R: DeserializeOwned>(
-        &self,
-        res: reqwest::Response,
-    ) -> Result<R, ClientError> {
-        let body = res.bytes().await?;
-
-        let raw = match serde_json::from_slice(&body) {
-            Ok(Response::Success { result, .. }) => result.to_owned(),
-            Ok(Response::Error { error, .. }) => return Err(error.into()),
-            Ok(_) => {
-                let err = ClientError::SerdeJson {
-                    err: serde::de::Error::custom("unexpected notification over HTTP transport"),
-                    text: String::from_utf8_lossy(&body).to_string(),
-                };
-                return Err(err)
-            }
-            Err(err) => {
-                return Err(ClientError::SerdeJson {
-                    err,
-                    text: String::from_utf8_lossy(&body).to_string(),
-                })
-            }
-        };
-
-        let res = serde_json::from_str(raw.get())
-            .map_err(|err| ClientError::SerdeJson { err, text: raw.to_string() })?;
-
-        Ok(res)
+        let url = urls.get(0).unwrap();
+        Self {
+            id: AtomicU64::new(1),
+            client: client_with_middleware,
+            url: url.clone(),
+            retry_urls: urls,
+        }
     }
 
     /// Returns the client middleware
