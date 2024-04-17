@@ -21,7 +21,6 @@ pub struct SwitchProviderMiddleware {
 #[derive(Default, Debug)]
 pub struct LocalState {
     pub active_provider_index: usize,
-    pub prev_stat: HashMap<usize, Option<ClientError>>,
 }
 
 impl SwitchProviderMiddleware {
@@ -41,11 +40,13 @@ impl Chainer for SwitchProviderMiddleware {
         request: &mut reqwest::Request,
     ) -> Result<Option<reqwest::Response>, Error> {
         let mut next_state = |client_error: Option<ClientError>| {
-            let active_index = _state.active_provider_index;
-            _state.prev_stat.insert(active_index, client_error);
             let next_index = _state.active_provider_index + 1;
             if next_index >= self.providers.len() {
-                return Err(anyhow!("Exiting Middleware"))?;
+                log::trace!(target:"ethers-providers", "Providers have been exhausted");
+
+                if let Some(error) = client_error {
+                    return Err(anyhow!("Client error is {:?}", error));
+                }
             }
             _state.active_provider_index = next_index;
             let next_provider = self.providers[next_index].clone();
