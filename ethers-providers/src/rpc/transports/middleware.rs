@@ -61,16 +61,6 @@ impl Chainer for SwitchProviderMiddleware {
 
         match result {
             Ok(mut response) => {
-                if response.status() != StatusCode::OK {
-                    match response.error_for_status_ref() {
-                        Ok(_res) => (),
-                        Err(err) => {
-                            let _ = next_state(Some(ReqwestError(err)))?;
-                            return Ok(None);
-                        }
-                    }
-                };
-
                 let body = response.bytes().await?;
 
                 match serde_json::from_slice(&body) {
