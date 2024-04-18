@@ -29,5 +29,7 @@ pub mod legacy_ws;
 #[cfg(feature = "legacy-ws")]
 pub use legacy_ws::{ClientError as WsClientError, Ws};
 
+pub mod middleware;
 mod mock;
+
 pub use mock::{MockError, MockProvider, MockResponse};

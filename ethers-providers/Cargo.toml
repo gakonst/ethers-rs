@@ -28,8 +28,10 @@ ethers-core.workspace = true
 serde.workspace = true
 serde_json = { workspace = true, features = ["raw_value"] }
 
-http = "0.2"
+http = "0.2.12"
 reqwest = { workspace = true, features = ["json"] }
+reqwest-middleware = "0.2.4"
+reqwest-chain = "0.1.0"
 url.workspace = true
 base64 = "0.21"
 
@@ -55,6 +57,8 @@ enr = { version = "0.9.0", default-features = false, features = ["k256", "serde"
 # tracing
 tracing = { workspace = true, features = ["attributes"] }
 tracing-futures = { workspace = true, features = ["std-future"] }
+anyhow = "1.0.81"
+log = "0.4.21"
 
 [target.'cfg(target_family = "windows")'.dependencies]
 winapi = { version = "0.3", optional = true }

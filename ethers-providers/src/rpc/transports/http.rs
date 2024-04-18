@@ -1,9 +1,13 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
 use super::common::{Authorization, JsonRpcError, Request, Response};
-use crate::{errors::ProviderError, JsonRpcClient};
+use crate::{
+    errors::ProviderError, rpc::transports::middleware::SwitchProviderMiddleware, JsonRpcClient,
+};
 use async_trait::async_trait;
 use reqwest::{header::HeaderValue, Client, Error as ReqwestError};
+use reqwest_chain::ChainMiddleware;
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, Error as MiddlewareError};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
     str::FromStr,
@@ -30,8 +34,9 @@ use url::Url;
 #[derive(Debug)]
 pub struct Provider {
     id: AtomicU64,
-    client: Client,
+    client: ClientWithMiddleware,
     url: Url,
+    retry_urls: Vec<Url>,
 }
 
 #[derive(Error, Debug)]
@@ -52,6 +57,9 @@ pub enum ClientError {
         /// The contents of the HTTP response that could not be deserialized
         text: String,
     },
+    /// Reqwest Middleware Error
+    #[error(transparent)]
+    MiddlewareError(#[from] MiddlewareError),
 }
 
 impl From<ClientError> for ProviderError {
@@ -133,7 +141,7 @@ impl Provider {
     /// let url = Url::parse("http://localhost:8545").unwrap();
     /// let provider = Http::new(url);
     /// ```
-    pub fn new(url: impl Into<Url>) -> Self {
+    pub fn new(url: impl Into<Url> + Clone) -> Self {
         Self::new_with_client(url, Client::new())
     }
 
@@ -159,7 +167,7 @@ impl Provider {
     /// let provider = Http::new_with_auth(url, Authorization::basic("admin", "good_password"));
     /// ```
     pub fn new_with_auth(
-        url: impl Into<Url>,
+        url: impl Into<Url> + Clone,
         auth: Authorization,
     ) -> Result<Self, HttpClientError> {
         let mut auth_value = HeaderValue::from_str(&auth.to_string())?;
@@ -185,8 +193,42 @@ impl Provider {
     /// let client = reqwest::Client::builder().build().unwrap();
     /// let provider = Http::new_with_client(url, client);
     /// ```
-    pub fn new_with_client(url: impl Into<Url>, client: reqwest::Client) -> Self {
-        Self { id: AtomicU64::new(1), client, url: url.into() }
+    pub fn new_with_client(url: impl Into<Url> + Clone, client: reqwest::Client) -> Self {
+        let retry_urls = vec![url.clone().into()];
+        let client_with_middleware = ClientBuilder::new(client).build();
+        Self { id: AtomicU64::new(1), client: client_with_middleware, url: url.into(), retry_urls }
+    }
+
+    /// Allows to customize the provider by providing your own http client and retry urls
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use reqwest::Client;
+    /// use reqwest_chain::ChainMiddleware;
+    /// use reqwest_middleware::ClientBuilder;
+    /// use ethers_providers::Http;
+    /// use url::Url;
+    ///
+    /// let url = Url::parse("http://localhost:8545").unwrap();
+    /// let provider = Http::new_client_with_chain_middleware(vec![url]);
+    /// ```
+    pub fn new_client_with_chain_middleware(urls: Vec<Url>) -> Self {
+        let client_with_middleware = ClientBuilder::new(Client::new())
+            .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(urls.clone())))
+            .build();
+        let url = urls.get(0).expect("Needs at least a url");
+        Self {
+            id: AtomicU64::new(1),
+            client: client_with_middleware,
+            url: url.clone(),
+            retry_urls: urls,
+        }
+    }
+
+    /// Returns the client middleware
+    pub fn client(self) -> ClientWithMiddleware {
+        self.client
     }
 }
 
@@ -201,7 +243,12 @@ impl FromStr for Provider {
 
 impl Clone for Provider {
     fn clone(&self) -> Self {
-        Self { id: AtomicU64::new(1), client: self.client.clone(), url: self.url.clone() }
+        Self {
+            id: AtomicU64::new(1),
+            client: self.client.clone(),
+            url: self.url.clone(),
+            retry_urls: self.retry_urls.clone(),
+        }
     }
 }
 

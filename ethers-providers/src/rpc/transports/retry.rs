@@ -409,6 +409,7 @@ impl RetryPolicy<ClientError> for HttpRateLimitRetryPolicy {
                 }
                 false
             }
+            ClientError::MiddlewareError(_) => false,
         }
     }
 
