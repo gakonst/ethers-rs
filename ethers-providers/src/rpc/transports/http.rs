@@ -217,7 +217,7 @@ impl Provider {
         let client_with_middleware = ClientBuilder::new(Client::new())
             .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(urls.clone())))
             .build();
-        let url = urls.get(0).unwrap();
+        let url = urls.get(0).expect("Needs at least a url");
         Self {
             id: AtomicU64::new(1),
             client: client_with_middleware,
