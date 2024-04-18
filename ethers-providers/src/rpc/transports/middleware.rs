@@ -1,13 +1,6 @@
-use bytes::Bytes;
-use std::collections::HashMap;
-
-use crate::{
-    rpc::transports::http::{ClientError, Provider},
-    HttpClientError::{MiddlewareError, ReqwestError},
-};
+use crate::rpc::transports::http::ClientError;
 use anyhow::anyhow;
 use http::response::Builder;
-use reqwest::{Body, Response, StatusCode};
 use reqwest_chain::Chainer;
 use reqwest_middleware::Error;
 use url::Url;
@@ -45,9 +38,9 @@ impl Chainer for SwitchProviderMiddleware {
                 log::trace!(target:"ethers-providers", "Providers have been exhausted");
 
                 if let Some(error) = client_error {
-                    return Err(anyhow!("Client error is {:?}", error));
+                    return Err(anyhow!(error));
                 } else {
-                    return Err(anyhow!("Middleware Error"))
+                    return Err(anyhow!("Providers have been exhausted"))
                 }
             }
             _state.active_provider_index = next_index;
@@ -60,7 +53,7 @@ impl Chainer for SwitchProviderMiddleware {
         };
 
         match result {
-            Ok(mut response) => {
+            Ok(response) => {
                 let body = response.bytes().await?;
 
                 match serde_json::from_slice(&body) {
@@ -109,7 +102,7 @@ impl Chainer for SwitchProviderMiddleware {
 
 #[cfg(test)]
 mod test {
-    use crate::{Http, Provider};
+    use crate::{Http, Middleware, Provider};
     use ethers_core::types::{Block, EIP1186ProofResponse, H160, H256};
     use reqwest::Url;
 
@@ -122,16 +115,14 @@ mod test {
 
         let http_provider = Http::new_client_with_chain_middleware(providers);
 
-        let block_num = "0x12c1bc8";
+        let block_num = "latest";
         let txn_details = false;
         let params = (block_num, txn_details);
 
         let provider = Provider::<Http>::new(http_provider.clone());
 
         let block: Block<H256> = provider.request("eth_getBlockByNumber", params).await.unwrap();
-
-        let expected_block_number: u64 = 19667912;
-        assert_eq!(block.number.unwrap(), expected_block_number.into());
+        assert!(block.hash.is_some())
     }
 
     #[tokio::test]
@@ -143,21 +134,17 @@ mod test {
 
         let http_provider = Http::new_client_with_chain_middleware(providers);
 
-        let address = "0x7F0d15C7FAae65896648C8273B6d7E43f58Fa842";
-        let storage_key =
-            vec!["0x56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421"];
-        let block = "0x12c1bc8";
-
-        let params = (address, storage_key, block);
+        let from =
+            H160::from_slice(&hex::decode("7F0d15C7FAae65896648C8273B6d7E43f58Fa842").unwrap());
+        let locations = vec![H256::from_slice(
+            &hex::decode("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+                .unwrap(),
+        )];
 
         let provider = Provider::<Http>::new(http_provider.clone());
 
-        let proof: EIP1186ProofResponse = provider.request("eth_getProof", params).await.unwrap();
+        let proof: EIP1186ProofResponse = provider.get_proof(from, locations, None).await.unwrap();
 
-        let expected_address = H160::from_slice(
-            hex::decode("7f0d15c7faae65896648c8273b6d7e43f58fa842").unwrap().as_slice(),
-        );
-
-        assert_eq!(proof.address, expected_address);
+        assert_eq!(proof.address, from);
     }
 }

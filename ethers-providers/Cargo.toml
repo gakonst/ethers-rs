@@ -95,3 +95,4 @@ dev-rpc = []
 
 [dev-dependencies]
 tracing-test = { version = "0.2.4", features = ["no-env-filter"] }
+hex = "0.4.3"
