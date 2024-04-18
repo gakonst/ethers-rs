@@ -199,14 +199,11 @@ impl Provider {
         Self { id: AtomicU64::new(1), client: client_with_middleware, url: url.into(), retry_urls }
     }
 
-    /// Allows to customize the provider by providing your own http client and retry urls
+    /// Allows to customize the provider by providing multiple rpc urls
     ///
     /// # Example
     ///
     /// ```
-    /// use reqwest::Client;
-    /// use reqwest_chain::ChainMiddleware;
-    /// use reqwest_middleware::ClientBuilder;
     /// use ethers_providers::Http;
     /// use url::Url;
     ///

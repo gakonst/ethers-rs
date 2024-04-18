@@ -7,7 +7,7 @@ use url::Url;
 
 /// Middleware for switching between providers on failures
 pub struct SwitchProviderMiddleware {
-    /// Providers for the url
+    /// Rpc providers to be used for retries of failed requests
     pub providers: Vec<Url>,
 }
 
