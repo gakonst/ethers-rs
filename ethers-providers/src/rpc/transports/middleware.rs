@@ -69,12 +69,7 @@ impl Chainer for SwitchProviderMiddleware {
                     }
                 };
 
-                let mut body_vec = Vec::new();
-                while let Some(chunk) = response.chunk().await? {
-                    body_vec.extend_from_slice(&chunk);
-                }
-
-                let body = Bytes::from(body_vec);
+                let body = response.bytes().await?;
 
                 match serde_json::from_slice(&body) {
                     Ok(crate::rpc::common::Response::Success { result: _, .. }) => {
