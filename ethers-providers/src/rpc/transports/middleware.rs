@@ -46,14 +46,16 @@ impl Chainer for SwitchProviderMiddleware {
 
                 if let Some(error) = client_error {
                     return Err(anyhow!("Client error is {:?}", error));
+                } else {
+                    return Err(anyhow!("Middleware Error"))
                 }
             }
             _state.active_provider_index = next_index;
             let next_provider = self.providers[next_index].clone();
             let url_ref = request.url_mut();
 
-            *url_ref = next_provider.clone();
-            log::trace!(target:"ethers-providers", "Retrying request with new provider {next_provider:?}");
+            *url_ref = next_provider;
+            log::trace!(target:"ethers-providers", "Retrying request with new provider {url_ref:?}");
             Ok::<_, anyhow::Error>(())
         };
 
