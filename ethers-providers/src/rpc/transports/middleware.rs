@@ -103,8 +103,7 @@ impl Chainer for SwitchProviderMiddleware {
     }
 
     fn max_chain_length(&self) -> u32 {
-        let provider_len = self.providers.len() as u32;
-        provider_len + 1
+        self.providers.len() as u32
     }
 }
 
