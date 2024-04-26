@@ -28,7 +28,7 @@ ethers-core.workspace = true
 serde.workspace = true
 serde_json = { workspace = true, features = ["raw_value"] }
 
-http = "0.2.12"
+http = "0.2"
 reqwest = { workspace = true, features = ["json"] }
 reqwest-middleware = "0.2.4"
 reqwest-chain = "0.1.0"
