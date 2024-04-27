@@ -58,7 +58,7 @@ enr = { version = "0.9.0", default-features = false, features = ["k256", "serde"
 tracing = { workspace = true, features = ["attributes"] }
 tracing-futures = { workspace = true, features = ["std-future"] }
 anyhow = "1.0.81"
-log = "0.4.21"
+
 
 [target.'cfg(target_family = "windows")'.dependencies]
 winapi = { version = "0.3", optional = true }

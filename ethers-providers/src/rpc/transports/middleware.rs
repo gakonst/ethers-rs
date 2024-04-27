@@ -3,6 +3,7 @@ use anyhow::anyhow;
 use http::response::Builder;
 use reqwest_chain::Chainer;
 use reqwest_middleware::Error;
+use tracing::trace;
 use url::Url;
 
 /// Middleware for switching between providers on failures
@@ -35,7 +36,7 @@ impl Chainer for SwitchProviderMiddleware {
         let mut next_state = |client_error: Option<ClientError>| {
             let next_index = _state.active_provider_index + 1;
             if next_index >= self.providers.len() {
-                log::trace!(target:"ethers-providers", "Providers have been exhausted");
+                trace!(target:"ethers-providers", "Providers have been exhausted");
 
                 if let Some(error) = client_error {
                     return Err(anyhow!(error));
@@ -48,7 +49,7 @@ impl Chainer for SwitchProviderMiddleware {
             let url_ref = request.url_mut();
 
             *url_ref = next_provider;
-            log::trace!(target:"ethers-providers", "Retrying request with new provider {url_ref:?}");
+            trace!(target:"ethers-providers", "Retrying request with new provider {url_ref:?}");
             Ok::<_, anyhow::Error>(())
         };
 
@@ -87,7 +88,7 @@ impl Chainer for SwitchProviderMiddleware {
                 };
             }
             Err(e) => {
-                log::trace!(target:"ethers-providers", "Possibly encountered an os error submitting request, switching provider {e:?}");
+                trace!(target:"ethers-providers", "Possibly encountered an os error submitting request, switching provider {e:?}");
                 let _ = next_state(None)?;
             }
         }
