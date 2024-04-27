@@ -29,6 +29,7 @@ pub mod legacy_ws;
 #[cfg(feature = "legacy-ws")]
 pub use legacy_ws::{ClientError as WsClientError, Ws};
 
+#[cfg(not(target_arch = "wasm32"))]
 pub mod middleware;
 mod mock;
 

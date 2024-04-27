@@ -1,12 +1,10 @@
 // Code adapted from: https://github.com/althea-net/guac_rs/tree/master/web3/src/jsonrpc
 
 use super::common::{Authorization, JsonRpcError, Request, Response};
-use crate::{
-    errors::ProviderError, rpc::transports::middleware::SwitchProviderMiddleware, JsonRpcClient,
-};
+use crate::{errors::ProviderError, JsonRpcClient};
 use async_trait::async_trait;
 use reqwest::{header::HeaderValue, Client, Error as ReqwestError};
-use reqwest_chain::ChainMiddleware;
+
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, Error as MiddlewareError};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{
@@ -199,8 +197,9 @@ impl Provider {
         Self { id: AtomicU64::new(1), client: client_with_middleware, url: url.into(), retry_urls }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     /// Allows to customize the provider by providing multiple rpc urls
-    ///
+    /// Useable only in std mode
     /// # Example
     ///
     /// ```
@@ -211,6 +210,8 @@ impl Provider {
     /// let provider = Http::new_client_with_chain_middleware(vec![url]);
     /// ```
     pub fn new_client_with_chain_middleware(urls: Vec<Url>) -> Self {
+        use crate::rpc::transports::middleware::SwitchProviderMiddleware;
+        use reqwest_chain::ChainMiddleware;
         let client_with_middleware = ClientBuilder::new(Client::new())
             .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(urls.clone())))
             .build();

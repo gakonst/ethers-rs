@@ -1,3 +1,4 @@
+#![cfg(not(target_arch = "wasm32"))]
 use crate::rpc::transports::http::ClientError;
 use anyhow::anyhow;
 use http::response::Builder;
