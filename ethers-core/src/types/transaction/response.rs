@@ -101,8 +101,8 @@ pub struct Transaction {
     pub gateway_fee: Option<U256>,
 
     // EIP2718
-    /// Transaction type, Some(2) for EIP-1559 transaction,
-    /// Some(1) for AccessList transaction, None for Legacy
+    /// Transaction type, Some(3) for Blob transactions, Some(2) for EIP-1559 transaction,
+    /// Some(1) for AccessList transaction, Some(0) or None for Legacy
     #[serde(rename = "type", default, skip_serializing_if = "Option::is_none")]
     pub transaction_type: Option<U64>,
 
