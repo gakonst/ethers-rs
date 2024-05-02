@@ -941,4 +941,58 @@ mod tests {
             hex::encode(&hash[..])
         );
     }
+
+    #[test]
+    fn test_hash_struct_with_uint256() {
+        let json = serde_json::json!({
+          "domain": {
+            "name": "TestName",
+            "version": "1",
+            "chainId": 31337,
+            "verifyingContract": "0x1111111111111111111111111111111111111111",
+            },
+          "types": {
+            "Test": [{ "name": "amount", "type": "uint256" }],
+          },
+          "message": {
+            "amount": "1234",
+          },
+          "primaryType": "Test",
+        });
+
+        let typed_data: TypedData = serde_json::from_value(json).unwrap();
+
+        let hash = typed_data.encode_eip712().unwrap();
+        assert_eq!(
+            "1e316c2602bbea109d3877e9dd98fa28c1c1add9c13d58b59ef1115c6d2026ad",
+            hex::encode(&hash[..])
+        );
+    }
+
+    #[test]
+    fn test_hash_struct_with_int256() {
+        let json = serde_json::json!({
+          "domain": {
+            "name": "TestName",
+            "version": "1",
+            "chainId": 31337,
+            "verifyingContract": "0x1111111111111111111111111111111111111111",
+            },
+          "types": {
+            "Test": [{ "name": "amount", "type": "int256" }],
+          },
+          "message": {
+            "amount": "1234",
+          },
+          "primaryType": "Test",
+        });
+
+        let typed_data: TypedData = serde_json::from_value(json).unwrap();
+
+        let hash = typed_data.encode_eip712().unwrap();
+        assert_eq!(
+            "358738e5d9339a08330caefbe2496988be0157649007b14319594178b17a4aed",
+            hex::encode(&hash[..])
+        );
+    }
 }
