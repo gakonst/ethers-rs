@@ -554,10 +554,17 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         &self,
         tx: &TypedTransaction,
         block: Option<BlockId>,
+        optimize_gas: Option<bool>
     ) -> Result<AccessListWithGasUsed, ProviderError> {
         let tx = utils::serialize(tx);
         let block = utils::serialize(&block.unwrap_or_else(|| BlockNumber::Latest.into()));
-        self.request("eth_createAccessList", [tx, block]).await
+        let optimize_gas = utils::serialize(&optimize_gas.unwrap_or_else(|| true));
+        let node_client = self.node_client().await?;
+        if let NodeClient::Erigon = node_client {
+            self.request("eth_createAccessList", [tx, block, optimize_gas]).await
+        } else {
+            self.request("eth_createAccessList", [tx, block]).await
+        }
     }
 
     async fn send_transaction<T: Into<TypedTransaction> + Send + Sync>(
