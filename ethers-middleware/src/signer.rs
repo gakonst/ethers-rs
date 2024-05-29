@@ -336,10 +336,11 @@ where
         &self,
         tx: &TypedTransaction,
         block: Option<BlockId>,
+        optimize_gas: Option<bool>,
     ) -> Result<AccessListWithGasUsed, Self::Error> {
         let tx = self.set_tx_from_if_none(tx);
         self.inner
-            .create_access_list(&tx, block)
+            .create_access_list(&tx, block, optimize_gas)
             .await
             .map_err(SignerMiddlewareError::MiddlewareError)
     }
