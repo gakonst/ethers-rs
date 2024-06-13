@@ -10,8 +10,8 @@
 [crates-url]: https://crates.io/crates/ethers
 
 > **Warning**
->
-> This library is in the process of being deprecated. See [#2667](https://github.com/gakonst/ethers-rs/issues/2667) for more information.
+> We are deprecating ethers-rs for [alloy](github.com/alloy-rs). Learn how to use Alloy by [visiting the book](https://alloy.rs).
+> See [#2667](https://github.com/gakonst/ethers-rs/issues/2667) for more information on ethers-rs.
 
 ## Quickstart
 
