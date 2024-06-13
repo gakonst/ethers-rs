@@ -129,7 +129,7 @@ impl<'a, P> Caller<'a, P> {
     }
 }
 impl<'a, P: JsonRpcClient> Caller<'a, P> {
-    /// Executes an `eth_call` rpc request with the overriden parameters. Returns a future that
+    /// Executes an `eth_call` rpc request with the overridden parameters. Returns a future that
     /// resolves to the result of the request.
     fn execute(&self) -> impl Future<Output = Result<Bytes, ProviderError>> + 'a {
         self.provider.request("eth_call", utils::serialize(&self.input))
