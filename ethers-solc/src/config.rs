@@ -408,9 +408,37 @@ impl ProjectPathsConfig {
 
         let sources = Source::read_all_files(input_files)?;
         let graph = Graph::resolve_sources(self, sources)?;
-        self.flatten_node(target, &graph, &mut Default::default(), false, false, false).map(|x| {
-            format!("{}\n", utils::RE_THREE_OR_MORE_NEWLINES.replace_all(&x, "\n\n").trim())
-        })
+        let mut ctx = FlattenContext::default();
+        let mut content =
+            self.flatten_node(target, &graph, &mut ctx, false, false, false).map(|x| {
+                format!("{}\n", utils::RE_THREE_OR_MORE_NEWLINES.replace_all(&x, "\n\n").trim())
+            })?;
+
+        // need to do some cleanup here
+        // Note: this is a bit horrible but it's an easy hack to inject experimentals after fully
+        // traversing the path since we only keep the experimentals for the target node
+        let index = graph.files().get(target).expect("exists");
+        let target_node = graph.node(*index);
+
+        if target_node.experimental().is_none() && !ctx.unique_experimentals.is_empty() {
+            // the tree contains experimental pragmas but the target file does not have one
+            // append it to the version pragma
+            if let Some(version) = target_node.version() {
+                let version_pragma = format!("pragma solidity {};", version.data());
+                let s = format!("{}\n{}", version_pragma, ctx.experimentals());
+                content = content.replacen(version_pragma.as_str(), s.as_str(), 1);
+            } else {
+                content = format!("{}\n{}", ctx.experimentals(), content);
+            }
+        } else if target_node.experimental().is_some() && ctx.unique_experimentals.len() > 1 {
+            // the target file has an experimental pragma but the tree contains more than one
+            let experimental = target_node.experimental().as_ref().unwrap();
+            let experimental_pragma = format!("pragma experimental {};", experimental.data());
+            content =
+                content.replacen(experimental_pragma.as_str(), ctx.experimentals().as_str(), 1);
+        }
+
+        Ok(content)
     }
 
     /// Flattens a single node from the dependency graph
@@ -418,7 +446,7 @@ impl ProjectPathsConfig {
         &self,
         target: &Path,
         graph: &Graph,
-        imported: &mut HashSet<usize>,
+        ctx: &mut FlattenContext,
         strip_version_pragma: bool,
         strip_experimental_pragma: bool,
         strip_license: bool,
@@ -430,11 +458,11 @@ impl ProjectPathsConfig {
             SolcError::msg(format!("cannot resolve file at {:?}", target.display()))
         })?;
 
-        if imported.contains(target_index) {
+        if ctx.imported.contains(target_index) {
             // short circuit nodes that were already imported, if both A.sol and B.sol import C.sol
             return Ok(String::new())
         }
-        imported.insert(*target_index);
+        ctx.imported.insert(*target_index);
 
         let target_node = graph.node(*target_index);
 
@@ -466,7 +494,7 @@ impl ProjectPathsConfig {
         }
 
         let mut content = content.as_bytes().to_vec();
-        let mut offset = 0_isize;
+        let mut offset = 0isize;
 
         let mut statements = [
             (target_node.license(), strip_license),
@@ -474,7 +502,7 @@ impl ProjectPathsConfig {
             (target_node.experimental(), strip_experimental_pragma),
         ]
         .iter()
-        .filter_map(|(data, condition)| if *condition { data.to_owned().as_ref() } else { None })
+        .filter_map(|(data, strip)| if *strip { data.to_owned().as_ref() } else { None })
         .collect::<Vec<_>>();
         statements.sort_by_key(|x| x.loc().start);
 
@@ -482,24 +510,35 @@ impl ProjectPathsConfig {
             (imports.iter().peekable(), statements.iter().peekable());
         while imports.peek().is_some() || statements.peek().is_some() {
             let (next_import_start, next_statement_start) = (
-                imports.peek().map_or(usize::max_value(), |x| x.loc().start),
-                statements.peek().map_or(usize::max_value(), |x| x.loc().start),
+                imports.peek().map_or(usize::MAX, |x| x.loc().start),
+                statements.peek().map_or(usize::MAX, |x| x.loc().start),
             );
             if next_statement_start < next_import_start {
-                let repl_range = statements.next().unwrap().loc_by_offset(offset);
+                // remove the statements if they are to be stripped
+                let repl_range = statements.next().expect("has next; qed").loc_by_offset(offset);
                 offset -= repl_range.len() as isize;
                 content.splice(repl_range, std::iter::empty());
             } else {
-                let import = imports.next().unwrap();
+                // find the next node to import
+                let import = imports.next().expect("has next; qed");
                 let import_path = self.resolve_import(target_dir, import.data().path())?;
-                let s = self.flatten_node(&import_path, graph, imported, true, true, true)?;
+                let flattened_import =
+                    self.flatten_node(&import_path, graph, ctx, true, true, true)?;
 
-                let import_content = s.as_bytes();
+                let import_content = flattened_import.as_bytes();
                 let import_content_len = import_content.len() as isize;
                 let import_range = import.loc_by_offset(offset);
                 offset += import_content_len - (import_range.len() as isize);
                 content.splice(import_range, import_content.iter().copied());
             }
+        }
+
+        // record global statements
+        if let Some(experimental) = target_node.experimental() {
+            ctx.insert_experimental(experimental.data().trim());
+        }
+        if let Some(license) = target_node.license() {
+            ctx.insert_license(license.data().trim());
         }
 
         let result = String::from_utf8(content).map_err(|err| {
@@ -918,6 +957,38 @@ impl<T: Into<PathBuf>> From<Vec<T>> for AllowedLibPaths {
     fn from(libs: Vec<T>) -> Self {
         let libs = libs.into_iter().map(utils::canonicalized).collect();
         AllowedLibPaths(libs)
+    }
+}
+
+#[derive(Default)]
+struct FlattenContext {
+    imported: HashSet<usize>,
+    unique_experimentals: Vec<String>,
+    unique_licenses: Vec<String>,
+}
+
+impl FlattenContext {
+    /// Returns all experimentals that are used in the tree
+    fn experimentals(&self) -> String {
+        self.unique_experimentals
+            .iter()
+            .map(|exp| format!("pragma experimental {exp};"))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    fn insert_experimental(&mut self, experimental: &str) {
+        if self.unique_experimentals.iter().any(|s| s == experimental) {
+            return
+        }
+        self.unique_experimentals.push(experimental.to_string())
+    }
+
+    fn insert_license(&mut self, license: &str) {
+        if self.unique_licenses.iter().any(|s| s == license) {
+            return
+        }
+        self.unique_licenses.push(license.to_string())
     }
 }
 

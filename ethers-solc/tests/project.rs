@@ -2605,3 +2605,69 @@ contract ContractTest {
     compiled.assert_success();
     assert!(compiled.find_first("Contract").is_some());
 }
+
+#[test]
+fn can_flatten_with_experimental() {
+    let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+    let target = project
+        .add_source(
+            "Foo",
+            r#"pragma solidity ^0.8.10;
+import "./Bar.sol";
+contract Foo {}"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Bar.sol",
+            r"pragma solidity ^0.8.10;
+pragma experimental ABIEncoderV2;
+contract Bar {}",
+        )
+        .unwrap();
+
+    let content = project.flatten(&target).unwrap();
+
+    let expected = r#"pragma solidity ^0.8.10;
+pragma experimental ABIEncoderV2;
+
+contract Bar {}
+contract Foo {}
+"#;
+
+    assert_eq!(content, expected);
+}
+#[test]
+fn can_flatten_with_two_experimental() {
+    let project = TempProject::<ConfigurableArtifacts>::dapptools().unwrap();
+    let target = project
+        .add_source(
+            "Foo",
+            r#"pragma solidity ^0.8.10;
+pragma experimental ABIEncoderV2;
+import "./Bar.sol";
+contract Foo {}"#,
+        )
+        .unwrap();
+
+    project
+        .add_source(
+            "Bar.sol",
+            r"pragma solidity ^0.8.10;
+pragma experimental ABIEncoderV2;
+contract Bar {}",
+        )
+        .unwrap();
+
+    let content = project.flatten(&target).unwrap();
+
+    let expected = r#"pragma solidity ^0.8.10;
+pragma experimental ABIEncoderV2;
+
+contract Bar {}
+contract Foo {}
+"#;
+
+    assert_eq!(content, expected);
+}
