@@ -585,11 +585,19 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     async fn send_raw_transaction_conditional<'a>(
         &'a self,
         tx: Bytes,
+        prefix: Option<String>,
         options: ConditionalOptions,
     ) -> Result<PendingTransaction<'a, P>, ProviderError> {
         let rlp = utils::serialize(&tx);
         let options = utils::serialize(&options);
-        let tx_hash = self.request("eth_sendRawTransactionConditional", [rlp, options]).await?;
+
+        let method = if let Some(prefix) = prefix {
+            format!("{}_sendRawTransactionConditional", prefix)
+        } else {
+            "eth_sendRawTransactionConditional".to_string()
+        };
+
+        let tx_hash = self.request(&method, [rlp, options]).await?;
         Ok(PendingTransaction::new(tx_hash, self))
     }
 

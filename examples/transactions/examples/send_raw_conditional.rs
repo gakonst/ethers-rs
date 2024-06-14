@@ -32,6 +32,7 @@ async fn main() -> Result<()> {
         let pending_tx = client
             .send_raw_transaction_conditional(
                 signed_tx,
+                None,
                 ConditionalOptions {
                     block_number_min: Some(BlockNumber::from(33285900)),
                     ..Default::default()

@@ -468,10 +468,11 @@ pub trait Middleware: Sync + Send + Debug {
     async fn send_raw_transaction_conditional<'a>(
         &'a self,
         tx: Bytes,
+        prefix: Option<String>,
         options: ConditionalOptions,
     ) -> Result<PendingTransaction<'a, Self::Provider>, Self::Error> {
         self.inner()
-            .send_raw_transaction_conditional(tx, options)
+            .send_raw_transaction_conditional(tx, prefix, options)
             .await
             .map_err(MiddlewareError::from_err)
     }
