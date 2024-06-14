@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 use auto_impl::auto_impl;
 use ethers_core::types::{
-    transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
+    transaction::{
+        conditional::ConditionalOptions, eip2718::TypedTransaction, eip2930::AccessListWithGasUsed,
+    },
     *,
 };
 use futures_util::future::join_all;
@@ -458,6 +460,21 @@ pub trait Middleware: Sync + Send + Debug {
         tx: Bytes,
     ) -> Result<PendingTransaction<'a, Self::Provider>, Self::Error> {
         self.inner().send_raw_transaction(tx).await.map_err(MiddlewareError::from_err)
+    }
+
+    /// Send the raw RLP encoded transaction to the entire Ethereum network with conditional options
+    /// and returns the transaction's hash This will consume gas from the account that signed the
+    /// transaction. <https://notes.ethereum.org/@yoav/SkaX2lS9j#>
+    async fn send_raw_transaction_conditional<'a>(
+        &'a self,
+        tx: Bytes,
+        prefix: Option<String>,
+        options: ConditionalOptions,
+    ) -> Result<PendingTransaction<'a, Self::Provider>, Self::Error> {
+        self.inner()
+            .send_raw_transaction_conditional(tx, prefix, options)
+            .await
+            .map_err(MiddlewareError::from_err)
     }
 
     /// This returns true if either the middleware stack contains a `SignerMiddleware`, or the
