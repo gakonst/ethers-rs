@@ -10,6 +10,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{
     str::FromStr,
     sync::atomic::{AtomicU64, Ordering},
+    time::Duration,
 };
 use thiserror::Error;
 use url::Url;
@@ -209,10 +210,18 @@ impl Provider {
     /// let url = Url::parse("http://localhost:8545").unwrap();
     /// let provider = Http::new_client_with_chain_middleware(vec![url]);
     /// ```
-    pub fn new_client_with_chain_middleware(urls: Vec<Url>) -> Self {
+    pub fn new_client_with_chain_middleware(
+        urls: Vec<Url>,
+        request_timeout: Option<Duration>,
+    ) -> Self {
         use crate::rpc::transports::middleware::SwitchProviderMiddleware;
         use reqwest_chain::ChainMiddleware;
-        let client_with_middleware = ClientBuilder::new(Client::new())
+        let client = reqwest::ClientBuilder::new()
+            .timeout(request_timeout.unwrap_or(Duration::from_secs(180)))
+            .build()
+            .expect("Client build panicked");
+
+        let client_with_middleware = ClientBuilder::new(client)
             .with(ChainMiddleware::new(SwitchProviderMiddleware::_new(urls.clone())))
             .build();
         let url = urls.get(0).expect("Needs at least a url");

@@ -34,16 +34,12 @@ impl Chainer for SwitchProviderMiddleware {
         _state: &mut Self::State,
         request: &mut reqwest::Request,
     ) -> Result<Option<reqwest::Response>, Error> {
-        let mut next_state = |client_error: Option<ClientError>| {
+        let mut next_state = |client_error: ClientError| {
             let next_index = _state.active_provider_index + 1;
             if next_index >= self.providers.len() {
                 trace!(target:"ethers-providers", "Providers have been exhausted");
 
-                if let Some(error) = client_error {
-                    return Err(anyhow!(error));
-                } else {
-                    return Err(anyhow!("Providers have been exhausted"))
-                }
+                Err(anyhow!(client_error))?;
             }
             _state.active_provider_index = next_index;
             let next_provider = self.providers[next_index].clone();
@@ -67,7 +63,7 @@ impl Chainer for SwitchProviderMiddleware {
                         return Ok(Some(reqwest::Response::from(http_response)));
                     }
                     Ok(crate::rpc::common::Response::Error { error, .. }) => {
-                        let _ = next_state(Some(ClientError::JsonRpcError(error)))?;
+                        let _ = next_state(ClientError::JsonRpcError(error))?;
                     }
                     Ok(_) => {
                         let err = ClientError::SerdeJson {
@@ -76,7 +72,7 @@ impl Chainer for SwitchProviderMiddleware {
                             ),
                             text: String::from_utf8_lossy(&body).to_string(),
                         };
-                        let _ = next_state(Some(err))?;
+                        let _ = next_state(err)?;
                     }
                     Err(err) => {
                         let error = ClientError::SerdeJson {
@@ -84,13 +80,13 @@ impl Chainer for SwitchProviderMiddleware {
                             text: String::from_utf8_lossy(&body).to_string(),
                         };
 
-                        let _ = next_state(Some(error))?;
+                        let _ = next_state(error)?;
                     }
                 };
             }
             Err(e) => {
                 trace!(target:"ethers-providers", "Possibly encountered an os error submitting request, switching provider {e:?}");
-                let _ = next_state(None)?;
+                let _ = next_state(ClientError::MiddlewareError(e))?;
             }
         }
 
@@ -115,7 +111,7 @@ mod test {
             Url::parse("https://www.noderpc.xyz/rpc-mainnet/public").unwrap(),
         ];
 
-        let http_provider = Http::new_client_with_chain_middleware(providers);
+        let http_provider = Http::new_client_with_chain_middleware(providers, None);
 
         let block_num = "latest";
         let txn_details = false;
@@ -134,7 +130,7 @@ mod test {
             Url::parse("https://docs-demo.quiknode.pro").unwrap(),
         ];
 
-        let http_provider = Http::new_client_with_chain_middleware(providers);
+        let http_provider = Http::new_client_with_chain_middleware(providers, None);
 
         let from =
             H160::from_slice(&hex::decode("7F0d15C7FAae65896648C8273B6d7E43f58Fa842").unwrap());
