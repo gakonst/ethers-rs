@@ -1,5 +1,3 @@
-use ethers_core::types::SyncingStatus;
-
 use crate::{
     call_raw::CallBuilder,
     errors::ProviderError,
@@ -13,7 +11,7 @@ use crate::{
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::{HttpRateLimitRetryPolicy, RetryClient};
-use std::net::Ipv4Addr;
+use std::{collections::HashMap, net::Ipv4Addr};
 
 pub use crate::Middleware;
 
@@ -24,10 +22,11 @@ use ethers_core::{
     types::{
         transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Chain, EIP1186ProofResponse,
+        EthCallManyBalanceDiff, EthCallManyBundle, EthCallManyStateContext, EthCallManyOutput,
         FeeHistory, Filter, FilterBlockOption, GethDebugTracingCallOptions,
-        GethDebugTracingOptions, GethTrace, Log, NameOrAddress, Selector, Signature, Trace,
-        TraceFilter, TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash,
-        TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
+        GethDebugTracingOptions, GethTrace, Log, NameOrAddress, Selector, Signature, SyncingStatus,
+        Trace, TraceFilter, TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash,
+        TxpoolContent, TxpoolInspect, TxpoolStatus, H160, H256, U256, U64,
     },
     utils,
 };
@@ -925,6 +924,25 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
 
     async fn txpool_status(&self) -> Result<TxpoolStatus, ProviderError> {
         self.request("txpool_status", ()).await
+    }
+
+    async fn eth_call_many(
+        &self,
+        bundles: Vec<EthCallManyBundle>,
+        state_context: EthCallManyStateContext,
+        state_override: Option<HashMap<H160, Option<EthCallManyBalanceDiff>>>,
+    ) -> Result<Vec<Vec<EthCallManyOutput>>, ProviderError> {
+        let bundles: Vec<EthCallManyBundle> = bundles
+            .into_iter()
+            .map(|tx_bundle| EthCallManyBundle {
+                transactions: tx_bundle.transactions.into_iter().map(|tx| tx.into()).collect(),
+                block_override: tx_bundle.block_override,
+            })
+            .collect();
+        let bundles = utils::serialize(&bundles);
+        let options_state_context = utils::serialize(&state_context);
+        let options_state_override = utils::serialize(&state_override);
+        self.request("eth_callMany", [bundles, options_state_context, options_state_override]).await
     }
 
     async fn debug_trace_transaction(
