@@ -80,8 +80,8 @@ pub struct Call {
 ///
 /// // note that these [`ContractCall`]s are futures, and need to be `.await`ed to resolve.
 /// // But we will let `Multicall` to take care of that for us
-/// let first_call = contract.method::<_, String>("getValue", ())?;
-/// let second_call = contract.method::<_, Address>("lastSender", ())?;
+/// let first_call = contract.method::<String>("getValue", ())?;
+/// let second_call = contract.method::<Address>("lastSender", ())?;
 ///
 /// // Since this example connects to a known chain, we need not provide an address for
 /// // the Multicall contract and we set that to `None`. If you wish to provide the address
@@ -98,8 +98,8 @@ pub struct Call {
 ///
 /// // the same `Multicall` instance can be re-used to do a different batch of transactions.
 /// // Say we wish to broadcast (send) a couple of transactions via the Multicall contract.
-/// let first_broadcast = contract.method::<_, H256>("setValue", "some value".to_owned())?;
-/// let second_broadcast = contract.method::<_, H256>("setValue", "new value".to_owned())?;
+/// let first_broadcast = contract.method::<H256>("setValue", "some value".to_owned())?;
+/// let second_broadcast = contract.method::<H256>("setValue", "new value".to_owned())?;
 /// multicall
 ///     .clear_calls()
 ///     .add_call(first_broadcast, false)
@@ -475,8 +475,8 @@ impl<M: Middleware> Multicall<M> {
     /// # let address = "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".parse::<Address>()?;
     /// # let contract = Contract::<Provider<Http>>::new(address, abi, client.clone());
     /// #
-    /// # let broadcast_1 = contract.method::<_, H256>("setValue", "some value".to_owned())?;
-    /// # let broadcast_2 = contract.method::<_, H256>("setValue", "new value".to_owned())?;
+    /// # let broadcast_1 = contract.method::<H256>("setValue", "some value".to_owned())?;
+    /// # let broadcast_2 = contract.method::<H256>("setValue", "new value".to_owned())?;
     /// #
     /// let mut multicall = Multicall::new(client, None).await?;
     /// multicall
@@ -485,8 +485,8 @@ impl<M: Middleware> Multicall<M> {
     ///
     /// let _tx_receipt = multicall.send().await?.await.expect("tx dropped");
     ///
-    /// # let call_1 = contract.method::<_, String>("getValue", ())?;
-    /// # let call_2 = contract.method::<_, Address>("lastSender", ())?;
+    /// # let call_1 = contract.method::<String>("getValue", ())?;
+    /// # let call_2 = contract.method::<Address>("lastSender", ())?;
     /// multicall
     ///     .clear_calls()
     ///     .add_call(call_1, false)
