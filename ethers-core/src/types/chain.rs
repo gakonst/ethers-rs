@@ -176,6 +176,9 @@ pub enum Chain {
     #[strum(to_string = "mantle-testnet")]
     #[serde(alias = "mantle_testnet")]
     MantleTestnet = 5001,
+    #[strum(to_string = "mantle-sepolia-testnet")]
+    #[serde(alias = "mantle_sepolia_testnet")]
+    MantleSepoliaTestnet = 5003,
 
     Zora = 7777777,
     ZoraGoerli = 999,
