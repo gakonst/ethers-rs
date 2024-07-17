@@ -105,6 +105,9 @@ pub enum Chain {
     #[strum(to_string = "mumbai", serialize = "polygon-mumbai")]
     #[serde(alias = "mumbai")]
     PolygonMumbai = 80001,
+    #[strum(to_string = "amoy", serialize = "polygon-amoy")]
+    #[serde(alias = "amoy")]
+    PolygonAmoy = 80002,
     #[strum(serialize = "polygon-zkevm", serialize = "zkevm")]
     #[serde(alias = "zkevm", alias = "polygon_zkevm")]
     PolygonZkEvm = 1101,
@@ -299,7 +302,7 @@ impl Chain {
             Mainnet => 12_000,
             Arbitrum | ArbitrumTestnet | ArbitrumGoerli | ArbitrumSepolia | ArbitrumNova => 1_300,
             Optimism | OptimismGoerli | OptimismSepolia => 2_000,
-            Polygon | PolygonMumbai => 2_100,
+            Polygon | PolygonMumbai | PolygonAmoy => 2_100,
             Moonbeam | Moonriver => 12_500,
             BinanceSmartChain | BinanceSmartChainTestnet => 3_000,
             Avalanche | AvalancheFuji => 2_000,
@@ -377,6 +380,7 @@ impl Chain {
             OptimismSepolia |
             Polygon |
             PolygonMumbai |
+            PolygonAmoy |
             Avalanche |
             AvalancheFuji |
             Arbitrum |
@@ -448,6 +452,7 @@ impl Chain {
             PolygonMumbai => {
                 ("https://api-testnet.polygonscan.com/api", "https://mumbai.polygonscan.com")
             }
+            PolygonAmoy => ("https://rpc-amoy.polygon.technology", "https://www.oklink.com/amoy"),
 
             PolygonZkEvm => {
                 ("https://api-zkevm.polygonscan.com/api", "https://zkevm.polygonscan.com")
@@ -657,7 +662,9 @@ impl Chain {
 
             Avalanche | AvalancheFuji => "SNOWTRACE_API_KEY",
 
-            Polygon | PolygonMumbai | PolygonZkEvm | PolygonZkEvmTestnet => "POLYGONSCAN_API_KEY",
+            Polygon | PolygonMumbai | PolygonZkEvm | PolygonZkEvmTestnet | PolygonAmoy => {
+                "POLYGONSCAN_API_KEY"
+            }
 
             Fantom | FantomTestnet => "FTMSCAN_API_KEY",
 
