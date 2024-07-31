@@ -83,7 +83,7 @@ impl Parse for ContractArgs {
 
         // abi
         // TODO(nlordell): Due to limitation with the proc-macro Span API, we
-        //   can't currently get a path the the file where we were called from;
+        //   can't currently get a path the file where we were called from;
         //   therefore, the path will always be rooted on the cargo manifest
         //   directory. Eventually we can use the `Span::source_file` API to
         //   have a better experience.
