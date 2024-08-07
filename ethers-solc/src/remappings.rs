@@ -840,7 +840,7 @@ mod tests {
 
     // <https://doc.rust-lang.org/rust-by-example/std_misc/fs.html>
     fn touch(path: &std::path::Path) -> std::io::Result<()> {
-        match std::fs::OpenOptions::new().create(true).write(true).open(path) {
+        match std::fs::OpenOptions::new().create(true).append(true).open(path) {
             Ok(_) => Ok(()),
             Err(e) => Err(e),
         }

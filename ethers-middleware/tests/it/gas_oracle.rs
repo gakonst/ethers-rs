@@ -1,12 +1,8 @@
 use async_trait::async_trait;
-use ethers_core::{
-    types::*,
-    utils::{parse_ether, Anvil},
-};
-use ethers_etherscan::Client;
+use ethers_core::{types::*, utils::Anvil};
 use ethers_middleware::gas_oracle::{
-    BlockNative, Etherchain, Etherscan, GasCategory, GasNow, GasOracle, GasOracleError,
-    GasOracleMiddleware, Polygon, ProviderOracle, Result,
+    BlockNative, Etherchain, GasNow, GasOracle, GasOracleError, GasOracleMiddleware, Polygon,
+    ProviderOracle, Result,
 };
 use ethers_providers::{Http, Middleware, Provider};
 
@@ -89,8 +85,13 @@ async fn etherchain() {
     assert!(gas_price > U256::zero());
 }
 
+#[cfg(feature = "etherscan")]
 #[tokio::test]
 async fn etherscan() {
+    use ethers_core::utils::parse_ether;
+    use ethers_etherscan::Client;
+    use ethers_middleware::gas_oracle::{Etherscan, GasCategory};
+
     let chain = Chain::Mainnet;
     let etherscan_client = Client::new_from_opt_env(chain).unwrap();
 

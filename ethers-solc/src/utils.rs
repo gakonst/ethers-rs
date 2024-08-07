@@ -473,13 +473,8 @@ pub fn create_parent_dir_all(file: impl AsRef<Path>) -> Result<(), SolcError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use solang_parser::pt::SourceUnitPart;
-    use std::{
-        collections::HashSet,
-        fs::{create_dir_all, File},
-    };
-    use tempdir;
+    use std::fs::{create_dir_all, File};
 
     #[test]
     fn can_find_different_case() {

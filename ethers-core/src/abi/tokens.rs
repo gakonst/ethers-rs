@@ -456,8 +456,6 @@ fn flatten_token(token: Token) -> Vec<Token> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::{Address, U256};
-    use ethabi::Token;
 
     fn assert_detokenize<T: Detokenize>() -> T {
         unimplemented!()

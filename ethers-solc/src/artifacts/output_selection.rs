@@ -555,7 +555,6 @@ impl FromStr for EwasmOutputSelection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::BTreeMap;
 
     #[test]
     fn outputselection_serde_works() {

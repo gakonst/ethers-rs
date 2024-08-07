@@ -6,7 +6,7 @@ use ethers::{
     signers::{LocalWallet, Signer},
 };
 use eyre::Result;
-use std::{convert::TryFrom, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 // Generate the type-safe contract bindings by providing the json artifact
 // *Note*: this requires a `bytecode` and `abi` object in the `greeter.json` artifact:

@@ -1,5 +1,4 @@
 use crate::*;
-use ethers_core::types::Chain;
 use serial_test::serial;
 
 #[tokio::test]

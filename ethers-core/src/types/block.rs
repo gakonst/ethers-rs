@@ -462,7 +462,7 @@ pub struct EpochSnarkData {
 }
 
 /// A [block hash](H256) or [block number](BlockNumber).
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum BlockId {
     // TODO: May want to expand this to include the requireCanonical field
     // <https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1898.md>
@@ -958,7 +958,6 @@ mod tests {
 #[cfg(feature = "celo")]
 mod celo_tests {
     use super::*;
-    use crate::types::Transaction;
 
     #[test]
     fn block_without_snark_data() {

@@ -190,9 +190,7 @@ impl From<&Transaction> for Eip2930TransactionRequest {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
-    use crate::types::{transaction::eip2718::TypedTransaction, U256};
     use std::str::FromStr;
 
     #[test]

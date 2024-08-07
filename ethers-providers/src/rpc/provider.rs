@@ -2,11 +2,11 @@ use crate::{
     call_raw::CallBuilder,
     errors::ProviderError,
     ext::{ens, erc},
-    rpc::pubsub::{PubsubClient, SubscriptionStream},
     stream::{FilterWatcher, DEFAULT_LOCAL_POLL_INTERVAL, DEFAULT_POLL_INTERVAL},
     utils::maybe,
     Http as HttpProvider, JsonRpcClient, JsonRpcClientWrapper, LogQuery, MiddlewareError,
-    MockProvider, NodeInfo, PeerInfo, PendingTransaction, QuorumProvider, RwClient,
+    MockProvider, NodeInfo, PeerInfo, PendingTransaction, PubsubClient, QuorumProvider, RwClient,
+    SubscriptionStream,
 };
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -32,9 +32,7 @@ use ethers_core::{
 };
 use futures_util::{lock::Mutex, try_join};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{
-    collections::VecDeque, convert::TryFrom, fmt::Debug, str::FromStr, sync::Arc, time::Duration,
-};
+use std::{collections::VecDeque, fmt::Debug, str::FromStr, sync::Arc, time::Duration};
 use tracing::trace;
 use tracing_futures::Instrument;
 use url::{Host, ParseError, Url};
@@ -335,6 +333,23 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         block_hash_or_number: T,
     ) -> Result<Option<Block<TxHash>>, Self::Error> {
         self.get_block_gen(block_hash_or_number.into(), false).await
+    }
+
+    async fn get_header<T: Into<BlockId> + Send + Sync>(
+        &self,
+        block_hash_or_number: T,
+    ) -> Result<Option<Block<Transaction>>, Self::Error> {
+        let id = block_hash_or_number.into();
+        Ok(match id {
+            BlockId::Number(num) => {
+                let num = utils::serialize(&num);
+                self.request("eth_getHeaderByNumber", [num]).await?
+            }
+            BlockId::Hash(hash) => {
+                let hash = utils::serialize(&hash);
+                self.request("eth_getHeaderByHash", [hash]).await?
+            }
+        })
     }
 
     async fn get_block_with_txs<T: Into<BlockId> + Send + Sync>(
@@ -1554,7 +1569,7 @@ mod tests {
         types::{
             transaction::eip2930::AccessList, Eip1559TransactionRequest,
             GethDebugBuiltInTracerConfig, GethDebugBuiltInTracerType, GethDebugTracerConfig,
-            GethDebugTracerType, PreStateConfig, TransactionRequest, H256,
+            GethDebugTracerType, PreStateConfig,
         },
         utils::{Anvil, Genesis, Geth, GethInstance},
     };

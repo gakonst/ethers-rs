@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![cfg_attr(not(target_arch = "wasm32"), deny(unused_crate_dependencies))]
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
 pub mod types;
 

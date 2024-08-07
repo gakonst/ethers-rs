@@ -117,6 +117,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for Response<'a> {
     where
         D: serde::Deserializer<'de>,
     {
+        #[allow(dead_code)]
         struct ResponseVisitor<'a>(&'a ());
         impl<'de: 'a, 'a> Visitor<'de> for ResponseVisitor<'a> {
             type Value = Response<'a>;

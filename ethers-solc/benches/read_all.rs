@@ -1,9 +1,9 @@
 //! read many sources
+
 #[macro_use]
 extern crate criterion;
 
 use criterion::Criterion;
-use ethers_core::rand;
 use ethers_solc::{artifacts::Source, project_util::TempProject};
 use rand::{distributions::Alphanumeric, Rng};
 use std::{

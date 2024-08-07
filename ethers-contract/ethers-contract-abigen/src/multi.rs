@@ -882,7 +882,7 @@ fn check_binding_in_dir(dir: &Path, binding: &ContractBindings) -> Result<()> {
 mod tests {
     use super::*;
     use crate::{ExcludeContracts, SelectContracts};
-    use std::{env, path::PathBuf};
+    use std::env;
 
     struct Context {
         multi_gen: MultiAbigen,

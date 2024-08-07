@@ -5,7 +5,7 @@ use std::{
     env, fmt, fs,
     path::{Path, PathBuf},
 };
-use strum::{EnumCount, EnumIter, EnumString, EnumVariantNames, IntoEnumIterator};
+use strum::{EnumCount, EnumIter, EnumString, IntoEnumIterator, VariantNames};
 
 /// `ethers_crate => name`
 type CrateNames = HashMap<EthersCrate, &'static str>;
@@ -211,7 +211,7 @@ impl ProjectEnvironment {
     EnumCount,
     EnumIter,
     EnumString,
-    EnumVariantNames,
+    VariantNames,
 )]
 #[strum(serialize_all = "kebab-case")]
 pub enum EthersCrate {
@@ -343,7 +343,7 @@ mod tests {
     };
     use std::{
         collections::{BTreeMap, HashSet},
-        env, fs,
+        env,
     };
     use tempfile::TempDir;
 

@@ -1,6 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![deny(rustdoc::broken_intra_doc_links)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
 pub mod artifacts;
 pub mod sourcemap;
@@ -474,11 +474,18 @@ impl<T: ArtifactOutput> Project<T> {
             }
             tracing::trace!("removed cache file \"{}\"", self.cache_path().display());
         }
-        if self.paths.artifacts.exists() {
+        if self.artifacts_path().exists() {
             std::fs::remove_dir_all(self.artifacts_path())
                 .map_err(|err| SolcIoError::new(err, self.artifacts_path().clone()))?;
             tracing::trace!("removed artifacts dir \"{}\"", self.artifacts_path().display());
         }
+
+        if self.build_info_path().exists() {
+            std::fs::remove_dir_all(self.build_info_path())
+                .map_err(|err| SolcIoError::new(err, self.build_info_path().clone()))?;
+            tracing::trace!("removed build-info dir \"{}\"", self.build_info_path().display());
+        }
+
         Ok(())
     }
 

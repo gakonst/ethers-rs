@@ -1,5 +1,4 @@
 use crate::*;
-use ethers_core::types::Chain;
 use ethers_etherscan::contract::SourceCodeMetadata;
 use serial_test::serial;
 

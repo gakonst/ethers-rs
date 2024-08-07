@@ -417,9 +417,9 @@ impl TypedTransaction {
 impl Decodable for TypedTransaction {
     fn decode(rlp: &rlp::Rlp) -> Result<Self, rlp::DecoderError> {
         let tx_type: Option<U64> = match rlp.is_data() {
-            true => Ok(Some(rlp.data()?.into())),
-            false => Ok(None),
-        }?;
+            true => Some(rlp.data()?.into()),
+            false => None,
+        };
         let rest = rlp::Rlp::new(
             rlp.as_raw().get(1..).ok_or(rlp::DecoderError::Custom("no transaction payload"))?,
         );
@@ -658,10 +658,7 @@ impl From<TypedTransaction> for Eip2930TransactionRequest {
 
 #[cfg(test)]
 mod tests {
-    use rlp::Decodable;
-
     use super::*;
-    use crate::types::{Address, U256};
     use std::str::FromStr;
 
     #[test]

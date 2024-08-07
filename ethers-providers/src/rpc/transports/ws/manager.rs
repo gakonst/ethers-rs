@@ -231,6 +231,25 @@ impl RequestManager {
         Ok((backend, mpsc::unbounded(), Default::default()))
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    async fn connect_with_config_internal(
+        conn: ConnectionDetails,
+        config: WebSocketConfig,
+    ) -> Result<
+        (
+            BackendDriver,
+            (mpsc::UnboundedSender<Instruction>, mpsc::UnboundedReceiver<Instruction>),
+            SharedChannelMap,
+        ),
+        WsClientError,
+    > {
+        let (ws, backend) = WsBackend::connect_with_config(conn, config, false).await?;
+
+        ws.spawn();
+
+        Ok((backend, mpsc::unbounded(), Default::default()))
+    }
+
     #[cfg(target_arch = "wasm32")]
     pub async fn connect_with_reconnects(
         conn: ConnectionDetails,
@@ -291,7 +310,7 @@ impl RequestManager {
         reconnects: usize,
     ) -> Result<(Self, WsClient), WsClientError> {
         let (backend, (instructions_tx, instructions_rx), channel_map) =
-            Self::connect_internal(conn.clone()).await?;
+            Self::connect_with_config_internal(conn.clone(), config).await?;
 
         Ok((
             Self {

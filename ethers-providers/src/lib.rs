@@ -2,7 +2,7 @@
 #![allow(clippy::type_complexity)]
 #![warn(missing_docs)]
 #![deny(unsafe_code, rustdoc::broken_intra_doc_links)]
-#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
 mod ext;
 pub use ext::*;
@@ -35,14 +35,13 @@ pub use middleware::Middleware;
 #[allow(deprecated)]
 pub use test_provider::{GOERLI, MAINNET, ROPSTEN, SEPOLIA};
 
-#[allow(missing_docs)]
 /// Pre-instantiated Infura HTTP clients which rotate through multiple API keys
 /// to prevent rate limits
+#[allow(missing_docs)]
 pub mod test_provider {
     use super::*;
-    use crate::Http;
     use once_cell::sync::Lazy;
-    use std::{convert::TryFrom, iter::Cycle, slice::Iter, sync::Mutex};
+    use std::{iter::Cycle, slice::Iter, sync::Mutex};
 
     // List of infura keys to rotate through so we don't get rate limited
     const INFURA_KEYS: &[&str] = &["15e8aaed6f894d63a0f6a0206c006cdd"];

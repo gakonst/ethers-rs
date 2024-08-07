@@ -2,10 +2,7 @@
 
 use crate::types::{BlockNumber, U256, U64};
 use serde::{Deserialize, Deserializer};
-use std::{
-    convert::{TryFrom, TryInto},
-    str::FromStr,
-};
+use std::str::FromStr;
 
 /// Helper type to parse both `u64` and `U256`
 #[derive(Debug, Copy, Clone, Deserialize)]
@@ -76,8 +73,7 @@ impl TryFrom<StringifiedNumeric> for U64 {
         let value = U256::try_from(value)?;
         let mut be_bytes = [0u8; 32];
         value.to_big_endian(&mut be_bytes);
-        U64::try_from(&be_bytes[value.leading_zeros() as usize / 8..])
-            .map_err(|err| err.to_string())
+        Ok(U64::from(&be_bytes[value.leading_zeros() as usize / 8..]))
     }
 }
 
@@ -298,7 +294,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::U256;
 
     #[test]
     fn test_deserialize_string_chain_id() {

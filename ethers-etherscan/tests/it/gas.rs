@@ -1,5 +1,5 @@
 use crate::*;
-use ethers_core::types::{Chain, U256};
+use ethers_core::types::U256;
 use serial_test::serial;
 
 #[tokio::test]

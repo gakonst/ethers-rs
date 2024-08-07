@@ -746,13 +746,13 @@ fn can_generate_large_tuple_types() {
 fn can_generate_large_tuple_array() {
     abigen!(LargeArray, "./tests/solidity-contracts/large-array.json");
 
+    #[allow(unknown_lints, non_local_definitions)]
     impl Default for CallWithLongArrayCall {
         fn default() -> Self {
             Self { long_array: [0; 128] }
         }
     }
 
-    let _call = CallWithLongArrayCall::default();
     assert_call::<CallWithLongArrayCall>();
 }
 
@@ -878,4 +878,17 @@ fn abigen_overloaded_methods2() {
     assert_eq!(e3.0, b1);
     assert_eq!(e3.3, vec![b1, b2]);
     assert_eq!(e1_encoded.to_string(), "0x24856bc3000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000002abcd0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000002abcd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011200000000000000000000000000000000000000000000000000000000000000");
+}
+
+// https://github.com/foundry-rs/foundry/issues/7181
+#[test]
+fn abigen_default() {
+    // https://github.com/Layr-Labs/eigenlayer-middleware/blob/a79742bda7f967ce066df39b26f456afb61d6c28/test/utils/ProofParsing.sol#L132
+    abigen!(
+        ProofParsing,
+        r#"[
+            function getValidatorProof() public returns(bytes32[46] memory)
+        ]"#
+    );
+    // GetValidatorProofReturn cannot be Default
 }

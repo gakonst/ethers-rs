@@ -6,10 +6,7 @@ use crate::{
 };
 use ethabi::encode;
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{
-    collections::{BTreeMap, HashSet},
-    iter::FromIterator,
-};
+use std::collections::{BTreeMap, HashSet};
 
 /// Custom types for `TypedData`
 pub type Types = BTreeMap<String, Vec<Eip712DomainType>>;

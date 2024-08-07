@@ -9,6 +9,10 @@
 [crates-badge]: https://img.shields.io/crates/v/ethers.svg
 [crates-url]: https://crates.io/crates/ethers
 
+> **Warning**
+> We are deprecating ethers-rs for [alloy](https://github.com/alloy-rs). Learn how to use Alloy by [visiting the book](https://alloy.rs).
+> See [#2667](https://github.com/gakonst/ethers-rs/issues/2667) for more information on ethers-rs.
+
 ## Quickstart
 
 Add this to your Cargo.toml:
@@ -51,7 +55,7 @@ ethers = { version = "2.0", features = ["legacy"] }
 ### Polygon support
 
 There is abigen support for Polygon and the Mumbai test network. It is recommended that you set the `POLYGONSCAN_API_KEY` environment variable.
-You can get one [here](https://polygonscan.io/apis).
+You can get one [here](https://polygonscan.com/apis).
 
 ### Avalanche support
 
@@ -205,6 +209,7 @@ You can get one [here](https://etherscan.io/apis).
 -   [Celo Plumo Prover](https://github.com/celo-org/plumo-prover): Creates Celo's ultralight client proof from on-chain data
 -   [Celo SNARK Setup Coordinator](https://github.com/celo-org/snark-setup-operator): Coordinator for executing a pipelined Groth16 SNARK setup
 -   [ERC-4337 Bundler](https://github.com/Vid201/aa-bundler/): Account Abstraction (ERC-4337) bundler
+-   [zkSync Withdrawal Finalizer](https://github.com/matter-labs/zksync-withdrawal-finalizer): Finalizer of withdrawals from zkSync Era to L1.
 
 ## Credits
 

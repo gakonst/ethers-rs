@@ -1,5 +1,5 @@
 use super::ConversionError;
-use std::{convert::TryFrom, fmt, str::FromStr};
+use std::{fmt, str::FromStr};
 
 /// Common Ethereum unit types.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

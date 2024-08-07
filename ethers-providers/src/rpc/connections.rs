@@ -1,12 +1,8 @@
-use std::fmt::Debug;
-
+use crate::{ProviderError, RpcError};
 use async_trait::async_trait;
 use auto_impl::auto_impl;
-use ethers_core::types::U256;
 use serde::{de::DeserializeOwned, Serialize};
-use serde_json::value::RawValue;
-
-use crate::{ProviderError, RpcError};
+use std::fmt::Debug;
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
@@ -22,16 +18,4 @@ pub trait JsonRpcClient: Debug + Send + Sync {
     where
         T: Debug + Serialize + Send + Sync,
         R: DeserializeOwned + Send;
-}
-
-/// A transport implementation supporting pub sub subscriptions.
-pub trait PubsubClient: JsonRpcClient {
-    /// The type of stream this transport returns
-    type NotificationStream: futures_core::Stream<Item = Box<RawValue>> + Send + Unpin;
-
-    /// Add a subscription to this transport
-    fn subscribe<T: Into<U256>>(&self, id: T) -> Result<Self::NotificationStream, Self::Error>;
-
-    /// Remove a subscription from this transport
-    fn unsubscribe<T: Into<U256>>(&self, id: T) -> Result<(), Self::Error>;
 }
