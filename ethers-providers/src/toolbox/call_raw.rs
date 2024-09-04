@@ -290,7 +290,7 @@ mod tests {
         let call = provider.call_raw(&tx).state(&state);
         test_encode(call);
 
-        // State override with an empty acccount should be encoded as "0xab..": {}
+        // State override with an empty account should be encoded as "0xab..": {}
         let mut state = spoof::state();
         state.account(adr1);
         let call = provider.call_raw(&tx).state(&state);
