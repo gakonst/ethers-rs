@@ -428,7 +428,7 @@ mod tests {
     }
 
     #[test]
-    fn duplicate_method_signature_error() {
+    fn duplicate_method_signature_hashes_error() {
         contract_args_err! {
             TestContract,
             "path/to/abi.json",

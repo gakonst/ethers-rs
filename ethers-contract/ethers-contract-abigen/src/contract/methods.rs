@@ -391,8 +391,8 @@ impl Context {
         let mut all_signature_hashes = HashMap::new();
         // find all duplicates, where no aliases where provided
         for functions in all_functions.values() {
-            // this should not happen since functions with same
-            // signature hash are illegal
+            // this should not happen since functions with the same
+            // signature hashes are illegal
             for function in functions {
                 let function_signature = function.signature();
                 let signature_hash = id(&function_signature);
