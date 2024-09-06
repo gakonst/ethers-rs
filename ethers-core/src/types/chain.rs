@@ -378,8 +378,6 @@ impl Chain {
             Boba |
             ZkSync |
             ZkSyncTestnet |
-            Mantle |
-            MantleTestnet |
             PolygonZkEvm |
             PolygonZkEvmTestnet |
             Metis |
@@ -414,6 +412,8 @@ impl Chain {
             Linea |
             LineaTestnet |
             FilecoinCalibrationTestnet |
+            Mantle |
+            MantleTestnet |
             Gnosis |
             Chiado |
             Mode |
