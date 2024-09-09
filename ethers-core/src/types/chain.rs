@@ -347,8 +347,6 @@ impl Chain {
             OptimismKovan |
             Fantom |
             FantomTestnet |
-            BinanceSmartChain |
-            BinanceSmartChainTestnet |
             ArbitrumTestnet |
             Rsk |
             Oasis |
@@ -373,6 +371,8 @@ impl Chain {
             Goerli |
             Sepolia |
             Holesky |
+            BinanceSmartChain |
+            BinanceSmartChainTestnet |
             Base |
             BaseGoerli |
             Optimism |
