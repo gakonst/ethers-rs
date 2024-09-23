@@ -11,7 +11,7 @@
 
 > **Notice**
 
-> Ethers-rs has been deprecated for [alloy](https://github.com/alloy-rs). Learn how to use Alloy by [visiting the book](https://alloy.rs).
+> `ethers-rs` has been deprecated for [alloy](https://github.com/alloy-rs). Learn how to use Alloy by [visiting the book](https://alloy.rs).
 > See [#2667](https://github.com/gakonst/ethers-rs/issues/2667) for more information.
 
 ## Quickstart
