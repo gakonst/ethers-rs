@@ -15,6 +15,8 @@ mod gas_oracle;
 #[cfg(not(feature = "celo"))]
 mod signer;
 
+mod multicall;
+
 #[cfg(not(feature = "celo"))]
 mod nonce_manager;
 

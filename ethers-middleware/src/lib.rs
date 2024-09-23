@@ -41,6 +41,11 @@ pub use policy::{
 pub mod timelag;
 pub use timelag::TimeLag;
 
+/// The [MulticallMiddleware] provides a way to batch multiple calls into a single call
+pub mod multicall;
+#[cfg(not(target_arch = "wasm32"))]
+pub use multicall::MulticallMiddleware;
+
 /// [MiddlewareBuilder] provides a way to compose many [`Middleware`]s in a concise way.
 pub mod builder;
 pub use builder::MiddlewareBuilder;

@@ -30,7 +30,7 @@ pub mod stream;
 
 #[cfg(feature = "abigen")]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
-mod multicall;
+pub mod multicall;
 #[cfg(feature = "abigen")]
 #[cfg_attr(docsrs, doc(cfg(feature = "abigen")))]
 pub use multicall::{

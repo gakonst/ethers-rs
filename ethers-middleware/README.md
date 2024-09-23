@@ -18,6 +18,8 @@ For more information, please refer to the [book](https://gakonst.com/ethers-rs).
 -   [`Transformer`](./transformer/trait.Transformer.html): Allows intercepting and
     transforming a transaction to be broadcasted via a proxy wallet, e.g.
     [`DSProxy`](./transformer/struct.DsProxy.html).
+-   [`MultiCall`](./multicall/struct.MulticallMiddleware.html): transparently batches multiple `eth_call` requests into a single
+    `eth_call` request, reducing the number of round trips to the RPC and saving API CU usage.
 
 ## Examples
 
