@@ -6,6 +6,7 @@ use ethers_core::{
     abi::{Function, FunctionExt, Param, ParamType},
     macros::{ethers_contract_crate, ethers_core_crate},
     types::Selector,
+    utils::id,
 };
 use eyre::{Context as _, Result};
 use inflector::Inflector;
@@ -387,8 +388,26 @@ impl Context {
                 .push(function);
         }
 
+        let mut all_signature_hashes = HashMap::new();
         // find all duplicates, where no aliases where provided
         for functions in all_functions.values() {
+            // this should not happen since functions with the same
+            // signature hashes are illegal
+            for function in functions {
+                let function_signature = function.signature();
+                let signature_hash = id(&function_signature);
+
+                if let Some(prev_function_signature) = all_signature_hashes.get(&signature_hash) {
+                    eyre::ensure!(
+                        id(&prev_function_signature) != signature_hash,
+                        "Function with same signature hash defined twice: {} and {}",
+                        prev_function_signature,
+                        function_signature
+                    );
+                }
+                all_signature_hashes.insert(signature_hash.clone(), function_signature);
+            }
+
             if functions.iter().filter(|f| !aliases.contains_key(&f.abi_signature())).count() <= 1 {
                 // no overloads, hence no conflicts
                 continue

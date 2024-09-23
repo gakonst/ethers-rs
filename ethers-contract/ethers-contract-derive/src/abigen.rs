@@ -3,6 +3,7 @@
 
 use crate::spanned::Spanned;
 use ethers_contract_abigen::{multi::MultiExpansion, Abigen};
+use ethers_core::utils::id;
 use proc_macro2::TokenStream;
 use std::collections::HashSet;
 use syn::{
@@ -124,9 +125,13 @@ impl Parse for Parameter {
                 let parsed = content.parse_terminated(Spanned::<Method>::parse, Token![;])?;
 
                 let mut methods = Vec::with_capacity(parsed.len());
+                let mut signature_hashes = HashSet::new();
                 let mut signatures = HashSet::new();
                 let mut aliases = HashSet::new();
                 for method in parsed {
+                    if !signature_hashes.insert(id(String::from(method.signature.clone()))) {
+                        return Err(Error::new(method.span(), "duplicate method signature hash"))
+                    }
                     if !signatures.insert(method.signature.clone()) {
                         return Err(Error::new(method.span(), "duplicate method signature"))
                     }
@@ -420,6 +425,18 @@ mod tests {
                 false
             )
         );
+    }
+
+    #[test]
+    fn duplicate_method_signature_hashes_error() {
+        contract_args_err! {
+            TestContract,
+            "path/to/abi.json",
+            methods {
+                BlazingIt4490597615() as blazing_it_4490597615;
+                wycpnbqcyf() as wycpnbqcyf;
+            };
+        };
     }
 
     #[test]
