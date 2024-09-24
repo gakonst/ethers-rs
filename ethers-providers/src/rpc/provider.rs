@@ -1,5 +1,3 @@
-use ethers_core::types::SyncingStatus;
-
 use crate::{
     call_raw::CallBuilder,
     errors::ProviderError,
@@ -22,11 +20,14 @@ use async_trait::async_trait;
 use ethers_core::{
     abi::{self, Detokenize, ParamType},
     types::{
-        transaction::{eip2718::TypedTransaction, eip2930::AccessListWithGasUsed},
+        transaction::{
+            conditional::ConditionalOptions, eip2718::TypedTransaction,
+            eip2930::AccessListWithGasUsed,
+        },
         Address, Block, BlockId, BlockNumber, BlockTrace, Bytes, Chain, EIP1186ProofResponse,
         FeeHistory, Filter, FilterBlockOption, GethDebugTracingCallOptions,
-        GethDebugTracingOptions, GethTrace, Log, NameOrAddress, Selector, Signature, Trace,
-        TraceFilter, TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash,
+        GethDebugTracingOptions, GethTrace, Log, NameOrAddress, Selector, Signature, SyncingStatus,
+        Trace, TraceFilter, TraceType, Transaction, TransactionReceipt, TransactionRequest, TxHash,
         TxpoolContent, TxpoolInspect, TxpoolStatus, H256, U256, U64,
     },
     utils,
@@ -578,6 +579,25 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
     ) -> Result<PendingTransaction<'a, P>, ProviderError> {
         let rlp = utils::serialize(&tx);
         let tx_hash = self.request("eth_sendRawTransaction", [rlp]).await?;
+        Ok(PendingTransaction::new(tx_hash, self))
+    }
+
+    async fn send_raw_transaction_conditional<'a>(
+        &'a self,
+        tx: Bytes,
+        prefix: Option<String>,
+        options: ConditionalOptions,
+    ) -> Result<PendingTransaction<'a, P>, ProviderError> {
+        let rlp = utils::serialize(&tx);
+        let options = utils::serialize(&options);
+
+        let method = if let Some(prefix) = prefix {
+            format!("{}_sendRawTransactionConditional", prefix)
+        } else {
+            "eth_sendRawTransactionConditional".to_string()
+        };
+
+        let tx_hash = self.request(&method, [rlp, options]).await?;
         Ok(PendingTransaction::new(tx_hash, self))
     }
 
