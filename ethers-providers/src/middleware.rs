@@ -6,7 +6,7 @@ use ethers_core::types::{
 };
 use futures_util::future::join_all;
 use serde::{de::DeserializeOwned, Serialize};
-use std::fmt::Debug;
+use std::{collections::HashMap, fmt::Debug};
 use url::Url;
 
 use crate::{
@@ -725,6 +725,19 @@ pub trait Middleware: Sync + Send + Debug {
     /// Ref: [Here](https://geth.ethereum.org/docs/rpc/ns-txpool#txpool_status)
     async fn txpool_status(&self) -> Result<TxpoolStatus, Self::Error> {
         self.inner().txpool_status().await.map_err(MiddlewareError::from_err)
+    }
+
+    /// Simulates a set of bundles
+    /// Implementation:
+    /// Ref:
+    /// [Here](https://github.com/ledgerwatch/erigon/blob/513fd50fa501ab6385dc3f58b18079d806d6ff5a/turbo/jsonrpc/eth_callMany.go#L72-L72)
+    async fn eth_call_many(
+        &self,
+        bundles: Vec<EthCallManyBundle>,
+        state_context: EthCallManyStateContext,
+        state_override: Option<HashMap<H160, Option<EthCallManyBalanceDiff>>>,
+    ) -> Result<Vec<Vec<EthCallManyOutput>>, Self::Error> {
+        self.inner().eth_call_many(bundles, state_context, state_override).await.map_err(MiddlewareError::from_err)
     }
 
     // Geth `trace` support
