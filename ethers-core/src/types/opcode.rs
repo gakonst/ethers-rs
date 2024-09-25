@@ -150,8 +150,12 @@ pub enum Opcode {
     SELFBALANCE,
     /// Opcode 0x48 - Get the base fee
     BASEFEE,
+    /// Opcode 0x49 - Get versioned hashes
+    BLOBHASH,
+    /// Opcode 0x4A - Returns the value of the blob base-fee of the current block
+    BLOBBASEFEE,
 
-    // 0x49 - 0x4F are invalid
+    // 0x4B - 0x4F are invalid
 
     // 0x50 range - 'storage' and execution.
     /// Opcode 0x50 - Remove item from stack
@@ -180,8 +184,12 @@ pub enum Opcode {
     GAS,
     /// Opcode 0x5B - Mark a valid destination for jumps
     JUMPDEST,
-
-    // 0x5C - 0x5E are invalid
+    /// Opcode 0x5C - Load word from transient storage
+    TLOAD,
+    /// Opcode 0x5D - Save word to transient storage
+    TSTORE,
+    /// Opcode 0x5E - Copy memory areas
+    MCOPY,
 
     // 0x5F range - pushes.
     /// Opcode 0x5F - Place the constant value 0 on stack
