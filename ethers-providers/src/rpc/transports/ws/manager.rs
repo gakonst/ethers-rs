@@ -397,6 +397,25 @@ impl RequestManager {
         Ok(())
     }
 
+    /// Retries to reconnect until reconnection attempts are exhausted
+    /// or the connection is successful
+    /// Returns an error if the reconnection attempts are exhausted
+    /// Sleeps for 1 second between reconnection attempts
+    /// Returns Ok(()) if the connection is successful
+    async fn reconnect_retries(&mut self) -> Result<(), WsClientError> {
+        loop {
+            match self.reconnect().await {
+                Ok(_) => return Ok(()),
+                Err(WsClientError::TooManyReconnects) => return Err(WsClientError::TooManyReconnects),
+                Err(e) => {
+                    tracing::warn!(%e, "Reconnection failed. Retrying");
+                    // Sleep for a bit before retrying
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                }
+            }
+        }
+    }
+
     #[tracing::instrument(skip(self, result))]
     fn req_success(&mut self, id: u64, result: Box<RawValue>) {
         // pending fut is missing, this is fine
@@ -482,13 +501,13 @@ impl RequestManager {
                         match item_opt {
                             Some(item) => self.handle(item),
                             // Backend is gone, so reconnect
-                            None => if let Err(e) = self.reconnect().await {
+                            None => if let Err(e) = self.reconnect_retries().await {
                                 break Err(e);
                             }
                         }
                     },
                     _ = &mut self.backend.error => {
-                        if let Err(e) = self.reconnect().await {
+                        if let Err(e) = self.reconnect_retries().await {
                             break Err(e);
                         }
                     },
