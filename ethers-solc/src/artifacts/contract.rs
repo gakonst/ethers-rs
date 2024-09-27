@@ -303,7 +303,7 @@ impl CompactContract {
     ///
     /// # Panics
     ///
-    /// Panics if any of the fields euqal `None`
+    /// Panics if any of the fields equal `None`
     ///
     /// # Example
     ///

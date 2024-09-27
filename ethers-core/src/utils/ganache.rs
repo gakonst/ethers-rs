@@ -96,7 +96,7 @@ impl Ganache {
     }
 
     /// Sets the startup timeout which will be used when the `ganache-cli` instance is launched in
-    /// miliseconds. 10_000 miliseconds by default).
+    /// milliseconds. 10_000 milliseconds by default).
     pub fn startup_timeout_millis<T: Into<u64>>(mut self, timeout: T) -> Self {
         self.startup_timeout = Some(timeout.into());
         self
