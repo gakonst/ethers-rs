@@ -28,6 +28,11 @@ pub struct Log {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub block_number: Option<U64>,
 
+    // Block timestamp
+    #[serde(rename = "blockTimestamp")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block_timestamp: Option<U64>,
+
     /// Transaction Hash
     #[serde(rename = "transactionHash")]
     #[serde(skip_serializing_if = "Option::is_none")]
