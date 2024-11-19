@@ -34,7 +34,7 @@ pub(crate) mod utils;
 /// Additionally, this macro accepts additional parameters to configure some aspects of the code
 /// generation:
 /// - `methods`: A list of mappings from method signatures to method names allowing methods names to
-///   be explicitely set for contract methods. This also provides a workaround for generating code
+///   be explicitly set for contract methods. This also provides a workaround for generating code
 ///   for contracts with multiple methods with the same name.
 /// - `derives`: A list of additional derive macros that are added to all the generated structs and
 ///   enums, after the default ones which are ([when applicable][tuple_derive_ref]):

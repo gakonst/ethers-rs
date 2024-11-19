@@ -201,7 +201,7 @@ pub(crate) fn derive_builtin_traits<'a>(
     extend_derives(stream, derive_default, derive_others);
 }
 
-/// This has to be a seperate function since a sol struct is converted into a tuple, but for
+/// This has to be a separate function since a sol struct is converted into a tuple, but for
 /// deriving purposes it shouldn't count as one, so we recurse back the struct fields.
 pub(crate) fn derive_builtin_traits_struct(
     structs: &InternalStructs,

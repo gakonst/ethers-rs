@@ -1884,7 +1884,7 @@ mod tests {
         assert_eq!(tx.gas(), Some(&gas));
         assert_eq!(tx.access_list(), Some(&Default::default()));
 
-        // --- propogates estimate_gas() error
+        // --- propagates estimate_gas() error
         let mut tx = Eip1559TransactionRequest::new()
             .max_fee_per_gas(max_fee)
             .max_priority_fee_per_gas(prio_fee)
