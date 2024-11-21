@@ -27,6 +27,8 @@ pub struct CallFrame {
     pub output: Option<Bytes>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none", rename = "revertReason")]
+    pub revert_reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calls: Option<Vec<CallFrame>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

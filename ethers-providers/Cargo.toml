@@ -30,6 +30,7 @@ serde_json = { workspace = true, features = ["raw_value"] }
 
 http = "0.2"
 reqwest = { workspace = true, features = ["json"] }
+reqwest-middleware = "0.2.4"
 url.workspace = true
 base64 = "0.22"
 jsonwebtoken = "8"
@@ -56,6 +57,8 @@ enr = { version = "0.10", default-features = false, features = ["k256", "serde"]
 # tracing
 tracing = { workspace = true, features = ["attributes"] }
 tracing-futures = { workspace = true, features = ["std-future"] }
+anyhow = "1.0.71"
+
 
 [target.'cfg(target_family = "windows")'.dependencies]
 winapi = { version = "0.3", optional = true }
@@ -64,6 +67,7 @@ winapi = { version = "0.3", optional = true }
 # tokio
 tokio = { workspace = true, features = ["time"] }
 tokio-tungstenite = { workspace = true, features = ["connect"], optional = true }
+reqwest-chain = "0.1.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 ws_stream_wasm = "0.7"
@@ -74,6 +78,7 @@ web-sys = { version = "0.3", features = ["console"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time"] }
 tempfile = "3"
+
 
 [features]
 default = ["ws", "rustls"]
@@ -92,3 +97,4 @@ dev-rpc = []
 
 [dev-dependencies]
 tracing-test = { version = "0.2.4", features = ["no-env-filter"] }
+hex = "0.4.3"
