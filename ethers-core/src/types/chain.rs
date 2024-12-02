@@ -641,7 +641,7 @@ impl Chain {
             AnvilHardhat | Dev | Morden | MoonbeamDev | FilecoinMainnet => {
                 // this is explicitly exhaustive so we don't forget to add new urls when adding a
                 // new chain
-                return None;
+                return None
             }
             Viction => ("https://www.vicscan.xyz/api", "https://www.vicscan.xyz"),
 
