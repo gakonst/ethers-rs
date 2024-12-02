@@ -35,6 +35,7 @@ pub const MULTICALL_SUPPORTED_CHAIN_IDS: &[u64] = {
         ArbitrumSepolia as u64,          // Arbitrum Sepolia
         Polygon as u64,                  // Polygon
         PolygonMumbai as u64,            // Polygon Mumbai
+        PolygonAmoy as u64,              // Polygon Amoy
         Gnosis as u64,                   // Gnosis Chain
         Avalanche as u64,                // Avalanche
         AvalancheFuji as u64,            // Avalanche Fuji

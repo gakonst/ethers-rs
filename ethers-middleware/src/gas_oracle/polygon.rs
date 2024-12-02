@@ -7,6 +7,7 @@ use url::Url;
 
 const MAINNET_URL: &str = "https://gasstation.polygon.technology/v2";
 const MUMBAI_URL: &str = "https://gasstation-testnet.polygon.technology/v2";
+const AMOY_URL: &str = "https://gasstation.polygon.technology/amoy";
 
 /// The [Polygon](https://docs.polygon.technology/docs/develop/tools/polygon-gas-station/) gas station API
 /// Queries over HTTP and implements the `GasOracle` trait.
@@ -112,6 +113,7 @@ impl Polygon {
         let url = match chain {
             Chain::Polygon => MAINNET_URL,
             Chain::PolygonMumbai => MUMBAI_URL,
+            Chain::PolygonAmoy => AMOY_URL,
             _ => return Err(GasOracleError::UnsupportedChain),
         };
         Ok(Self { client, url: Url::parse(url).unwrap(), gas_category: GasCategory::Standard })
