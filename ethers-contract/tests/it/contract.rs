@@ -70,13 +70,13 @@ fn _it_compiles() {
     let c: ContractInstance<&Provider<Http>, Provider<Http>> =
         ContractInstance::new(H160::default(), abi.clone(), &client);
 
-    let _ = c.method::<(), ()>("notARealMethod", ());
+    let _ = c.method::<()>("notARealMethod", ());
 
     // Works (B == &M, M: Clone)
     let c: ContractInstance<Provider<Http>, Provider<Http>> =
         ContractInstance::new(H160::default(), abi.clone(), client.clone());
 
-    let _ = c.method::<(), ()>("notARealMethod", ());
+    let _ = c.method::<()>("notARealMethod", ());
 
     let non_clone_mware = NonClone { m: client };
 
@@ -84,13 +84,13 @@ fn _it_compiles() {
     let c: ContractInstance<&NonClone<Provider<Http>>, NonClone<Provider<Http>>> =
         ContractInstance::new(H160::default(), abi, &non_clone_mware);
 
-    let _ = c.method::<(), ()>("notARealMethod", ());
+    let _ = c.method::<()>("notARealMethod", ());
 
     // // Fails (B == M, M: !Clone)
     // let c: ContractInternal<NonClone<Provider<Http>>, NonClone<Provider<Http>>> =
     //     ContractInternal::new(H160::default(), abi, non_clone_mware);
 
-    // let _ = c.method::<(), ()>("notARealMethod", ());
+    // let _ = c.method::<()>("notARealMethod", ());
 }
 
 #[tokio::test]
@@ -120,8 +120,8 @@ async fn deploy_and_call_contract() {
     let (contract, receipt) = deployer.clone().send_with_receipt().await.unwrap();
     assert_eq!(receipt.contract_address.unwrap(), contract.address());
 
-    let get_value = contract.method::<_, String>("getValue", ()).unwrap();
-    let last_sender = contract.method::<_, Address>("lastSender", ()).unwrap();
+    let get_value = contract.method::<String>("getValue", ()).unwrap();
+    let last_sender = contract.method::<Address>("lastSender", ()).unwrap();
 
     // the initial value must be the one set in the constructor
     let value = get_value.clone().call().await.unwrap();
@@ -131,7 +131,7 @@ async fn deploy_and_call_contract() {
     // this is because it internally clones an Arc which would otherwise
     // get immediately dropped
     let contract_call =
-        contract.connect(client2.clone()).method::<_, H256>("setValue", "hi".to_owned()).unwrap();
+        contract.connect(client2.clone()).method::<H256>("setValue", "hi".to_owned()).unwrap();
     let calldata = contract_call.calldata().unwrap();
     let _gas_estimate = contract_call.estimate_gas().await.unwrap();
     let contract_call = contract_call.legacy();
@@ -147,15 +147,14 @@ async fn deploy_and_call_contract() {
     let contract2_addr = deployer.send().await.unwrap().address();
     let contract2 = contract.at(contract2_addr);
     let init_value: String =
-        contract2.method::<_, String>("getValue", ()).unwrap().call().await.unwrap();
-    let init_address =
-        contract2.method::<_, Address>("lastSender", ()).unwrap().call().await.unwrap();
+        contract2.method::<String>("getValue", ()).unwrap().call().await.unwrap();
+    let init_address = contract2.method::<Address>("lastSender", ()).unwrap().call().await.unwrap();
     assert_eq!(init_address, Address::zero());
     assert_eq!(init_value, "initial value");
 
     // methods with multiple args also work
     let _tx_hash = contract
-        .method::<_, H256>("setValues", ("hi".to_owned(), "bye".to_owned()))
+        .method::<H256>("setValues", ("hi".to_owned(), "bye".to_owned()))
         .unwrap()
         .legacy()
         .send()
@@ -175,7 +174,7 @@ async fn get_past_events() {
     let contract = deploy(client.clone(), abi, bytecode).await;
 
     // make a call with `client`
-    let func = contract.method::<_, H256>("setValue", "hi".to_owned()).unwrap().legacy();
+    let func = contract.method::<H256>("setValue", "hi".to_owned()).unwrap().legacy();
     let tx = func.send().await.unwrap();
     let _receipt = tx.await.unwrap();
 
@@ -246,13 +245,12 @@ async fn call_past_state() {
     let deployed_block = client.get_block_number().await.unwrap();
 
     // assert initial state
-    let value =
-        contract.method::<_, String>("getValue", ()).unwrap().legacy().call().await.unwrap();
+    let value = contract.method::<String>("getValue", ()).unwrap().legacy().call().await.unwrap();
     assert_eq!(value, "initial value");
 
     // make a call with `client`
     let _tx_hash = *contract
-        .method::<_, H256>("setValue", "hi".to_owned())
+        .method::<H256>("setValue", "hi".to_owned())
         .unwrap()
         .legacy()
         .send()
@@ -260,13 +258,12 @@ async fn call_past_state() {
         .unwrap();
 
     // assert new value
-    let value =
-        contract.method::<_, String>("getValue", ()).unwrap().legacy().call().await.unwrap();
+    let value = contract.method::<String>("getValue", ()).unwrap().legacy().call().await.unwrap();
     assert_eq!(value, "hi");
 
     // assert previous value
     let value = contract
-        .method::<_, String>("getValue", ())
+        .method::<String>("getValue", ())
         .unwrap()
         .legacy()
         .block(BlockId::Number(deployed_block.into()))
@@ -280,7 +277,7 @@ async fn call_past_state() {
 
     // let hash = client.get_block(1).await.unwrap().unwrap().hash.unwrap();
     // let value = contract
-    //     .method::<_, String>("getValue", ())
+    //     .method::<String>("getValue", ())
     //     .unwrap()
     //     .block(BlockId::Hash(hash))
     //     .call()
@@ -302,21 +299,21 @@ async fn call_past_hash_test() {
     let deployed_block = client.get_block_number().await.unwrap();
 
     // assert initial state
-    let value = contract.method::<_, String>("getValue", ()).unwrap().call().await.unwrap();
+    let value = contract.method::<String>("getValue", ()).unwrap().call().await.unwrap();
     assert_eq!(value, "initial value");
 
     // make a call with `client`
     let _tx_hash =
-        *contract.method::<_, H256>("setValue", "hi".to_owned()).unwrap().send().await.unwrap();
+        *contract.method::<H256>("setValue", "hi".to_owned()).unwrap().send().await.unwrap();
 
     // assert new value
-    let value = contract.method::<_, String>("getValue", ()).unwrap().call().await.unwrap();
+    let value = contract.method::<String>("getValue", ()).unwrap().call().await.unwrap();
     assert_eq!(value, "hi");
 
     // assert previous value using block hash
     let hash = client.get_block(deployed_block).await.unwrap().unwrap().hash.unwrap();
     let value = contract
-        .method::<_, String>("getValue", ())
+        .method::<String>("getValue", ())
         .unwrap()
         .block(BlockId::Hash(hash))
         .call()
@@ -349,7 +346,7 @@ async fn watch_events() {
     // and we make a few calls
     let num = client.get_block_number().await.unwrap();
     for i in 0..num_calls {
-        let call = contract.method::<_, H256>("setValue", i.to_string()).unwrap().legacy();
+        let call = contract.method::<H256>("setValue", i.to_string()).unwrap().legacy();
         let pending_tx = call.send().await.unwrap();
         let _receipt = pending_tx.await.unwrap();
     }
@@ -382,11 +379,11 @@ async fn watch_subscription_events_multiple_addresses() {
     let mut stream = ws.subscribe_logs(&filter).await.unwrap();
 
     // and we make a few calls
-    let call = contract_1.method::<_, H256>("setValue", "1".to_string()).unwrap().legacy();
+    let call = contract_1.method::<H256>("setValue", "1".to_string()).unwrap().legacy();
     let pending_tx = call.send().await.unwrap();
     let _receipt = pending_tx.await.unwrap();
 
-    let call = contract_2.method::<_, H256>("setValue", "2".to_string()).unwrap().legacy();
+    let call = contract_2.method::<H256>("setValue", "2".to_string()).unwrap().legacy();
     let pending_tx = call.send().await.unwrap();
     let _receipt = pending_tx.await.unwrap();
 
@@ -431,7 +428,7 @@ async fn signer_on_node() {
 
     // make a call without the signer
     let _receipt = contract
-        .method::<_, H256>("setValue", "hi".to_owned())
+        .method::<H256>("setValue", "hi".to_owned())
         .unwrap()
         .legacy()
         .send()
@@ -439,7 +436,7 @@ async fn signer_on_node() {
         .unwrap()
         .await
         .unwrap();
-    let value: String = contract.method::<_, String>("getValue", ()).unwrap().call().await.unwrap();
+    let value: String = contract.method::<String>("getValue", ()).unwrap().call().await.unwrap();
     assert_eq!(value, "hi");
 }
 
@@ -493,7 +490,7 @@ async fn multicall_aggregate() {
     // Client2 and Client3 broadcast txs to set the values for both contracts
     simple_contract
         .connect(client2.clone())
-        .method::<_, H256>("setValue", "reset first".to_owned())
+        .method::<H256>("setValue", "reset first".to_owned())
         .unwrap()
         .legacy()
         .send()
@@ -502,7 +499,7 @@ async fn multicall_aggregate() {
 
     not_so_simple_contract
         .connect(client3.clone())
-        .method::<_, H256>("setValue", "reset second".to_owned())
+        .method::<H256>("setValue", "reset second".to_owned())
         .unwrap()
         .legacy()
         .send()
@@ -510,10 +507,10 @@ async fn multicall_aggregate() {
         .unwrap();
 
     // get the calls for `value` and `last_sender` for both SimpleStorage contracts
-    let value = simple_contract.method::<_, String>("getValue", ()).unwrap();
-    let value2 = not_so_simple_contract.method::<_, (String, Address)>("getValues", ()).unwrap();
-    let last_sender = simple_contract.method::<_, Address>("lastSender", ()).unwrap();
-    let last_sender2 = not_so_simple_contract.method::<_, Address>("lastSender", ()).unwrap();
+    let value = simple_contract.method::<String>("getValue", ()).unwrap();
+    let value2 = not_so_simple_contract.method::<(String, Address)>("getValues", ()).unwrap();
+    let last_sender = simple_contract.method::<Address>("lastSender", ()).unwrap();
+    let last_sender2 = not_so_simple_contract.method::<Address>("lastSender", ()).unwrap();
 
     // initiate the Multicall instance and add calls one by one in builder style
     let mut multicall = Multicall::new(client4.clone(), Some(addr)).await.unwrap();
@@ -539,11 +536,11 @@ async fn multicall_aggregate() {
     // construct broadcast transactions that will be batched and broadcast via Multicall
     let broadcast = simple_contract
         .connect(client4.clone())
-        .method::<_, H256>("setValue", "first reset again".to_owned())
+        .method::<H256>("setValue", "first reset again".to_owned())
         .unwrap();
     let broadcast2 = not_so_simple_contract
         .connect(client4.clone())
-        .method::<_, H256>("setValue", "second reset again".to_owned())
+        .method::<H256>("setValue", "second reset again".to_owned())
         .unwrap();
 
     // use the already initialised Multicall instance, clearing the previous calls and adding
@@ -606,7 +603,7 @@ async fn multicall_aggregate() {
     // clear the current value
     simple_contract
         .connect(client2.clone())
-        .method::<_, H256>("setValue", "many".to_owned())
+        .method::<H256>("setValue", "many".to_owned())
         .unwrap()
         .legacy()
         .send()
@@ -615,7 +612,7 @@ async fn multicall_aggregate() {
 
     multicall.add_calls(
         false,
-        std::iter::repeat(simple_contract.method::<_, String>("getValue", ()).unwrap()).take(17),
+        std::iter::repeat(simple_contract.method::<String>("getValue", ()).unwrap()).take(17),
     );
 
     let tokens = multicall.call_raw().await.unwrap();
@@ -641,7 +638,7 @@ async fn multicall_aggregate() {
     // reset value
     reverting_contract
         .connect(client2.clone())
-        .method::<_, H256>("setValue", ("reset third".to_owned(), false))
+        .method::<H256>("setValue", ("reset third".to_owned(), false))
         .unwrap()
         .send()
         .await
@@ -650,16 +647,16 @@ async fn multicall_aggregate() {
     // create calls
     let set_value_call = reverting_contract
         .connect(client.clone())
-        .method::<_, H256>("setValue", ("this didn't revert".to_owned(), false))
+        .method::<H256>("setValue", ("this didn't revert".to_owned(), false))
         .unwrap();
     let set_value_reverting_call = reverting_contract
         .connect(client3.clone())
-        .method::<_, H256>("setValue", ("this reverted".to_owned(), true))
+        .method::<H256>("setValue", ("this reverted".to_owned(), true))
         .unwrap();
     let get_value_call =
-        reverting_contract.connect(client2.clone()).method::<_, String>("getValue", false).unwrap();
+        reverting_contract.connect(client2.clone()).method::<String>("getValue", false).unwrap();
     let get_value_reverting_call =
-        reverting_contract.connect(client.clone()).method::<_, String>("getValue", true).unwrap();
+        reverting_contract.connect(client.clone()).method::<String>("getValue", true).unwrap();
 
     // .send reverts
     // don't allow revert
@@ -685,7 +682,7 @@ async fn multicall_aggregate() {
     // reset value again
     reverting_contract
         .connect(client2.clone())
-        .method::<_, H256>("setValue", ("reset third again".to_owned(), false))
+        .method::<H256>("setValue", ("reset third again".to_owned(), false))
         .unwrap()
         .send()
         .await
@@ -730,7 +727,7 @@ async fn multicall_aggregate() {
 
     // .send with value
     let amount = U256::from(100);
-    let value_tx = reverting_contract.method::<_, H256>("deposit", ()).unwrap().value(amount);
+    let value_tx = reverting_contract.method::<H256>("deposit", ()).unwrap().value(amount);
     let rc_addr = reverting_contract.address();
 
     let (bal_before,): (U256,) =
@@ -747,13 +744,13 @@ async fn multicall_aggregate() {
 
     // test specific revert cases
     // empty revert
-    let empty_revert = reverting_contract.method::<_, H256>("emptyRevert", ()).unwrap();
+    let empty_revert = reverting_contract.method::<H256>("emptyRevert", ()).unwrap();
     multicall.clear_calls().add_call(empty_revert.clone(), true);
     assert!(multicall.call::<(String,)>().await.unwrap_err().as_revert().unwrap().is_empty());
 
     // string revert
     let string_revert =
-        reverting_contract.method::<_, H256>("stringRevert", "String".to_string()).unwrap();
+        reverting_contract.method::<H256>("stringRevert", "String".to_string()).unwrap();
     multicall.clear_calls().add_call(string_revert, true);
     assert_eq!(
         multicall.call::<(String,)>().await.unwrap_err().as_revert().unwrap()[4..],
@@ -761,7 +758,7 @@ async fn multicall_aggregate() {
     );
 
     // custom error revert
-    let custom_error = reverting_contract.method::<_, H256>("customError", ()).unwrap();
+    let custom_error = reverting_contract.method::<H256>("customError", ()).unwrap();
     multicall.clear_calls().add_call(custom_error, true);
     assert_eq!(
         multicall.call::<(Bytes,)>().await.unwrap_err().as_revert().unwrap()[..],
@@ -770,7 +767,7 @@ async fn multicall_aggregate() {
 
     // custom error with data revert
     let custom_error_with_data =
-        reverting_contract.method::<_, H256>("customErrorWithData", "Data".to_string()).unwrap();
+        reverting_contract.method::<H256>("customErrorWithData", "Data".to_string()).unwrap();
     multicall.clear_calls().add_call(custom_error_with_data, true);
     let err = multicall.call::<(Bytes,)>().await.unwrap_err();
     let bytes = err.as_revert().unwrap();
@@ -836,10 +833,10 @@ async fn test_multicall_state_overrides() {
     let (get_old_value, get_value): (H256, H256) = multicall
         .clear_calls()
         .add_call(
-            slot_storage_contract.at(addr).method::<_, H256>("setValue", new_value).unwrap(),
+            slot_storage_contract.at(addr).method::<H256>("setValue", new_value).unwrap(),
             false,
         )
-        .add_call(slot_storage_contract.at(addr).method::<_, H256>("getValue", ()).unwrap(), false)
+        .add_call(slot_storage_contract.at(addr).method::<H256>("getValue", ()).unwrap(), false)
         .call()
         .await
         .unwrap();
@@ -859,10 +856,10 @@ async fn test_multicall_state_overrides() {
     let (get_old_value, get_value): (H256, H256) = multicall
         .clear_calls()
         .add_call(
-            slot_storage_contract.at(addr).method::<_, H256>("setValue", new_value).unwrap(),
+            slot_storage_contract.at(addr).method::<H256>("setValue", new_value).unwrap(),
             false,
         )
-        .add_call(slot_storage_contract.at(addr).method::<_, H256>("getValue", ()).unwrap(), false)
+        .add_call(slot_storage_contract.at(addr).method::<H256>("getValue", ()).unwrap(), false)
         .call()
         .await
         .unwrap();

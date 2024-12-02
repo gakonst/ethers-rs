@@ -93,13 +93,13 @@ pub type Contract<M> = ContractInstance<std::sync::Arc<M>, M>;
 /// // Calling constant methods is done by calling `call()` on the method builder.
 /// // (if the function takes no arguments, then you must use `()` as the argument)
 /// let init_value: String = contract
-///     .method::<_, String>("getValue", ())?
+///     .method::<String>("getValue", ())?
 ///     .call()
 ///     .await?;
 ///
 /// // Non-constant methods are executed via the `send()` call on the method builder.
 /// let call = contract
-///     .method::<_, H256>("setValue", "hi".to_owned())?;
+///     .method::<H256>("setValue", "hi".to_owned())?;
 /// let pending_tx = call.send().await?;
 ///
 /// // `await`ing on the pending transaction resolves to a transaction receipt
@@ -322,10 +322,10 @@ where
         Ok(self.event_with_filter(Filter::new().event(&event.abi_signature())))
     }
 
-    fn method_func<T: Tokenize, D: Detokenize>(
+    fn method_func<D: Detokenize>(
         &self,
         function: &Function,
-        args: T,
+        args: impl Tokenize,
     ) -> Result<FunctionCall<B, M, D>, AbiError> {
         let data = encode_function_data(function, args)?;
 
@@ -356,10 +356,10 @@ where
 
     /// Returns a transaction builder for the selected function signature. This should be
     /// preferred if there are overloaded functions in your smart contract
-    pub fn method_hash<T: Tokenize, D: Detokenize>(
+    pub fn method_hash<D: Detokenize>(
         &self,
         signature: Selector,
-        args: T,
+        args: impl Tokenize,
     ) -> Result<FunctionCall<B, M, D>, AbiError> {
         let function = self
             .base_contract
@@ -373,10 +373,10 @@ where
     /// Returns a transaction builder for the provided function name. If there are
     /// multiple functions with the same name due to overloading, consider using
     /// the `method_hash` method instead, since this will use the first match.
-    pub fn method<T: Tokenize, D: Detokenize>(
+    pub fn method<D: Detokenize>(
         &self,
         name: &str,
-        args: T,
+        args: impl Tokenize,
     ) -> Result<FunctionCall<B, M, D>, AbiError> {
         // get the function
         let function = self.base_contract.abi.function(name)?;
