@@ -16,7 +16,7 @@ Before diving into event handling, ensure you have ethers-rs added to your proje
 
 ```toml
 [dependencies]
-ethers = { version = "2.0.0.", features = ["full"] }
+ethers = { version = "2.0.0", features = ["full"] }
 ```
 
 Now, let's import the necessary components from the ethers-rs library:
